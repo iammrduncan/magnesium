@@ -8,6 +8,8 @@ It is built for one person: the owner, who drives several agents and bots all da
 
 The name comes from the magnesium ribbon that lights thermite. The mark is a plain **Mg**.
 
+Talk about Magnesium in the [Hackers in the Loop Discord](https://discord.gg/3Qs2uejUf9).
+
 ## What it is for
 
 The target, from the owner's mocks and build plan:
