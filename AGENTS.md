@@ -1,3 +1,9 @@
+<!-- magnesium: fork instructions; keep this block at the top -->
+**This repo is Magnesium, the owner's fork of T3 Code.** Read `MAGNESIUM.md` first. Where it disagrees with the upstream guidance below, `MAGNESIUM.md` wins.
+
+@MAGNESIUM.md
+<!-- magnesium: end -->
+
 # T3 Code
 
 T3 Code is a minimal GUI for coding agents. A Node WebSocket server wraps provider CLIs and agents (Codex, Claude Code, Cursor, Grok, OpenCode, Antigravity) and serves web, desktop, and mobile clients.
