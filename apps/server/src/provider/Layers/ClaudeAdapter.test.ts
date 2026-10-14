@@ -7,6 +7,8 @@ import * as NodePath from "node:path";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import type {
+  McpServerConfig,
+  McpSetServersResult,
   Options as ClaudeQueryOptions,
   PermissionMode,
   PermissionResult,
@@ -16,6 +18,7 @@ import type {
 import {
   ApprovalRequestId,
   ClaudeSettings,
+  EnvironmentId,
   ProviderDriverKind,
   ProviderItemId,
   ProviderRuntimeEvent,
@@ -38,6 +41,7 @@ import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 
 import { attachmentRelativePath } from "../../attachmentStore.ts";
+import * as McpProviderSession from "../../mcp/McpProviderSession.ts";
 import { ServerConfig } from "../../config.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
 import {
@@ -71,6 +75,7 @@ class FakeClaudeQuery implements AsyncIterable<SDKMessage> {
   public readonly setModelCalls: Array<string | undefined> = [];
   public readonly setPermissionModeCalls: Array<string> = [];
   public readonly setMaxThinkingTokensCalls: Array<number | null> = [];
+  public readonly setMcpServersCalls: Array<Record<string, McpServerConfig>> = [];
   public closeCalls = 0;
   public closeError: unknown | undefined;
   /** Set by tests that exercise Claude's graceful interrupt. */
@@ -120,6 +125,13 @@ class FakeClaudeQuery implements AsyncIterable<SDKMessage> {
 
   readonly setMaxThinkingTokens = async (maxThinkingTokens: number | null): Promise<void> => {
     this.setMaxThinkingTokensCalls.push(maxThinkingTokens);
+  };
+
+  readonly setMcpServers = async (
+    servers: Record<string, McpServerConfig>,
+  ): Promise<McpSetServersResult> => {
+    this.setMcpServersCalls.push(servers);
+    return { added: Object.keys(servers), removed: [], errors: {} };
   };
 
   readonly close = (): void => {
@@ -588,6 +600,47 @@ describe("ClaudeAdapterLive", () => {
       const createInput = harness.getLastCreateQueryInput();
       assert.equal(createInput?.options.effort, "max");
     }).pipe(
+      Effect.provideService(Random.Random, makeDeterministicRandomService()),
+      Effect.provide(harness.layer),
+    );
+  });
+
+  // magnesium: covers the port of upstream #17898.
+  it.effect("sends the T3 MCP server over the control channel, never in CLI options", () => {
+    const harness = makeHarness();
+    const authorizationHeader = "Bearer dummy-mcp-credential";
+    return Effect.gen(function* () {
+      McpProviderSession.setMcpProviderSession({
+        environmentId: EnvironmentId.make("environment-claude-mcp"),
+        threadId: THREAD_ID,
+        providerSessionId: "provider-session-claude-mcp",
+        providerInstanceId: ProviderInstanceId.make("claudeAgent"),
+        endpoint: "http://127.0.0.1:43123/mcp",
+        authorizationHeader,
+        capabilities: new Set(),
+      });
+      const adapter = yield* ClaudeAdapter;
+      yield* adapter.startSession({
+        threadId: THREAD_ID,
+        provider: ProviderDriverKind.make("claudeAgent"),
+        runtimeMode: "approval-required",
+      });
+
+      // The SDK turns `mcpServers` into an inline `--mcp-config` argument.
+      const options = harness.getLastCreateQueryInput()?.options;
+      assert.isUndefined(options?.mcpServers);
+      assert.notInclude(encodeUnknownJsonString(options), "dummy-mcp-credential");
+      assert.deepEqual(harness.query.setMcpServersCalls, [
+        {
+          "t3-code": {
+            type: "http",
+            url: "http://127.0.0.1:43123/mcp",
+            headers: { Authorization: authorizationHeader },
+          },
+        },
+      ]);
+    }).pipe(
+      Effect.ensuring(Effect.sync(() => McpProviderSession.clearMcpProviderSession(THREAD_ID))),
       Effect.provideService(Random.Random, makeDeterministicRandomService()),
       Effect.provide(harness.layer),
     );

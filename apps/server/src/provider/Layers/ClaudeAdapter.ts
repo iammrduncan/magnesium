@@ -14,6 +14,8 @@ import {
   query,
   getSessionMessages,
   forkSession,
+  type McpServerConfig,
+  type McpSetServersResult,
   type Options as ClaudeQueryOptions,
   type PermissionMode,
   type PermissionResult,
@@ -473,8 +475,17 @@ interface ClaudeQueryRuntime extends AsyncIterable<SDKMessage> {
   readonly setModel: (model?: string) => Promise<void>;
   readonly setPermissionMode: (mode: PermissionMode) => Promise<void>;
   readonly setMaxThinkingTokens: (maxThinkingTokens: number | null) => Promise<void>;
+  // magnesium: MCP servers go over the control channel (upstream #17898, ported).
+  readonly setMcpServers: (
+    servers: Record<string, McpServerConfig>,
+  ) => Promise<McpSetServersResult>;
   readonly close: () => void;
 }
+
+// magnesium: from upstream #17898. The SDK puts no deadline on control
+// requests. The CLI answers mcp_set_servers once each server connected or hit
+// its own 30 s timeout.
+const CLAUDE_MCP_REGISTRATION_TIMEOUT = "90 seconds";
 
 export interface ClaudeAdapterLiveOptions {
   readonly instanceId?: ProviderInstanceId;
@@ -5023,20 +5034,21 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         env: McpProviderSession.withAgentDeviceEnvironment(claudeEnvironment, mcpSession),
         additionalDirectories,
         ...(Object.keys(extraArgs).length > 0 ? { extraArgs } : {}),
-        ...(mcpSession
-          ? {
-              mcpServers: {
-                "t3-code": {
-                  type: "http",
-                  url: mcpSession.endpoint,
-                  headers: {
-                    Authorization: mcpSession.authorizationHeader,
-                  },
-                },
-              },
-            }
-          : {}),
       };
+      // magnesium: upstream #17898, ported. The SDK would pass `mcpServers` as
+      // an inline `--mcp-config` argument, which every local user can read.
+      // They go over the CLI's stdin control channel once the query runs.
+      const mcpServers: Record<string, McpServerConfig> | undefined = mcpSession
+        ? {
+            "t3-code": {
+              type: "http",
+              url: mcpSession.endpoint,
+              headers: {
+                Authorization: mcpSession.authorizationHeader,
+              },
+            },
+          }
+        : undefined;
 
       yield* Effect.annotateCurrentSpan({
         "provider.kind": PROVIDER,
@@ -5063,20 +5075,69 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         "claude.query.path_to_executable": claudeBinaryPath,
       });
 
-      const queryRuntime = yield* Effect.try({
-        try: () =>
-          createQuery({
-            prompt,
-            options: queryOptions,
+      // magnesium: upstream #17898, ported. A rejected request or a server that
+      // failed to connect leaves the session without those tools, as
+      // `--mcp-config` did. Error texts can echo the headers, so only server
+      // names are logged.
+      const registerMcpServers = (
+        runtime: ClaudeQueryRuntime,
+        servers: Record<string, McpServerConfig>,
+      ) =>
+        Effect.tryPromise(() => runtime.setMcpServers(servers)).pipe(
+          Effect.map((result) => Object.keys(result.errors)),
+          Effect.orElseSucceed(() => Object.keys(servers)),
+          Effect.timeoutOrElse({
+            duration: CLAUDE_MCP_REGISTRATION_TIMEOUT,
+            orElse: () =>
+              Effect.fail(
+                new ProviderAdapterProcessError({
+                  provider: PROVIDER,
+                  threadId,
+                  detail: "Claude Code did not answer the MCP server registration.",
+                }),
+              ),
           }),
-        catch: (cause) =>
-          new ProviderAdapterProcessError({
-            provider: PROVIDER,
-            threadId,
-            detail: "Failed to start Claude runtime session.",
-            cause,
-          }),
-      });
+          Effect.flatMap((failed) =>
+            failed.length > 0
+              ? Effect.logWarning("Claude MCP servers unavailable for this session.", {
+                  threadId,
+                  servers: failed,
+                })
+              : Effect.void,
+          ),
+        );
+
+      // The CLI is running once createQuery returns, so it is closed if the
+      // MCP registration fails or is interrupted.
+      const queryRuntime = yield* Effect.uninterruptibleMask((restore) =>
+        Effect.try({
+          try: () =>
+            createQuery({
+              prompt,
+              options: queryOptions,
+            }),
+          catch: (cause) =>
+            new ProviderAdapterProcessError({
+              provider: PROVIDER,
+              threadId,
+              detail: "Failed to start Claude runtime session.",
+              cause,
+            }),
+        }).pipe(
+          Effect.tap((runtime) =>
+            mcpServers === undefined
+              ? Effect.void
+              : restore(registerMcpServers(runtime, mcpServers)).pipe(
+                  Effect.onError(() =>
+                    Queue.shutdown(promptQueue).pipe(
+                      Effect.andThen(Effect.try(() => runtime.close())),
+                      Effect.ignore,
+                    ),
+                  ),
+                ),
+          ),
+        ),
+      );
 
       const session: ProviderSession = {
         threadId,
