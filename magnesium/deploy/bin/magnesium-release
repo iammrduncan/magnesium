@@ -104,7 +104,12 @@ build() {
     echo "$sha is already built."
     return
   fi
-  rm -rf "$dest"
+  # A folder without a server is another build still running, or one that
+  # failed. Never delete it from under a running build.
+  if [ -e "$dest" ]; then
+    rm -rf "$work"
+    die "releases/$sha exists but is not built: another build is running, or one failed (remove it to retry)"
+  fi
   mv "$work" "$dest"
   (
     cd "$dest"
@@ -148,7 +153,10 @@ unpack() {
     echo "$name is already unpacked."
     return
   fi
-  rm -rf "$ROOT/releases/$name"
+  if [ -e "$ROOT/releases/$name" ]; then
+    rm -rf "$work"
+    die "releases/$name exists but is not built: another build or unpack is running, or one failed (remove it to retry)"
+  fi
   mv "$work" "$ROOT/releases/$name"
   echo "Unpacked $name. Run: magnesium-release activate $name"
 }

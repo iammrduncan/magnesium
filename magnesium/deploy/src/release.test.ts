@@ -177,4 +177,26 @@ describe("magnesium-release", () => {
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("not a packed release");
   });
+
+  it("never deletes a release folder that another build is still filling", () => {
+    const release = makeRoot();
+    const repo = NodePath.join(release.root, "repo");
+    const git = (...args: Array<string>) =>
+      NodeChildProcess.execFileSync("git", ["-C", repo, ...args], { encoding: "utf8" });
+    NodeFS.mkdirSync(repo);
+    git("init", "--quiet", "--initial-branch=main");
+    NodeFS.writeFileSync(NodePath.join(repo, "README.md"), "x");
+    git("add", "README.md");
+    git("-c", "user.name=t", "-c", "user.email=t@localhost", "commit", "--quiet", "-m", "x");
+    const sha = git("rev-parse", "--short=10", "HEAD").trim();
+    // Another build's half-filled folder: no server yet.
+    const inProgress = NodePath.join(release.root, "releases", sha);
+    NodeFS.mkdirSync(inProgress, { recursive: true });
+    NodeFS.writeFileSync(NodePath.join(inProgress, "marker"), "still building");
+
+    const result = release.run("build", "main", repo);
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("another build is running");
+    expect(NodeFS.readFileSync(NodePath.join(inProgress, "marker"), "utf8")).toBe("still building");
+  });
 });
