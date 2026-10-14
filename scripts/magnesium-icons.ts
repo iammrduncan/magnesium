@@ -1,0 +1,73 @@
+#!/usr/bin/env node
+// @effect-diagnostics nodeBuiltinImport:off globalConsole:off
+// magnesium: renders the plain "Mg" mark (D17) into the web icon set in
+// dbrain/web/assets. The rename script copies them over upstream's icons.
+//
+//   node scripts/magnesium-icons.ts
+import * as NodeFS from "node:fs";
+import * as NodePath from "node:path";
+
+import sharp from "sharp";
+
+const outDir = NodePath.resolve(import.meta.dirname, "../dbrain/web/assets");
+
+const BACKGROUND = "#161616";
+const FOREGROUND = "#f5f5f5";
+
+/** The mark: "Mg" on a square, rounded for favicons, full-bleed for app icons. */
+export function markSvg(options: { readonly rounded: boolean }): string {
+  const radius = options.rounded ? 112 : 0;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="${radius}" fill="${BACKGROUND}"/>
+  <text x="256" y="320" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="248" font-weight="700" letter-spacing="-6" fill="${FOREGROUND}">Mg</text>
+</svg>
+`;
+}
+
+const png = (svg: string, size: number) =>
+  sharp(Buffer.from(svg), { density: 384 }).resize(size, size).png().toBuffer();
+
+/** An ICO file holding PNG images, which every current browser reads. */
+export function icoFromPngs(images: ReadonlyArray<{ size: number; data: Buffer }>): Buffer {
+  const header = Buffer.alloc(6);
+  header.writeUInt16LE(0, 0);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(images.length, 4);
+  const entries: Array<Buffer> = [];
+  let offset = 6 + 16 * images.length;
+  for (const image of images) {
+    const entry = Buffer.alloc(16);
+    entry.writeUInt8(image.size >= 256 ? 0 : image.size, 0);
+    entry.writeUInt8(image.size >= 256 ? 0 : image.size, 1);
+    entry.writeUInt8(0, 2);
+    entry.writeUInt8(0, 3);
+    entry.writeUInt16LE(1, 4);
+    entry.writeUInt16LE(32, 6);
+    entry.writeUInt32LE(image.data.length, 8);
+    entry.writeUInt32LE(offset, 12);
+    offset += image.data.length;
+    entries.push(entry);
+  }
+  return Buffer.concat([header, ...entries, ...images.map((image) => image.data)]);
+}
+
+if (import.meta.main) {
+  NodeFS.mkdirSync(outDir, { recursive: true });
+  const rounded = markSvg({ rounded: true });
+  const square = markSvg({ rounded: false });
+  NodeFS.writeFileSync(NodePath.join(outDir, "mg-mark.svg"), rounded);
+  const favicons = await Promise.all(
+    [16, 32, 48].map(async (size) => ({ size, data: await png(rounded, size) })),
+  );
+  NodeFS.writeFileSync(NodePath.join(outDir, "favicon.ico"), icoFromPngs(favicons));
+  NodeFS.writeFileSync(NodePath.join(outDir, "favicon-16x16.png"), favicons[0]!.data);
+  NodeFS.writeFileSync(NodePath.join(outDir, "favicon-32x32.png"), favicons[1]!.data);
+  for (const [name, size] of [
+    ["apple-touch-icon.png", 180],
+    ["icon-192.png", 192],
+    ["icon-512.png", 512],
+  ] as const) {
+    NodeFS.writeFileSync(NodePath.join(outDir, name), await png(square, size));
+  }
+  console.log(`Wrote the Mg icon set to ${outDir}`);
+}

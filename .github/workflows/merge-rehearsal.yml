@@ -1,0 +1,53 @@
+# magnesium: weekly read-only merge rehearsal against upstream main (doc 11).
+# It writes a per-file conflict report to the job summary and as an artifact,
+# and never pushes or changes a branch.
+name: Merge rehearsal
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rehearse:
+    name: Rehearse merge from upstream
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          run-install: false
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/pingdotgg/t3code.git
+          git remote set-url --push upstream DISABLED
+          git fetch --no-tags upstream main
+
+      - name: Rehearse
+        run: node scripts/merge-rehearsal.ts --ref upstream/main --out "$RUNNER_TEMP/merge-rehearsal"
+
+      - name: Summary
+        if: always()
+        run: |
+          if test -f "$RUNNER_TEMP/merge-rehearsal/report.md"; then
+            cat "$RUNNER_TEMP/merge-rehearsal/report.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: merge-rehearsal
+          path: ${{ runner.temp }}/merge-rehearsal
+          if-no-files-found: ignore
