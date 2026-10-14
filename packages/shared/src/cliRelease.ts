@@ -5,7 +5,9 @@
  * platform key, so a rename here is a release-breaking change.
  */
 
-const CLI_RELEASE_REPOSITORY = "pingdotgg/t3code";
+// magnesium: release lookups and downloads never reach upstream (D13). The fork
+// publishes no CLI archives, so an update fails instead of fetching T3 Code.
+const CLI_RELEASE_REPOSITORY = "iammrduncan/magnesium";
 export const CLI_RELEASE_CHECKSUMS_FILE = "SHA256SUMS";
 /** Overrides the download origin for mirrors and air-gapped installs. */
 export const CLI_RELEASE_BASE_URL_ENV = "T3CODE_RELEASE_BASE_URL";

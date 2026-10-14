@@ -131,7 +131,8 @@ describe("versionSkew", () => {
     expect(resolveVersionMismatch("0.0.34")).toMatchObject({ serverVersion: "0.0.34" });
   });
 
-  it("reads the server version from config descriptors", () => {
+  // magnesium: the UI never offers a server update, so no mismatch is reported.
+  it("reports no mismatch from config descriptors", () => {
     expect(
       resolveServerConfigVersionMismatch({
         environment: {
@@ -147,9 +148,7 @@ describe("versionSkew", () => {
           },
         },
       }),
-    ).toMatchObject({
-      serverVersion: "0.0.33",
-    });
+    ).toBeNull();
   });
 
   it("keys dismissals by environment, client version, and server version", () => {

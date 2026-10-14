@@ -87,7 +87,11 @@ export function resolveVersionMismatch(
 export function resolveServerConfigVersionMismatch(
   serverConfig: Pick<ServerConfig, "environment"> | null | undefined,
 ): VersionMismatch | null {
-  return resolveVersionMismatch(serverConfig?.environment.serverVersion);
+  // magnesium: servers are updated by our deploy roles, never from the UI, so no
+  // skew banner or update action is shown. The upstream line was:
+  // return resolveVersionMismatch(serverConfig?.environment.serverVersion);
+  void serverConfig;
+  return null;
 }
 
 /** The update path the connected server offers, or null when it only
