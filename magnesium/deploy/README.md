@@ -22,3 +22,5 @@ applied by hand.
   ```
 
 `vp run --filter @magnesium/deploy test` checks the unit, the seed and the release switching.
+
+`ansible/` rolls these out to every machine and the hub; see [its README](ansible/README.md).

@@ -6,10 +6,14 @@
 #   magnesium-release activate <sha>            run releases/<sha>; the old one becomes `previous`
 #   magnesium-release rollback                  run `previous` again (one command back)
 #   magnesium-release status                    show current, previous and every release
+#   magnesium-release pack <sha> <file.tar.gz>  pack built releases/<sha> for a host that
+#                                               doesn't build (the server and its runtime
+#                                               dependencies only, about 300 MB)
+#   magnesium-release unpack <file.tar.gz>      unpack a packed release into releases/<sha>
 #
 # Layout under $MAGNESIUM_ROOT (default ~/.local/share/magnesium):
 #   node/              Node 24
-#   releases/<sha>/    a built checkout
+#   releases/<sha>/    a built checkout, or an unpacked pack
 #   current, previous  symlinks into releases/
 # systemd/magnesium.service runs current/apps/server/dist/bin.mjs. Activating
 # seeds $MAGNESIUM_HOME/userdata/settings.json from the release when it is
@@ -20,10 +24,17 @@ set -euo pipefail
 ROOT="${MAGNESIUM_ROOT:-$HOME/.local/share/magnesium}"
 STATE_HOME="${MAGNESIUM_HOME:-$HOME/.magnesium}"
 UNIT="magnesium.service"
+read -r -a PNPM <<< "${MAGNESIUM_PNPM:-corepack pnpm}"
+read -r -a VP <<< "${MAGNESIUM_VP:-vp}"
 
 die() {
   echo "magnesium-release: $*" >&2
   exit 1
+}
+
+# Runs a command with this machine's Node 24 first on PATH.
+with_node() {
+  PATH="$ROOT/node/bin:$PATH" COREPACK_ENABLE_DOWNLOAD_PROMPT=0 "$@"
 }
 
 is_built() {
@@ -97,12 +108,49 @@ build() {
   mv "$work" "$dest"
   (
     cd "$dest"
-    export PATH="$ROOT/node/bin:$PATH" COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-    ${MAGNESIUM_PNPM:-corepack pnpm} install --frozen-lockfile
-    PATH="$dest/node_modules/.bin:$PATH" ${MAGNESIUM_VP:-vp} run --filter t3 build
+    with_node "${PNPM[@]}" install --frozen-lockfile
+    PATH="$dest/node_modules/.bin:$ROOT/node/bin:$PATH" "${VP[@]}" run --filter t3 build
   )
   is_built "$dest" || die "the build of $sha produced no server"
   echo "Built $sha. Run: magnesium-release activate $sha"
+}
+
+pack() {
+  local name="$1" out="$2"
+  local release="$ROOT/releases/$name"
+  is_built "$release" || die "release $name is missing or not built"
+  local work
+  work="$(mktemp -d)"
+  # The published `t3` package's shape: dist plus its production dependencies.
+  (cd "$release" && with_node "${PNPM[@]}" --filter t3 deploy --prod --legacy "$work/apps/server" > /dev/null)
+  mkdir -p "$work/magnesium/deploy/seed"
+  cp "$release/magnesium/deploy/seed/settings.json" "$work/magnesium/deploy/seed/settings.json"
+  echo "$name" > "$work/RELEASE"
+  is_built "$work" || { rm -rf "$work"; die "the pack of $name has no server"; }
+  tar -czf "$out" -C "$work" .
+  rm -rf "$work"
+  echo "Packed $name into $out."
+}
+
+unpack() {
+  local file="$1"
+  mkdir -p "$ROOT/releases"
+  local work="$ROOT/releases/.unpack-$$"
+  rm -rf "$work"
+  mkdir -p "$work"
+  tar -xzf "$file" -C "$work"
+  local name
+  name="$(cat "$work/RELEASE" 2> /dev/null || true)"
+  [[ "$name" =~ ^[0-9a-f]{7,40}$ ]] || { rm -rf "$work"; die "$file is not a packed release"; }
+  is_built "$work" || { rm -rf "$work"; die "$file has no server"; }
+  if is_built "$ROOT/releases/$name"; then
+    rm -rf "$work"
+    echo "$name is already unpacked."
+    return
+  fi
+  rm -rf "$ROOT/releases/$name"
+  mv "$work" "$ROOT/releases/$name"
+  echo "Unpacked $name. Run: magnesium-release activate $name"
 }
 
 status() {
@@ -135,7 +183,15 @@ case "${1:-}" in
   status)
     status
     ;;
+  pack)
+    [ $# -eq 3 ] || die "usage: magnesium-release pack <sha> <file.tar.gz>"
+    pack "$2" "$3"
+    ;;
+  unpack)
+    [ $# -eq 2 ] || die "usage: magnesium-release unpack <file.tar.gz>"
+    unpack "$2"
+    ;;
   *)
-    die "usage: magnesium-release build|activate|rollback|status"
+    die "usage: magnesium-release build|activate|rollback|status|pack|unpack"
     ;;
 esac

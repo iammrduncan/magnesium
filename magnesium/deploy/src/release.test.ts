@@ -129,4 +129,52 @@ describe("magnesium-release", () => {
       NodeFS.existsSync(NodePath.join(release.root, "releases", sha, "apps/server/dist/bin.mjs")),
     ).toBe(true);
   });
+
+  it("packs a built release and unpacks it on a host that doesn't build", () => {
+    const builder = makeRoot();
+    // Stand-in for `pnpm --filter t3 deploy --prod --legacy <dir>`: it writes the server there.
+    const fakePnpm = NodePath.join(builder.root, "fake-pnpm");
+    NodeFS.writeFileSync(
+      fakePnpm,
+      '#!/bin/sh\nfor last; do :; done\nmkdir -p "$last/dist" && touch "$last/dist/bin.mjs"\n',
+    );
+    NodeFS.chmodSync(fakePnpm, 0o755);
+    NodeFS.renameSync(
+      NodePath.join(builder.root, "releases", "a"),
+      NodePath.join(builder.root, "releases", "abcdef1234"),
+    );
+    const tarball = NodePath.join(builder.root, "release.tar.gz");
+    const packed = NodeChildProcess.spawnSync("bash", [script, "pack", "abcdef1234", tarball], {
+      encoding: "utf8",
+      env: { ...process.env, MAGNESIUM_ROOT: builder.root, MAGNESIUM_PNPM: fakePnpm },
+    });
+    expect(packed.stderr).toBe("");
+    expect(packed.status).toBe(0);
+
+    const host = makeRoot();
+    expect(host.run("unpack", tarball).status).toBe(0);
+    const unpacked = NodePath.join(host.root, "releases", "abcdef1234");
+    expect(NodeFS.existsSync(NodePath.join(unpacked, "apps/server/dist/bin.mjs"))).toBe(true);
+    expect(NodeFS.existsSync(NodePath.join(unpacked, "magnesium/deploy/seed/settings.json"))).toBe(
+      true,
+    );
+    expect(host.run("unpack", tarball).stdout).toContain("already unpacked");
+    expect(host.run("activate", "abcdef1234").status).toBe(0);
+    expect(host.link("current")).toBe("releases/abcdef1234");
+  });
+
+  it("refuses a tarball that is not a packed release", () => {
+    const release = makeRoot();
+    const junk = NodePath.join(release.root, "junk.tar.gz");
+    NodeChildProcess.execFileSync("tar", [
+      "-czf",
+      junk,
+      "-C",
+      NodePath.join(release.root, "releases"),
+      "b",
+    ]);
+    const result = release.run("unpack", junk);
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("not a packed release");
+  });
 });
