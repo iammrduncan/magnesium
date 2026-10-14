@@ -7,7 +7,8 @@
 //
 // 1. Merges `--ref` (default: upstream's newest stable tag) with --no-commit.
 // 2. Takes upstream's side of the lockfile, the generated route tree and the
-//    files the rename script owns, and drops conflicts in stripped paths.
+//    files only the scripts edit, keeps ours for files we replaced outright
+//    (the README), and drops conflicts in stripped paths.
 // 3. Re-runs the strip and rename scripts.
 // 4. Stops if real conflicts remain. Resolve them, `git add` them, and run
 //    again with --continue.
@@ -80,6 +81,9 @@ function startMerge(ref: string) {
       run("git", ["rm", "-r", "-f", "--quiet", "--", file], { allowFailure: true });
     } else if (kind === "scripted" || kind === "regenerated") {
       run("git", ["checkout", "--theirs", "--", file]);
+      run("git", ["add", "--", file]);
+    } else if (kind === "ours") {
+      run("git", ["checkout", "--ours", "--", file]);
       run("git", ["add", "--", file]);
     }
   }

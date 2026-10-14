@@ -1,133 +1,97 @@
-# T3 Code
+<!-- magnesium: Magnesium's own README. On a merge conflict, keep ours; scripts/merge-upstream.ts does. -->
 
-T3 Code is an "agent harness control surface". It enables control of the agents on your machine with a best-in-class mobile app ([iOS](https://apps.apple.com/us/app/t3-code-remote-claude-more/id6787819824), [Android](https://play.google.com/store/apps/details?id=com.t3tools.t3code)), [web app](https://app.t3.codes) and [Electron-based desktop app](https://t3.codes).
+# Magnesium
 
-Works with your subscriptions on Claude Code, Codex, Cursor, Grok Build, OpenCode, and Google Antigravity. If they're set up on your computer, T3 Code can control them.
+**Magnesium is one place to run and watch coding agents across a small fleet of machines.** It is a web UI, installed as an app on desktop and phone, backed by a Magnesium server on each machine that runs agents and a hub that gathers them together.
 
-## "Wait, what are you selling me?"
+It is built for one person: the owner, who drives several agents and bots all day and wants to see at a glance what needs them.
 
-Nothing. We built T3 Code because we wanted the best possible development experience with agents. We were inspired by existing solutions like the Codex desktop app, Conductor, Claude Desktop and Cursor Glass, but none met our bar.
+The name comes from the magnesium ribbon that lights thermite. The mark is a plain **Mg**.
 
-We wanted something performant, remote-ready, and truly open. If we ever go the wrong direction, we want you to have everything you need to fork and build the editor that you want.
+## What it is for
 
-## Installation
+The target, from the owner's mocks and build plan:
 
-> [!WARNING]
-> T3 Code currently supports Codex, Claude, Cursor, Grok Build, OpenCode, and Antigravity. Install and authenticate at least one provider before use:
->
-> - Codex: install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`
-> - Claude: install [Claude Code](https://claude.com/product/claude-code) and run `claude auth login`
-> - Cursor: install [Cursor CLI](https://cursor.com/cli) and run `agent login`
-> - Grok Build: install [Grok Build CLI](https://x.ai/cli) and run `grok login`
-> - OpenCode: install [OpenCode](https://opencode.ai) and run `opencode auth login`
-> - Antigravity: enable it in Settings, then use **Install Antigravity** and **Sign in with Google**. No CLI is required.
+- **Home: what needs you.** Every approval, question, plan and failure from every machine in one feed, answered in place, and pushed to a locked phone.
+- **Rooms.** You and several bots in one conversation, with explicit routing, hop caps and a Stop button. A small model decides who an unaddressed message is for.
+- **Fleet.** Live load and GPUs per machine, what runs where, and launching work anywhere.
+- **Brain.** The knowledge base: ask it, browse it, read a page, start a thread about it, and edit the memories agents keep.
+- **Profiles and sandboxes.** Pick a profile (an agent identity with its own memory and settings) and a sandbox for any thread, on any machine. Threads start supervised; full access is never a default.
+- **Projects, schedules and apps.** Project docs linked to their threads, scheduled runs with history, and small apps that add pages and footer items.
+- **Any harness.** Claude Code and Codex today; OpenCode, Pi and others through profiles.
 
-### Command line
+## Status
 
-```bash
-curl -fsSL https://t3.codes/install.sh | sh
-```
+Early. The build plan is 22 goals in [`docs/magnesium/goals/`](docs/magnesium/goals/README.md), each ending in something testable by hand.
 
-On Windows, in PowerShell:
+**Goal 01 is done.** The working base runs as Magnesium:
 
-```powershell
-irm https://t3.codes/install.ps1 | iex
-```
+- Claude Code and Codex threads work, with supervised approvals.
+- Pairing is the only sign-in.
+- Telemetry and self-update are off.
+- It runs on a desktop and on Linux agent machines.
 
-Then run `t3` to start the server and open the local web app. `t3 service install` keeps it running in the background, `t3 update` moves to a newer release, and `t3 --help` has the full reference.
+Everything in the list above that goes beyond running threads is still to come.
 
-To try it once without installing, run `npx t3@latest` instead.
+## How it relates to T3 Code
 
-### Desktop app
+Magnesium starts from [T3 Code](https://github.com/pingdotgg/t3code), and keeps its server: the provider adapters, the orchestrator, the transport and checkpoints. Magnesium tracks it at stable tags.
 
-Install the latest version of the desktop app from [GitHub Releases](https://github.com/pingdotgg/t3code/releases), or from your favorite package registry:
+The rest diverges:
 
-#### Windows (`winget`)
+- **One client.** Magnesium's own web UI, installed as an app on desktop and phone. T3 Code's desktop, mobile and hosted apps are removed.
+- **Nothing hosted.** T3 Connect, the hosted sign-in and product analytics are gone. Pairing is the sign-in, and the tailnet is the reach.
+- **New features in new packages.** Magnesium's code goes in `dbrain/*`, and every edit to a T3 Code file is marked `magnesium:`, so merges stay measurable.
 
-```bash
-winget install T3Tools.T3Code
-```
+Magnesium is not made, endorsed or supported by T3 Tools Inc. See [NOTICE](NOTICE).
 
-#### macOS (Homebrew)
+## Run it
 
-```bash
-brew install --cask t3-code
-```
+No releases are published. Build from source:
 
-#### Debian, Ubuntu (`.deb`)
+1. Install Node 24 and [Vite+](https://viteplus.dev/guide/) (`vp`).
+2. Log in to at least one provider: `claude auth login` or `codex login`.
+3. Install and build:
 
-Download the `.deb` from [GitHub Releases](https://github.com/pingdotgg/t3code/releases), then:
+   ```bash
+   vp i
+   vp run --filter t3 build
+   ```
 
-```bash
-sudo apt install ./T3-Code-*.deb
-```
+4. Copy the seed settings, which start threads supervised:
 
-#### Arch Linux (AUR)
+   ```bash
+   mkdir -p ~/.magnesium/userdata
+   cp dbrain/deploy/seed/settings.json ~/.magnesium/userdata/settings.json
+   ```
 
-Stable:
+5. Start the server:
 
-```bash
-yay -S t3code-bin
-```
+   ```bash
+   T3CODE_HOME=~/.magnesium node apps/server/dist/bin.mjs serve --host <address>
+   ```
 
-Nightly:
+   It prints a pairing URL that works for 5 minutes. Open it in a browser.
 
-```bash
-yay -S t3code-nightly-bin
-```
+To pair another browser later, run `node apps/server/dist/bin.mjs pair` with the same `T3CODE_HOME`.
 
-The AUR packaging is maintained in this repository under [`packaging/aur`](./packaging/aur).
+A few things to know:
 
-## Some notes
+- Keep Magnesium's state apart from any T3 Code install in `~/.t3`.
+- Don't use `t3 service install`; [`dbrain/deploy`](dbrain/deploy/README.md) has a systemd user unit instead.
+- The binary, the `T3CODE_*` variables and the `~/.t3` layout keep T3 Code's names on purpose, so merges and existing data keep working.
 
-We are very very early in this project. Expect bugs.
+## The repo
 
-We are (mostly) not accepting contributions yet. Small fixes may be considered. Big features will not be.
+| Path                                                  | What it is                                              |
+| ----------------------------------------------------- | ------------------------------------------------------- |
+| `apps/server`, `packages/*`                           | The server and shared packages, tracked from T3 Code    |
+| `apps/web`                                            | The web UI, Magnesium's own                             |
+| `dbrain/*`                                            | Magnesium's packages: contracts, server, web and deploy |
+| `docs/magnesium/`                                     | Research, decisions and the build goals                 |
+| `scripts/*-upstream.ts`, `scripts/merge-rehearsal.ts` | Strip, rename, merge and measure against T3 Code        |
+| [`MAGNESIUM.md`](MAGNESIUM.md)                        | Instructions for agents working here                    |
 
-## Documentation
+## Licence
 
-Full docs live in [docs/](./docs). There's no docs site yet.
-
-- [Install and first run](./docs/user/install.md)
-- [Permission modes](./docs/user/permission-modes.md)
-- [Keyboard shortcuts](./docs/user/keybindings.md)
-- [Project settings](./docs/user/project-settings.md)
-- [Remote access from a phone or another machine](./docs/user/remote-access.md)
-- [Keeping app and server in sync](./docs/user/updating.md)
-- [Source control integrations](./docs/user/source-control.md)
-- Multiple accounts: [Codex](./docs/user/providers-codex.md) · [Claude](./docs/user/providers-claude.md)
-- [Run T3 Code as a background service](./docs/user/background-service.md)
-
-Building from source? Start at [docs/internals/overview.md](./docs/internals/overview.md).
-
-## If you REALLY want to contribute still.... read this first
-
-### Install `vp`
-
-T3 Code uses Vite+ so you'll need to install the global `vp` command-line tool.
-
-#### macOS / Linux
-
-```bash
-curl -fsSL https://vite.plus | bash
-```
-
-#### Windows
-
-```bash
-irm https://vite.plus/ps1 | iex
-```
-
-Checkout their getting started guide for more information: https://viteplus.dev/guide/
-
-### Install dependencies
-
-```bash
-vp i
-```
-
-Read [CONTRIBUTING.md](./CONTRIBUTING.md) before reporting a bug or opening a PR.
-
-Have a feature request? Start an [Ideas discussion](https://github.com/pingdotgg/t3code/discussions/categories/ideas).
-
-Need support? Join the [Discord](https://discord.gg/jn4EGJjrvv).
+MIT. The licence and T3 Tools Inc.'s copyright stay as they came in [LICENSE](LICENSE).

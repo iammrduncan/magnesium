@@ -143,6 +143,7 @@ describe("merge", () => {
   it("leaves a conflict to a person when the file has a hand-written edit", () => {
     expect(classifyConflict("apps/mobile/c.ts", false)).toBe("stripped");
     expect(classifyConflict("pnpm-lock.yaml", false)).toBe("regenerated");
+    expect(classifyConflict("README.md", true)).toBe("ours");
     expect(classifyConflict("apps/server/src/bin.ts", false)).toBe("scripted");
     expect(classifyConflict("apps/server/src/bin.ts", true)).toBe("real");
     expect(classifyConflict("apps/server/src/mcp/McpHttpServer.ts", false)).toBe("real");
