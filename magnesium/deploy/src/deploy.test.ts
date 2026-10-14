@@ -40,6 +40,14 @@ describe("deploy assets", () => {
     }
   });
 
+  it("keeps the startup pairing token out of the journal", () => {
+    for (const unit of unitFiles()) {
+      const text = NodeFS.readFileSync(unit, "utf8");
+      expect(text, unit).toMatch(/^ExecStart=.* serve$/m);
+      expect(text, unit).toMatch(/^StandardOutput=null$/m);
+    }
+  });
+
   it("seeds supervised threads and no provider update checks", () => {
     const seed: unknown = JSON.parse(
       NodeFS.readFileSync(NodePath.join(deployRoot, "seed", "settings.json"), "utf8"),

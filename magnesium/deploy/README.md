@@ -4,8 +4,10 @@ Deploy assets for Magnesium. Goal 02's roles install them; until then they are
 applied by hand.
 
 - `systemd/magnesium.service`: the server as a user unit. Every unit here sets
-  `T3CODE_TELEMETRY_ENABLED=false` and keeps state in `~/.magnesium`, never in
-  a T3 Code home.
+  `T3CODE_TELEMETRY_ENABLED=false`, keeps state in `~/.magnesium` (never in a
+  T3 Code home), and drops stdout so pairing tokens stay out of the journal.
+  To pair a browser, run on the machine:
+  `T3CODE_HOME=~/.magnesium ~/.local/share/magnesium/node/bin/node ~/.local/share/magnesium/current/apps/server/dist/bin.mjs pair`.
 - `seed/settings.json`: written to `$T3CODE_HOME/userdata/settings.json` when
   that file does not exist yet. New threads start supervised, and the provider
   update checks, which poll npm and T3 Code's model manifest, stay off.
