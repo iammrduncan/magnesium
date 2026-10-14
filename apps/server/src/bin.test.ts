@@ -475,7 +475,7 @@ it.layer(NodeServices.layer)("bin cli parsing", (it) => {
     Effect.gen(function* () {
       const { output } = yield* captureStdout(runCli(["service", "--help"], noConnectCli));
 
-      assert.include(output, "Manage the T3 Code background service.");
+      assert.include(output, "Manage the Magnesium background service.");
       assert.include(output, "install");
       assert.include(output, "uninstall");
       assert.include(output, "update");

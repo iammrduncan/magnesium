@@ -48,7 +48,7 @@ describe("grokAcpSpawnArgs", () => {
 });
 
 describe("buildGrokAcpSpawnInput", () => {
-  it("passes the T3 Code referrer through Grok OAuth env", () => {
+  it("passes the Magnesium referrer through Grok OAuth env", () => {
     const spawn = buildGrokAcpSpawnInput({ binaryPath: "/usr/local/bin/grok" }, "/tmp/project", {
       XAI_API_KEY: "secret",
       GROK_OAUTH2_REFERRER: "other-client",

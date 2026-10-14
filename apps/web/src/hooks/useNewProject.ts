@@ -97,7 +97,7 @@ export function useNewProject() {
       }
 
       const { projectId, workspaceRoot, commitError } = result.value;
-      // The folder sits in T3 Code's data directory, so always say where.
+      // The folder sits in Magnesium's data directory, so always say where.
       toastManager.add(
         stackedThreadToast(
           commitError === undefined

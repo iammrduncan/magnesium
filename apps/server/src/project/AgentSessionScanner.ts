@@ -536,7 +536,7 @@ function shouldRetainDecodedRecord(
 }
 
 /**
- * T3 Code runs its own agent sessions inside disposable worktrees. Their
+ * Magnesium runs its own agent sessions inside disposable worktrees. Their
  * transcripts look exactly like user sessions, but re-importing the app's own
  * sandboxes as projects is never right. Matches this server's configured
  * worktrees directory plus the conventional `.t3/worktrees` layout, which
