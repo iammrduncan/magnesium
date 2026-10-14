@@ -85,16 +85,11 @@ function SidebarBrand({ onBackdrop }: { onBackdrop: boolean }) {
       )}
       to="/"
     >
-      {/* Center the visible capitals, without the font's ascender/descender space. */}
-      <span className="inline-flex min-w-0 items-baseline gap-1 text-sm font-medium tracking-tight">
-        {/* magnesium: the "Mg" square and the name, in place of T3's wordmark. */}
-        <T3Wordmark aria-hidden className="size-4 shrink-0 self-center" />
-        <span
-          className={cn(
-            "truncate [text-box:trim-both_cap_alphabetic]",
-            onBackdrop ? "text-white/70" : "text-muted-foreground",
-          )}
-        >
+      {/* magnesium: the "Mg" square and the name, in place of T3's wordmark. The
+          name keeps its descender space, which a cap-height trim would clip. */}
+      <span className="inline-flex min-w-0 items-center gap-1.5 text-sm font-medium tracking-tight">
+        <T3Wordmark aria-hidden className="size-4 shrink-0" />
+        <span className={cn("truncate", onBackdrop ? "text-white/70" : "text-muted-foreground")}>
           Magnesium
         </span>
       </span>
