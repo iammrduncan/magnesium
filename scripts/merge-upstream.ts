@@ -14,7 +14,7 @@
 //    again with --continue.
 // 5. Regenerates the lockfile and the route tree, then runs typecheck and the
 //    tests unless --skip-checks.
-// The merge is left uncommitted for review.
+// The merge is left uncommitted for review; log it in upstream-changelog.md.
 import * as NodeChildProcess from "node:child_process";
 import * as NodePath from "node:path";
 
@@ -111,6 +111,7 @@ function finish(skipChecks: boolean) {
   const head = git(["rev-parse", "MERGE_HEAD"]).trim();
   console.log(`\nMerge of ${head.slice(0, 10)} is staged. Review it, then commit, for example:`);
   console.log("  git commit -m 'chore: merge upstream <tag>'");
+  console.log("In the same commit, add the merge to upstream-changelog.md and move its watermark.");
   console.log("Then record the merge cost: node scripts/upstream-edits.ts");
 }
 

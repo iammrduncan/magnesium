@@ -1,7 +1,10 @@
 <!-- magnesium: fork instructions; keep this block at the top -->
+
 **This repo is Magnesium, the owner's fork of T3 Code.** Read `MAGNESIUM.md` first. Where it disagrees with the upstream guidance below, `MAGNESIUM.md` wins.
 
 @MAGNESIUM.md
+
+**Record what you take from upstream in [`upstream-changelog.md`](upstream-changelog.md).** It keeps a watermark (the last upstream commit fully inspected) and a log of every upstream commit we inspected: merged, cherry-picked, ported by hand or skipped, with the Magnesium commit that brought it in. Whenever you merge, pick, port or deliberately skip upstream commits, add the row and move the watermark in the same commit. To see what upstream has done since the last check, run the `git log` command in that file.
 <!-- magnesium: end -->
 
 # T3 Code
