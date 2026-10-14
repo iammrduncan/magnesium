@@ -164,7 +164,6 @@ export default defineConfig(() => {
         packageManifests: [
           { bundle: "web", path: new URL("./package.json", import.meta.url) },
           { bundle: "server", path: new URL("../server/package.json", import.meta.url) },
-          { bundle: "desktop", path: new URL("../desktop/package.json", import.meta.url) },
         ],
       }),
       // Route components load as split chunks so settings, pull-request, and
