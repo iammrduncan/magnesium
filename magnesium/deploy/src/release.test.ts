@@ -92,4 +92,41 @@ describe("magnesium-release", () => {
     release.run("activate", "b");
     expect(release.settings()).toBe('{"from":"a"}');
   });
+
+  it("builds a branch from a bundle that has no local branches", () => {
+    const release = makeRoot();
+    const repo = NodePath.join(release.root, "repo");
+    const git = (...args: Array<string>) =>
+      NodeChildProcess.execFileSync("git", ["-C", repo, ...args], { encoding: "utf8" });
+    NodeFS.mkdirSync(repo);
+    git("init", "--quiet", "--initial-branch=main");
+    NodeFS.writeFileSync(NodePath.join(repo, "README.md"), "x");
+    git("add", "README.md");
+    git("-c", "user.name=t", "-c", "user.email=t@localhost", "commit", "--quiet", "-m", "x");
+    const sha = git("rev-parse", "--short=10", "HEAD").trim();
+    const bundle = NodePath.join(release.root, "repo.bundle");
+    git("bundle", "create", "--quiet", bundle, "main");
+    // Stand-ins for the install and the build: the build writes the server entry.
+    const fakeVp = NodePath.join(release.root, "fake-vp");
+    NodeFS.writeFileSync(
+      fakeVp,
+      "#!/bin/sh\nmkdir -p apps/server/dist && touch apps/server/dist/bin.mjs\n",
+    );
+    NodeFS.chmodSync(fakeVp, 0o755);
+
+    const result = NodeChildProcess.spawnSync("bash", [script, "build", "main", bundle], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        MAGNESIUM_ROOT: release.root,
+        MAGNESIUM_PNPM: "true",
+        MAGNESIUM_VP: fakeVp,
+      },
+    });
+    expect(result.stderr).toBe("");
+    expect(result.status).toBe(0);
+    expect(
+      NodeFS.existsSync(NodePath.join(release.root, "releases", sha, "apps/server/dist/bin.mjs")),
+    ).toBe(true);
+  });
 });

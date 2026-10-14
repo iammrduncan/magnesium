@@ -14,6 +14,7 @@
 # systemd/magnesium.service runs current/apps/server/dist/bin.mjs. Activating
 # seeds $MAGNESIUM_HOME/userdata/settings.json from the release when it is
 # missing, then restarts the unit if it is installed (MAGNESIUM_RESTART=0 skips).
+# MAGNESIUM_PNPM and MAGNESIUM_VP replace the install and build commands.
 set -euo pipefail
 
 ROOT="${MAGNESIUM_ROOT:-$HOME/.local/share/magnesium}"
@@ -77,7 +78,13 @@ build() {
   local work="$ROOT/releases/.build-$$"
   rm -rf "$work"
   git clone --quiet "$source" "$work"
-  git -C "$work" checkout --quiet --detach "$ref"
+  # A clone of a bundle or bare repo may have no local branches, so resolve the
+  # ref to a commit, trying the remote's branch too.
+  local commit
+  commit="$(git -C "$work" rev-parse --verify --quiet "$ref^{commit}" ||
+    git -C "$work" rev-parse --verify --quiet "origin/$ref^{commit}")" ||
+    die "unknown ref $ref in $source"
+  git -C "$work" checkout --quiet --detach "$commit"
   local sha
   sha="$(git -C "$work" rev-parse --short=10 HEAD)"
   local dest="$ROOT/releases/$sha"
@@ -92,7 +99,7 @@ build() {
     cd "$dest"
     export PATH="$ROOT/node/bin:$PATH" COREPACK_ENABLE_DOWNLOAD_PROMPT=0
     ${MAGNESIUM_PNPM:-corepack pnpm} install --frozen-lockfile
-    PATH="$dest/node_modules/.bin:$PATH" vp run --filter t3 build
+    PATH="$dest/node_modules/.bin:$PATH" ${MAGNESIUM_VP:-vp} run --filter t3 build
   )
   is_built "$dest" || die "the build of $sha produced no server"
   echo "Built $sha. Run: magnesium-release activate $sha"
