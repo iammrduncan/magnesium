@@ -10,22 +10,38 @@
 #                                               doesn't build (the server and its runtime
 #                                               dependencies only, about 300 MB)
 #   magnesium-release unpack <file.tar.gz>      unpack a packed release into releases/<sha>
+#   magnesium-release backup                    copy the state folder into backups/<UTC time>
+#   magnesium-release restore <backup>          stop the server, put a backup back, start it
 #
 # Layout under $MAGNESIUM_ROOT (default ~/.local/share/magnesium):
 #   node/              Node 24
 #   releases/<sha>/    a built checkout, or an unpacked pack
 #   current, previous  symlinks into releases/
 # systemd/magnesium.service runs current/apps/server/dist/bin.mjs. Activating
-# seeds $MAGNESIUM_HOME/userdata/settings.json from the release when it is
-# missing, then restarts the unit if it is installed (MAGNESIUM_RESTART=0 skips).
-# MAGNESIUM_PNPM and MAGNESIUM_VP replace the install and build commands.
+# backs up the state, seeds $MAGNESIUM_HOME/userdata/settings.json from the
+# release when it is missing, then restarts the unit if it is installed
+# (MAGNESIUM_RESTART=0 skips). MAGNESIUM_PNPM and MAGNESIUM_VP replace the
+# install and build commands.
+#
+# Backups live in $MAGNESIUM_HOME/backups; the newest $MAGNESIUM_BACKUP_KEEP
+# (default 7) are kept. A restore first backs up the state it replaces.
 set -euo pipefail
 
 ROOT="${MAGNESIUM_ROOT:-$HOME/.local/share/magnesium}"
 STATE_HOME="${MAGNESIUM_HOME:-$HOME/.magnesium}"
 UNIT="magnesium.service"
+BACKUP_NAME='^[0-9]{8}T[0-9]{6}Z(-[0-9]+)?$'
+PRUNE=1
 read -r -a PNPM <<< "${MAGNESIUM_PNPM:-corepack pnpm}"
 read -r -a VP <<< "${MAGNESIUM_VP:-vp}"
+
+# A consistent copy of a live SQLite database, through Node's own SQLite.
+SQLITE_BACKUP='
+const { DatabaseSync, backup } = require("node:sqlite");
+const [source, target] = process.argv.slice(1);
+const db = new DatabaseSync(source);
+backup(db, target).finally(() => db.close());
+'
 
 die() {
   echo "magnesium-release: $*" >&2
@@ -41,15 +57,20 @@ is_built() {
   [ -f "$1/apps/server/dist/bin.mjs" ]
 }
 
-restart_unit() {
+# Runs `systemctl --user <restart|stop|start>` on the unit when it is installed.
+unit_ctl() {
   if [ "${MAGNESIUM_RESTART:-1}" = "0" ]; then
     return
   fi
   if command -v systemctl > /dev/null && systemctl --user cat "$UNIT" > /dev/null 2>&1; then
-    systemctl --user restart "$UNIT"
-    echo "Restarted $UNIT."
+    systemctl --user "$1" "$UNIT"
+    case "$1" in
+      restart) echo "Restarted $UNIT." ;;
+      stop) echo "Stopped $UNIT." ;;
+      start) echo "Started $UNIT." ;;
+    esac
   else
-    echo "$UNIT is not installed; restart the server yourself."
+    echo "$UNIT is not installed; $1 the server yourself."
   fi
 }
 
@@ -74,21 +95,105 @@ switch_to() {
     echo "$name is already current."
     return
   fi
+  # A new release may migrate the database; keep a copy from before it does.
+  backup
   ln -sfn "$target" "$ROOT/current"
   if [ -n "$old" ]; then
     ln -sfn "$old" "$ROOT/previous"
   fi
   echo "current -> $name${old:+ (previous -> ${old#releases/})}"
   seed_settings "$ROOT/$target"
-  restart_unit
+  unit_ctl restart
+}
+
+backup() {
+  local userdata="$STATE_HOME/userdata"
+  if [ ! -d "$userdata" ]; then
+    echo "No state to back up yet."
+    return
+  fi
+  local backups="$STATE_HOME/backups"
+  mkdir -p "$backups"
+  chmod 700 "$backups"
+  local name
+  name="$(date -u +%Y%m%dT%H%M%SZ)"
+  if [ -e "$backups/$name" ]; then
+    name="$name-$$"
+  fi
+  # Fill a scratch folder first, so a half-done backup never looks like a good one.
+  local work="$backups/.partial-$$"
+  rm -rf "$work"
+  mkdir -p "$work"
+  local entry base
+  shopt -s nullglob
+  for entry in "$userdata"/*; do
+    base="$(basename "$entry")"
+    case "$base" in
+      logs | server-runtime.json | *.sqlite-wal | *.sqlite-shm | *.sqlite-journal) ;;
+      *.sqlite) with_node node --no-warnings -e "$SQLITE_BACKUP" "$entry" "$work/$base" ;;
+      *) cp -a "$entry" "$work/" ;;
+    esac
+  done
+  shopt -u nullglob
+  mv "$work" "$backups/$name"
+  echo "Backed up the state to backups/$name."
+  if [ "$PRUNE" = "1" ]; then
+    prune_backups
+  fi
+}
+
+# Keeps the newest $MAGNESIUM_BACKUP_KEEP backups. Names sort by time.
+prune_backups() {
+  local keep="${MAGNESIUM_BACKUP_KEEP:-7}"
+  local all=() dir name
+  for dir in "$STATE_HOME"/backups/*/; do
+    name="$(basename "$dir")"
+    if [[ "$name" =~ $BACKUP_NAME ]]; then
+      all+=("$name")
+    fi
+  done
+  local i=0
+  while [ $((${#all[@]} - i)) -gt "$keep" ]; do
+    rm -rf "${STATE_HOME:?}/backups/${all[$i]}"
+    i=$((i + 1))
+  done
+}
+
+restore() {
+  local name="$1"
+  local from="$STATE_HOME/backups/$name"
+  [[ "$name" =~ $BACKUP_NAME ]] && [ -d "$from" ] || die "no backup named $name in $STATE_HOME/backups"
+  local userdata="$STATE_HOME/userdata"
+  unit_ctl stop
+  # Keep the state being replaced, so a restore can be undone. Don't prune:
+  # the backup being restored may be the oldest one.
+  PRUNE=0 backup
+  mkdir -p "$userdata"
+  local entry base
+  shopt -s nullglob
+  for entry in "$from"/*.sqlite; do
+    base="$(basename "$entry")"
+    rm -f "$userdata/$base" "$userdata/$base-wal" "$userdata/$base-shm" "$userdata/$base-journal"
+  done
+  shopt -u nullglob
+  cp -a "$from"/. "$userdata"/
+  echo "Restored backups/$name."
+  unit_ctl start
 }
 
 build() {
   local ref="$1" source="$2"
+  # A pinned commit that is already built needs no clone.
+  if [[ "$ref" =~ ^[0-9a-f]{10,40}$ ]] && is_built "$ROOT/releases/${ref:0:10}"; then
+    echo "${ref:0:10} is already built."
+    return
+  fi
   mkdir -p "$ROOT/releases"
   local work="$ROOT/releases/.build-$$"
   rm -rf "$work"
-  git clone --quiet "$source" "$work"
+  # A bundle has no HEAD, so clone falls back to the default branch name and
+  # prints a hint about it unless one is set.
+  git -c init.defaultBranch=main clone --quiet "$source" "$work"
   # A clone of a bundle or bare repo may have no local branches, so resolve the
   # ref to a commit, trying the remote's branch too.
   local commit
@@ -199,7 +304,15 @@ case "${1:-}" in
     [ $# -eq 2 ] || die "usage: magnesium-release unpack <file.tar.gz>"
     unpack "$2"
     ;;
+  backup)
+    [ $# -eq 1 ] || die "usage: magnesium-release backup"
+    backup
+    ;;
+  restore)
+    [ $# -eq 2 ] || die "usage: magnesium-release restore <backup>"
+    restore "$2"
+    ;;
   *)
-    die "usage: magnesium-release build|activate|rollback|status|pack|unpack"
+    die "usage: magnesium-release build|activate|rollback|status|pack|unpack|backup|restore"
     ;;
 esac

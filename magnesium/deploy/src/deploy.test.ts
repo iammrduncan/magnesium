@@ -6,10 +6,12 @@ import { describe, expect, it } from "vite-plus/test";
 
 const deployRoot = NodePath.resolve(import.meta.dirname, "..");
 
+/** The units that run a server, not helpers such as the backup. */
 const unitFiles = (): Array<string> =>
   NodeFS.readdirSync(NodePath.join(deployRoot, "systemd"))
     .filter((name) => name.endsWith(".service"))
-    .map((name) => NodePath.join(deployRoot, "systemd", name));
+    .map((name) => NodePath.join(deployRoot, "systemd", name))
+    .filter((unit) => /^ExecStart=.*\/bin\.mjs /m.test(NodeFS.readFileSync(unit, "utf8")));
 
 const environmentOf = (unit: string): Map<string, string> =>
   new Map(

@@ -30,6 +30,8 @@ StandardOutput=null
 StandardError=journal
 Restart=on-failure
 RestartSec=5
+# Effect's runMain exits 130 when a stop signal interrupts it; that is a clean stop.
+SuccessExitStatus=130
 
 [Install]
 WantedBy=default.target

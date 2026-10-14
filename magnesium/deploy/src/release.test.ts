@@ -3,6 +3,7 @@ import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
+import * as NodeSqlite from "node:sqlite";
 
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
@@ -130,6 +131,18 @@ describe("magnesium-release", () => {
     ).toBe(true);
   });
 
+  it("skips the clone when the pinned commit is already built", () => {
+    const release = makeRoot();
+    NodeFS.renameSync(
+      NodePath.join(release.root, "releases", "a"),
+      NodePath.join(release.root, "releases", "abcdef1234"),
+    );
+    const result = release.run("build", "abcdef1234567890", "/nonexistent/source");
+    expect(result.stderr).toBe("");
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("abcdef1234 is already built.");
+  });
+
   it("packs a built release and unpacks it on a host that doesn't build", () => {
     const builder = makeRoot();
     // Stand-in for `pnpm --filter t3 deploy --prod --legacy <dir>`: it writes the server there.
@@ -176,6 +189,86 @@ describe("magnesium-release", () => {
     const result = release.run("unpack", junk);
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("not a packed release");
+  });
+
+  it("backs up a live database with its unflushed writes, and keeps only the newest copies", () => {
+    const release = makeRoot();
+    const userdata = NodePath.join(release.root, "state", "userdata");
+    NodeFS.mkdirSync(NodePath.join(userdata, "logs"), { recursive: true });
+    NodeFS.writeFileSync(NodePath.join(userdata, "logs", "server.trace.ndjson"), "{}");
+    NodeFS.writeFileSync(NodePath.join(userdata, "server-runtime.json"), "{}");
+    NodeFS.writeFileSync(NodePath.join(userdata, "settings.json"), '{"from":"state"}');
+    // Held open like the running server: the row stays in the WAL, not state.sqlite.
+    const live = new NodeSqlite.DatabaseSync(NodePath.join(userdata, "state.sqlite"));
+    live.exec("PRAGMA journal_mode=WAL; CREATE TABLE t (x); INSERT INTO t VALUES ('kept')");
+
+    const runKeep = (keep: string) =>
+      NodeChildProcess.spawnSync("bash", [script, "backup"], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          MAGNESIUM_ROOT: release.root,
+          MAGNESIUM_HOME: NodePath.join(release.root, "state"),
+          MAGNESIUM_BACKUP_KEEP: keep,
+        },
+      });
+    const first = runKeep("2");
+    live.close();
+    expect(first.stderr).toBe("");
+    expect(first.status).toBe(0);
+
+    const backups = NodePath.join(release.root, "state", "backups");
+    const [name = ""] = NodeFS.readdirSync(backups);
+    const copy = NodePath.join(backups, name);
+    expect(NodeFS.readdirSync(copy).toSorted()).toEqual(["settings.json", "state.sqlite"]);
+    const restored = new NodeSqlite.DatabaseSync(NodePath.join(copy, "state.sqlite"));
+    expect(restored.prepare("SELECT x FROM t").all()).toEqual([{ x: "kept" }]);
+    restored.close();
+
+    runKeep("2");
+    runKeep("2");
+    expect(NodeFS.readdirSync(backups)).toHaveLength(2);
+  });
+
+  it("restores a backup, and backs up the state it replaces first", () => {
+    const release = makeRoot();
+    const userdata = NodePath.join(release.root, "state", "userdata");
+    NodeFS.mkdirSync(userdata, { recursive: true });
+    const database = NodePath.join(userdata, "state.sqlite");
+    const write = (value: string) => {
+      const db = new NodeSqlite.DatabaseSync(database);
+      db.exec(`CREATE TABLE IF NOT EXISTS t (x); DELETE FROM t; INSERT INTO t VALUES ('${value}')`);
+      db.close();
+      NodeFS.writeFileSync(NodePath.join(userdata, "settings.json"), `{"from":"${value}"}`);
+    };
+    const read = () => {
+      const db = new NodeSqlite.DatabaseSync(database);
+      const rows = db.prepare("SELECT x FROM t").all();
+      db.close();
+      return rows;
+    };
+
+    write("before");
+    expect(release.run("backup").status).toBe(0);
+    const backups = NodePath.join(release.root, "state", "backups");
+    const [name = ""] = NodeFS.readdirSync(backups);
+    write("after");
+
+    const result = release.run("restore", name);
+    expect(result.stderr).toBe("");
+    expect(result.status).toBe(0);
+    expect(read()).toEqual([{ x: "before" }]);
+    expect(release.settings()).toBe('{"from":"before"}');
+    expect(NodeFS.readdirSync(backups)).toHaveLength(2);
+
+    expect(release.run("restore", "../userdata").status).not.toBe(0);
+  });
+
+  it("backs up the state before switching releases", () => {
+    const release = makeRoot();
+    release.run("activate", "a");
+    expect(release.run("activate", "b").stdout).toContain("Backed up the state");
+    expect(NodeFS.readdirSync(NodePath.join(release.root, "state", "backups"))).toHaveLength(1);
   });
 
   it("never deletes a release folder that another build is still filling", () => {
