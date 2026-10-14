@@ -14,10 +14,16 @@ import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
+import { REGENERATED_FILES } from "./merge-rehearsal.ts";
 import { isRenameOwned } from "./rename-upstream.ts";
 import { isStripped, STRIP_PATCHED_FILES } from "./strip-upstream.ts";
 
 const MARKER = "magnesium:";
+
+/** Hand edits in files that cannot hold a comment, with what each one does. */
+export const UNMARKABLE_EDITS: Readonly<Record<string, string>> = {
+  "apps/web/package.json": "drops @clerk/electron and @clerk/react (D13)",
+};
 
 export interface MarkedEdit {
   readonly file: string;
@@ -29,6 +35,8 @@ export interface UpstreamEditsReport {
   readonly base: string;
   readonly marked: ReadonlyArray<MarkedEdit>;
   readonly scriptOwned: ReadonlyArray<string>;
+  readonly regenerated: ReadonlyArray<string>;
+  readonly unmarkable: ReadonlyArray<string>;
   readonly unmarked: ReadonlyArray<string>;
 }
 
@@ -66,10 +74,17 @@ export function collectUpstreamEdits(cwd: string, base: string): UpstreamEditsRe
   const scriptOwned = changed.filter(
     (file) => isRenameOwned(file) || STRIP_PATCHED_FILES.includes(file),
   );
+  const regenerated = changed.filter((file) => REGENERATED_FILES.includes(file));
+  const unmarkable = changed.filter((file) => UNMARKABLE_EDITS[file] !== undefined);
   const unmarked = changed.filter(
-    (file) => !markedFiles.has(file) && !scriptOwned.includes(file) && !isStripped(file),
+    (file) =>
+      !markedFiles.has(file) &&
+      !scriptOwned.includes(file) &&
+      !regenerated.includes(file) &&
+      !unmarkable.includes(file) &&
+      !isStripped(file),
   );
-  return { base, marked, scriptOwned, unmarked };
+  return { base, marked, scriptOwned, regenerated, unmarkable, unmarked };
 }
 
 export function formatUpstreamEdits(report: UpstreamEditsReport, check: boolean): string {
@@ -85,6 +100,9 @@ export function formatUpstreamEdits(report: UpstreamEditsReport, check: boolean)
   }
   out.push("", `Edited by the strip and rename scripts (${report.scriptOwned.length} files):`);
   for (const file of report.scriptOwned) out.push(`  ${file}`);
+  out.push("", `Edits in files that cannot hold a marker (${report.unmarkable.length}):`);
+  for (const file of report.unmarkable) out.push(`  ${file}: ${UNMARKABLE_EDITS[file]}`);
+  out.push("", `Regenerated (${report.regenerated.length}): ${report.regenerated.join(", ")}`);
   if (check) {
     out.push("", `Changed upstream files without a marker (${report.unmarked.length}):`);
     for (const file of report.unmarked) out.push(`  ${file}`);
