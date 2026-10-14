@@ -1,0 +1,9 @@
+Magnesium
+
+Magnesium is a personal fork of T3 Code (https://github.com/pingdotgg/t3code),
+copyright (c) 2026 T3 Tools Inc. and released under the MIT License, which is
+kept unchanged in LICENSE.
+
+Magnesium is not made, endorsed or supported by T3 Tools Inc. Its changes to
+T3 Code's own files are marked with "magnesium:" comments, and its new code
+lives in the dbrain/ packages. T3 Code's names and marks belong to their owners.

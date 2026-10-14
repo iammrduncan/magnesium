@@ -1,0 +1,27 @@
+# Magnesium server as a systemd user unit (`systemctl --user`), run as the
+# account that runs the agents. Never use `t3 service install`: it pins a
+# runtime downloaded from the release origin.
+#
+# Host and port come from ~/.config/magnesium/magnesium.env, for example
+#   T3CODE_HOST=<this machine's tailnet address>
+#   T3CODE_PORT=3773
+# Secrets never go in this unit or that file; they pass by name only.
+[Unit]
+Description=Magnesium server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h
+EnvironmentFile=-%h/.config/magnesium/magnesium.env
+# State lives apart from any T3 Code install in ~/.t3.
+Environment=T3CODE_HOME=%h/.magnesium
+Environment=T3CODE_TELEMETRY_ENABLED=false
+Environment=T3CODE_NO_BROWSER=true
+ExecStart=%h/.local/share/magnesium/node/bin/node %h/.local/share/magnesium/current/apps/server/dist/bin.mjs serve
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
