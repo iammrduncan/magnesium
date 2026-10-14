@@ -183,9 +183,8 @@ export default defineConfig(() => {
       tailwindPlugins(bundledDev),
     ],
     optimizeDeps: {
+      // magnesium: no Clerk prebundles (D13)
       include: [
-        "@clerk/clerk-js",
-        "@clerk/react/internal",
         "@pierre/diffs",
         "@pierre/diffs/editor",
         "@pierre/diffs/react",

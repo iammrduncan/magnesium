@@ -52,7 +52,7 @@ export interface SettingsSearchItem {
   // Its row only renders on Windows desktop, so other desktop platforms must
   // not expose a result that points to a missing anchor.
   readonly windowsOnly?: boolean;
-  readonly cloudOnly?: boolean;
+  // magnesium: no cloudOnly items without T3 Connect (D13)
   readonly environmentOnly?: boolean;
   readonly providerSettingsOnly?: boolean;
   readonly macProviderSettingsOnly?: boolean;
@@ -69,7 +69,7 @@ export interface SettingsSearchItem {
 
 export interface SettingsSearchAvailability {
   readonly localEnvironmentDisabled?: boolean;
-  readonly hasCloudPublicConfig: boolean;
+  // magnesium: hasCloudPublicConfig removed with T3 Connect (D13)
   readonly hasEnvironment: boolean;
   readonly hasProviderSettingsEnvironment: boolean;
   readonly hasMacProviderSettingsEnvironment: boolean;
@@ -786,25 +786,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     localBackendManagementOnly: true,
     wslAvailableOnly: true,
   },
-  {
-    id: "t3-connect",
-    localEnvironmentOnly: true,
-    title: "T3 Connect",
-    to: "/settings/connections",
-    targetId: "connections-environment",
-    searchTerms: ["managed tunnel cloud other devices remote"],
-    desktopOnly: true,
-    cloudOnly: true,
-  },
-  {
-    id: "publish-agent-activity",
-    localEnvironmentOnly: true,
-    title: "Publish agent activity",
-    to: "/settings/connections",
-    targetId: "connections-environment",
-    searchTerms: ["mobile push notifications live activities cloud tunnel"],
-    cloudOnly: true,
-  },
+  // magnesium: no T3 Connect or agent-activity publishing settings (D13)
   {
     id: "connections-environment",
     title: "This machine",
@@ -817,7 +799,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "remote-environments",
     title: "Environments",
     to: "/settings/connections",
-    searchTerms: ["add pair backend host code ssh config agent tunnel saved t3 connect"],
+    searchTerms: ["add pair backend host code ssh config agent tunnel saved"], // magnesium: (D13)
   },
   {
     id: "load-balancing",
@@ -970,7 +952,7 @@ export function filterAvailableSettingsSearchItems(
   const items: ReadonlyArray<SettingsSearchItem> = SETTINGS_SEARCH_ITEMS;
   return items.filter(
     (item) =>
-      (!item.cloudOnly || availability.hasCloudPublicConfig) &&
+      // magnesium: no cloudOnly filter (D13)
       (!item.environmentOnly || availability.hasEnvironment) &&
       (!item.providerSettingsOnly || availability.hasProviderSettingsEnvironment) &&
       (!item.macProviderSettingsOnly || availability.hasMacProviderSettingsEnvironment) &&

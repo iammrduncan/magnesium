@@ -1,6 +1,7 @@
 import { DEFAULT_HOSTED_APP_URL } from "@t3tools/shared/connectAuth";
 
-import { getPairingTokenFromUrl, setPairingTokenOnUrl } from "./pairingUrl";
+// magnesium: setPairingTokenOnUrl dropped with the hosted link builder (D13)
+import { getPairingTokenFromUrl } from "./pairingUrl";
 
 export interface HostedPairingRequest {
   readonly host: string;
@@ -70,21 +71,7 @@ export function hasHostedPairingRequest(url: URL = new URL(window.location.href)
   return readHostedPairingRequest(url) !== null;
 }
 
-export function buildHostedPairingUrl(input: {
-  readonly host: string;
-  readonly token: string;
-  readonly label?: string | null;
-}): string {
-  const url = new URL("/pair", configuredHostedAppUrl());
-  url.searchParams.set("host", input.host);
-
-  const label = input.label?.trim();
-  if (label) {
-    url.searchParams.set("label", label);
-  }
-
-  return setPairingTokenOnUrl(url, input.token).toString();
-}
+// magnesium: no builder for hosted-app pairing links; links use the server's own origin (D13)
 
 export function buildHostedChannelSelectionUrl(input: {
   readonly channel: HostedAppChannel;

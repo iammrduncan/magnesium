@@ -71,16 +71,12 @@ vi.mock("../../onboarding/useProjectScans", () => ({
 }));
 vi.mock("../../connection/onboarding", () => ({ connectPairing: vi.fn() }));
 vi.mock("../../state/terminal", () => ({ terminalEnvironment: {} }));
-vi.mock("../clerk/useT3ConnectAuthPrompt", () => ({ useT3ConnectAuthPrompt: vi.fn() }));
-vi.mock("../../cloud/publicConfig", () => ({ hasCloudPublicConfig: () => false }));
+// magnesium: T3 Connect modules are gone, so nothing to mock for them (D13)
 vi.mock("../ThreadTerminalDrawer", () => ({ TerminalViewport: () => null }));
 vi.mock("../settings/ChatGptWelcomeCoordinator", () => ({ ChatGptWelcomeCoordinator: () => null }));
 vi.mock("../settings/CodexSetupSection", () => ({
   CodexSetupSection: () => null,
   AddManagedCodexAccountDialog: () => null,
-}));
-vi.mock("../cloud/CloudEnvironmentConnectList", () => ({
-  CloudEnvironmentConnectRows: () => null,
 }));
 vi.mock("../ui/toast", () => ({
   toastManager: { add: mocks.toast, close: vi.fn(), update: vi.fn() },

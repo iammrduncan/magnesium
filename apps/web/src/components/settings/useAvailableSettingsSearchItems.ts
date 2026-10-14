@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { AuthAccessWriteScope } from "@t3tools/contracts";
 
-import { hasCloudPublicConfig } from "~/cloud/publicConfig";
+// magnesium: no T3 Connect search availability (D13)
 import { isElectron } from "~/env";
 import { isLocalEnvironmentDisabled } from "~/localEnvironment";
 import { desktopWslStateAtom } from "~/state/desktopWslState";
@@ -34,7 +34,7 @@ export function useAvailableSettingsSearchItems(scopeSearch: SettingsScopeSearch
     () =>
       filterAvailableSettingsSearchItems({
         localEnvironmentDisabled,
-        hasCloudPublicConfig: hasCloudPublicConfig(),
+        // magnesium: hasCloudPublicConfig removed (D13)
         hasEnvironment: environments.some((environment) => environment.serverConfig !== null),
         hasProviderSettingsEnvironment: environments.some((environment) =>
           isProviderSettingsEnvironmentAvailable({

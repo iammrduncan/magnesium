@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
   buildHostedChannelSelectionUrl,
-  buildHostedPairingUrl,
   hasHostedPairingRequest,
   isHostedStaticApp,
   readHostedPairingRequest,
@@ -24,24 +23,7 @@ describe("hostedPairing", () => {
     expect(hasHostedPairingRequest(url)).toBe(true);
   });
 
-  it("prefers hash tokens so generated hosted links do not put credentials in search params", () => {
-    vi.stubEnv("VITE_HOSTED_APP_URL", "https://preview.t3.codes");
-
-    const url = new URL(
-      buildHostedPairingUrl({
-        host: "https://backend.example.com:3773",
-        token: "pairing-token",
-        label: "Workstation",
-      }),
-    );
-
-    expect(url.origin).toBe("https://preview.t3.codes");
-    expect(url.pathname).toBe("/pair");
-    expect(url.searchParams.get("host")).toBe("https://backend.example.com:3773");
-    expect(url.searchParams.get("label")).toBe("Workstation");
-    expect(url.searchParams.has("token")).toBe(false);
-    expect(url.hash).toBe("#token=pairing-token");
-  });
+  // magnesium: hosted pairing links are no longer generated (D13)
 
   it("builds hosted channel selection URLs through the configured router origin", () => {
     vi.stubEnv("VITE_HOSTED_APP_URL", "https://app.t3.codes");

@@ -1,4 +1,4 @@
-import { useAuth } from "@clerk/react";
+// magnesium: no Clerk sign-in; pairing is the only way to add a computer (D13)
 import { useAtomValue } from "@effect/atom-react";
 import type {
   AgentSessionProjectCandidate,
@@ -21,11 +21,11 @@ import {
   ThreadId,
 } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
+// magnesium: CloudIcon dropped with the T3 Connect option (D13)
 import {
   ArrowRightIcon,
   CheckIcon,
   ChevronRightIcon,
-  CloudIcon,
   CopyIcon,
   LinkIcon,
   MonitorIcon,
@@ -35,8 +35,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { TYPOGRAPHY_ADVANCED_STORAGE_KEY } from "../../appearanceFonts";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
-import { hasCloudPublicConfig } from "../../cloud/publicConfig";
-import { useT3ConnectAuthPrompt } from "../clerk/useT3ConnectAuthPrompt";
+// magnesium: no T3 Connect config or sign-in prompt (D13)
 import { useCompleteOnboarding } from "../../onboarding/firstRun";
 import {
   groupOnboardingProjects,
@@ -57,7 +56,7 @@ import { newProjectId, randomUUID } from "../../lib/utils";
 import { agentSessionImport } from "../../state/agentSessions";
 import { readProjects, useProjects } from "../../state/entities";
 import { useEnvironments, usePrimaryEnvironment } from "../../state/environments";
-import { isOnboardingRelayEnvironment } from "../../onboarding/targetEnvironment.logic";
+// magnesium: relay environments are never filtered out without T3 Connect (D13)
 import { useProjectScans } from "../../onboarding/useProjectScans";
 import { projectEnvironment } from "../../state/projects";
 import { serverEnvironment } from "../../state/server";
@@ -71,7 +70,7 @@ import { AddManagedCodexAccountDialog, CodexSetupSection } from "../settings/Cod
 import { readCodexSetupMode } from "../settings/CodexSetupSection.logic";
 import { buildProviderInstanceUpdatePatch } from "../settings/SettingsPanels.logic";
 import { TerminalViewport } from "../ThreadTerminalDrawer";
-import { CloudEnvironmentConnectRows } from "../cloud/CloudEnvironmentConnectList";
+// magnesium: no T3 Connect computer list (D13)
 import { ClaudeAI, OpenAI } from "../Icons";
 import { T3Wordmark } from "../T3Wordmark";
 import { Button } from "../ui/button";
@@ -219,10 +218,11 @@ export function WelcomeWizard({
         <WizardHeader
           title="Set up T3 Code"
           identity={
-            <div className="flex items-baseline gap-1.5" role="img" aria-label="T3 Code">
-              <T3Wordmark className="h-4 w-auto shrink-0" aria-hidden />
+            // magnesium: the "Mg" square and the name, in place of T3's wordmark.
+            <div className="flex items-center gap-2" role="img" aria-label="T3 Code">
+              <T3Wordmark className="size-6 shrink-0" aria-hidden />
               <span className="text-2xl font-medium tracking-tight text-muted-foreground">
-                Code
+                Magnesium
               </span>
             </div>
           }
@@ -240,19 +240,11 @@ export function WelcomeWizard({
 
         <WizardPanel holdHeight={isLoadingProjects}>
           {step === "connection" ? (
+            // magnesium: no T3 Connect option, so no per-computer toggles from it (D13)
             <ConnectionStep
-              expandPairingInitially={!localAvailable && !hasCloudPublicConfig()}
+              expandPairingInitially={!localAvailable}
               selectedIds={selectedIds}
-              autoSelectedComputers={autoSelectedComputers.current}
               onSelectionChange={setSelection}
-              onToggleEnvironment={(environmentId, checked) =>
-                setSelection((current) => {
-                  const next = new Set(current ?? selectedIds);
-                  if (checked) next.add(environmentId);
-                  else next.delete(environmentId);
-                  return next;
-                })
-              }
               onContinue={() =>
                 startSetup(
                   environments
@@ -283,28 +275,23 @@ export function WelcomeWizard({
 
 // ── Step 1: connection choice ────────────────────────────────
 
+// magnesium: T3 Connect props removed (D13)
 function ConnectionStep({
-  autoSelectedComputers,
   expandPairingInitially,
   selectedIds,
   onSelectionChange,
-  onToggleEnvironment,
   onContinue,
   onPaired,
 }: {
-  readonly autoSelectedComputers: Set<EnvironmentId>;
   readonly expandPairingInitially: boolean;
   readonly selectedIds: ReadonlySet<EnvironmentId>;
   readonly onSelectionChange: (ids: ReadonlySet<EnvironmentId>) => void;
-  readonly onToggleEnvironment: (environmentId: EnvironmentId, checked: boolean) => void;
   readonly onContinue: () => void;
   readonly onPaired: (environmentId: EnvironmentId) => void;
 }) {
   const { environments } = useEnvironments();
-  const cloudEnabled = hasCloudPublicConfig();
-  const directEnvironments = environments.filter(
-    (environment) => !cloudEnabled || !isOnboardingRelayEnvironment(environment),
-  );
+  // magnesium: without T3 Connect every environment is a direct one (D13)
+  const directEnvironments = environments;
   const [pairingOpen, setPairingOpen] = useState(expandPairingInitially);
   const [isPairing, setIsPairing] = useState(false);
   const ready =
@@ -371,14 +358,7 @@ function ConnectionStep({
         </fieldset>
       ) : null}
       <div className="mt-4 space-y-2">
-        {cloudEnabled ? (
-          <ConnectAccountOption
-            autoSelectedComputers={autoSelectedComputers}
-            disabled={isPairing}
-            selectedIds={selectedIds}
-            onToggleEnvironment={onToggleEnvironment}
-          />
-        ) : null}
+        {/* magnesium: no T3 Connect account option (D13) */}
         <div className="rounded-lg border border-border bg-background">
           <Collapsible open={pairingOpen} onOpenChange={setPairingOpen}>
             <CollapsibleTrigger
@@ -428,85 +408,7 @@ function ConnectionStep({
   );
 }
 
-function ConnectAccountOption({
-  autoSelectedComputers,
-  disabled,
-  selectedIds,
-  onToggleEnvironment,
-}: {
-  readonly autoSelectedComputers: Set<EnvironmentId>;
-  readonly disabled: boolean;
-  readonly selectedIds: ReadonlySet<EnvironmentId>;
-  readonly onToggleEnvironment: (environmentId: EnvironmentId, checked: boolean) => void;
-}) {
-  const { environments } = useEnvironments();
-  const { isLoaded, isSignedIn } = useAuth({ treatPendingAsSignedOut: false });
-  const { openAuthPrompt } = useT3ConnectAuthPrompt();
-  const [expanded, setExpanded] = useState(true);
-  const [discoveryReady, setDiscoveryReady] = useState(false);
-  const onDiscoveryReady = useCallback(() => setDiscoveryReady(true), []);
-
-  return (
-    <div className="rounded-lg border border-border bg-background">
-      <Collapsible open={expanded && !!isSignedIn && discoveryReady} onOpenChange={setExpanded}>
-        <CollapsibleTrigger
-          disabled={disabled || !isLoaded}
-          onClick={(event) => {
-            if (!isSignedIn) {
-              event.preventDefault();
-              setExpanded(true);
-              openAuthPrompt();
-            }
-          }}
-          render={
-            <Button variant="ghost" size="sm-multiline" className="min-h-14 w-full justify-start" />
-          }
-        >
-          <CloudIcon className="size-4 text-muted-foreground" />
-          <span className="flex-1 text-left">T3 Connect</span>
-          <span className="text-xs text-muted-foreground">
-            {!isLoaded
-              ? "Loading sign-in…"
-              : !isSignedIn
-                ? "Sign in"
-                : !discoveryReady
-                  ? "Loading computers…"
-                  : null}
-          </span>
-          <ChevronRightIcon
-            className={cn("size-4 text-muted-foreground", expanded && isSignedIn && "rotate-90")}
-          />
-        </CollapsibleTrigger>
-        <CollapsiblePanel keepMounted>
-          <div className="px-3 pb-3">
-            <div className="mb-3 space-y-1.5">
-              {isSignedIn ? (
-                <CloudEnvironmentConnectRows
-                  primaryEnvironmentId={null}
-                  savedEnvironments={environments}
-                  showSavedEnvironments
-                  onDiscoveryReady={onDiscoveryReady}
-                  selection={{ selectedIds, onChange: onToggleEnvironment, autoSelectedComputers }}
-                  refreshWhileEmpty
-                  empty={
-                    <p className="py-3 text-sm text-muted-foreground">No computers linked yet.</p>
-                  }
-                />
-              ) : null}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Run this on each computer you want to connect.
-            </p>
-            <CommandBlock command="npx t3 connect" className="mt-3" />
-            <p className="mt-3 text-xs text-muted-foreground">
-              Keep T3 Code running. Select the computers you want to set up above.
-            </p>
-          </div>
-        </CollapsiblePanel>
-      </Collapsible>
-    </div>
-  );
-}
+// magnesium: ConnectAccountOption (T3 Connect sign-in and computer list) removed (D13)
 
 // ── Step 2′: Direct pairing ──────────────────────────────────
 
