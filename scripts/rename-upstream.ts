@@ -55,23 +55,23 @@ const EXACT_REPLACEMENTS: ReadonlyArray<{ file: string; from: string; to: string
 /** Our "Mg" icons (scripts/magnesium-icons.ts) copied over upstream's. */
 const ICON_COPIES: ReadonlyArray<{ from: string; to: ReadonlyArray<string> }> = [
   {
-    from: "dbrain/web/assets/favicon.ico",
+    from: "magnesium/web/assets/favicon.ico",
     to: ["apps/web/public/favicon.ico", "assets/dev/blueprint-web-favicon.ico"],
   },
   {
-    from: "dbrain/web/assets/favicon-16x16.png",
+    from: "magnesium/web/assets/favicon-16x16.png",
     to: ["apps/web/public/favicon-16x16.png", "assets/dev/blueprint-web-favicon-16x16.png"],
   },
   {
-    from: "dbrain/web/assets/favicon-32x32.png",
+    from: "magnesium/web/assets/favicon-32x32.png",
     to: ["apps/web/public/favicon-32x32.png", "assets/dev/blueprint-web-favicon-32x32.png"],
   },
   {
-    from: "dbrain/web/assets/apple-touch-icon.png",
+    from: "magnesium/web/assets/apple-touch-icon.png",
     to: ["apps/web/public/apple-touch-icon.png", "assets/dev/blueprint-web-apple-touch-180.png"],
   },
-  { from: "dbrain/web/assets/icon-192.png", to: ["apps/web/public/icon-192.png"] },
-  { from: "dbrain/web/assets/icon-512.png", to: ["apps/web/public/icon-512.png"] },
+  { from: "magnesium/web/assets/icon-192.png", to: ["apps/web/public/icon-192.png"] },
+  { from: "magnesium/web/assets/icon-512.png", to: ["apps/web/public/icon-512.png"] },
 ];
 
 const MANIFEST = "apps/web/public/manifest.webmanifest";

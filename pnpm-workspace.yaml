@@ -1,7 +1,7 @@
 packages:
   - apps/*
   # magnesium: our packages (doc 11)
-  - dbrain/*
+  - magnesium/*
   - infra/*
   - oxlint-plugin-t3code
   - packages/*

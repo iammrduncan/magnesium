@@ -1,5 +1,5 @@
 {
-  "name": "@dbrain/web",
+  "name": "@magnesium/deploy",
   "private": true,
   "type": "module",
   "exports": {
@@ -13,6 +13,7 @@
     "test": "vp test run --config ../../vite.config.ts --dir . --passWithNoTests"
   },
   "devDependencies": {
+    "@types/node": "catalog:",
     "vite-plus": "catalog:"
   }
 }

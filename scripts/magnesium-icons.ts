@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @effect-diagnostics nodeBuiltinImport:off globalConsole:off
 // magnesium: renders the plain "Mg" mark (D17) into the web icon set in
-// dbrain/web/assets. The rename script copies them over upstream's icons.
+// magnesium/web/assets. The rename script copies them over upstream's icons.
 //
 //   node scripts/magnesium-icons.ts
 import * as NodeFS from "node:fs";
@@ -9,7 +9,7 @@ import * as NodePath from "node:path";
 
 import sharp from "sharp";
 
-const outDir = NodePath.resolve(import.meta.dirname, "../dbrain/web/assets");
+const outDir = NodePath.resolve(import.meta.dirname, "../magnesium/web/assets");
 
 const BACKGROUND = "#161616";
 const FOREGROUND = "#f5f5f5";

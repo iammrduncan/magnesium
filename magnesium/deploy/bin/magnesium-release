@@ -44,7 +44,7 @@ restart_unit() {
 seed_settings() {
   local release="$1"
   local settings="$STATE_HOME/userdata/settings.json"
-  local seed="$release/dbrain/deploy/seed/settings.json"
+  local seed="$release/magnesium/deploy/seed/settings.json"
   if [ ! -f "$settings" ] && [ -f "$seed" ]; then
     mkdir -p "$STATE_HOME/userdata"
     cp "$seed" "$settings"

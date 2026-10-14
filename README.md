@@ -41,7 +41,7 @@ The rest diverges:
 
 - **One client.** Magnesium's own web UI, installed as an app on desktop and phone. T3 Code's desktop, mobile and hosted apps are removed.
 - **Nothing hosted.** T3 Connect, the hosted sign-in and product analytics are gone. Pairing is the sign-in, and the tailnet is the reach.
-- **New features in new packages.** Magnesium's code goes in `dbrain/*`, and every edit to a T3 Code file is marked `magnesium:`, so merges stay measurable.
+- **New features in new packages.** Magnesium's code goes in `magnesium/*`, and every edit to a T3 Code file is marked `magnesium:`, so merges stay measurable.
 
 Magnesium is not made, endorsed or supported by T3 Tools Inc. See [NOTICE](NOTICE).
 
@@ -62,7 +62,7 @@ No releases are published. Build from source:
 
    ```bash
    mkdir -p ~/.magnesium/userdata
-   cp dbrain/deploy/seed/settings.json ~/.magnesium/userdata/settings.json
+   cp magnesium/deploy/seed/settings.json ~/.magnesium/userdata/settings.json
    ```
 
 5. Start the server:
@@ -78,7 +78,7 @@ To pair another browser later, run `node apps/server/dist/bin.mjs pair` with the
 A few things to know:
 
 - Keep Magnesium's state apart from any T3 Code install in `~/.t3`.
-- Don't use `t3 service install`; [`dbrain/deploy`](dbrain/deploy/README.md) has a systemd user unit instead.
+- Don't use `t3 service install`; [`magnesium/deploy`](magnesium/deploy/README.md) has a systemd user unit instead.
 - The binary, the `T3CODE_*` variables and the `~/.t3` layout keep T3 Code's names on purpose, so merges and existing data keep working.
 
 ## The repo
@@ -87,7 +87,7 @@ A few things to know:
 | ----------------------------------------------------- | ------------------------------------------------------- |
 | `apps/server`, `packages/*`                           | The server and shared packages, tracked from T3 Code    |
 | `apps/web`                                            | The web UI, Magnesium's own                             |
-| `dbrain/*`                                            | Magnesium's packages: contracts, server, web and deploy |
+| `magnesium/*`                                         | Magnesium's packages: contracts, server, web and deploy |
 | `docs/magnesium/`                                     | Research, decisions and the build goals                 |
 | `scripts/*-upstream.ts`, `scripts/merge-rehearsal.ts` | Strip, rename, merge and measure against T3 Code        |
 | [`MAGNESIUM.md`](MAGNESIUM.md)                        | Instructions for agents working here                    |

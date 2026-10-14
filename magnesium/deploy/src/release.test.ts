@@ -22,9 +22,9 @@ function makeRoot() {
     const release = NodePath.join(root, "releases", name);
     NodeFS.mkdirSync(NodePath.join(release, "apps/server/dist"), { recursive: true });
     NodeFS.writeFileSync(NodePath.join(release, "apps/server/dist/bin.mjs"), "");
-    NodeFS.mkdirSync(NodePath.join(release, "dbrain/deploy/seed"), { recursive: true });
+    NodeFS.mkdirSync(NodePath.join(release, "magnesium/deploy/seed"), { recursive: true });
     NodeFS.writeFileSync(
-      NodePath.join(release, "dbrain/deploy/seed/settings.json"),
+      NodePath.join(release, "magnesium/deploy/seed/settings.json"),
       `{"from":"${name}"}`,
     );
   }

@@ -1,4 +1,4 @@
-# @dbrain/deploy
+# @magnesium/deploy
 
 Deploy assets for Magnesium. Goal 02's roles install them; until then they are
 applied by hand.
@@ -19,4 +19,4 @@ applied by hand.
   magnesium-release status
   ```
 
-`vp run --filter @dbrain/deploy test` checks the unit, the seed and the release switching.
+`vp run --filter @magnesium/deploy test` checks the unit, the seed and the release switching.

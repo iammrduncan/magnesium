@@ -6,4 +6,4 @@ kept unchanged in LICENSE.
 
 Magnesium is not made, endorsed or supported by T3 Tools Inc. Its changes to
 T3 Code's own files are marked with "magnesium:" comments, and its new code
-lives in the dbrain/ packages. T3 Code's names and marks belong to their owners.
+lives in the magnesium/ packages. T3 Code's names and marks belong to their owners.
