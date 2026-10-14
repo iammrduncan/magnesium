@@ -19,6 +19,9 @@ EnvironmentFile=-%h/.config/magnesium/magnesium.env
 Environment=T3CODE_HOME=%h/.magnesium
 Environment=T3CODE_TELEMETRY_ENABLED=false
 Environment=T3CODE_NO_BROWSER=true
+# Provider CLIs (claude, codex) usually live in ~/.local/bin.
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+# bin/magnesium-release points current at a built release.
 ExecStart=%h/.local/share/magnesium/node/bin/node %h/.local/share/magnesium/current/apps/server/dist/bin.mjs serve
 Restart=on-failure
 RestartSec=5

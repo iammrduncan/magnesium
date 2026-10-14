@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+# Builds, switches and rolls back Magnesium releases on one machine.
+#
+#   magnesium-release build <git-ref> <source>  clone <source> (a URL, path or bundle) at
+#                                               <git-ref> into releases/<sha>, install, build
+#   magnesium-release activate <sha>            run releases/<sha>; the old one becomes `previous`
+#   magnesium-release rollback                  run `previous` again (one command back)
+#   magnesium-release status                    show current, previous and every release
+#
+# Layout under $MAGNESIUM_ROOT (default ~/.local/share/magnesium):
+#   node/              Node 24
+#   releases/<sha>/    a built checkout
+#   current, previous  symlinks into releases/
+# systemd/magnesium.service runs current/apps/server/dist/bin.mjs. Activating
+# seeds $MAGNESIUM_HOME/userdata/settings.json from the release when it is
+# missing, then restarts the unit if it is installed (MAGNESIUM_RESTART=0 skips).
+set -euo pipefail
+
+ROOT="${MAGNESIUM_ROOT:-$HOME/.local/share/magnesium}"
+STATE_HOME="${MAGNESIUM_HOME:-$HOME/.magnesium}"
+UNIT="magnesium.service"
+
+die() {
+  echo "magnesium-release: $*" >&2
+  exit 1
+}
+
+is_built() {
+  [ -f "$1/apps/server/dist/bin.mjs" ]
+}
+
+restart_unit() {
+  if [ "${MAGNESIUM_RESTART:-1}" = "0" ]; then
+    return
+  fi
+  if command -v systemctl > /dev/null && systemctl --user cat "$UNIT" > /dev/null 2>&1; then
+    systemctl --user restart "$UNIT"
+    echo "Restarted $UNIT."
+  else
+    echo "$UNIT is not installed; restart the server yourself."
+  fi
+}
+
+seed_settings() {
+  local release="$1"
+  local settings="$STATE_HOME/userdata/settings.json"
+  local seed="$release/dbrain/deploy/seed/settings.json"
+  if [ ! -f "$settings" ] && [ -f "$seed" ]; then
+    mkdir -p "$STATE_HOME/userdata"
+    cp "$seed" "$settings"
+    echo "Seeded $settings."
+  fi
+}
+
+switch_to() {
+  local name="$1"
+  local target="releases/$name"
+  is_built "$ROOT/$target" || die "release $name is missing or not built"
+  local old
+  old="$(readlink "$ROOT/current" 2> /dev/null || true)"
+  if [ "$old" = "$target" ]; then
+    echo "$name is already current."
+    return
+  fi
+  ln -sfn "$target" "$ROOT/current"
+  if [ -n "$old" ]; then
+    ln -sfn "$old" "$ROOT/previous"
+  fi
+  echo "current -> $name${old:+ (previous -> ${old#releases/})}"
+  seed_settings "$ROOT/$target"
+  restart_unit
+}
+
+build() {
+  local ref="$1" source="$2"
+  mkdir -p "$ROOT/releases"
+  local work="$ROOT/releases/.build-$$"
+  rm -rf "$work"
+  git clone --quiet "$source" "$work"
+  git -C "$work" checkout --quiet --detach "$ref"
+  local sha
+  sha="$(git -C "$work" rev-parse --short=10 HEAD)"
+  local dest="$ROOT/releases/$sha"
+  if is_built "$dest"; then
+    rm -rf "$work"
+    echo "$sha is already built."
+    return
+  fi
+  rm -rf "$dest"
+  mv "$work" "$dest"
+  (
+    cd "$dest"
+    export PATH="$ROOT/node/bin:$PATH" COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+    ${MAGNESIUM_PNPM:-corepack pnpm} install --frozen-lockfile
+    PATH="$dest/node_modules/.bin:$PATH" vp run --filter t3 build
+  )
+  is_built "$dest" || die "the build of $sha produced no server"
+  echo "Built $sha. Run: magnesium-release activate $sha"
+}
+
+status() {
+  echo "current:  $(readlink "$ROOT/current" 2> /dev/null || echo none)"
+  echo "previous: $(readlink "$ROOT/previous" 2> /dev/null || echo none)"
+  if [ -d "$ROOT/releases" ]; then
+    for release in "$ROOT"/releases/*/; do
+      [ -d "$release" ] || continue
+      local name
+      name="$(basename "$release")"
+      if is_built "$release"; then echo "  $name"; else echo "  $name (not built)"; fi
+    done
+  fi
+}
+
+case "${1:-}" in
+  build)
+    [ $# -eq 3 ] || die "usage: magnesium-release build <git-ref> <source>"
+    build "$2" "$3"
+    ;;
+  activate)
+    [ $# -eq 2 ] || die "usage: magnesium-release activate <sha>"
+    switch_to "$2"
+    ;;
+  rollback)
+    previous="$(readlink "$ROOT/previous" 2> /dev/null || true)"
+    [ -n "$previous" ] || die "there is no previous release"
+    switch_to "${previous#releases/}"
+    ;;
+  status)
+    status
+    ;;
+  *)
+    die "usage: magnesium-release build|activate|rollback|status"
+    ;;
+esac

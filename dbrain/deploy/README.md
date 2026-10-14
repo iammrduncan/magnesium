@@ -10,4 +10,13 @@ applied by hand.
   that file does not exist yet. New threads start supervised, and the provider
   update checks, which poll npm and T3 Code's model manifest, stay off.
 
-`npm test` here (`vp run --filter @dbrain/deploy test`) checks both rules.
+- `bin/magnesium-release`: builds a commit into `~/.local/share/magnesium/releases/<sha>`, switches the `current` symlink the unit runs, and restarts the unit. `magnesium-release rollback` goes back to the previous release in one command.
+
+  ```bash
+  magnesium-release build <git-ref> <repo-url-or-path>
+  magnesium-release activate <sha>
+  magnesium-release rollback
+  magnesium-release status
+  ```
+
+`vp run --filter @dbrain/deploy test` checks the unit, the seed and the release switching.
