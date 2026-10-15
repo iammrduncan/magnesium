@@ -11,6 +11,7 @@ import * as RpcGroup from "effect/unstable/rpc/RpcGroup";
 import * as RpcMiddleware from "effect/unstable/rpc/RpcMiddleware";
 
 import { FleetEvent, FleetMachine, FleetReconnectInput } from "./fleet.ts";
+import { FooterItem } from "./footer.ts";
 import {
   ProfileCheckResult,
   ProfileList,
@@ -44,6 +45,7 @@ export const MAGNESIUM_WS_METHODS = {
   fleetEvents: "magnesium.fleet.events",
   fleetEventHistory: "magnesium.fleet.eventHistory",
   fleetReconnect: "magnesium.fleet.reconnect",
+  footerItems: "magnesium.footer.items",
   listProfiles: "magnesium.profiles.list",
   checkProfiles: "magnesium.profiles.check",
   listSandboxes: "magnesium.sandboxes.list",
@@ -110,6 +112,16 @@ const FleetReconnectRpc = Rpc.make(MAGNESIUM_WS_METHODS.fleetReconnect, {
   payload: FleetReconnectInput,
 }).annotate(RequiredScope, AuthOrchestrationOperateScope);
 
+export const FooterItemsItem = liveTableItem(FooterItem);
+export type FooterItemsItem = typeof FooterItemsItem.Type;
+
+/** The footer's items, keyed by id, with labels the hub fills in (goal 05). */
+const FooterItemsRpc = Rpc.make(MAGNESIUM_WS_METHODS.footerItems, {
+  payload: StreamSubscribeInput,
+  success: FooterItemsItem,
+  stream: true,
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
+
 // Profiles and sandboxes (goal 03). The agents API's list_profiles, check_profiles and
 // list_sandboxes, and the hub's push of each machine's profiles (D39).
 const ListProfilesRpc = Rpc.make(MAGNESIUM_WS_METHODS.listProfiles, {
@@ -141,6 +153,7 @@ export const MagnesiumRpcGroup = RpcGroup.make(
   FleetEventsRpc,
   FleetEventHistoryRpc,
   FleetReconnectRpc,
+  FooterItemsRpc,
   ListProfilesRpc,
   CheckProfilesRpc,
   ListSandboxesRpc,
