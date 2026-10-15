@@ -31,6 +31,7 @@ import {
   refusedLaunchArgs,
   resolveProfile,
 } from "./profileFolder.ts";
+import { showList } from "../agents/cli.ts";
 import { receivePush } from "./receive.ts";
 import type { DetectedSetup } from "./setup.ts";
 import { desiredInstances } from "./stock.ts";
@@ -420,6 +421,48 @@ describe("taking a push from the hub", () => {
         Effect.flip,
       );
       expect(error.message).toContain("This server is the hub");
+    }),
+  );
+});
+
+describe("magnesium-agents list", () => {
+  it.effect("says what runs here, from the instances this server runs, or that it isn't here", () =>
+    Effect.gen(function* () {
+      const root = tempRoot();
+      const config = setupFor(root, { folder: NodePath.join(root, "state", "profiles") });
+      writeProfile(config.folder, "scratch-a", {
+        ...SCRATCH_A,
+        "profile.yaml": "name: scratch-a\nharnesses: [claude, codex]\nmachines: [cpu-host-1]\n",
+      });
+      writeProfile(config.folder, "elsewhere", {
+        ...SCRATCH_A,
+        "profile.yaml": "name: elsewhere\nmachines: [gpu-host-1]\n",
+      });
+      writeProfile(config.folder, "pending", {
+        ...SCRATCH_A,
+        "profile.yaml": "name: pending\nmachines: [cpu-host-1]\n",
+      });
+      const running = Object.fromEntries(
+        (
+          [
+            ["claude", "fenced"],
+            ["claude", "native"],
+            ["codex", "container"],
+            ["codex", "fenced"],
+            ["codex", "native"],
+          ] as const
+        ).map(([harness, level]) => [
+          ProviderInstanceId.make(profileInstanceId(harness, level, "scratch-a")),
+          { driver: (harness === "claude" ? "claudeAgent" : "codex") as never },
+        ]),
+      ) as ServerSettings["providerInstances"];
+      const list = yield* listProfiles().pipe(Effect.provide(provide(config, running)));
+      const lines = showList(list).split("\n");
+      expect(lines.find((line) => line.startsWith("scratch-a"))).toContain(
+        "claude, codex · fenced, container, native",
+      );
+      expect(lines.find((line) => line.startsWith("elsewhere"))).toContain("not here");
+      expect(lines.find((line) => line.startsWith("pending"))).toContain("nothing here yet");
     }),
   );
 });

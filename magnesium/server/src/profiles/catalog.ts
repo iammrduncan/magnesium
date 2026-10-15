@@ -82,6 +82,7 @@ export const summarize = (
   entry: CatalogEntry,
   config: DetectedSetup,
   pushManaged: boolean,
+  configured: ProviderInstanceConfigMap = {},
 ): ProfileSummary => {
   const here = runsHere(entry.resolved, config.machine, pushManaged);
   const plan =
@@ -89,6 +90,14 @@ export const summarize = (
       ? planProfile(path, entry.resolved, config.setup)
       : { instances: [], notes: [] };
   const profile = entry.resolved;
+  // What this server runs for it: the instances in its settings, which sync wrote.
+  // The CLI reads the same settings, so it never guesses from its own PATH.
+  const running = Object.keys(configured).flatMap((instanceId) => {
+    const parsed = parseProfileInstanceId(instanceId);
+    return parsed?.profile === profile.name
+      ? [{ instanceId, harness: parsed.harness, sandbox: parsed.level }]
+      : [];
+  });
   return {
     name: profile.name,
     displayName: profile.displayName,
@@ -99,11 +108,7 @@ export const summarize = (
     sandbox: profile.sandbox,
     machines: profile.machines,
     runsHere: here,
-    instances: plan.instances.map((instance) => ({
-      instanceId: instance.instanceId,
-      harness: instance.harness,
-      sandbox: instance.sandbox,
-    })),
+    instances: here ? running : [],
     status: entry.ready ? "ready" : "refused",
     issues: [...entry.issues, ...plan.notes],
   };
@@ -117,10 +122,11 @@ export const listProfiles = Effect.fn("profiles.listProfiles")(function* (
   const path = yield* Path.Path;
   const entries = yield* loadCatalog(config.folder);
   const pushManaged = yield* isPushManaged(config.folder);
+  const configured = yield* (yield* InstanceSource).instances;
   return {
     machine: config.machine,
     folder: config.folder,
-    profiles: entries.map((entry) => summarize(path, entry, config, pushManaged)),
+    profiles: entries.map((entry) => summarize(path, entry, config, pushManaged, configured)),
     pushes,
   } satisfies ProfileList;
 });

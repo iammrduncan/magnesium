@@ -79,18 +79,35 @@ const runOperation = (name: string, input: unknown, baseDir: string | undefined)
     return yield* operation.run(input).pipe(Effect.provide(cliLayer(baseDir)));
   });
 
-const showList = (list: ProfileList) => {
+const LEVEL_ORDER = ["fenced", "container", "native", "microvm"];
+
+/** What runs here, as "claude, codex · fenced, container, native", or why nothing does. */
+export const runsHereText = (profile: ProfileList["profiles"][number]): string => {
+  if (!profile.runsHere) return "not here";
+  if (profile.instances.length === 0) {
+    const why = profile.issues[0]?.message;
+    return `nothing here yet${why ? ` (${why})` : ""}`;
+  }
+  const unique = (values: ReadonlyArray<string>) =>
+    values.filter((value, index) => values.indexOf(value) === index);
+  const harnesses = unique(profile.instances.map((instance) => instance.harness));
+  const levels = unique(profile.instances.map((instance) => instance.sandbox)).toSorted(
+    (a, b) => LEVEL_ORDER.indexOf(a) - LEVEL_ORDER.indexOf(b),
+  );
+  return `${harnesses.join(", ")} · ${levels.join(", ")}`;
+};
+
+export const showList = (list: ProfileList) => {
   if (list.profiles.length === 0) return `No profiles in ${list.folder}.`;
-  const lines = list.profiles.map((profile) => {
-    const runs = profile.instances.map((instance) => `${instance.harness}/${instance.sandbox}`);
-    return [
+  const lines = list.profiles.map((profile) =>
+    [
       profile.name.padEnd(20),
       profile.status.padEnd(8),
       `default ${profile.harness}/${profile.sandbox}`.padEnd(26),
-      profile.runsHere ? `runs here as ${runs.join(", ") || "nothing"}` : "not here",
+      runsHereText(profile),
       profile.machines.length > 0 ? `  machines: ${profile.machines.join(", ")}` : "",
-    ].join("");
-  });
+    ].join(""),
+  );
   const pushes = list.pushes.map(
     (push) =>
       `pushed to ${push.machine}: ${push.error ?? `revision ${push.revision}`}${push.refused.length > 0 ? `, refused ${push.refused.join(", ")}` : ""}`,

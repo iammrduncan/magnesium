@@ -18,6 +18,8 @@ if [ -f "$HOME/.config/magnesium/magnesium.env" ]; then
   set +a
 fi
 export T3CODE_HOME="${T3CODE_HOME:-$HOME/.magnesium}"
+# The unit's PATH comes first, so the CLI finds the agents' CLIs where the service does.
+export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 node=${MAGNESIUM_NODE:-$HOME/.local/share/magnesium/node/bin/node}
 [ -x "$node" ] || node=node
