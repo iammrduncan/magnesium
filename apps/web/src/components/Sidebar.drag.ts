@@ -111,6 +111,9 @@ export function createSidebarSortingStrategy(input: {
   /** Space each pinned boundary opens for its label while dragging. The
    * markers stay zero height at rest, so nothing is reserved until pickup. */
   boundaryLabelHeight?: number;
+  /** magnesium: each thread's project folder (null when standalone), so active
+   * rows preview under their folders. Without it the inbox stays flat. */
+  folderByThreadKey?: ReadonlyMap<string, string | null>;
 }): SortingStrategy {
   const { items } = input;
   const indices = new Map(items.map((item, index) => [sidebarListItemId(item), index]));
@@ -134,7 +137,8 @@ export function createSidebarSortingStrategy(input: {
     let slimHeight = input.slimHeight;
     let headerScale: number | undefined;
     for (const [index, item] of items.entries()) {
-      if (item.kind === "marker") {
+      // magnesium: folder rows are structure, like markers
+      if (item.kind !== "thread") {
         if (isShelfHeader(item)) {
           const height = rects[index]?.height;
           if (height) headerScale ??= height / 32;
@@ -182,10 +186,42 @@ export function createSidebarSortingStrategy(input: {
       if (groups[name].length > 0) projected.push(...groups[name]);
       else marker(`${name}-placeholder`);
     };
+    // magnesium: active rows land under their folder rows and headings, in the
+    // order the list shows them; a row whose folder has no row joins the end.
+    const folderSection = (folderOf: ReadonlyMap<string, string | null>) => {
+      if (groups.active.length === 0) marker("active-placeholder");
+      const rowsByFolder = new Map<string | null, ThreadItem[]>();
+      for (const item of groups.active) {
+        const folder = folderOf.get(item.key) ?? null;
+        const rows = rowsByFolder.get(folder);
+        if (rows) rows.push(item);
+        else rowsByFolder.set(folder, [item]);
+      }
+      const take = (folder: string | null) => {
+        projected.push(...(rowsByFolder.get(folder) ?? []));
+        rowsByFolder.delete(folder);
+      };
+      for (const item of items) {
+        if (item.kind === "folder") {
+          projected.push(item);
+          take(item.folder);
+        } else if (item.kind === "folder-more") {
+          projected.push(item);
+        } else if (
+          item.kind === "marker" &&
+          (item.marker === "projects-header" || item.marker === "threads-header")
+        ) {
+          projected.push(item);
+          if (item.marker === "threads-header") take(null);
+        }
+      }
+      for (const rows of rowsByFolder.values()) projected.push(...rows);
+    };
     marker("pinned-header");
     projected.push(...groups.pinned);
     marker("pinned-divider");
-    section("active");
+    if (input.folderByThreadKey) folderSection(input.folderByThreadKey);
+    else section("active");
     if (items.some((item) => item.kind === "marker" && item.marker === "working-header")) {
       marker("working-header");
       projected.push(...groups.working);

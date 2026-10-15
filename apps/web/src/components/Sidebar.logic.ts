@@ -144,17 +144,33 @@ export type SidebarListMarker =
   | "pinned-divider"
   | "working-header"
   | "snoozed-header"
-  | "settled-header";
+  | "settled-header"
+  // magnesium: the Projects and Threads headings over the active rows (Home and Session boards)
+  | "projects-header"
+  | "threads-header";
 
 export function sidebarMarkerId(marker: SidebarListMarker): string {
   return `${SIDEBAR_MARKER_PREFIX}${marker}`;
 }
 
 export type SidebarListItem =
-  | { readonly kind: "thread"; readonly key: string; readonly section: SidebarSection }
-  | { readonly kind: "marker"; readonly marker: SidebarListMarker };
+  | {
+      readonly kind: "thread";
+      readonly key: string;
+      readonly section: SidebarSection;
+      // magnesium: the project folder an active row sits under; null for a standalone thread
+      readonly folder?: string | null;
+    }
+  | { readonly kind: "marker"; readonly marker: SidebarListMarker }
+  // magnesium: a project folder's row, and its "All N threads" row, among the active rows
+  | { readonly kind: "folder"; readonly folder: string }
+  | { readonly kind: "folder-more"; readonly folder: string };
 
 export function sidebarListItemId(item: SidebarListItem): string {
+  // magnesium: folder ids are encoded so they never contain a thread key's colon
+  if (item.kind === "folder" || item.kind === "folder-more") {
+    return `${SIDEBAR_MARKER_PREFIX}${item.kind}-${encodeURIComponent(item.folder)}`;
+  }
   return item.kind === "thread" ? item.key : sidebarMarkerId(item.marker);
 }
 
@@ -207,6 +223,8 @@ export function resolveSidebarDropTarget(
         item.marker === "settled-header"
       )
         break;
+    } else if (item.kind !== "thread") {
+      continue; // magnesium: folder rows hold no order
     } else if (currentSection === "pinned") pinnedOrder.push(item.key);
     else activeOrder.push(item.key);
   }

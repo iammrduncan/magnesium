@@ -51,17 +51,13 @@ import {
   ChevronDownIcon,
   CircleAlertIcon,
   CircleCheckIcon,
-  CircleDashedIcon,
   ClockIcon,
-  EyeIcon,
   FolderIcon,
   GitBranchIcon,
-  MessageCircleQuestionIcon,
   PinIcon,
   PinOffIcon,
   PlusIcon,
   SettingsIcon,
-  ShieldQuestionIcon,
   SquarePenIcon,
   TerminalIcon,
   Undo2Icon,
@@ -241,6 +237,22 @@ import {
 import { SidebarContent, SidebarGroup, useSidebar } from "./ui/sidebar";
 import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrome";
 import { SidebarPlaces } from "./sidebar/SidebarPlaces"; // magnesium: places (Home and Session boards)
+// magnesium: project folders, density and status shapes (goal 05)
+import { isScratchProject } from "@t3tools/client-runtime/state/projects";
+import {
+  SidebarFolderMoreRow,
+  SidebarFolderRow,
+  SidebarProjectsHeading,
+  SidebarThreadsHeading,
+} from "./sidebar/SidebarFolderRows";
+import {
+  folderByProjectMember,
+  folderOfThread,
+  layoutActiveFolders,
+  resolveFolderRollup,
+} from "./sidebar/sidebarFolders";
+import { useSidebarShellStore } from "./sidebar/sidebarShellStore";
+import { StatusShape } from "./sidebar/StatusShape";
 import { SidebarHeaderIconButton, SidebarThreadHeader } from "./sidebar/SidebarThreadHeader";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuTrigger } from "./ui/menu";
 import { Tooltip, TooltipPopup, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
@@ -1013,6 +1025,9 @@ const dropVerbBadge: Record<SidebarDropVerb, ReactNode> = {
 const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   thread: SidebarThreadSummary;
   variant: "card" | "slim";
+  // magnesium: a compact live row leads with its status shape and names an
+  // attention status in place of its time (Session board, goal 05)
+  leadingStatus?: boolean;
   // Slim rows are either settled (action: un-settle) or merely quiet
   // (seen Ready threads — action: settle).
   variantAction: "settle" | "unsettle" | "unsnooze";
@@ -1670,17 +1685,35 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
             }
           >
             {accessibleTitle}
-            {/* Settled history recedes: dimmed favicon at rest, restored on
-              hover so the tail stays scannable when you're hunting. */}
-            <span
-              className={cn(
-                "shrink-0 transition-opacity",
-                (!props.isActive || variantAction === "unsettle") &&
-                  "opacity-40 grayscale group-focus-within/sidebar-row:opacity-100 group-focus-within/sidebar-row:grayscale-0 group-hover/sidebar-row:opacity-100 group-hover/sidebar-row:grayscale-0",
-              )}
-            >
-              {props.project ? <ProjectFavicon project={props.project} className="size-4" /> : null}
-            </span>
+            {props.leadingStatus ? (
+              // magnesium: compact live rows lead with their status shape
+              <span
+                className={cn(
+                  "flex size-4 shrink-0 items-center justify-center",
+                  topStatus === null || topStatus.icon === "woke"
+                    ? "text-secondary-label/70"
+                    : topStatus.className,
+                )}
+              >
+                <StatusShape
+                  kind={topStatus === null || topStatus.icon === "woke" ? "idle" : topStatus.icon}
+                />
+              </span>
+            ) : (
+              /* Settled history recedes: dimmed favicon at rest, restored on
+                hover so the tail stays scannable when you're hunting. */
+              <span
+                className={cn(
+                  "shrink-0 transition-opacity",
+                  (!props.isActive || variantAction === "unsettle") &&
+                    "opacity-40 grayscale group-focus-within/sidebar-row:opacity-100 group-focus-within/sidebar-row:grayscale-0 group-hover/sidebar-row:opacity-100 group-hover/sidebar-row:grayscale-0",
+                )}
+              >
+                {props.project ? (
+                  <ProjectFavicon project={props.project} className="size-4" />
+                ) : null}
+              </span>
+            )}
             {draftIndicator}
             {title}
             {pinIndicator}
@@ -1729,6 +1762,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                       />
                       <TooltipPopup side="top">Dismiss Woke notification</TooltipPopup>
                     </Tooltip>
+                  ) : props.leadingStatus &&
+                    (status === "approval" || status === "input" || status === "failed") &&
+                    topStatus !== null ? (
+                    // magnesium: a compact row names what it needs instead of its time
+                    <span role="status" className={cn("text-xs font-medium", topStatus.className)}>
+                      {topStatus.label}
+                    </span>
                   ) : (
                     <span className="text-xs">
                       {variantAction === "unsettle"
@@ -1893,19 +1933,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                             topStatus.className,
                           )}
                         >
-                          {topStatus.icon === "working" ? (
-                            <CircleDashedIcon aria-hidden className="size-4 shrink-0" />
-                          ) : topStatus.icon === "input" ? (
-                            <MessageCircleQuestionIcon aria-hidden className="size-4 shrink-0" />
-                          ) : topStatus.icon === "approval" ? (
-                            <ShieldQuestionIcon aria-hidden className="size-4 shrink-0" />
-                          ) : topStatus.icon === "failed" ? (
-                            <CircleAlertIcon aria-hidden className="size-4 shrink-0" />
-                          ) : topStatus.icon === "monitoring" ? (
-                            <EyeIcon aria-hidden className="size-4 shrink-0" />
-                          ) : topStatus.icon === "done" ? (
-                            <CircleCheckIcon aria-hidden className="size-4 shrink-0" />
-                          ) : null}
+                          {/* magnesium: the boards' status shapes in place of icons (goal 05) */}
+                          <StatusShape kind={topStatus.icon} />
                           {/* The label alone is the live region: a role="status"
                             wrapper around the ticking duration would make
                             screen readers announce every second. */}
@@ -2729,6 +2758,115 @@ export default function Sidebar() {
     workingShelfEnabled,
   ]);
 
+  // magnesium: project folders over the active rows (goal 05). Folders start
+  // closed; the open ones are remembered per device, and the folder of the
+  // thread you open, or of the project you scope to, opens with it.
+  const sidebarDensity = useSidebarShellStore((state) => state.density);
+  const openFolders = useSidebarShellStore((state) => state.openFolders);
+  const setFolderOpen = useSidebarShellStore((state) => state.setFolderOpen);
+  const folderByMember = useMemo(
+    () =>
+      folderByProjectMember(
+        projectGroups,
+        (environmentId) => serverConfigs.get(environmentId)?.scratchWorkspaceRoot ?? null,
+        isScratchProject,
+      ),
+    [projectGroups, serverConfigs],
+  );
+  const folderKeys = useMemo(
+    () =>
+      (scopedProjectGroup ? [scopedProjectGroup] : projectGroups)
+        .filter((group) =>
+          group.memberProjects.some(
+            (project) =>
+              folderOfThread(folderByMember, {
+                environmentId: project.environmentId,
+                projectId: project.id,
+              }) === group.projectKey,
+          ),
+        )
+        .map((group) => group.projectKey),
+    [folderByMember, projectGroups, scopedProjectGroup],
+  );
+  const folderLayout = useMemo(
+    () =>
+      layoutActiveFolders({
+        folders: folderKeys,
+        rows: activeThreads,
+        keyOf: (thread) => scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)),
+        folderOf: (thread) => folderOfThread(folderByMember, thread),
+        isOpen: (folder) => openFolders[folder] === true,
+      }),
+    [activeThreads, folderByMember, folderKeys, openFolders],
+  );
+  const folderByThreadKey = useMemo(
+    () =>
+      new Map(
+        threads.map(
+          (thread) =>
+            [
+              scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)),
+              folderOfThread(folderByMember, thread),
+            ] as const,
+        ),
+      ),
+    [folderByMember, threads],
+  );
+  // Roll-ups skip snoozed and settled threads: those are parked on purpose.
+  const folderRollups = useMemo(() => {
+    const byFolder = new Map<string, EnvironmentThreadShell[]>();
+    for (const thread of [...pinnedThreads, ...activeThreads, ...workingThreads]) {
+      const folder = folderOfThread(folderByMember, thread);
+      if (folder === null) continue;
+      const list = byFolder.get(folder);
+      if (list) list.push(thread);
+      else byFolder.set(folder, [thread]);
+    }
+    return new Map([...byFolder].map(([folder, list]) => [folder, resolveFolderRollup(list)]));
+  }, [activeThreads, folderByMember, pinnedThreads, workingThreads]);
+  const folderThreadCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const thread of threads) {
+      if (thread.archivedAt !== null) continue;
+      const folder = folderOfThread(folderByMember, thread);
+      if (folder !== null) counts.set(folder, (counts.get(folder) ?? 0) + 1);
+    }
+    return counts;
+  }, [folderByMember, threads]);
+  // The thread a folder's name opens until goal 15's project page: its first
+  // active thread, else its first thread on any shelf.
+  const firstThreadByFolder = useMemo(() => {
+    const first = new Map<string, EnvironmentThreadShell>();
+    for (const thread of [
+      ...activeThreads,
+      ...pinnedThreads,
+      ...workingThreads,
+      ...snoozedThreads,
+      ...settledThreads,
+    ]) {
+      const folder = folderOfThread(folderByMember, thread);
+      if (folder !== null && !first.has(folder)) first.set(folder, thread);
+    }
+    return first;
+  }, [
+    activeThreads,
+    folderByMember,
+    pinnedThreads,
+    settledThreads,
+    snoozedThreads,
+    workingThreads,
+  ]);
+  const firstThreadByFolderRef = useRef(firstThreadByFolder);
+  firstThreadByFolderRef.current = firstThreadByFolder;
+  const routeFolder =
+    routeThreadKey === null ? null : (folderByThreadKey.get(routeThreadKey) ?? null);
+  useEffect(() => {
+    if (routeFolder !== null) setFolderOpen(routeFolder, true);
+  }, [routeFolder, setFolderOpen]);
+  useEffect(() => {
+    if (projectScopeKey !== null) setFolderOpen(projectScopeKey, true);
+  }, [projectScopeKey, setFolderOpen]);
+
   const threadSearchInputRef = useRef<HTMLInputElement>(null);
   const [threadSearchQuery, setThreadSearchQuery] = useState("");
   const [activeSearchResultIndex, setActiveSearchResultIndex] = useState(0);
@@ -2902,14 +3040,14 @@ export default function Sidebar() {
   const orderedThreads = useMemo(
     () => [
       ...pinnedThreads,
-      ...activeThreads,
+      ...folderLayout.visible, // magnesium: active rows in folder order, closed folders skipped
       ...visibleWorkingThreads,
       ...visibleSnoozedThreads,
       ...renderedSettledThreads,
     ],
     [
       pinnedThreads,
-      activeThreads,
+      folderLayout.visible,
       visibleWorkingThreads,
       visibleSnoozedThreads,
       renderedSettledThreads,
@@ -3510,7 +3648,8 @@ export default function Sidebar() {
         workingThreads.length +
         snoozedThreads.length +
         settledThreads.length ===
-      0
+        0 &&
+      folderLayout.items.length === 0 // magnesium: folders show before their first thread
     ) {
       return [];
     }
@@ -3518,9 +3657,8 @@ export default function Sidebar() {
     const pinnedRows = rowsOf(pinnedThreads, "pinned");
     items.push(...pinnedRows);
     items.push({ kind: "marker", marker: "pinned-divider" });
-    const activeRows = rowsOf(activeThreads, "active");
     items.push({ kind: "marker", marker: "active-placeholder" });
-    items.push(...activeRows);
+    items.push(...folderLayout.items); // magnesium: active rows under their project folders
     if (workingThreads.length > 0) {
       items.push({ kind: "marker", marker: "working-header" });
       items.push(...rowsOf(visibleWorkingThreads, "working"));
@@ -3536,6 +3674,7 @@ export default function Sidebar() {
     return items;
   }, [
     activeThreads,
+    folderLayout.items,
     pinnedThreads,
     renderedSettledThreads,
     settledThreads.length,
@@ -3560,7 +3699,13 @@ export default function Sidebar() {
   const sidebarListOrderKey = useMemo(
     () =>
       sidebarListItems
-        .map((item) => (item.kind === "thread" ? `${item.key}:${item.section}` : item.marker))
+        .map((item) =>
+          item.kind === "thread"
+            ? `${item.key}:${item.section}`
+            : item.kind === "marker"
+              ? item.marker
+              : sidebarListItemId(item),
+        ) // magnesium: folder rows
         .join("\0"),
     [sidebarListItems],
   );
@@ -3593,6 +3738,21 @@ export default function Sidebar() {
     [sidebarListItems],
   );
   const sortableIds = useMemo(() => sidebarListItems.map(sidebarListItemId), [sidebarListItems]);
+  // magnesium: folder actions (goal 05). A folder's name opens the project, its
+  // first thread until goal 15's page; "All N threads" scopes the list to it.
+  const openFolderProject = useCallback(
+    (folder: string) => {
+      setFolderOpen(folder, true);
+      const thread = firstThreadByFolderRef.current.get(folder);
+      if (thread) void navigateToThread(scopeThreadRef(thread.environmentId, thread.id));
+    },
+    [navigateToThread, setFolderOpen],
+  );
+  const showFolderThreads = useCallback(
+    (folder: string) => setProjectScopeKey(folder),
+    [setProjectScopeKey],
+  );
+  const showAllProjects = useCallback(() => setProjectScopeKey(null), [setProjectScopeKey]);
   const draggedSettledOrder = useMemo(() => {
     const thread = dragState === null ? undefined : threadByKey.get(dragState.activeKey);
     if (dragState === null || thread === undefined) return [];
@@ -3629,9 +3789,11 @@ export default function Sidebar() {
         settledVisibleCount,
         routeThreadKey,
         snoozedThreadCount: snoozedThreads.length,
+        folderByThreadKey, // magnesium: active rows preview under their folders
       }),
     [
       draggedActiveOrder,
+      folderByThreadKey,
       draggedSettledOrder,
       routeThreadKey,
       settledShelfExpanded,
@@ -4857,8 +5019,10 @@ export default function Sidebar() {
                         // from users (or the auto rules) actually parking work,
                         // not from the sidebar second-guessing what still matters.
                         // Working rows stay cards so their live status shows.
-                        const isCard =
+                        const isLive =
                           section === "active" || section === "pinned" || section === "working";
+                        // magnesium: compact density makes live rows one line (goal 05)
+                        const isCard = isLive && sidebarDensity === "comfy";
                         const rowVariant = isCard ? "card" : "slim";
                         return (
                           <SidebarThreadRow
@@ -4867,6 +5031,7 @@ export default function Sidebar() {
                             key={`${threadKey}:${rowVariant}`}
                             thread={thread}
                             variant={rowVariant}
+                            leadingStatus={isLive && !isCard}
                             // Snoozed rows wake, settled rows un-settle, and cards settle.
                             variantAction={
                               section === "snoozed"
@@ -4992,7 +5157,57 @@ export default function Sidebar() {
                           items.push(renderThreadRow(threadByKey.get(item.key)!, item.section));
                           continue;
                         }
+                        // magnesium: project folders and their "All threads" rows (goal 05)
+                        if (item.kind === "folder") {
+                          const id = sidebarListItemId(item);
+                          items.push(
+                            <SidebarFolderRow
+                              key={id}
+                              id={id}
+                              folder={item.folder}
+                              name={
+                                projectGroupByScopeKey.get(item.folder)?.displayName ?? item.folder
+                              }
+                              open={openFolders[item.folder] === true}
+                              rollup={folderRollups.get(item.folder) ?? null}
+                              onSetOpen={setFolderOpen}
+                              onOpenProject={openFolderProject}
+                            />,
+                          );
+                          continue;
+                        }
+                        if (item.kind === "folder-more") {
+                          const id = sidebarListItemId(item);
+                          items.push(
+                            <SidebarFolderMoreRow
+                              key={id}
+                              id={id}
+                              folder={item.folder}
+                              threadCount={folderThreadCounts.get(item.folder) ?? 0}
+                              scoped={projectScopeKey !== null}
+                              onShowAll={showFolderThreads}
+                              onShowAllProjects={showAllProjects}
+                            />,
+                          );
+                          continue;
+                        }
                         switch (item.marker) {
+                          case "projects-header":
+                            items.push(
+                              <SidebarProjectsHeading
+                                key="projects-header"
+                                id={sidebarListItemId(item)}
+                              />,
+                            );
+                            break;
+                          case "threads-header":
+                            items.push(
+                              <SidebarThreadsHeading
+                                key="threads-header"
+                                id={sidebarListItemId(item)}
+                              />,
+                            );
+                            break;
                           case "pinned-header":
                             items.push(
                               <SidebarDragBoundary
@@ -5132,6 +5347,7 @@ export default function Sidebar() {
           ) : null}
           {!isSearchingThreads &&
           visibleDraftSessionCount === 0 &&
+          folderLayout.items.length === 0 && // magnesium: folders are not an empty list
           pinnedThreads.length +
             activeThreads.length +
             workingThreads.length +

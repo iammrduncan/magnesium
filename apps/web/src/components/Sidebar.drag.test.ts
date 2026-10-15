@@ -38,9 +38,11 @@ function layout(
     const height =
       item.kind === "thread"
         ? (item.section === "pinned" || item.section === "active" ? cardHeight : 36) * scale
-        : item.marker === "pinned-header" || item.marker === "pinned-divider"
-          ? 0
-          : (item.marker.endsWith("placeholder") ? 0 : 32) * scale;
+        : item.kind !== "marker" // magnesium: folder rows
+          ? 32 * scale
+          : item.marker === "pinned-header" || item.marker === "pinned-divider"
+            ? 0
+            : (item.marker.endsWith("placeholder") ? 0 : 32) * scale;
     const rect = { top, height, bottom: top + height, left: 0, right: 260, width: 260 };
     top += height + 1;
     return rect;
@@ -855,5 +857,64 @@ describe("lifted card clearance", () => {
   it("follows the list when it scrolls and includes content preceding Pins", () => {
     expect(511 + apply(511, 36, -500, 96).y).toBe(128);
     expect(511 + apply(511, 36, -500, 136, 114).y).toBe(250);
+  });
+});
+
+// magnesium: project folders among the active rows (goal 05)
+describe("sidebar folders", () => {
+  const inFolder = (key: string, folder: string): SidebarListItem => ({
+    kind: "thread",
+    key,
+    section: "active",
+    folder,
+  });
+  const folderA: SidebarListItem = { kind: "folder", folder: "a" };
+  const moreA: SidebarListItem = { kind: "folder-more", folder: "a" };
+  const folderB: SidebarListItem = { kind: "folder", folder: "b" };
+  const moreB: SidebarListItem = { kind: "folder-more", folder: "b" };
+  const items: SidebarListItem[] = [
+    pinnedHeader,
+    thread("env:p1", "pinned"),
+    divider,
+    marker("active-placeholder"),
+    marker("projects-header"),
+    folderA,
+    inFolder("env:a1", "a"),
+    inFolder("env:a2", "a"),
+    moreA,
+    folderB,
+    inFolder("env:b1", "b"),
+    moreB,
+    settledHeader,
+    marker("settled-placeholder"),
+  ];
+  const folderByThreadKey = new Map([
+    ["env:p1", "b"],
+    ["env:a1", "a"],
+    ["env:a2", "a"],
+    ["env:b1", "b"],
+  ]);
+
+  it("keeps folder rows out of the saved order", () => {
+    expect(resolveSidebarDropTarget(items, "env:a2", "env:a1")).toEqual({
+      section: "active",
+      pinnedOrder: ["env:p1"],
+      activeOrder: ["env:a2", "env:a1", "env:b1"],
+    });
+  });
+
+  it("previews a row dropped into Active under its own folder, with folder rows on screen", () => {
+    const transforms = preview(
+      { items, settledOrder: [], settledExpanded: false, folderByThreadKey },
+      "env:p1",
+      "env:a1",
+    );
+    for (const item of [folderA, moreA, folderB, moreB]) {
+      expect(transforms.get(sidebarListItemId(item))?.scaleY).toBe(1);
+    }
+    const folderBShift = transforms.get(sidebarListItemId(folderB))!.y;
+    // The pinned card leaves the top and lands between folder b and its thread.
+    expect(transforms.get(sidebarListItemId(folderA))!.y).toBe(folderBShift);
+    expect(transforms.get("env:b1")!.y - folderBShift).toBe(83);
   });
 });
