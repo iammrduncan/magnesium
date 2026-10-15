@@ -240,6 +240,7 @@ import {
 } from "./ui/combobox";
 import { SidebarContent, SidebarGroup, useSidebar } from "./ui/sidebar";
 import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrome";
+import { SidebarPlaces } from "./sidebar/SidebarPlaces"; // magnesium: places (Home and Session boards)
 import { SidebarHeaderIconButton, SidebarThreadHeader } from "./sidebar/SidebarThreadHeader";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuTrigger } from "./ui/menu";
 import { Tooltip, TooltipPopup, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
@@ -4734,6 +4735,10 @@ export default function Sidebar() {
               activeSearchResultIndex={activeSearchResultIndex}
               onClearSearch={clearThreadSearch}
             />
+            {/* magnesium: places under the search row, as on the Home and Session boards */}
+            <div className="mt-2 border-b border-border pb-2">
+              <SidebarPlaces />
+            </div>
           </SidebarGroup>
         }
       >

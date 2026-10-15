@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, ChartNoAxesColumnIcon, ServerIcon, SettingsIcon } from "lucide-react"; // magnesium: ServerIcon for Fleet (goal 04)
+import { ArrowLeftIcon, ChartNoAxesColumnIcon, SettingsIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { memo, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
@@ -191,15 +191,6 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             icon={<ChartNoAxesColumnIcon />}
             label="Usage"
             onClick={handleUsageClick}
-          />
-          {/* magnesium: Fleet, every server the hub reaches (goal 04) */}
-          <SidebarUtilityItem
-            icon={<ServerIcon />}
-            label="Fleet"
-            onClick={() => {
-              closeMobileSidebar();
-              void navigate({ to: "/fleet" });
-            }}
           />
         </>
       )}

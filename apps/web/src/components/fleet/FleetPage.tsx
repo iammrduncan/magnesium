@@ -6,14 +6,11 @@ import {
   describeThreads,
   describeVersion,
   differsFromHub,
-  type FleetView,
-  type FleetWatch,
   fleetRows,
-  initialFleetView,
-  magnesiumSocketUrl,
-  watchFleet,
 } from "@magnesium/web";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
+
+import { currentFleetWatch, useFleetView } from "./fleetStore";
 
 import { isElectron } from "../../env";
 import { cn } from "../../lib/utils";
@@ -170,22 +167,14 @@ function EventList({
 }
 
 export function FleetPage() {
-  const [view, setView] = useState<FleetView>(initialFleetView);
-  const watch = useRef<FleetWatch | null>(null);
-  useEffect(() => {
-    const started = watchFleet(magnesiumSocketUrl(window.location.href), setView);
-    watch.current = started;
-    return () => {
-      watch.current = null;
-      started.dispose();
-    };
-  }, []);
+  // Shared with the sidebar's Fleet place, so the two use one connection.
+  const view = useFleetView();
   const rows = useMemo(() => fleetRows(view.machines), [view.machines]);
   const carriesMachines = rows.some((row) => row.name !== null);
   const hubRelease = rows.find((row) => row.name === null)?.release ?? null;
   const reconnect = (name: string) =>
-    watch.current?.reconnect(name) ?? Promise.reject(new Error("Not connected to the hub."));
-  const loadEarlier = () => watch.current?.loadEarlierEvents() ?? Promise.resolve();
+    currentFleetWatch()?.reconnect(name) ?? Promise.reject(new Error("Not connected to the hub."));
+  const loadEarlier = () => currentFleetWatch()?.loadEarlierEvents() ?? Promise.resolve();
 
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none isolate">
