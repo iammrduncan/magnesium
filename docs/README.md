@@ -2,6 +2,7 @@
 
 ## Using T3 Code
 
+- [The hub: every machine on every device](./user/hub.md) <!-- magnesium: D38 -->
 - [Install T3 Code](./user/install.md)
 - [Messages and context](./user/composer.md)
 - [Working with threads](./user/thread-sidebar.md)

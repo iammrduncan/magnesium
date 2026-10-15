@@ -3,6 +3,12 @@
 Connect a phone, browser, or another desktop app to T3 Code running on a different
 machine. That machine must stay running and reachable while you work.
 
+<!-- magnesium: devices reach every machine through the hub (D38) -->
+
+**In Magnesium, sign your devices in to the hub instead.** It carries every
+machine, so one sign-in per device brings them all. See
+[The hub: every machine on every device](./hub.md).
+
 ## T3 Connect
 
 T3 Connect makes an environment available to your other devices without setting
