@@ -2,7 +2,13 @@ import type { FleetMachine } from "@magnesium/contracts";
 import { EnvironmentId } from "@t3tools/contracts";
 import { describe, expect, it } from "@effect/vitest";
 
-import { describeEvent, describeLink, describeThreads, fleetRows } from "./fleet.ts";
+import {
+  describeEvent,
+  describeLink,
+  describeThreads,
+  describeVersion,
+  fleetRows,
+} from "./fleet.ts";
 import { applyLiveTableItem, emptyLiveTable } from "./stream/liveTable.ts";
 
 const machine = (name: string | null, overrides: Partial<FleetMachine> = {}): FleetMachine => ({
@@ -12,6 +18,7 @@ const machine = (name: string | null, overrides: Partial<FleetMachine> = {}): Fl
   link: "connected",
   environmentId: EnvironmentId.make(`env-${name ?? "hub"}`),
   serverVersion: "0.0.45",
+  release: "f0d9e1703a",
   startedAt: "2026-10-15T04:00:00.000Z",
   lastSeenAt: null,
   threads: { total: 4, running: 2, waiting: 1, approvals: 1, questions: 0 },
@@ -59,5 +66,16 @@ describe("Fleet in the browser", () => {
         at: "2026-10-15T04:30:00.000Z",
       }),
     ).toBe("cpu-host-1 went offline: It stopped answering.");
+  });
+
+  it("shows each server's build, and calls out a machine on a different one", () => {
+    const hub = machine(null);
+    expect(describeVersion(hub, hub.release)).toBe("0.0.45 · f0d9e1703a");
+    expect(describeVersion(machine("cpu-host-1"), hub.release)).toBe("0.0.45 · f0d9e1703a");
+    expect(describeVersion(machine("cpu-host-2", { release: "80706f6b08" }), hub.release)).toBe(
+      "0.0.45 · 80706f6b08 (not the hub's build)",
+    );
+    // A server that predates releases, or one in development, shows its version alone.
+    expect(describeVersion(machine("gpu-host-1", { release: null }), hub.release)).toBe("0.0.45");
   });
 });

@@ -1,5 +1,6 @@
 // @effect-diagnostics preferSchemaOverJson:off - the tests measure bytes on the wire as JSON.
-import { ServerStatusItem } from "@magnesium/contracts";
+import { ServerStatus as ServerStatusRow, ServerStatusItem } from "@magnesium/contracts";
+import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, expect, it } from "@effect/vitest";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -17,9 +18,11 @@ import {
   testDescriptor,
   testThread,
 } from "../testing.ts";
+import { releaseOf } from "./release.ts";
 import { countThreads, ServerStatus, layer, threadStateOf } from "./ServerStatus.ts";
 
 const encodeItem = Schema.encodeSync(ServerStatusItem);
+const decodeStatus = Schema.decodeUnknownSync(ServerStatusRow);
 const wireBytes = (item: ServerStatusItem) =>
   new TextEncoder().encode(JSON.stringify(encodeItem(item))).length;
 
@@ -64,7 +67,9 @@ describe("server status", () => {
         ...defaultSettingsPorts,
       });
       const context = yield* Layer.build(
-        layer.pipe(Layer.provide(Layer.succeed(ServerPorts, ports))),
+        layer.pipe(
+          Layer.provide(Layer.mergeAll(Layer.succeed(ServerPorts, ports), NodeServices.layer)),
+        ),
       );
       const status = Context.get(context, ServerStatus);
       const items = yield* Queue.unbounded<ServerStatusItem>();
@@ -100,4 +105,24 @@ describe("server status", () => {
       expect(wireBytes(changed)).toBeLessThan(512);
     }),
   );
+});
+
+describe("the release a server runs", () => {
+  it("is the release folder its script runs from, and none in development", () => {
+    expect(
+      releaseOf("/home/agent/.local/share/magnesium/releases/f0d9e1703a/apps/server/dist/bin.mjs"),
+    ).toBe("f0d9e1703a");
+    expect(releaseOf("/home/agent/magnesium/apps/server/src/bin.ts")).toBeNull();
+  });
+
+  it("is unknown, not an error, from a server that predates it", () => {
+    const fromOlderServer = decodeStatus({
+      environmentId: "env-test",
+      label: "cpu-host-1",
+      serverVersion: "0.0.44",
+      startedAt: "2026-10-15T00:00:00.000Z",
+      threads: { total: 0, running: 0, waiting: 0, approvals: 0, questions: 0 },
+    });
+    expect(fromOlderServer.release).toBeNull();
+  });
 });

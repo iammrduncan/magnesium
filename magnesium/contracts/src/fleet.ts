@@ -1,4 +1,5 @@
 import { EnvironmentId, IsoDateTime, NonNegativeInt } from "@t3tools/contracts";
+import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
 import { HubMachineName } from "./hub.ts";
@@ -28,6 +29,8 @@ export const FleetMachine = Schema.Struct({
   link: FleetLink,
   environmentId: Schema.NullOr(EnvironmentId),
   serverVersion: Schema.NullOr(Schema.String),
+  /** The build it runs (`ServerStatus.release`); null when unknown. */
+  release: Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
   startedAt: Schema.NullOr(IsoDateTime),
   /** When the hub last heard from it; set when a link drops, kept across hub restarts. */
   lastSeenAt: Schema.NullOr(IsoDateTime),

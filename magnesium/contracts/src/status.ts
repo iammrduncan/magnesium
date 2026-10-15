@@ -1,4 +1,5 @@
 import { EnvironmentId, IsoDateTime, NonNegativeInt } from "@t3tools/contracts";
+import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
 /**
@@ -22,6 +23,12 @@ export const ServerStatus = Schema.Struct({
   environmentId: EnvironmentId,
   label: Schema.String,
   serverVersion: Schema.String,
+  /**
+   * The build it runs, `magnesium-release`'s name for it (a commit); null in
+   * development. The version alone hides a mixed deploy. A server that predates
+   * it sends none.
+   */
+  release: Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
   startedAt: IsoDateTime,
   threads: ThreadCounts,
 });

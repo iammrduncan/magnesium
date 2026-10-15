@@ -4,6 +4,8 @@ import {
   describeEvent,
   describeLink,
   describeThreads,
+  describeVersion,
+  differsFromHub,
   type FleetView,
   type FleetWatch,
   fleetRows,
@@ -48,9 +50,11 @@ const LINK_DOT: Record<FleetMachine["link"], string> = {
 
 function MachineRow({
   machine,
+  hubRelease,
   onReconnect,
 }: {
   readonly machine: FleetMachine;
+  readonly hubRelease: string | null;
   readonly onReconnect: (name: string) => Promise<void>;
 }) {
   const [pending, setPending] = useState(false);
@@ -78,8 +82,13 @@ function MachineRow({
           <span className="truncate text-xs text-muted-foreground">{machine.name}</span>
         ) : null}
       </div>
-      <span className="truncate text-xs text-muted-foreground tabular-nums">
-        {machine.serverVersion ?? "Version unknown"}
+      <span
+        className={cn(
+          "truncate text-xs tabular-nums",
+          differsFromHub(machine, hubRelease) ? "text-warning-foreground" : "text-muted-foreground",
+        )}
+      >
+        {describeVersion(machine, hubRelease)}
       </span>
       <div className="flex min-w-0 items-center gap-2">
         <span aria-hidden className={cn("size-2 shrink-0 rounded-full", LINK_DOT[machine.link])} />
@@ -173,6 +182,7 @@ export function FleetPage() {
   }, []);
   const rows = useMemo(() => fleetRows(view.machines), [view.machines]);
   const carriesMachines = rows.some((row) => row.name !== null);
+  const hubRelease = rows.find((row) => row.name === null)?.release ?? null;
   const reconnect = (name: string) =>
     watch.current?.reconnect(name) ?? Promise.reject(new Error("Not connected to the hub."));
   const loadEarlier = () => watch.current?.loadEarlierEvents() ?? Promise.resolve();
@@ -204,6 +214,7 @@ export function FleetPage() {
                     <MachineRow
                       key={machine.name ?? "@self"}
                       machine={machine}
+                      hubRelease={hubRelease}
                       onReconnect={reconnect}
                     />
                   ))}

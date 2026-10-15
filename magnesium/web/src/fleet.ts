@@ -149,6 +149,28 @@ export const describeLink = (
   }
 };
 
+/**
+ * The version and the build, which tells a mixed deploy apart: the package
+ * version stays the same across commits. `hubRelease` is the build of the
+ * server serving the list.
+ */
+export const describeVersion = (machine: FleetMachine, hubRelease: string | null): string => {
+  const version = machine.serverVersion ?? "Version unknown";
+  if (machine.release === null) return version;
+  const note = differsFromHub(machine, hubRelease) ? " (not the hub's build)" : "";
+  return `${version} · ${machine.release}${note}`;
+};
+
+/** Whether a machine runs a different build than the hub. */
+export function differsFromHub(machine: FleetMachine, hubRelease: string | null): boolean {
+  return (
+    machine.name !== null &&
+    machine.release !== null &&
+    hubRelease !== null &&
+    machine.release !== hubRelease
+  );
+}
+
 export const describeThreads = (threads: ThreadCounts | null): string =>
   threads === null ? "Unknown" : `${threads.running} running · ${threads.waiting} waiting on you`;
 
