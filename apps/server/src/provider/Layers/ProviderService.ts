@@ -53,6 +53,7 @@ import * as Schema from "effect/Schema";
 import * as SchemaIssue from "effect/SchemaIssue";
 import * as Stream from "effect/Stream";
 
+import { workspaceRefusal } from "@magnesium/server/workspaces"; // magnesium: goal 03
 import { appendUserInputAttachmentPaths } from "../userInputAttachments.ts";
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import * as ServerConfig from "../../config.ts";
@@ -1526,6 +1527,25 @@ const makeProviderService = Effect.fn("makeProviderService")(function* (
           );
           if (!workspaceIsDirectory) {
             return yield* new ProviderWorkspaceMissingError({ threadId, cwd: effectiveCwd });
+          }
+          // magnesium: inside the state home, a fenced or container agent works only
+          // in T3's workspaces. The fence refuses the rest; this says why in the
+          // thread, before anything starts (goal 03, D46).
+          const sandbox = Option.getOrUndefined(
+            yield* serverSettings.getSettings.pipe(Effect.option),
+          )?.providerInstances[resolvedInstanceId]?.environment?.find(
+            (entry) => entry.name === "MAGNESIUM_SANDBOX",
+          )?.value;
+          if (sandbox === "fenced" || sandbox === "container") {
+            const realPath = (target: string) =>
+              fileSystem.realPath(target).pipe(Effect.orElseSucceed(() => target));
+            const refusal = workspaceRefusal(
+              yield* realPath(serverConfig.baseDir),
+              yield* realPath(effectiveCwd),
+            );
+            if (refusal !== null) {
+              return yield* toValidationError("ProviderService.startSession", refusal);
+            }
           }
         }
         const adapter = yield* registry.getByInstance(resolvedInstanceId);

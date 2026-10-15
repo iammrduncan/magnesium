@@ -10,6 +10,10 @@
     "./codexHome": {
       "types": "./src/codexHome.ts",
       "import": "./src/codexHome.ts"
+    },
+    "./workspaces": {
+      "types": "./src/workspaces.ts",
+      "import": "./src/workspaces.ts"
     }
   },
   "scripts": {

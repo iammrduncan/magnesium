@@ -92,6 +92,17 @@ if [ "$mode" = probe ] || [ "$level" = fenced ]; then
 fi
 [ "$level" = container ] || fail "the $level sandbox is not available here."
 
+# Inside the state home an agent works only in T3's workspaces, as magnesium-fence
+# enforces for the fenced level: the container mounts its cwd read-write (D46).
+state_home=$(cd "$MG_STATE_HOME" && pwd -P)
+case $cwd in
+  "$state_home"/projects | "$state_home"/projects/* | "$state_home"/worktrees | \
+    "$state_home"/worktrees/* | "$state_home"/scratch | "$state_home"/scratch/*) ;;
+  "$state_home" | "$state_home"/*)
+    fail "won't start an agent in $cwd: inside Magnesium's own folder, agents work only in projects/, worktrees/ and scratch/. Move the project into one of those, or out of $state_home."
+    ;;
+esac
+
 [ -n "$MG_IMAGE" ] || fail "the container sandbox needs an image (MAGNESIUM_SANDBOX_IMAGE)."
 command -v podman >/dev/null 2>&1 || fail "the container sandbox needs podman."
 

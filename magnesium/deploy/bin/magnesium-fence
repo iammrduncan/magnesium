@@ -10,8 +10,9 @@
 #     env file, so an agent can't plant code the server would run on restart;
 #   - paths inside those come back read-only (--ro) or read-write (--rw), such
 #     as a profile's folder and home. T3's workspaces in the state home
-#     (projects/, worktrees/, scratch/ and the cwd) always come back read-write,
-#     and the attachments read-only.
+#     (projects/, worktrees/, scratch/) always come back read-write, and the
+#     attachments read-only. It refuses to start COMMAND with a cwd anywhere
+#     else in the state home.
 # Everything else is as usual for this user.
 #
 # It needs no root and nothing installed. The mechanism, best first:
@@ -120,10 +121,16 @@ for root in projects worktrees scratch; do
   add rw "$state/$root"
 done
 add ro "$state/userdata/attachments"
+# Inside the state home an agent works only in those workspaces: every other
+# folder there (userdata/, backups/, profiles/, any added later) holds the
+# server's own files, so an agent never starts in one (D46).
 cwd=$(pwd -P)
 case $cwd in
-  "$state"/userdata | "$state"/userdata/*) ;; # the server's own files never come back
-  "$state"/*) add rw "$cwd" ;;
+  "$state"/projects | "$state"/projects/* | "$state"/worktrees | "$state"/worktrees/* | \
+    "$state"/scratch | "$state"/scratch/*) ;;
+  "$state" | "$state"/*)
+    fail "won't start an agent in $cwd: inside Magnesium's own folder, agents work only in projects/, worktrees/ and scratch/. Move the project into one of those, or out of $state."
+    ;;
 esac
 while [ $# -gt 0 ]; do
   case $1 in

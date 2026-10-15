@@ -10,6 +10,7 @@ import {
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as PubSub from "effect/PubSub";
 import * as Stream from "effect/Stream";
@@ -128,9 +129,26 @@ function makeTwins(driver: ProviderDriverKind) {
         Layer.provide(ProviderSessionRuntime.layer.pipe(Layer.provide(SqlitePersistenceMemory))),
       ),
     ),
-    Layer.provide(ServerSettings.ServerSettingsService.layerTest()),
+    // The fenced instance says so, as sync writes it; its native twin does too.
     Layer.provide(
-      ServerConfig.layerTest(process.cwd(), process.cwd()).pipe(Layer.provide(NodeServices.layer)),
+      ServerSettings.ServerSettingsService.layerTest({
+        providerInstances: {
+          [FENCED]: {
+            driver,
+            environment: [{ name: "MAGNESIUM_SANDBOX", value: "fenced", sensitive: false }],
+          },
+          [NATIVE]: {
+            driver,
+            environment: [{ name: "MAGNESIUM_SANDBOX", value: "native", sensitive: false }],
+          },
+        },
+      }),
+    ),
+    // A state home of its own, which a test can put folders in.
+    Layer.provideMerge(
+      ServerConfig.layerTest(process.cwd(), { prefix: "mg-provider-twins-" }).pipe(
+        Layer.provide(NodeServices.layer),
+      ),
     ),
     Layer.provide(AnalyticsService.layerTest),
     Layer.provide(
@@ -139,7 +157,7 @@ function makeTwins(driver: ProviderDriverKind) {
         ProviderEventLoggers.NoOpProviderEventLoggers,
       ),
     ),
-    Layer.provide(NodeServices.layer),
+    Layer.provideMerge(NodeServices.layer),
   );
   return { writers, log, failNextStart, adapters, layer };
 }
@@ -229,4 +247,48 @@ describe("switching a thread between level twins", () => {
       assert.deepEqual(resumed.resumeCursor, first.resumeCursor);
     }).pipe(Effect.provide(twins.layer));
   });
+
+  it.effect(
+    "starts no agent in a folder of the state home outside its workspaces, and says why",
+    () => {
+      const twins = makeTwins(ProviderDriverKind.make("codex"));
+      return Effect.gen(function* () {
+        const provider = yield* ProviderService.ProviderService;
+        const fs = yield* FileSystem.FileSystem;
+        const { baseDir } = yield* ServerConfig.ServerConfig;
+        const threadId = ThreadId.make("thread-in-the-state-home");
+        const backup = `${baseDir}/backups/2026-10-15`;
+        const project = `${baseDir}/projects/mg-scratch`;
+        yield* fs.makeDirectory(backup, { recursive: true });
+        yield* fs.makeDirectory(project, { recursive: true });
+
+        const start = (cwd: string) =>
+          provider.startSession(threadId, {
+            threadId,
+            providerInstanceId: FENCED,
+            runtimeMode: "approval-required",
+            cwd,
+          });
+        for (const cwd of [backup, baseDir, `${baseDir}/userdata`]) {
+          const failure = yield* Effect.flip(start(cwd));
+          assert.include(
+            failure.message,
+            "agents may work only in projects/, worktrees/ and scratch/",
+          );
+        }
+        assert.deepEqual(twins.log, [], "no agent started");
+
+        const started = yield* start(project);
+        assert.equal(started.providerInstanceId, FENCED);
+        // Native is unfenced by choice: it may run anywhere.
+        const native = yield* provider.startSession(ThreadId.make("thread-native-in-backups"), {
+          threadId: ThreadId.make("thread-native-in-backups"),
+          providerInstanceId: NATIVE,
+          runtimeMode: "approval-required",
+          cwd: backup,
+        });
+        assert.equal(native.providerInstanceId, NATIVE);
+      }).pipe(Effect.provide(twins.layer));
+    },
+  );
 });

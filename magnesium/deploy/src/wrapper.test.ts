@@ -318,6 +318,23 @@ describe("magnesium-claude and magnesium-codex", () => {
     },
   );
 
+  it("start no container in a folder of the state home outside its workspaces", () => {
+    const profile = makeProfile();
+    const backup = NodePath.join(profile.stateHome, "backups", "2026-10-15");
+    NodeFS.mkdirSync(backup, { recursive: true });
+    const env = {
+      CLAUDE_CONFIG_DIR: NodePath.join(profile.state, "claude"),
+      MAGNESIUM_SANDBOX: "container",
+    };
+    const refused = profile.run("magnesium-claude", SESSION, env, backup);
+    expect(refused.status).toBe(78);
+    expect(refused.stderr).toContain("agents work only in projects/, worktrees/ and scratch/");
+    expect(refused.calls, "podman never ran").toEqual([]);
+    const project = NodePath.join(profile.stateHome, "projects", "mg-scratch");
+    NodeFS.mkdirSync(project, { recursive: true });
+    expect(profile.run("magnesium-claude", SESSION, env, project).calls[0]?.name).toBe("podman");
+  });
+
   it("refuse to start without a profile home, a level it knows, or an image", () => {
     const profile = makeProfile({ image: "" });
     expect(profile.harness("claude", "container", SESSION).stderr).toContain(
@@ -443,6 +460,44 @@ describe.each(MECHANISMS)("the %s fence", (mechanism) => {
       expect(JSON.parse(stdout)).toMatchObject({ workspaces: [true], secret: "denied" });
     },
   );
+
+  it.skipIf(skip)(named(mechanism, "starts no agent in any other folder of the state home"), () => {
+    const profile = makeProfile({ fence: mechanism });
+    // A backup holds full copies of the server's state, its machine keys among them.
+    const backup = NodePath.join(profile.stateHome, "backups", "2026-10-15");
+    const key = NodePath.join(backup, "secrets", "magnesium-hub-machine-1.bin");
+    NodeFS.mkdirSync(NodePath.dirname(key), { recursive: true });
+    NodeFS.writeFileSync(key, "machine-key");
+    const project = NodePath.join(profile.stateHome, "projects", "mg-scratch");
+    NodeFS.mkdirSync(project, { recursive: true });
+    const env = {
+      MAGNESIUM_REAL_BIN: process.execPath,
+      MAGNESIUM_STATE_HOME: profile.stateHome,
+      MAGNESIUM_FENCE: mechanism,
+    };
+    for (const cwd of [backup, profile.stateHome, NodePath.join(profile.stateHome, "userdata")]) {
+      const refused = profile.run("magnesium-fenced", [profile.checker, key, key], env, cwd);
+      expect(refused.status, cwd).toBe(78);
+      expect(refused.stdout, "the agent never ran").toBe("");
+      expect(refused.stderr).toContain("agents work only in projects/, worktrees/ and scratch/");
+    }
+    const profiled = profile.run(
+      "magnesium-claude",
+      SESSION,
+      {
+        CLAUDE_CONFIG_DIR: NodePath.join(profile.state, "claude"),
+        MAGNESIUM_SANDBOX: "fenced",
+        MAGNESIUM_FENCE: mechanism,
+      },
+      backup,
+    );
+    expect(profiled.status).toBe(78);
+    expect(profiled.calls).toEqual([]);
+    // From a project, the backup stays out of reach.
+    const fromProject = profile.run("magnesium-fenced", [profile.checker, key, key], env, project);
+    expect(fromProject.status, fromProject.stderr).toBe(0);
+    expect(JSON.parse(fromProject.stdout)).toMatchObject({ cwd: true, secret: "denied" });
+  });
 
   it.skipIf(skip)(named(mechanism, "lets a protected path be read but never changed"), () => {
     const profile = makeProfile();
