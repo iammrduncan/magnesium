@@ -111,6 +111,8 @@ export const SidebarFolderRow = memo(function SidebarFolderRow(props: {
   id: string;
   folder: string;
   name: string;
+  /** Where the project lives, shown when another folder has the same name. */
+  machine: string | null;
   open: boolean;
   rollup: FolderRollup | null;
   onSetOpen: (folder: string, open: boolean) => void;
@@ -137,7 +139,13 @@ export const SidebarFolderRow = memo(function SidebarFolderRow(props: {
           className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left text-sidebar-foreground"
         >
           <FolderIcon aria-hidden className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-          <span className="min-w-0 flex-1 truncate font-medium">{props.name}</span>
+          <span className="min-w-0 truncate font-medium">{props.name}</span>
+          {props.machine ? (
+            <span className="min-w-0 truncate text-xs text-sidebar-muted-foreground/70">
+              {props.machine}
+            </span>
+          ) : null}
+          <span aria-hidden className="flex-1" />
         </button>
         {props.rollup ? <FolderRollupLabel rollup={props.rollup} /> : null}
       </div>

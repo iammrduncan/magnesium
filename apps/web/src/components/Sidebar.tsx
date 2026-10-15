@@ -2790,6 +2790,34 @@ export default function Sidebar() {
         .map((group) => group.projectKey),
     [folderByMember, projectGroups, scopedProjectGroup],
   );
+  // Folders that share a name (a scratch project on each machine) say which
+  // machines they live on; a unique name stays as plain as on the boards.
+  const folderMachineByKey = useMemo(() => {
+    const groups = folderKeys.flatMap((key) => {
+      const group = projectGroupByScopeKey.get(key);
+      return group ? [group] : [];
+    });
+    const nameCounts = new Map<string, number>();
+    for (const group of groups) {
+      nameCounts.set(group.displayName, (nameCounts.get(group.displayName) ?? 0) + 1);
+    }
+    return new Map(
+      groups
+        .filter((group) => (nameCounts.get(group.displayName) ?? 0) > 1)
+        .map((group) => [
+          group.projectKey,
+          [
+            ...new Set(
+              group.memberProjects.map(
+                (project) => environmentLabelById.get(project.environmentId) ?? "",
+              ),
+            ),
+          ]
+            .filter(Boolean)
+            .join(", "),
+        ]),
+    );
+  }, [environmentLabelById, folderKeys, projectGroupByScopeKey]);
   const folderLayout = useMemo(
     () =>
       layoutActiveFolders({
@@ -5179,6 +5207,7 @@ export default function Sidebar() {
                               name={
                                 projectGroupByScopeKey.get(item.folder)?.displayName ?? item.folder
                               }
+                              machine={folderMachineByKey.get(item.folder) ?? null}
                               open={openFolders[item.folder] === true}
                               rollup={folderRollups.get(item.folder) ?? null}
                               onSetOpen={setFolderOpen}
