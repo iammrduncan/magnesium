@@ -10,6 +10,7 @@
  * HTTPS and pairs through the tailnet URL instead.
  */
 import {
+  AuthAdministrativeScopes, // magnesium: pair --admin
   AuthStandardClientScopes,
   ExecutionEnvironmentDescriptor,
   PortSchema,
@@ -431,11 +432,12 @@ const mintPairingLink = Effect.fn("pair.mintPairingLink")(function* (input: {
   readonly config: ServerConfig.ServerConfig["Service"];
   readonly ttl: Option.Option<Duration.Duration>;
   readonly label: Option.Option<string>;
+  readonly admin: boolean; // magnesium
 }) {
   return yield* Effect.gen(function* () {
     const environmentAuth = yield* EnvironmentAuth.EnvironmentAuth;
     return yield* environmentAuth.createPairingLink({
-      scopes: AuthStandardClientScopes,
+      scopes: input.admin ? AuthAdministrativeScopes : AuthStandardClientScopes, // magnesium
       subject: "one-time-token",
       label: Option.getOrElse(input.label, () => "t3 pair"),
       ...(Option.isSome(input.ttl) ? { ttl: input.ttl.value } : {}),
@@ -463,6 +465,20 @@ const labelFlag = Flag.String("label").pipe(
   Flag.optional,
 );
 
+// magnesium: an admin device can pair other devices from Settings → Connections (doc 11)
+const adminFlag = Flag.Boolean("admin").pipe(
+  Flag.withDescription(
+    "Give the paired device admin access (access:write): it can pair other devices and manage sessions.",
+  ),
+  Flag.withDefault(false),
+);
+
+// magnesium: a server behind a front door it does not run itself, such as the hub (doc 11)
+const baseUrlFlag = Flag.String("base-url").pipe(
+  Flag.withDescription("The URL other devices reach this server at, for the pairing link."),
+  Flag.optional,
+);
+
 const tailscaleFlag = Flag.Boolean("tailscale").pipe(
   Flag.withDescription(
     "Publish the server over Tailscale Serve HTTPS and pair through the tailnet URL.",
@@ -480,6 +496,8 @@ export const pairCommand = Command.make("pair", {
   baseDir: baseDirFlag,
   ttl: ttlFlag,
   label: labelFlag,
+  admin: adminFlag, // magnesium
+  baseUrl: baseUrlFlag, // magnesium
   tailscale: tailscaleFlag,
   tailscaleServePort: tailscaleServePortFlag,
 }).pipe(
@@ -497,7 +515,9 @@ export const pairCommand = Command.make("pair", {
 
       const notes: Array<string> = [];
       let pairingBaseUrl: string;
-      if (flags.tailscale) {
+      if (Option.isSome(flags.baseUrl)) {
+        pairingBaseUrl = flags.baseUrl.value; // magnesium
+      } else if (flags.tailscale) {
         const resolved = yield* resolveTailscalePairingBase({
           target,
           servePort: flags.tailscaleServePort,
@@ -519,7 +539,12 @@ export const pairCommand = Command.make("pair", {
       }
 
       const config = yield* makePairServerConfig({ target, logLevel });
-      const issued = yield* mintPairingLink({ config, ttl: flags.ttl, label: flags.label });
+      const issued = yield* mintPairingLink({
+        config,
+        ttl: flags.ttl,
+        label: flags.label,
+        admin: flags.admin, // magnesium
+      });
       const pairingUrl = buildPairingUrl(pairingBaseUrl, issued.credential);
 
       yield* Console.log(

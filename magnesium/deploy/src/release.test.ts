@@ -44,7 +44,7 @@ function makeRoot() {
     }
   };
   const settings = () => NodeFS.readFileSync(NodePath.join(home, "userdata/settings.json"), "utf8");
-  return { root, run, link, settings };
+  return { root, home, run, link, settings };
 }
 
 describe("magnesium-release", () => {
@@ -68,6 +68,31 @@ describe("magnesium-release", () => {
 
     expect(release.run("rollback").status).toBe(0);
     expect(release.link("current")).toBe("releases/b");
+  });
+
+  it("pairs a device through the current release, at the hub's front door when it has one", () => {
+    const release = makeRoot();
+    expect(release.run("activate", "a").status).toBe(0);
+    NodeFS.writeFileSync(
+      NodePath.join(release.root, "releases/a/apps/server/dist/bin.mjs"),
+      "console.log(JSON.stringify({ args: process.argv.slice(2), home: process.env.T3CODE_HOME }))",
+    );
+    const plain = JSON.parse(release.run("pair").stdout);
+    expect(plain).toEqual({ args: ["pair", "--ttl", "15m"], home: release.home });
+
+    NodeFS.writeFileSync(NodePath.join(release.home, "public-url"), "https://hub.example.test\n");
+    const admin = JSON.parse(release.run("pair", "--admin").stdout);
+    expect(admin.args).toEqual([
+      "pair",
+      "--ttl",
+      "15m",
+      "--admin",
+      "--label",
+      "admin device",
+      "--base-url",
+      "https://hub.example.test",
+    ]);
+    expect(release.run("pair", "--everything").status).toBe(1);
   });
 
   it("refuses a release that is not built, and keeps the current one", () => {

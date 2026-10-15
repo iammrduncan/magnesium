@@ -12,6 +12,11 @@
 #   magnesium-release unpack <file.tar.gz>      unpack a packed release into releases/<sha>
 #   magnesium-release backup                    copy the state folder into backups/<UTC time>
 #   magnesium-release restore <backup>          stop the server, put a backup back, start it
+#   magnesium-release pair [--admin]            print a one-time pairing code, link and QR code
+#                                               (15 minutes) for a device; --admin lets that
+#                                               device pair others from Settings → Connections.
+#                                               The link uses $MAGNESIUM_HOME/public-url when the
+#                                               hub role wrote one.
 #
 # Layout under $MAGNESIUM_ROOT (default ~/.local/share/magnesium):
 #   node/              Node 24
@@ -266,6 +271,20 @@ unpack() {
   echo "Unpacked $name. Run: magnesium-release activate $name"
 }
 
+pair() {
+  is_built "$ROOT/current" || die "no current release"
+  local args=(pair --ttl 15m)
+  case "${1:-}" in
+    --admin) args+=(--admin --label "admin device") ;;
+    "") ;;
+    *) die "usage: magnesium-release pair [--admin]" ;;
+  esac
+  if [ -s "$STATE_HOME/public-url" ]; then
+    args+=(--base-url "$(head -n 1 "$STATE_HOME/public-url")")
+  fi
+  T3CODE_HOME="$STATE_HOME" with_node node "$ROOT/current/apps/server/dist/bin.mjs" "${args[@]}"
+}
+
 status() {
   echo "current:  $(readlink "$ROOT/current" 2> /dev/null || echo none)"
   echo "previous: $(readlink "$ROOT/previous" 2> /dev/null || echo none)"
@@ -312,7 +331,11 @@ case "${1:-}" in
     [ $# -eq 2 ] || die "usage: magnesium-release restore <backup>"
     restore "$2"
     ;;
+  pair)
+    [ $# -le 2 ] || die "usage: magnesium-release pair [--admin]"
+    pair "${2:-}"
+    ;;
   *)
-    die "usage: magnesium-release build|activate|rollback|status|pack|unpack|backup|restore"
+    die "usage: magnesium-release build|activate|rollback|status|pack|unpack|backup|restore|pair"
     ;;
 esac

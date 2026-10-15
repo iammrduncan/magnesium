@@ -196,6 +196,43 @@ describe("t3 pair", () => {
     ),
   );
 
+  // magnesium: the hub's owner pairs one admin device, at the hub's front door (doc 11)
+  it.effect("mints an admin link at the given base URL", () =>
+    withDescriptorServer((origin) =>
+      Effect.gen(function* () {
+        const baseDir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "t3-pair-admin-test-"));
+        const statePath = NodePath.join(baseDir, "userdata", "server-runtime.json");
+        yield* persistServerRuntimeState({
+          path: statePath,
+          state: yield* makePersistedServerRuntimeState({
+            config: { host: "127.0.0.1", devUrl: undefined },
+            port: Number(new URL(origin).port),
+          }),
+        });
+
+        const output = yield* captureStdout(
+          runCli([
+            "pair",
+            "--base-dir",
+            baseDir,
+            "--admin",
+            "--base-url",
+            "https://hub.example.test",
+          ]),
+        );
+
+        assert.include(output, "Pairing URL: https://hub.example.test/pair#token=");
+        assert.notInclude(output, "only reachable from this machine");
+        const listed = yield* captureStdout(
+          runCli(["auth", "pairing", "list", "--base-dir", baseDir, "--json"]),
+        );
+        // @effect-diagnostics-next-line preferSchemaOverJson:off - CLI JSON output is decoded as a presentation DTO.
+        const credentials = JSON.parse(listed) as ReadonlyArray<{ readonly scopes?: string[] }>;
+        assert.include(credentials[0]?.scopes ?? [], "access:write");
+      }),
+    ).pipe(Effect.provide(NodeServices.layer)),
+  );
+
   it.effect("pairs through the recorded dev web URL for dev servers", () =>
     withDescriptorServer((origin) =>
       Effect.gen(function* () {
