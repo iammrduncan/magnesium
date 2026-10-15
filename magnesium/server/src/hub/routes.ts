@@ -9,7 +9,7 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 
-import { ServerPorts } from "../ports.ts";
+import { NOT_PAIRED_DETAIL, ServerPorts } from "../ports.ts";
 import { HubMachines } from "./HubMachines.ts";
 
 const jsonError = (status: number, error: string) =>
@@ -25,6 +25,7 @@ const withScope = <E, R>(
     const ports = yield* ServerPorts;
     const caller = yield* ports.authenticate(request).pipe(Effect.option);
     if (Option.isNone(caller)) return jsonError(401, "Sign in to the hub first.");
+    if (!caller.value.paired) return jsonError(403, NOT_PAIRED_DETAIL);
     if (!caller.value.scopes.includes(scope)) {
       return jsonError(403, `This needs the ${scope} scope on the hub.`);
     }

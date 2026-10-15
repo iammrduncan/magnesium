@@ -12,7 +12,7 @@ import {
 } from "effect/unstable/http";
 import * as Socket from "effect/unstable/socket/Socket";
 
-import { ServerPorts } from "../ports.ts";
+import { NOT_PAIRED_DETAIL, ServerPorts } from "../ports.ts";
 import { HubMachines } from "./HubMachines.ts";
 import * as MachineApi from "./machineApi.ts";
 
@@ -163,6 +163,7 @@ const handler = Effect.gen(function* () {
   const ports = yield* ServerPorts;
   const caller = yield* ports.authenticate(request).pipe(Effect.option);
   if (Option.isNone(caller)) return jsonError(401, "Sign in to the hub first.");
+  if (!caller.value.paired) return jsonError(403, NOT_PAIRED_DETAIL);
   const upgrade = isWebSocketUpgrade(request);
   const readOnly = !upgrade && (request.method === "GET" || request.method === "HEAD");
   const requiredScope = readOnly ? AuthOrchestrationReadScope : AuthOrchestrationOperateScope;

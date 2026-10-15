@@ -46,28 +46,38 @@ describe(MAGNESIUM_WS_PATH, () => {
     }),
   );
 
-  it.live("refuses a socket with no session, and a call the session has no scope for", () =>
-    Effect.gen(function* () {
-      const server = yield* startTestServer();
-      const anonymous = yield* connect(server.wsUrl());
-      const refused = yield* anonymous[MAGNESIUM_WS_METHODS.ping]({}).pipe(
-        Effect.timeout("5 seconds"),
-        Effect.flip,
-      );
-      expect(refused._tag).toBe("RpcClientError");
+  it.live(
+    "refuses a socket with no session or an unpaired one, and calls it has no scope for",
+    () =>
+      Effect.gen(function* () {
+        const server = yield* startTestServer();
+        const anonymous = yield* connect(server.wsUrl());
+        const refused = yield* anonymous[MAGNESIUM_WS_METHODS.ping]({}).pipe(
+          Effect.timeout("5 seconds"),
+          Effect.flip,
+        );
+        expect(refused._tag).toBe("RpcClientError");
 
-      const scopeless = yield* connect(server.wsUrl("nobody"));
-      const forbidden = yield* scopeless[MAGNESIUM_WS_METHODS.ping]({}).pipe(Effect.flip);
-      expect(forbidden).toMatchObject({
-        _tag: "EnvironmentAuthorizationError",
-        requiredScope: AuthOrchestrationReadScope,
-      });
-      const stream = yield* scopeless[MAGNESIUM_WS_METHODS.serverStatus]({}).pipe(
-        Stream.runCollect,
-        Effect.flip,
-      );
-      expect(stream._tag).toBe("EnvironmentAuthorizationError");
-    }),
+        // Every scope, but minted by the CLI, not a paired device: refused at the upgrade.
+        const cli = yield* connect(server.wsUrl("cli"));
+        const notPaired = yield* cli[MAGNESIUM_WS_METHODS.ping]({}).pipe(
+          Effect.timeout("5 seconds"),
+          Effect.flip,
+        );
+        expect(notPaired._tag).toBe("RpcClientError");
+
+        const scopeless = yield* connect(server.wsUrl("nobody"));
+        const forbidden = yield* scopeless[MAGNESIUM_WS_METHODS.ping]({}).pipe(Effect.flip);
+        expect(forbidden).toMatchObject({
+          _tag: "EnvironmentAuthorizationError",
+          requiredScope: AuthOrchestrationReadScope,
+        });
+        const stream = yield* scopeless[MAGNESIUM_WS_METHODS.serverStatus]({}).pipe(
+          Stream.runCollect,
+          Effect.flip,
+        );
+        expect(stream._tag).toBe("EnvironmentAuthorizationError");
+      }),
   );
 });
 

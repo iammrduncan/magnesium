@@ -54,6 +54,8 @@ export const TEST_SESSION_SCOPES: Readonly<Record<string, ReadonlyArray<AuthEnvi
   operator: AuthStandardClientScopes,
   reader: [AuthOrchestrationReadScope],
   nobody: [],
+  /** Minted by the `t3` CLI, or the reusable dev token: every scope, but not a paired device. */
+  cli: AuthAdministrativeScopes,
 };
 
 const sessionNamed = (name: string | undefined): CallerSession | undefined => {
@@ -66,6 +68,7 @@ const sessionNamed = (name: string | undefined): CallerSession | undefined => {
     method: "browser-session-cookie" as ServerAuthSessionMethod,
     scopes,
     expiresAt: undefined,
+    paired: name !== "cli",
   };
 };
 

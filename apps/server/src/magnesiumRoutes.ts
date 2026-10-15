@@ -1,5 +1,6 @@
 // magnesium: hands Magnesium's routes (magnesium/server) this server's auth, secrets and config (doc 11)
 import {
+  type CallerSession,
   CallerUnauthenticatedError,
   routesLayer,
   ServerPortError,
@@ -9,6 +10,7 @@ import { ThreadId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Stream from "effect/Stream";
+import type { HttpServerRequest } from "effect/unstable/http";
 
 import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
 import * as ServerSecretStore from "./auth/ServerSecretStore.ts";
@@ -19,6 +21,50 @@ import * as ProjectionSnapshotQuery from "./orchestration/Services/ProjectionSna
 
 const portError = (detail: string) => (cause: unknown) => new ServerPortError({ detail, cause });
 
+/**
+ * Subjects of sessions that came from pairing a device: a pairing link or
+ * code, the startup link, the desktop bootstrap. The hub's machine routes take
+ * only these, so a session the `t3` CLI mints (or the reusable dev token that
+ * agents inherit in web dev mode) cannot reach the machines the hub carries.
+ * Agents' `/mcp` tokens are not sessions and fail authentication outright.
+ */
+const PAIRED_SUBJECTS: ReadonlySet<string> = new Set([
+  "one-time-token",
+  EnvironmentAuth.INTERNAL_ADMINISTRATIVE_BOOTSTRAP_SUBJECT,
+  "desktop-bootstrap",
+]);
+
+/** How Magnesium's routes see a caller, from upstream's auth. */
+export const callerAuthentication = (auth: EnvironmentAuth.EnvironmentAuth["Service"]) => {
+  const toCaller = (
+    authenticated: Effect.Effect<
+      EnvironmentAuth.AuthenticatedSession,
+      EnvironmentAuth.ServerAuthCredentialError | EnvironmentAuth.ServerAuthInternalError
+    >,
+  ) =>
+    authenticated.pipe(
+      Effect.map((session): CallerSession => ({
+        sessionId: session.sessionId,
+        subject: session.subject,
+        method: session.method,
+        scopes: session.scopes,
+        expiresAt: session.expiresAt,
+        paired: PAIRED_SUBJECTS.has(session.subject),
+      })),
+      Effect.mapError((error) =>
+        EnvironmentAuth.isServerAuthCredentialError(error)
+          ? new CallerUnauthenticatedError({ detail: error.message })
+          : new ServerPortError({ detail: "Authentication failed.", cause: error }),
+      ),
+    );
+  return {
+    http: (request: HttpServerRequest.HttpServerRequest) =>
+      toCaller(auth.authenticateHttpRequest(request)),
+    webSocket: (request: HttpServerRequest.HttpServerRequest) =>
+      toCaller(auth.authenticateWebSocketUpgrade(request)),
+  };
+};
+
 const serverPortsLayer = Layer.effect(
   ServerPorts,
   Effect.gen(function* () {
@@ -28,31 +74,12 @@ const serverPortsLayer = Layer.effect(
     const environment = yield* ServerEnvironment.ServerEnvironment;
     const snapshots = yield* ProjectionSnapshotQuery.ProjectionSnapshotQuery;
     const engine = yield* OrchestrationEngine.OrchestrationEngineService;
-    const toCaller = (
-      authenticated: Effect.Effect<
-        EnvironmentAuth.AuthenticatedSession,
-        EnvironmentAuth.ServerAuthCredentialError | EnvironmentAuth.ServerAuthInternalError
-      >,
-    ) =>
-      authenticated.pipe(
-        Effect.map((session) => ({
-          sessionId: session.sessionId,
-          subject: session.subject,
-          method: session.method,
-          scopes: session.scopes,
-          expiresAt: session.expiresAt,
-        })),
-        Effect.mapError((error) =>
-          EnvironmentAuth.isServerAuthCredentialError(error)
-            ? new CallerUnauthenticatedError({ detail: error.message })
-            : new ServerPortError({ detail: "Authentication failed.", cause: error }),
-        ),
-      );
+    const callers = callerAuthentication(auth);
     return ServerPorts.of({
       baseDir: config.baseDir,
       stateDir: config.stateDir,
-      authenticate: (request) => toCaller(auth.authenticateHttpRequest(request)),
-      authenticateWebSocket: (request) => toCaller(auth.authenticateWebSocketUpgrade(request)),
+      authenticate: callers.http,
+      authenticateWebSocket: callers.webSocket,
       environment: environment.getDescriptor,
       threads: {
         active: snapshots.getShellSnapshot().pipe(

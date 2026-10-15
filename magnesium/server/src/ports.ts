@@ -32,7 +32,22 @@ export interface CallerSession {
   readonly method: ServerAuthSessionMethod;
   readonly scopes: ReadonlyArray<AuthEnvironmentScope>;
   readonly expiresAt: DateTime.DateTime | undefined;
+  /**
+   * The session came from pairing a device: a pairing link or code, the
+   * startup link, or the desktop bootstrap. False for sessions the `t3` CLI
+   * mints and for the reusable dev token, which agents inherit in web dev
+   * mode. Agents' own `/mcp` credentials never authenticate here at all.
+   */
+  readonly paired: boolean;
 }
+
+/**
+ * What the hub's machine routes and our RPC route answer a session that did
+ * not come from pairing a device (`CallerSession.paired`). Agent control of
+ * machines comes later, through explicit grants (goal 18).
+ */
+export const NOT_PAIRED_DETAIL =
+  "Only a paired device can use this. Agent and command-line sessions cannot.";
 
 export class CallerUnauthenticatedError extends Schema.TaggedError<CallerUnauthenticatedError>()(
   "CallerUnauthenticatedError",

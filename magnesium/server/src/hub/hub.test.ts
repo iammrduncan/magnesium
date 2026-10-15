@@ -131,6 +131,8 @@ const makeHub = async (options: { readonly machineToken?: string } = {}) => {
     admin: AuthAdministrativeScopes,
     operator: AuthStandardClientScopes,
     reader: [AuthOrchestrationReadScope],
+    // Minted by the `t3` CLI (or an agent that can run it): every scope, but no paired device.
+    cli: AuthAdministrativeScopes,
   };
   const ports = ServerPorts.of({
     baseDir,
@@ -147,6 +149,7 @@ const makeHub = async (options: { readonly machineToken?: string } = {}) => {
           method: "browser-session-cookie" as ServerAuthSessionMethod,
           scopes: scopesFor[cookie],
           expiresAt: undefined,
+          paired: cookie !== "cli",
         });
       }
       const bearer = request.headers.authorization?.replace(/^Bearer /, "");
@@ -158,6 +161,7 @@ const makeHub = async (options: { readonly machineToken?: string } = {}) => {
           method: "bearer-access-token" as ServerAuthSessionMethod,
           scopes: AuthStandardClientScopes,
           expiresAt: DateTime.makeUnsafe(Date.now() + days * DAY_MS),
+          paired: true,
         });
       }
       return Effect.fail(new CallerUnauthenticatedError({ detail: "no session" }));
@@ -347,6 +351,21 @@ describe("hub proxy", () => {
     expect((await hub.request(path)).status).toBe(401);
     expect((await hub.request(path, { session: "reader", method: "POST" })).status).toBe(403);
     expect((await hub.request(path, { session: "reader" })).status).toBe(200);
+  });
+
+  it("takes only paired devices: a CLI-minted session never reaches a machine", async () => {
+    const hub = await makeHub();
+    await hub.giveAccess({ bearerToken: "machine-token" });
+    const path = "/api/magnesium/env/cpu-host-1/api/orchestration/shell";
+    expect((await hub.request(path, { session: "cli" })).status).toBe(403);
+    expect((await hub.request(HUB_MACHINES_PATH, { session: "cli" })).status).toBe(403);
+    expect((await hub.giveAccess({ pairingCode: "code" }, "cli")).status).toBe(403);
+    const removed = await hub.request(hubMachineAccessPath("cpu-host-1"), {
+      method: "DELETE",
+      session: "cli",
+    });
+    expect(removed.status).toBe(403);
+    expect((await hub.list()).map((machine) => machine.access)).toEqual(["ready"]);
   });
 
   it("refuses unknown machines, machines without access, and pairing routes", async () => {

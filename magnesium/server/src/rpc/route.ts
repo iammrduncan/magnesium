@@ -15,7 +15,7 @@ import type * as Rpc from "effect/unstable/rpc/Rpc";
 import * as RpcSerialization from "effect/unstable/rpc/RpcSerialization";
 import * as RpcServer from "effect/unstable/rpc/RpcServer";
 
-import { ServerPorts } from "../ports.ts";
+import { NOT_PAIRED_DETAIL, ServerPorts } from "../ports.ts";
 
 /**
  * Serves `MagnesiumRpcGroup` at `MAGNESIUM_WS_PATH`, the way upstream serves
@@ -61,6 +61,8 @@ export const magnesiumWsRouteLayer = Layer.unwrap(
           Effect.option,
         );
         if (Option.isNone(caller)) return jsonError(401, "Sign in first.");
+        // The hub's machine tokens stand behind this route: paired devices only.
+        if (!caller.value.paired) return jsonError(403, NOT_PAIRED_DETAIL);
         const httpEffect = yield* Effect.gen(function* () {
           const { protocol, httpEffect } = yield* RpcServer.makeProtocolWithHttpEffectWebsocket;
           yield* RpcServer.make(MagnesiumRpcGroup, { disableTracing: true }).pipe(
