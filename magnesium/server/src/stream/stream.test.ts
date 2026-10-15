@@ -123,6 +123,19 @@ describe("LiveTable", () => {
       }),
   );
 
+  it.effect("never reuses a sequence after a restart, so a returning client gets a snapshot", () =>
+    Effect.gen(function* () {
+      const before = yield* tableOf(2);
+      const held = (yield* before.snapshot).sequence;
+      yield* TestClock.adjust("10 seconds");
+      // The server restarts with the same rows and makes one change.
+      const after = yield* tableOf(2);
+      yield* after.set({ name: "row-0", value: 1 });
+      const items = yield* collect(after.subscribe({ afterSequence: held }));
+      expect((yield* Queue.take(items))._tag).toBe("snapshot");
+    }),
+  );
+
   it.effect("sends a row that flaps for a second at most once per coalescing window", () =>
     Effect.gen(function* () {
       const table = yield* tableOf(1);

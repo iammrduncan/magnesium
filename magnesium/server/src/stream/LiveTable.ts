@@ -1,4 +1,5 @@
 import type { LiveTableItem, StreamSubscribeInput } from "@magnesium/contracts";
+import * as Clock from "effect/Clock";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Equal from "effect/Equal";
@@ -51,7 +52,7 @@ interface Subscriber {
 }
 
 export const make = <Row>(options: LiveTableOptions<Row>): Effect.Effect<LiveTable<Row>> =>
-  Effect.sync(() => {
+  Effect.map(Clock.currentTimeMillis, (startedAt) => {
     const maxRows = options.maxRows ?? DEFAULT_MAX_ROWS;
     const replay = options.replay ?? DEFAULT_REPLAY;
     const coalesce = Duration.fromInputUnsafe(options.coalesce ?? DEFAULT_COALESCE);
@@ -61,7 +62,8 @@ export const make = <Row>(options: LiveTableOptions<Row>): Effect.Effect<LiveTab
     // Sequence of each recent change, oldest first, at most `replay` long.
     const recent: Array<{ readonly sequence: number; readonly key: string }> = [];
     const subscribers = new Set<Subscriber>();
-    let sequence = 0;
+    // Sequences start at the clock, so a restarted server never hands out one a client already holds.
+    let sequence = startedAt;
     let warnedFull = false;
 
     const changed = (key: string) => {
