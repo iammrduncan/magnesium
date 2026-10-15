@@ -78,9 +78,10 @@ describe("ClientSettings rich text composer", () => {
 });
 
 describe("ServerSettings default permissions", () => {
-  it("keeps full access for settings saved before a default was configured", () => {
-    expect(decodeServerSettings({}).defaultRuntimeMode).toBe("full-access");
-    expect(DEFAULT_SERVER_SETTINGS.defaultRuntimeMode).toBe("full-access");
+  // magnesium: supervised, not full access, when no default was configured (goal 03)
+  it("starts supervised for settings saved before a default was configured", () => {
+    expect(decodeServerSettings({}).defaultRuntimeMode).toBe("approval-required");
+    expect(DEFAULT_SERVER_SETTINGS.defaultRuntimeMode).toBe("approval-required");
   });
 
   it.each(["approval-required", "auto-accept-edits", "auto", "full-access"])(
