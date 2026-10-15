@@ -6,6 +6,10 @@
     ".": {
       "types": "./src/index.ts",
       "import": "./src/index.ts"
+    },
+    "./codexHome": {
+      "types": "./src/codexHome.ts",
+      "import": "./src/codexHome.ts"
     }
   },
   "scripts": {

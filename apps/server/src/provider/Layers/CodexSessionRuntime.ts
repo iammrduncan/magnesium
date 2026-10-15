@@ -39,6 +39,7 @@ import * as EffectCodexSchema from "effect-codex-app-server/schema";
 
 import { buildCodexInitializeParams } from "./CodexProvider.ts";
 import { codexSessionAppServerArgs } from "./codexLaunchArgs.ts";
+import { takeCodexHomeTurn } from "@magnesium/server/codexHome"; // magnesium: goal 03
 import { expandHomePath } from "../../pathExpansion.ts";
 import {
   buildCodexAdditionalContext,
@@ -1353,6 +1354,9 @@ export const makeCodexSessionRuntime = (
       env,
       extendEnv,
     });
+    // magnesium: a fresh home is set up by one app-server at a time (goal 03).
+    const homeTurn = yield* takeCodexHomeTurn(env.CODEX_HOME);
+    yield* Scope.addFinalizer(runtimeScope, homeTurn.release); // magnesium
     const child = yield* spawner
       .spawn(
         ChildProcess.make(spawnCommand.command, spawnCommand.args, {
@@ -2498,6 +2502,7 @@ export const makeCodexSessionRuntime = (
     const start = Effect.fn("CodexSessionRuntime.start")(function* () {
       yield* emitSessionEvent("session/connecting", "Starting Codex App Server session.");
       yield* client.request("initialize", buildCodexInitializeParams());
+      yield* homeTurn.ready; // magnesium
       yield* client.notify("initialized", undefined);
 
       const requestedModel = normalizeCodexModelSlug(options.model);

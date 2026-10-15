@@ -38,6 +38,7 @@ import {
   COMPACT_SLASH_COMMAND,
   type ServerProviderDraft,
 } from "../providerSnapshot.ts";
+import { takeCodexHomeTurn } from "@magnesium/server/codexHome"; // magnesium: goal 03
 import { expandHomePath } from "../../pathExpansion.ts";
 import { makeUnavailableUsageLimits } from "../providerUsageLimits.ts";
 import {
@@ -391,6 +392,9 @@ export const withCodexAppServerClient = Effect.fn("withCodexAppServerClient")(fu
     codexAppServerArgs(input.launchArgs),
     { env: environment, extendEnv: true },
   );
+  // magnesium: a fresh home is set up by one app-server at a time (goal 03).
+  const homeTurn = yield* takeCodexHomeTurn(environment.CODEX_HOME);
+  yield* Effect.addFinalizer(() => homeTurn.release); // magnesium
   const child = yield* spawner
     .spawn(
       ChildProcess.make(spawnCommand.command, spawnCommand.args, {
@@ -415,6 +419,7 @@ export const withCodexAppServerClient = Effect.fn("withCodexAppServerClient")(fu
     Effect.provide(clientContext),
   );
   const initialize = yield* client.request("initialize", buildCodexInitializeParams());
+  yield* homeTurn.ready; // magnesium
   yield* client.notify("initialized", undefined);
   return { client, initialize };
 });
