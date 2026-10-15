@@ -3,7 +3,7 @@
 # runtime downloaded from the release origin.
 #
 # Host and port come from ~/.config/magnesium/magnesium.env, for example
-#   T3CODE_HOST=<this machine's tailnet address>
+#   T3CODE_HOST=<the address the hub reaches this machine on, such as a LAN IP>
 #   T3CODE_PORT=3773
 # Secrets never go in this unit or that file; they pass by name only.
 [Unit]
