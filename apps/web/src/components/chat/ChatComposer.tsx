@@ -245,6 +245,7 @@ import {
 import { useEnvironmentQuery } from "~/state/query";
 import { useDebouncedValue } from "~/state/queries";
 import { ProviderModelPicker } from "./ProviderModelPicker";
+import { SandboxChip } from "../magnesium/SandboxChip"; // magnesium: goal 03
 import { resolveModelPickerSelectedModel } from "./ModelPickerContent";
 import {
   type ComposerCommandItem,
@@ -5108,6 +5109,20 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           onProviderModelSelect(instanceId, model);
         }}
         onOpenProviderSetup={onOpenProviderSetup}
+      />
+      {/* magnesium: the sandbox chip next to the model (goal 03) */}
+      <SandboxChip
+        environmentId={environmentId}
+        activeInstanceId={selectedInstanceId}
+        instanceEntries={providerInstanceEntries}
+        model={selectedModelForPickerWithCustomFallback}
+        size={composerControlsInStrip ? "xs" : "sm"}
+        isComposerOwned
+        disabled={providerCatalogPending || isSendBusy}
+        onInstanceModelChange={(instanceId, model) => {
+          setMultipleModelSelections(null);
+          onProviderModelSelect(instanceId, model);
+        }}
       />
 
       <>

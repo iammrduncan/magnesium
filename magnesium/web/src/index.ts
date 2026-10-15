@@ -2,5 +2,6 @@
 export * from "./fleet.ts";
 export * from "./hubMachines.ts";
 export * from "./rpc.ts";
+export * from "./sandboxes.ts";
 export * from "./stream/liveLog.ts";
 export * from "./stream/liveTable.ts";

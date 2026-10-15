@@ -24,6 +24,9 @@ import {
   type ComposerControlSize,
 } from "./ComposerControl";
 import { useComposerMenuProps } from "./composerEventScope";
+import { parseProfileInstanceId } from "@magnesium/contracts"; // magnesium: goal 03
+import { profileDisplayName } from "@magnesium/web"; // magnesium: goal 03
+import { ProfileAvatar } from "../magnesium/ProfileAvatar"; // magnesium: goal 03
 import { shortcutLabelForCommand } from "../../keybindings";
 
 export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
@@ -72,6 +75,8 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   }, [props.activeInstanceId, props.instanceEntries]);
 
   const activeInstanceId = props.activeInstanceId;
+  // magnesium: the active instance runs a profile (goal 03)
+  const activeProfile = parseProfileInstanceId(activeInstanceId);
   const selectedInstanceOptions = props.modelOptionsByInstance.get(activeInstanceId) ?? [];
   // Account-specific catalogs must keep the selected model label while unavailable.
   const selectedModel =
@@ -241,6 +246,12 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
                 </span>
               ) : null}
             </span>
+          ) : activeEntry && props.triggerLabel === undefined && activeProfile !== null ? (
+            // magnesium: a profile's avatar and accent, not the driver icon (goal 03)
+            <ProfileAvatar
+              name={profileDisplayName(activeEntry.displayName)}
+              accentColor={activeEntry.accentColor}
+            />
           ) : activeEntry && props.triggerLabel === undefined ? (
             <ProviderInstanceIcon
               driverKind={activeEntry.driverKind}
@@ -265,6 +276,13 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
                 />
               }
             >
+              {/* magnesium: the profile's name before its model (goal 03) */}
+              {activeProfile !== null &&
+              props.triggerLabel === undefined &&
+              !selectedEntries &&
+              activeEntry
+                ? `${profileDisplayName(activeEntry.displayName)} · `
+                : null}
               {props.triggerLabel ?? multipleLabel ?? triggerTitle}
             </TooltipTrigger>
             <TooltipPopup side="top">{triggerTooltipContent}</TooltipPopup>
