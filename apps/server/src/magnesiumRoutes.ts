@@ -1,4 +1,4 @@
-// magnesium: hands Magnesium's routes (magnesium/server) this server's auth, secrets and config (doc 11)
+// magnesium: hands Magnesium's routes (magnesium/server) this server's auth, secrets, config and provider instances (doc 11)
 import {
   type CallerSession,
   CallerUnauthenticatedError,
@@ -18,6 +18,7 @@ import * as ServerConfig from "./config.ts";
 import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
 import * as OrchestrationEngine from "./orchestration/Services/OrchestrationEngine.ts";
 import * as ProjectionSnapshotQuery from "./orchestration/Services/ProjectionSnapshotQuery.ts";
+import * as ServerSettings from "./serverSettings.ts";
 
 const portError = (detail: string) => (cause: unknown) => new ServerPortError({ detail, cause });
 
@@ -75,9 +76,11 @@ const serverPortsLayer = Layer.effect(
     const snapshots = yield* ProjectionSnapshotQuery.ProjectionSnapshotQuery;
     const engine = yield* OrchestrationEngine.OrchestrationEngineService;
     const callers = callerAuthentication(auth);
+    const settings = yield* ServerSettings.ServerSettingsService;
     return ServerPorts.of({
       baseDir: config.baseDir,
       stateDir: config.stateDir,
+      port: config.port,
       authenticate: callers.http,
       authenticateWebSocket: callers.webSocket,
       environment: environment.getDescriptor,
@@ -106,6 +109,17 @@ const serverPortsLayer = Layer.effect(
         secrets.set(name, value).pipe(Effect.mapError(portError(`Could not write ${name}.`))),
       removeSecret: (name) =>
         secrets.remove(name).pipe(Effect.mapError(portError(`Could not remove ${name}.`))),
+      // Profile sync starts with the server; wait until settings.json has been read.
+      getSettings: settings.ready.pipe(
+        Effect.andThen(settings.getSettings),
+        Effect.mapError(portError("Could not read the settings.")),
+      ),
+      setProviderInstances: (providerInstances) =>
+        settings.ready.pipe(
+          Effect.andThen(settings.updateSettings({ providerInstances })),
+          Effect.asVoid,
+          Effect.mapError(portError("Could not write the settings.")),
+        ),
     });
   }),
 );

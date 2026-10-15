@@ -22,7 +22,12 @@ import { afterEach, describe, expect, it } from "@effect/vitest";
 
 import { routesLayer } from "../index.ts";
 import { CallerUnauthenticatedError, ServerPorts } from "../ports.ts";
-import { authenticateTestSocket, noThreads, testDescriptor } from "../testing.ts";
+import {
+  authenticateTestSocket,
+  defaultSettingsPorts,
+  noThreads,
+  testDescriptor,
+} from "../testing.ts";
 import * as HubMachines from "./HubMachines.ts";
 import { parseProxyPath } from "./proxy.ts";
 
@@ -174,6 +179,7 @@ const makeHub = async (options: { readonly machineToken?: string } = {}) => {
     getSecret: (name) => Effect.succeed(Option.fromNullishOr(secrets.get(name))),
     setSecret: (name, value) => Effect.sync(() => void secrets.set(name, value)),
     removeSecret: (name) => Effect.sync(() => void secrets.delete(name)),
+    ...defaultSettingsPorts,
   });
 
   const services = Layer.mergeAll(

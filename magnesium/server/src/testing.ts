@@ -6,12 +6,14 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
 import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer";
+import * as NodeServices from "@effect/platform-node/NodeServices";
 import { MAGNESIUM_WS_PATH } from "@magnesium/contracts";
 import {
   AuthAdministrativeScopes,
   AuthOrchestrationReadScope,
   AuthStandardClientScopes,
   type AuthEnvironmentScope,
+  DEFAULT_SERVER_SETTINGS,
   type ExecutionEnvironmentDescriptor,
   EnvironmentId,
   type OrchestrationThreadShell,
@@ -134,6 +136,12 @@ export const makeTestThreads = Effect.gen(function* () {
   };
 });
 
+/** Settings for tests that do not look at provider instances: the defaults, and writes go nowhere. */
+export const defaultSettingsPorts = {
+  getSettings: Effect.succeed(DEFAULT_SERVER_SETTINGS),
+  setProviderInstances: () => Effect.void,
+} satisfies Pick<ServerPorts["Service"], "getSettings" | "setProviderInstances">;
+
 /** Threads that never change, for tests that do not look at them. */
 export const noThreads: ThreadPorts = {
   active: Effect.succeed([]),
@@ -215,6 +223,7 @@ export const startTestServer = (
       getSecret: () => Effect.succeedNone,
       setSecret: () => Effect.void,
       removeSecret: () => Effect.void,
+      ...defaultSettingsPorts,
       ...options.ports,
     });
     // Closing the scope drops every socket first, WebSockets included, the way
@@ -231,6 +240,7 @@ export const startTestServer = (
         disableLogger: true,
       }).pipe(
         Layer.provide(Layer.mergeAll(Layer.succeed(ServerPorts, ports), FetchHttpClient.layer)),
+        Layer.provide(NodeServices.layer),
         Layer.provideMerge(NodeHttpServer.layer(() => server, { port: 0, host: "127.0.0.1" })),
       ),
     );

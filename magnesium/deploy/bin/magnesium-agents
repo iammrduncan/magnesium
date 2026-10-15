@@ -1,0 +1,26 @@
+#!/bin/sh
+# magnesium-agents list | check [name...] | sandboxes | new <name>
+#
+# Magnesium's profiles and sandboxes at the terminal: the agents API's
+# operations, run by this release's server (`t3 agents`). It reads the same
+# state home as the service (T3CODE_HOME, else ~/.magnesium), so it works
+# whether or not the service is running. The Ansible role links it into
+# ~/.local/bin.
+set -eu
+
+dir=$(cd "$(dirname "$(readlink -f "$0")")" && pwd -P)
+release=$(cd "$dir/../../.." && pwd -P)
+# The service's bind address and machine name; never secrets.
+if [ -f "$HOME/.config/magnesium/magnesium.env" ]; then
+  set -a
+  # shellcheck source=/dev/null
+  . "$HOME/.config/magnesium/magnesium.env"
+  set +a
+fi
+export T3CODE_HOME="${T3CODE_HOME:-$HOME/.magnesium}"
+
+node=${MAGNESIUM_NODE:-$HOME/.local/share/magnesium/node/bin/node}
+[ -x "$node" ] || node=node
+entry=$release/apps/server/dist/bin.mjs
+[ -f "$entry" ] || entry=$release/apps/server/src/bin.ts
+exec "$node" "$entry" agents "$@"

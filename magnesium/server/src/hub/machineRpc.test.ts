@@ -15,6 +15,7 @@ import { FetchHttpClient } from "effect/unstable/http";
 import { ServerPorts } from "../ports.ts";
 import {
   authenticateTestSocket,
+  defaultSettingsPorts,
   noThreads,
   startTestServer,
   TEST_ENVIRONMENT_ID,
@@ -59,6 +60,7 @@ const hubFor = (machineOrigin: string, token: string) =>
         ),
       setSecret: () => Effect.void,
       removeSecret: () => Effect.void,
+      ...defaultSettingsPorts,
     });
     return HubMachines.layer.pipe(
       Layer.provideMerge(

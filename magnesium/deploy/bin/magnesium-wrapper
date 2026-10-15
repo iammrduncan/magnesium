@@ -1,0 +1,166 @@
+#!/bin/sh
+# magnesium-wrapper claude|codex [harness args...]
+#
+# Runs a Magnesium profile's harness at the sandbox level its provider instance
+# asks for (goal 03, D40). T3 starts `magnesium-claude` or `magnesium-codex` as
+# the instance's binary, with CLAUDE_CONFIG_DIR or CODEX_HOME set to the profile's
+# home and MAGNESIUM_SANDBOX set by the instance. The harness speaks over stdio
+# with no TTY, so this script writes nothing to stdout.
+#
+#   fenced     (default) the machine's CLI, with Magnesium's state home hidden;
+#              the profile's folder (read-only) and home come back (magnesium-fence)
+#   container  the CLI in a rootless Podman container that sees only the project,
+#              the profile (read-only), its home and the attachments
+#   native     the CLI with no fence: only ever an explicit per-thread choice
+#
+# Probes (version, login and capability checks, title generation) start no agent;
+# they run fenced at any level, so a provider refresh starts no container.
+# Secrets pass into a container by name only (-e NAME), never on argv or in a file.
+set -eu
+
+bin_dir=$(cd "$(dirname "$0")" && pwd -P)
+harness=${1:-}
+[ $# -gt 0 ] && shift
+case $harness in
+  claude) home=${CLAUDE_CONFIG_DIR:-}; home_var=CLAUDE_CONFIG_DIR; login=.credentials.json ;;
+  codex) home=${CODEX_HOME:-}; home_var=CODEX_HOME; login=auth.json ;;
+  *) echo "usage: magnesium-wrapper claude|codex [args...]" >&2; exit 64 ;;
+esac
+
+fail() {
+  echo "magnesium-$harness: $*" >&2
+  exit 78
+}
+
+[ -n "$home" ] || fail "$home_var is not set; start this through a Magnesium profile."
+state=$(dirname "$home")
+[ -f "$state/launch.env" ] || fail "no launch settings in $state; profile sync has not run."
+# shellcheck source=/dev/null
+. "$state/launch.env"
+
+case $harness in
+  claude) real=$MG_CLAUDE_BIN ;;
+  codex) real=$MG_CODEX_BIN ;;
+esac
+[ -n "$real" ] && [ -x "$real" ] || fail "$harness is not installed on this machine."
+
+level=${MAGNESIUM_SANDBOX:-fenced}
+
+# A Claude session reads stream-json on stdin; its capability probe also does,
+# but with an empty, strict MCP config. Every `codex app-server` is a session.
+mode=probe
+case $harness in
+  claude)
+    for arg in "$@"; do
+      case $arg in
+        --input-format) mode=session ;;
+        --strict-mcp-config) mode=probe; break ;;
+      esac
+    done
+    ;;
+  codex) [ "${1:-}" = "app-server" ] && mode=session ;;
+esac
+
+log() {
+  file=$MG_STATE_DIR/wrapper.log
+  if [ -f "$file" ] && [ "$(wc -c <"$file")" -gt 1048576 ]; then mv -f "$file" "$file.1"; fi
+  summary=
+  for arg in "$@"; do summary="$summary $(printf '%.80s' "$arg" | tr '\n' ' ')"; done
+  printf '%s pid=%s harness=%s level=%s mode=%s home=%s cwd=%s args=%s\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$$" "$harness" "$level" "$mode" "$home" "$(pwd -P)" "$summary" \
+    >>"$file" 2>/dev/null || true
+}
+
+# The profile's MCP servers, from its mcp.json. T3 adds its own over stdin.
+if [ "$mode" = session ] && [ "$harness" = claude ] && [ -f "$MG_STATE_DIR/mcp.json" ]; then
+  set -- "$@" --mcp-config "$MG_STATE_DIR/mcp.json"
+fi
+
+log "$@"
+attachments=$MG_STATE_HOME/userdata/attachments
+cwd=$(pwd -P)
+
+if [ "$level" = native ]; then
+  exec "$real" "$@"
+fi
+
+if [ "$mode" = probe ] || [ "$level" = fenced ]; then
+  set -- --ro "$MG_PROFILE_DIR" --rw "$home" --ro "$attachments" -- "$real" "$@"
+  case $cwd in "$MG_STATE_HOME"/*) set -- --rw "$cwd" "$@" ;; esac
+  MAGNESIUM_STATE_HOME=$MG_STATE_HOME MAGNESIUM_FENCE=$MG_FENCE MAGNESIUM_FENCE_PROTECT=$MG_PROTECT \
+    exec "$bin_dir/magnesium-fence" "$@"
+fi
+[ "$level" = container ] || fail "the $level sandbox is not available here."
+
+[ -n "$MG_IMAGE" ] || fail "the container sandbox needs an image (MAGNESIUM_SANDBOX_IMAGE)."
+command -v podman >/dev/null 2>&1 || fail "the container sandbox needs podman."
+
+real=$(readlink -f "$real")
+# The CLI's install folder (Codex keeps helpers beside its binary), read-only at the same path.
+install=$(dirname "$(dirname "$real")")
+name="mg-$MG_PROFILE-$$"
+
+# Build podman's arguments back to front: POSIX sh has one array, "$@".
+set -- "$MG_IMAGE" "$real" "$@"
+set -- -v "$install:$install:ro" -w "$cwd" "$@"
+[ -d "$attachments" ] && set -- -v "$attachments:$attachments:ro" "$@"
+# The machine's login, through the home's link to it. Mounted, never copied or read here.
+if [ -L "$home/$login" ]; then
+  target=$(readlink -f "$home/$login" || true)
+  if [ -n "$target" ] && [ -f "$target" ]; then set -- -v "$target:$target:rw" "$@"; fi
+fi
+if [ -n "$MG_MOUNTS" ]; then
+  old_ifs=$IFS
+  IFS='
+'
+  for mount in $MG_MOUNTS; do
+    path=${mount%:*}
+    mode=${mount##*:}
+    [ -e "$path" ] && set -- -v "$path:$path:$mode" "$@"
+  done
+  IFS=$old_ifs
+fi
+set -- \
+  -v "$cwd:$cwd:rw" \
+  -v "$MG_PROFILE_DIR:$MG_PROFILE_DIR:ro" \
+  -v "$home:$home:rw" \
+  -v "$MG_CONTAINER_HOME:$MG_CONTAINER_HOME:rw" \
+  "$@"
+# Environment by name: podman copies each value from this process, so none reach argv.
+for env_name in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p'); do
+  case $env_name in
+    CLAUDE_* | ANTHROPIC_* | CODEX_* | OPENAI_* | MCP_* | OTEL_* | T3_* | ENABLE_* | DISABLE_* | \
+      LANG | LC_ALL | TZ | HTTP_PROXY | HTTPS_PROXY | NO_PROXY | http_proxy | https_proxy | no_proxy)
+      set -- -e "$env_name" "$@"
+      ;;
+  esac
+done
+for env_name in $MG_PASS_ENV; do set -- -e "$env_name" "$@"; done
+if [ "$MG_NETWORK" = none ]; then
+  set -- --network=none "$@"
+else
+  # The agent needs T3's MCP tools on this server, wherever it listens. pasta
+  # normally gives the container the host's own address, which hides a server
+  # bound to that address; a small private address of its own avoids that, and
+  # -T forwards the server's port on the container's loopback to the host's,
+  # for a server that listens on loopback. Nothing here assumes a VPN or LAN.
+  set -- "--network=pasta:-a,10.255.254.2,-n,30,-g,10.255.254.1${MG_SERVER_PORT:+,-T,$MG_SERVER_PORT}" "$@"
+fi
+set -- run --rm -i --init --name "$name" \
+  --label io.magnesium.agent=1 \
+  --label "io.magnesium.state=$MG_STATE_HOME" \
+  --label "io.magnesium.profile=$MG_PROFILE" \
+  --userns=keep-id --cap-drop=ALL --security-opt=no-new-privileges \
+  -e "HOME=$MG_CONTAINER_HOME" -e DISABLE_AUTOUPDATER=1 \
+  "$@"
+
+# If podman dies without stopping the container (killed outright), remove it.
+# The server also clears containers it left behind when it starts.
+parent=$$
+(
+  trap '' HUP INT TERM
+  while kill -0 "$parent" 2>/dev/null; do sleep 2; done
+  podman rm -f -t 0 "$name" >/dev/null 2>&1 || true
+) </dev/null >/dev/null 2>&1 &
+
+exec podman "$@"

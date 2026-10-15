@@ -1,0 +1,145 @@
+#!/bin/sh
+# magnesium-fence [--protect PATH]... [--ro PATH]... [--rw PATH]... -- COMMAND [ARGS...]
+# magnesium-fence --probe
+#
+# Runs COMMAND as this user, fenced (D40):
+#   - it can neither read nor write MAGNESIUM_STATE_HOME (default T3CODE_HOME),
+#     which holds the server's settings, secrets and the hub's machine tokens;
+#   - it can read but never change each --protect PATH, and each path in the
+#     colon-separated MAGNESIUM_FENCE_PROTECT: Magnesium's install, its unit and
+#     env file, so an agent can't plant code the server would run on restart;
+#   - paths inside those come back read-only (--ro) or read-write (--rw): a
+#     profile's folder and home, the attachments, a workspace that lives there.
+# Everything else is as usual for this user.
+#
+# It needs no root and nothing installed. The mechanism, best first:
+#   bwrap     bubblewrap, where it runs: the state home is an empty tmpfs, and the
+#             command gets its own PID namespace, so it can't reach the server
+#             through /proc, and it dies with this process
+#   landlock  Linux Landlock through Python 3 (magnesium-landlock): no namespaces;
+#             Landlock also keeps it from reading the server's /proc
+#   seatbelt  macOS sandbox-exec
+# MAGNESIUM_FENCE picks one; `--probe` prints the one this machine would use, or
+# `none: <reason>` and exits 1.
+set -eu
+
+bin_dir=$(cd "$(dirname "$0")" && pwd -P)
+
+fail() {
+  echo "magnesium-fence: $*" >&2
+  exit 78
+}
+
+probe() {
+  case $(uname -s) in
+    Darwin)
+      if command -v sandbox-exec >/dev/null 2>&1; then echo seatbelt; return 0; fi
+      echo "none: sandbox-exec is missing"
+      return 1
+      ;;
+    Linux)
+      if command -v bwrap >/dev/null 2>&1 &&
+        bwrap --dev-bind / / --unshare-pid --proc /proc --die-with-parent true >/dev/null 2>&1; then
+        echo bwrap
+        return 0
+      fi
+      if command -v python3 >/dev/null 2>&1 && python3 "$bin_dir/magnesium-landlock" --probe >/dev/null 2>&1; then
+        echo landlock
+        return 0
+      fi
+      echo "none: no bubblewrap, and no Landlock in this kernel (or no python3)"
+      return 1
+      ;;
+  esac
+  echo "none: no fence for $(uname -s)"
+  return 1
+}
+
+if [ "${1:-}" = --probe ]; then
+  probe
+  exit $?
+fi
+
+state=${MAGNESIUM_STATE_HOME:-${T3CODE_HOME:-}}
+[ -n "$state" ] || fail "MAGNESIUM_STATE_HOME is not set, so there is nothing to fence off."
+[ -d "$state" ] || fail "the state home $state does not exist."
+state=$(cd "$state" && pwd -P)
+
+mechanism=${MAGNESIUM_FENCE:-}
+if [ -z "$mechanism" ]; then
+  mechanism=$(probe) || fail "this machine can't fence agents ($mechanism). Choose native for the thread to run it unfenced."
+fi
+
+# Collect paths as "mode path" lines (mode: protect, ro, rw); skip ones that don't exist.
+grants=
+add() {
+  if [ -e "$2" ]; then
+    grants="$grants$1 $(cd "$(dirname "$2")" && pwd -P)/$(basename "$2")
+"
+  fi
+}
+old_ifs=$IFS
+IFS=:
+for path in ${MAGNESIUM_FENCE_PROTECT:-}; do [ -n "$path" ] && add protect "$path"; done
+IFS=$old_ifs
+while [ $# -gt 0 ]; do
+  case $1 in
+    --protect | --ro | --rw)
+      [ $# -ge 2 ] || fail "$1 needs a path"
+      add "${1#--}" "$2"
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *) fail "unknown option $1" ;;
+  esac
+done
+[ $# -gt 0 ] || fail "usage: magnesium-fence [--protect PATH]... [--ro PATH]... [--rw PATH]... -- COMMAND [ARGS...]"
+
+IFS='
+'
+case $mechanism in
+  bwrap)
+    set -- --die-with-parent --unshare-pid --proc /proc -- "$@"
+    # bwrap mounts in order, so a folder must come before the paths inside it.
+    # Prepending reverses the order, so prepend the longest paths first.
+    for grant in $(printf '%s' "$grants" | awk '{ print length($0) "\t" $0 }' | sort -rn | cut -f2-); do
+      path=${grant#* }
+      case ${grant%% *} in
+        rw) set -- --bind "$path" "$path" "$@" ;;
+        *) set -- --ro-bind "$path" "$path" "$@" ;;
+      esac
+    done
+    IFS=$old_ifs
+    exec bwrap --dev-bind / / --tmpfs "$state" "$@"
+    ;;
+  landlock)
+    set -- -- "$@"
+    for grant in $grants; do
+      set -- "--${grant%% *}" "${grant#* }" "$@"
+    done
+    IFS=$old_ifs
+    exec python3 "$bin_dir/magnesium-landlock" --hide "$state" "$@"
+    ;;
+  seatbelt)
+    quote() { printf '"%s"' "$(printf '%s' "$1" | sed 's/[\\"]/\\&/g')"; }
+    # Later rules win, so deny first, then let the grants back in.
+    policy="(version 1)(allow default)(deny file-read* file-write* (subpath $(quote "$state")))"
+    for grant in $grants; do
+      path=$(quote "${grant#* }")
+      case ${grant%% *} in
+        protect) policy="$policy(deny file-write* (subpath $path))" ;;
+        rw) policy="$policy(allow file-read* file-write* (subpath $path))" ;;
+        ro) policy="$policy(allow file-read* (subpath $path))" ;;
+      esac
+    done
+    IFS=$old_ifs
+    exec sandbox-exec -p "$policy" "$@"
+    ;;
+  *)
+    IFS=$old_ifs
+    fail "unknown fence $mechanism"
+    ;;
+esac

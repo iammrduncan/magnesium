@@ -10,7 +10,13 @@ import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 
 import { ServerPorts } from "../ports.ts";
-import { authenticateTestSocket, makeTestThreads, testDescriptor, testThread } from "../testing.ts";
+import {
+  authenticateTestSocket,
+  defaultSettingsPorts,
+  makeTestThreads,
+  testDescriptor,
+  testThread,
+} from "../testing.ts";
 import { countThreads, ServerStatus, layer, threadStateOf } from "./ServerStatus.ts";
 
 const encodeItem = Schema.encodeSync(ServerStatusItem);
@@ -55,6 +61,7 @@ describe("server status", () => {
         getSecret: () => Effect.die("unused"),
         setSecret: () => Effect.die("unused"),
         removeSecret: () => Effect.die("unused"),
+        ...defaultSettingsPorts,
       });
       const context = yield* Layer.build(
         layer.pipe(Layer.provide(Layer.succeed(ServerPorts, ports))),

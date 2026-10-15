@@ -238,8 +238,10 @@ pack() {
   work="$(mktemp -d)"
   # The published `t3` package's shape: dist plus its production dependencies.
   (cd "$release" && with_node "${PNPM[@]}" --filter t3 deploy --prod --legacy "$work/apps/server" > /dev/null)
-  mkdir -p "$work/magnesium/deploy/seed"
+  mkdir -p "$work/magnesium/deploy/seed" "$work/magnesium/deploy/bin"
   cp "$release/magnesium/deploy/seed/settings.json" "$work/magnesium/deploy/seed/settings.json"
+  # The agent wrappers, the fence and magnesium-agents run beside the server.
+  cp -a "$release/magnesium/deploy/bin/." "$work/magnesium/deploy/bin/"
   echo "$name" > "$work/RELEASE"
   is_built "$work" || { rm -rf "$work"; die "the pack of $name has no server"; }
   tar -czf "$out" -C "$work" .

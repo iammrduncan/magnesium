@@ -2,7 +2,9 @@ import type {
   AuthEnvironmentScope,
   ExecutionEnvironmentDescriptor,
   OrchestrationThreadShell,
+  ProviderInstanceConfigMap,
   ServerAuthSessionMethod,
+  ServerSettings,
   ThreadId,
 } from "@t3tools/contracts";
 import * as Context from "effect/Context";
@@ -71,6 +73,8 @@ export class ServerPorts extends Context.Service<
     readonly baseDir: string;
     /** Where the server keeps `state.sqlite`; `magnesium.sqlite` goes next to it. */
     readonly stateDir: string;
+    /** The port the server listens on; a container agent reaches T3's MCP tools through it. */
+    readonly port?: number | undefined;
     /** Cookie or bearer only: a `wsTicket` on a proxied request belongs to the machine. */
     readonly authenticate: (
       request: HttpServerRequest.HttpServerRequest,
@@ -93,5 +97,15 @@ export class ServerPorts extends Context.Service<
     readonly getSecret: (name: string) => Effect.Effect<Option.Option<Uint8Array>, ServerPortError>;
     readonly setSecret: (name: string, value: Uint8Array) => Effect.Effect<void, ServerPortError>;
     readonly removeSecret: (name: string) => Effect.Effect<void, ServerPortError>;
+    /** The server's settings, once settings.json has been read. Profile sync reads the providers. */
+    readonly getSettings: Effect.Effect<ServerSettings, ServerPortError>;
+    /**
+     * Replaces settings.json's whole provider-instance map, as the settings patch
+     * does; hot-reloaded, no restart. Profile sync owns its own instances and the
+     * fence on the stock ones (goal 03).
+     */
+    readonly setProviderInstances: (
+      instances: ProviderInstanceConfigMap,
+    ) => Effect.Effect<void, ServerPortError>;
   }
 >()("@magnesium/server/ports/ServerPorts") {}

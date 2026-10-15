@@ -5,6 +5,7 @@ import * as Layer from "effect/Layer";
 import { Argument, Command } from "effect/unstable/cli";
 import * as CliError from "effect/unstable/cli/CliError";
 
+import { agentsCommand } from "@magnesium/server"; // magnesium: `t3 agents` (goal 03)
 import * as NetService from "@t3tools/shared/Net";
 import packageJson from "../package.json" with { type: "json" };
 import { authCommand } from "./cli/auth.ts";
@@ -74,6 +75,7 @@ export const makeCli = ({ cloudEnabled = hasCloudPublicConfig } = {}) =>
       themeCommand,
       traceCommand,
       triageCommand,
+      agentsCommand, // magnesium: profiles and sandboxes at the terminal, as magnesium-agents (goal 03)
       cloudEnabled ? connectCommand : connectUnavailableCommand,
     ]),
   );
