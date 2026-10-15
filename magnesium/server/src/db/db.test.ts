@@ -3,6 +3,7 @@ import * as NodeFSP from "node:fs/promises";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
+import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Migrator from "effect/unstable/sql/Migrator";
@@ -49,6 +50,30 @@ describe("magnesium.sqlite", () => {
         }),
       );
       expect(notes.map((row) => row.body)).toEqual(["kept"]);
-    }),
+    }).pipe(Effect.provide(NodeServices.layer)),
+  );
+
+  it.live("is the server user's alone, and so are its WAL files", () =>
+    Effect.gen(function* () {
+      const modeOf = (file: string) =>
+        Effect.promise(() => NodeFSP.stat(file)).pipe(Effect.map((stat) => stat.mode & 0o777));
+
+      const fresh = yield* tempFile;
+      const files = yield* Effect.scoped(
+        Effect.gen(function* () {
+          const db = yield* open(fresh, sample);
+          yield* db.sql`INSERT INTO notes (body) VALUES ('private')`;
+          return yield* Effect.forEach([fresh, `${fresh}-wal`, `${fresh}-shm`], modeOf);
+        }),
+      );
+      expect(files).toEqual([0o600, 0o600, 0o600]);
+
+      // A database an older build made 0644 is tightened when opened.
+      const older = yield* tempFile;
+      yield* Effect.promise(() => NodeFSP.writeFile(older, new Uint8Array(), { mode: 0o644 }));
+      yield* Effect.promise(() => NodeFSP.chmod(older, 0o644));
+      yield* Effect.scoped(open(older, sample));
+      expect(yield* modeOf(older)).toBe(0o600);
+    }).pipe(Effect.provide(NodeServices.layer)),
   );
 });

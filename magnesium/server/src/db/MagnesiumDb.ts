@@ -28,9 +28,26 @@ export class MagnesiumDb extends Context.Service<
 
 const runMigrations = Migrator.make({});
 
+/**
+ * The database and its WAL files are the server user's alone (0600). SQLite
+ * gives the -wal and -shm files the database file's mode, so the file is made
+ * before SQLite opens it, and older files are tightened.
+ */
+const keepPrivate = (filename: string) =>
+  Effect.gen(function* () {
+    const fileSystem = yield* FileSystem.FileSystem;
+    if (!(yield* fileSystem.exists(filename))) {
+      yield* fileSystem.writeFile(filename, new Uint8Array(), { mode: 0o600 });
+    }
+    for (const file of [filename, `${filename}-wal`, `${filename}-shm`]) {
+      if (yield* fileSystem.exists(file)) yield* fileSystem.chmod(file, 0o600);
+    }
+  });
+
 /** Opens `filename` (`:memory:` in tests) and brings it to the newest migration in `loader`. */
 export const open = (filename: string, loader: Migrator.Loader = migrations) =>
   Effect.gen(function* () {
+    if (filename !== ":memory:") yield* keepPrivate(filename);
     const context = yield* Layer.build(NodeSqliteClient.layer({ filename }));
     const sql = Context.get(context, SqlClient.SqlClient);
     const setup = Effect.gen(function* () {
