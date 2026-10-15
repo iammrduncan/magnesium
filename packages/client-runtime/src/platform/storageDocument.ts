@@ -63,6 +63,7 @@ function connectionIdOf(target: ConnectionTarget): string | null {
   switch (target._tag) {
     case "PrimaryConnectionTarget":
     case "RelayConnectionTarget":
+    case "HubConnectionTarget": // magnesium
       return null;
     case "BearerConnectionTarget":
     case "SshConnectionTarget":

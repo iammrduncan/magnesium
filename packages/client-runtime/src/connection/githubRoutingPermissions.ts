@@ -31,7 +31,7 @@ export function gitHubRoutingConnectionKey(entry: ConnectionCatalogEntry): strin
     return JSON.stringify([target._tag, target.environmentId, alias, hostname, username, port]);
   }
   const baseUrls =
-    target._tag === "PrimaryConnectionTarget"
+    target._tag === "PrimaryConnectionTarget" || target._tag === "HubConnectionTarget" // magnesium
       ? [target.httpBaseUrl, target.wsBaseUrl]
       : profile?._tag === "BearerConnectionProfile"
         ? [profile.httpBaseUrl, profile.wsBaseUrl]

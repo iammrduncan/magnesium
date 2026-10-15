@@ -38,11 +38,23 @@ export class SshConnectionTarget extends Schema.TaggedClass<SshConnectionTarget>
   },
 ) {}
 
+// magnesium: a machine the hub serves at <hub origin>/api/magnesium/env/<name>/. Same-origin
+// with the hub, so it rides the hub's session cookie; only the hub holds the machine's token.
+export class HubConnectionTarget extends Schema.TaggedClass<HubConnectionTarget>()(
+  "HubConnectionTarget",
+  {
+    ...ConnectionTargetBase,
+    httpBaseUrl: Schema.String,
+    wsBaseUrl: Schema.String,
+  },
+) {}
+
 export const ConnectionTarget = Schema.Union([
   PrimaryConnectionTarget,
   BearerConnectionTarget,
   RelayConnectionTarget,
   SshConnectionTarget,
+  HubConnectionTarget, // magnesium: machines the hub carries
 ]);
 export type ConnectionTarget = typeof ConnectionTarget.Type;
 

@@ -1,6 +1,7 @@
 import {
   ClientPresentation,
   CloudSession,
+  ConnectionTargetStore,
   EnvironmentOwnedDataCleanup,
   PlatformConnectionSource,
   PrimaryEnvironmentAuth,
@@ -15,6 +16,8 @@ import {
   ConnectionBlockedError,
   ConnectionTransientError,
   Connectivity,
+  CredentialStore,
+  type HubConnectionRegistration,
   mapRemoteEnvironmentError,
   type PlatformConnectionRegistration,
   PrimaryConnectionRegistration,
@@ -42,6 +45,12 @@ import * as Ref from "effect/Ref";
 import * as Stream from "effect/Stream";
 import { FetchHttpClient } from "effect/unstable/http";
 
+import {
+  fetchHubMachines,
+  giveHubAccess,
+  hubConnectionRegistrations,
+  machinesToMove,
+} from "@magnesium/web"; // magnesium: machines the hub carries (doc 11)
 import { APP_VERSION } from "../branding";
 import { readDesktopPrimaryBearerToken } from "../environments/primary/desktopAuth";
 import { primaryEnvironmentHttpLayer } from "../environments/primary/httpLayer";
@@ -462,6 +471,83 @@ export function secondaryRegistrationsToRetainAfterTopologyRead(
   );
 }
 
+// magnesium: the machines the hub carries (doc 11, "The front door"). The hub lists
+// them; this browser reaches them through the hub on its session cookie. A token
+// this browser still holds for one of them (paired directly, goal 02) moves to the
+// hub once, and the hub's environment then replaces the saved one, token and all.
+// The last good list stands while the hub is unreachable, so a blip does not tear
+// the environments down and clear their caches.
+const HUB_MACHINES_REFRESH_MS = 15_000;
+
+const makeHubMachineRegistrations = Effect.gen(function* () {
+  const targets = yield* ConnectionTargetStore;
+  const credentials = yield* CredentialStore.ConnectionCredentialStore;
+  const last = yield* Ref.make({
+    fetchedAt: 0,
+    hubHttpBaseUrl: null as string | null,
+    registrations: [] as ReadonlyArray<HubConnectionRegistration>,
+  });
+  const offered = new Set<string>();
+
+  const savedBearerTokens = targets.list.pipe(
+    Effect.flatMap((saved) =>
+      Effect.forEach(saved, (target) =>
+        target._tag === "BearerConnectionTarget"
+          ? credentials
+              .get(target.connectionId)
+              .pipe(
+                Effect.map((credential) =>
+                  Option.isSome(credential) &&
+                  credential.value._tag === "BearerConnectionCredential"
+                    ? [[target.environmentId, credential.value.token] as const]
+                    : [],
+                ),
+              )
+          : Effect.succeed([]),
+      ),
+    ),
+    Effect.map((entries) => new Map(entries.flat())),
+    Effect.orElseSucceed(() => new Map()),
+  );
+
+  return Effect.fn("web.connectionPlatform.hubMachineRegistrations")(function* (
+    hubHttpBaseUrl: string,
+  ) {
+    const now = yield* Clock.currentTimeMillis;
+    const current = yield* Ref.get(last);
+    const sameHub = current.hubHttpBaseUrl === hubHttpBaseUrl;
+    if (sameHub && now - current.fetchedAt < HUB_MACHINES_REFRESH_MS) {
+      return current.registrations;
+    }
+    const listed = yield* fetchHubMachines(hubHttpBaseUrl).pipe(Effect.option);
+    if (Option.isNone(listed)) return sameHub ? current.registrations : [];
+    let machines = listed.value;
+    for (const move of machinesToMove(machines, yield* savedBearerTokens)) {
+      const key = `${move.name}|${move.bearerToken}`;
+      if (offered.has(key)) continue;
+      offered.add(key);
+      const moved = yield* giveHubAccess(hubHttpBaseUrl, move.name, {
+        bearerToken: move.bearerToken,
+      }).pipe(
+        Effect.tapError((error) =>
+          Effect.logWarning("Could not move a machine's access to the hub.", {
+            machine: move.name,
+            status: error.status,
+            error: error.message,
+          }),
+        ),
+        Effect.option,
+      );
+      if (Option.isSome(moved)) {
+        machines = machines.map((machine) => (machine.name === move.name ? moved.value : machine));
+      }
+    }
+    const registrations = hubConnectionRegistrations(hubHttpBaseUrl, machines);
+    yield* Ref.set(last, { fetchedAt: now, hubHttpBaseUrl, registrations });
+    return registrations;
+  });
+});
+
 const platformConnectionSourceLayer = Layer.effect(
   PlatformConnectionSource,
   Effect.gen(function* () {
@@ -471,6 +557,7 @@ const platformConnectionSourceLayer = Layer.effect(
       });
     }
     const cacheRef = yield* Ref.make(new Map<string, CachedPlatformRegistration>());
+    const hubMachineRegistrations = yield* makeHubMachineRegistrations; // magnesium
 
     // Resolve the full set of platform-managed environments the host currently
     // reports: the primary (same-origin cookie auth) plus any desktop-local
@@ -519,6 +606,13 @@ const platformConnectionSourceLayer = Layer.effect(
             registrations.push(built.value);
           }
         }
+      }
+
+      // magnesium: the machines the hub carries ride on the primary (the hub)
+      if (primaryTopologyRead._tag !== "Failure" && primaryTopologyRead.target !== null) {
+        registrations.push(
+          ...(yield* hubMachineRegistrations(primaryTopologyRead.target.target.httpBaseUrl)),
+        );
       }
 
       const topologyRead = readDesktopSecondaryBootstrapsResult();
@@ -619,13 +713,17 @@ type ConnectionPlatformLayerSource =
 export const connectionPlatformLayer: Layer.Layer<
   Layer.Success<ConnectionPlatformLayerSource>,
   Layer.Error<ConnectionPlatformLayerSource>,
-  Layer.Services<ConnectionPlatformLayerSource>
+  // magnesium: storage satisfies the platform source's own store reads
+  Exclude<
+    Layer.Services<ConnectionPlatformLayerSource>,
+    ConnectionTargetStore | CredentialStore.ConnectionCredentialStore
+  >
 > = Layer.mergeAll(
-  connectionStorageLayer,
   connectivityLayer,
   wakeupsLayer,
   capabilitiesLayer,
   platformConnectionSourceLayer,
   environmentOwnedDataCleanupLayer,
   rpcRequestObserverLayer,
-);
+  // magnesium: the platform source reads saved tokens to move them to the hub
+).pipe(Layer.provideMerge(connectionStorageLayer));

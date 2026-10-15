@@ -26,6 +26,7 @@ import * as ConnectionCredentialStore from "./credentialStore.ts";
 import {
   BearerConnectionTarget,
   ConnectionTransientError,
+  HubConnectionTarget,
   PrimaryConnectionTarget,
   RelayConnectionTarget,
   SshConnectionTarget,
@@ -224,6 +225,30 @@ describe("ConnectionResolver", () => {
         httpBaseUrl: "http://127.0.0.1:3777",
         socketUrl:
           "ws://127.0.0.1:3777/ws?clientSurface=web&clientDeviceType=desktop&connectionMethod=direct&orchestrationProtocol=1",
+        httpAuthorization: null,
+        target,
+      });
+    }),
+  );
+
+  // magnesium: a machine the hub carries rides the hub's session cookie under its path
+  it.effect("prepares a machine the hub carries without a credential, under its path", () =>
+    Effect.gen(function* () {
+      const brokerLayer = yield* makeDependencies();
+      const broker = yield* ConnectionResolver.ConnectionResolver.pipe(Effect.provide(brokerLayer));
+      const target = new HubConnectionTarget({
+        environmentId: ENVIRONMENT_ID,
+        label: "cpu-host-1",
+        httpBaseUrl: "https://hub.example.test/api/magnesium/env/cpu-host-1/",
+        wsBaseUrl: "wss://hub.example.test/api/magnesium/env/cpu-host-1/",
+      });
+
+      expect(yield* broker.prepare(catalogEntry(target))).toEqual({
+        environmentId: ENVIRONMENT_ID,
+        label: "cpu-host-1",
+        httpBaseUrl: "https://hub.example.test/api/magnesium/env/cpu-host-1/",
+        socketUrl:
+          "wss://hub.example.test/api/magnesium/env/cpu-host-1/ws?clientSurface=web&clientDeviceType=desktop&connectionMethod=direct&orchestrationProtocol=1",
         httpAuthorization: null,
         target,
       });

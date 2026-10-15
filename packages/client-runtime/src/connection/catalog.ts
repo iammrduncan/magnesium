@@ -4,6 +4,7 @@ import * as Schema from "effect/Schema";
 
 import {
   BearerConnectionTarget,
+  HubConnectionTarget,
   PrimaryConnectionTarget,
   RelayConnectionTarget,
   SshConnectionTarget,
@@ -62,6 +63,14 @@ export class PrimaryConnectionRegistration extends Schema.TaggedClass<PrimaryCon
   },
 ) {}
 
+// magnesium: the hub reports these; they are never persisted and hold no credential
+export class HubConnectionRegistration extends Schema.TaggedClass<HubConnectionRegistration>()(
+  "HubConnectionRegistration",
+  {
+    target: HubConnectionTarget,
+  },
+) {}
+
 export class RelayConnectionRegistration extends Schema.TaggedClass<RelayConnectionRegistration>()(
   "RelayConnectionRegistration",
   {
@@ -105,14 +114,16 @@ export type ConnectionRegistration = typeof ConnectionRegistration.Type;
 export const PlatformConnectionRegistration = Schema.Union([
   PrimaryConnectionRegistration,
   BearerConnectionRegistration,
+  HubConnectionRegistration, // magnesium: machines the hub carries
 ]);
 export type PlatformConnectionRegistration = typeof PlatformConnectionRegistration.Type;
 
 export function connectionRegistrationCatalogEntry(
-  registration: ConnectionRegistration | PrimaryConnectionRegistration,
+  registration: ConnectionRegistration | PlatformConnectionRegistration,
 ): ConnectionCatalogEntry {
   switch (registration._tag) {
     case "PrimaryConnectionRegistration":
+    case "HubConnectionRegistration": // magnesium: no profile, no credential
     case "RelayConnectionRegistration":
       return {
         target: registration.target,

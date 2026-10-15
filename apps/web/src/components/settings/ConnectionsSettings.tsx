@@ -76,6 +76,7 @@ import {
   formatDesktopSshTarget,
 } from "./EnvironmentRow";
 import { FoldedSettingsSection } from "./FoldedSettingsSection";
+import { HubMachinesSection, removeHubMachineAccess } from "./HubMachinesSection"; // magnesium
 import { LoadBalancingSettings } from "./LoadBalancingSettings";
 import { GitHubRoutingSettings } from "./GitHubRoutingSettings";
 import { Input } from "../ui/input";
@@ -1611,7 +1612,11 @@ function SavedBackendListRow({
           ) : null}
           <MenuSeparator />
           <MenuItem variant="destructive" onClick={() => onRemove(environment)}>
-            {isRemoving ? "Removing…" : "Remove from this device…"}
+            {isRemoving
+              ? "Removing…"
+              : environment.entry.target._tag === "HubConnectionTarget" // magnesium (doc 11)
+                ? "Remove hub access…"
+                : "Remove from this device…"}
           </MenuItem>
         </MenuPopup>
       </Menu>
@@ -2330,6 +2335,22 @@ export function ConnectionsSettings() {
   const removeSavedBackend = useCallback(
     async (environment: EnvironmentPresentation) => {
       const environmentId = environment.environmentId;
+      // magnesium: a machine the hub carries goes away by removing the hub's access (doc 11)
+      if (environment.entry.target._tag === "HubConnectionTarget") {
+        setRemovingSavedEnvironmentId(environmentId);
+        const message = await removeHubMachineAccess(environment.entry.target);
+        setRemovingSavedEnvironmentId(null);
+        if (message !== null) {
+          toastManager.add(
+            stackedThreadToast({
+              type: "error",
+              title: "Could not remove access",
+              description: message,
+            }),
+          );
+        }
+        return;
+      }
       setRemovingSavedEnvironmentId(environmentId);
       setSavedBackendError(null);
       const result = await removeEnvironment(environmentId);
@@ -2357,7 +2378,9 @@ export function ConnectionsSettings() {
     async (environment: EnvironmentPresentation) => {
       // Fail closed: no mounted confirm host means no removal.
       const confirmed = await requestConfirmDialog(
-        `Remove ${environment.label} from this device?\nThis forgets its pairing, credentials, and cached threads here. Switch it off instead to keep it saved.`,
+        environment.entry.target._tag === "HubConnectionTarget" // magnesium (doc 11)
+          ? `Remove the hub's access to ${environment.label}?\nEvery device signed in to the hub loses it until you give the hub access again. Switch it off instead to hide it on this device only.`
+          : `Remove ${environment.label} from this device?\nThis forgets its pairing, credentials, and cached threads here. Switch it off instead to keep it saved.`,
         { variant: "destructive" },
       );
       if (confirmed === true) await removeSavedBackend(environment);
@@ -3578,6 +3601,8 @@ export function ConnectionsSettings() {
         {/* magnesium: saved environments only; no T3 Connect rows or removal dialog (D13) */}
         {savedEnvironments.length === 0 ? <EmptyRemoteEnvironments /> : null}
       </SettingsSection>
+      {/* magnesium: machines the hub carries but cannot reach yet (doc 11) */}
+      <HubMachinesSection canManage={canManageLocalBackend} />
       <LoadBalancingSettings environments={loadBalancingEnvironments} />
       <GitHubRoutingSettings environments={loadBalancingEnvironments} />
     </SettingsPageContainer>

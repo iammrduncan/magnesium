@@ -4,6 +4,7 @@ import {
   classifyHostedHttpsCompatibility,
   createAdvertisedEndpoint,
   deriveWsBaseUrl,
+  environmentEndpointUrl,
   normalizeHttpBaseUrl,
 } from "./endpoint.ts";
 
@@ -57,5 +58,20 @@ describe("advertised endpoint helpers", () => {
       status: "available",
       isDefault: true,
     });
+  });
+});
+
+// magnesium: machines the hub carries live under a path on the hub's origin
+describe("environmentEndpointUrl", () => {
+  it("joins endpoint paths under the base URL's path", () => {
+    expect(environmentEndpointUrl("http://127.0.0.1:3773", "/api/auth/session")).toBe(
+      "http://127.0.0.1:3773/api/auth/session",
+    );
+    expect(
+      environmentEndpointUrl("https://hub.example.test/api/magnesium/env/cpu-host-1/", "/ws"),
+    ).toBe("https://hub.example.test/api/magnesium/env/cpu-host-1/ws");
+    expect(
+      environmentEndpointUrl("https://hub.example.test/api/magnesium/env/cpu-host-1?x=1", "/api"),
+    ).toBe("https://hub.example.test/api/magnesium/env/cpu-host-1/api");
   });
 });

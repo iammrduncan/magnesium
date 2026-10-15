@@ -30,6 +30,7 @@ import {
 import type {
   BearerConnectionTarget,
   ConnectionTarget,
+  HubConnectionTarget,
   PreparedConnection,
   PrimaryConnectionTarget,
   RelayConnectionTarget,
@@ -100,6 +101,25 @@ const makePrimaryBroker = Effect.fn("clientRuntime.connection.broker.makePrimary
       target,
     } satisfies PreparedConnection;
   });
+});
+
+// magnesium: a machine the hub carries is same-origin with the hub, so it rides the hub's
+// session cookie like the primary; the hub swaps it for the machine's token.
+const makeHubBroker = Effect.fn("clientRuntime.connection.broker.makeHub")(function* () {
+  const presentation = yield* ClientCapabilities.ClientPresentation;
+
+  return (target: HubConnectionTarget) => {
+    const socketUrl = new URL("ws", target.wsBaseUrl);
+    appendClientConnectionParams(socketUrl, presentation.metadata, "direct");
+    return Effect.succeed({
+      environmentId: target.environmentId,
+      label: target.label,
+      httpBaseUrl: target.httpBaseUrl,
+      socketUrl: socketUrl.toString(),
+      httpAuthorization: null,
+      target,
+    } satisfies PreparedConnection);
+  };
 });
 
 const makeBearerBroker = Effect.fn("clientRuntime.connection.broker.makeBearer")(function* () {
@@ -243,6 +263,7 @@ export const make = Effect.gen(function* () {
   const bearer = yield* makeBearerBroker();
   const relay = yield* makeRelayBroker();
   const ssh = yield* makeSshBroker();
+  const hub = yield* makeHubBroker(); // magnesium
   const httpClient = yield* HttpClient.HttpClient;
 
   const prepare = Effect.fn("clientRuntime.connection.broker.prepare")(function* (
@@ -263,6 +284,8 @@ export const make = Effect.gen(function* () {
           return relay(target);
         case "SshConnectionTarget":
           return ssh({ ...entry, target });
+        case "HubConnectionTarget": // magnesium
+          return hub(target);
       }
     })();
     const descriptor = yield* fetchRemoteEnvironmentDescriptor({

@@ -86,9 +86,10 @@ export const remoteHttpClientLayer = (
     httpHeaderRedactionLayer,
   );
 
+// magnesium: keeps the base URL's path (machines the hub carries); endpoint paths join under it.
 const remoteApiBaseUrl = (httpBaseUrl: string): string => {
   const url = new URL(httpBaseUrl);
-  url.pathname = "/";
+  if (!url.pathname.endsWith("/")) url.pathname = `${url.pathname}/`;
   url.search = "";
   url.hash = "";
   return url.toString();

@@ -57,6 +57,12 @@ export function parseAssetCollectionKey(
 
 export function resolveAssetUrl(httpBaseUrl: string, relativeUrl: string): string | null {
   try {
+    // magnesium: servers return root paths (`/api/assets/…`); keep the base URL's path in
+    // front of them, for machines the hub serves at <hub>/api/magnesium/env/<name>/.
+    if (relativeUrl.startsWith("/") && !relativeUrl.startsWith("//")) {
+      const base = new URL(httpBaseUrl);
+      return new URL(`${base.pathname.replace(/\/+$/, "")}${relativeUrl}`, base).toString();
+    }
     return new URL(relativeUrl, httpBaseUrl).toString();
   } catch {
     return null;

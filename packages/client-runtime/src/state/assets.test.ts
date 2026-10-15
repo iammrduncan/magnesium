@@ -35,6 +35,7 @@ import {
   createProjectFaviconUrlAtomFamily,
   InvalidAssetCollectionKeyError,
   parseAssetCollectionKey,
+  resolveAssetUrl,
 } from "./assets.ts";
 
 describe("asset collection keys", () => {
@@ -500,5 +501,23 @@ describe("project favicon URL cache", () => {
     } finally {
       dispose();
     }
+  });
+});
+
+// magnesium: machines the hub carries live under a path on the hub's origin
+describe("resolveAssetUrl", () => {
+  it("keeps the base URL's path in front of a server's root-relative asset path", () => {
+    expect(resolveAssetUrl("http://127.0.0.1:3773/", "/api/assets/a/b.png?t=1")).toBe(
+      "http://127.0.0.1:3773/api/assets/a/b.png?t=1",
+    );
+    expect(
+      resolveAssetUrl(
+        "https://hub.example.test/api/magnesium/env/cpu-host-1/",
+        "/api/assets/a.png",
+      ),
+    ).toBe("https://hub.example.test/api/magnesium/env/cpu-host-1/api/assets/a.png");
+    expect(resolveAssetUrl("https://hub.example.test/x/", "https://cdn.example.test/a.png")).toBe(
+      "https://cdn.example.test/a.png",
+    );
   });
 });

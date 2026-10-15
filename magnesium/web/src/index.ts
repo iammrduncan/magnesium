@@ -1,2 +1,2 @@
-// Magnesium's own web routes and components (doc 11). Empty until a goal needs it.
-export {};
+// Magnesium's own web routes and components (doc 11).
+export * from "./hubMachines.ts";
