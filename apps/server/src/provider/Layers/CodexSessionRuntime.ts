@@ -548,17 +548,29 @@ function runtimeModeToThreadConfig(input: RuntimeMode): {
   }
 }
 
+/**
+ * magnesium: Magnesium's fence or container is this Codex's sandbox (goal 03).
+ * Codex's own sandbox needs bubblewrap, which can't start inside either, so
+ * each command would be approved twice: once to run, once to run unsandboxed.
+ * Under them Codex's sandbox is off; its approval policy is left as the
+ * runtime mode sets it, so a supervised thread still asks before every
+ * command. `native` keeps Codex's own sandbox.
+ */
+export const isMagnesiumSandboxed = (environment: NodeJS.ProcessEnv | undefined): boolean =>
+  environment?.MAGNESIUM_SANDBOX === "fenced" || environment?.MAGNESIUM_SANDBOX === "container";
+
 function buildThreadStartParams(input: {
   readonly cwd: string;
   readonly runtimeMode: RuntimeMode;
   readonly model: string | undefined;
   readonly serviceTier: CodexServiceTier | undefined;
+  readonly magnesiumSandboxed?: boolean; // magnesium: goal 03
 }): EffectCodexSchema.V2ThreadStartParams {
   const config = runtimeModeToThreadConfig(input.runtimeMode);
   return {
     cwd: input.cwd,
     approvalPolicy: config.approvalPolicy,
-    sandbox: config.sandbox,
+    sandbox: input.magnesiumSandboxed ? "danger-full-access" : config.sandbox, // magnesium: goal 03
     approvalsReviewer: config.approvalsReviewer,
     ...(input.model ? { model: input.model } : {}),
     ...(input.serviceTier ? { serviceTier: input.serviceTier } : {}),
@@ -634,6 +646,7 @@ export function buildTurnStartParams(input: {
   readonly interactionMode?: ProviderInteractionMode;
   /** Defaults to true so callers that predate the agent-access gate are unchanged. */
   readonly browserToolsAvailable?: boolean | T3CodeToolAvailability;
+  readonly magnesiumSandboxed?: boolean; // magnesium: goal 03, see isMagnesiumSandboxed
 }): Effect.Effect<
   CodexTurnStartParamsWithCollaborationMode,
   CodexErrors.CodexAppServerProtocolParseError
@@ -663,7 +676,9 @@ export function buildTurnStartParams(input: {
     input: turnInput,
     approvalPolicy: config.approvalPolicy,
     approvalsReviewer: config.approvalsReviewer,
-    sandboxPolicy: runtimeModeToTurnSandboxPolicy(input.runtimeMode),
+    sandboxPolicy: input.magnesiumSandboxed // magnesium: goal 03, see isMagnesiumSandboxed
+      ? { type: "dangerFullAccess" }
+      : runtimeModeToTurnSandboxPolicy(input.runtimeMode),
     ...(input.model ? { model: input.model } : {}),
     ...(input.serviceTier ? { serviceTier: input.serviceTier } : {}),
     ...(input.effort ? { effort: input.effort } : {}),
@@ -740,6 +755,7 @@ export const openCodexThread = (input: {
   readonly requestedModel: string | undefined;
   readonly serviceTier: CodexServiceTier | undefined;
   readonly resumeThreadId: string | undefined;
+  readonly magnesiumSandboxed?: boolean; // magnesium: goal 03, see isMagnesiumSandboxed
 }): Effect.Effect<typeof CodexThreadResumeMetadata.Type, CodexErrors.CodexAppServerError> => {
   const resumeThreadId = input.resumeThreadId;
   const startParams = buildThreadStartParams({
@@ -747,6 +763,7 @@ export const openCodexThread = (input: {
     runtimeMode: input.runtimeMode,
     model: input.requestedModel,
     serviceTier: input.serviceTier,
+    magnesiumSandboxed: input.magnesiumSandboxed ?? false, // magnesium: goal 03
   });
 
   if (resumeThreadId === undefined) {
@@ -2493,6 +2510,7 @@ export const makeCodexSessionRuntime = (
         requestedModel,
         serviceTier: options.serviceTier,
         resumeThreadId: readResumeCursorThreadId(options.resumeCursor),
+        magnesiumSandboxed: isMagnesiumSandboxed(options.environment), // magnesium: goal 03
       });
 
       const providerThreadId = opened.thread.id;
@@ -2567,6 +2585,7 @@ export const makeCodexSessionRuntime = (
           const params = yield* buildTurnStartParams({
             threadId: providerThreadId,
             runtimeMode: options.runtimeMode,
+            magnesiumSandboxed: isMagnesiumSandboxed(options.environment), // magnesium: goal 03
             ...(input.input ? { prompt: input.input } : {}),
             ...(input.attachments ? { attachments: input.attachments } : {}),
             ...(normalizedModel ? { model: normalizedModel } : {}),
