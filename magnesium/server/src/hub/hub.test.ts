@@ -22,6 +22,7 @@ import { afterEach, describe, expect, it } from "@effect/vitest";
 
 import { routesLayer } from "../index.ts";
 import { CallerUnauthenticatedError, ServerPorts } from "../ports.ts";
+import { authenticateTestSocket, noThreads, testDescriptor } from "../testing.ts";
 import * as HubMachines from "./HubMachines.ts";
 import { parseProxyPath } from "./proxy.ts";
 
@@ -133,6 +134,10 @@ const makeHub = async (options: { readonly machineToken?: string } = {}) => {
   };
   const ports = ServerPorts.of({
     baseDir,
+    stateDir: baseDir,
+    authenticateWebSocket: authenticateTestSocket,
+    environment: Effect.succeed(testDescriptor()),
+    threads: noThreads,
     authenticate: (request) => {
       const cookie = request.cookies.t3_session;
       if (cookie !== undefined && scopesFor[cookie] !== undefined) {

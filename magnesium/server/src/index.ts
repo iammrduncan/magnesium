@@ -3,11 +3,15 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import { HttpRouter } from "effect/unstable/http";
 
+import * as MagnesiumDb from "./db/MagnesiumDb.ts";
 import * as HubMachines from "./hub/HubMachines.ts";
 import { hubProxyRouteLayer } from "./hub/proxy.ts";
 import { hubMachineRoutesLayer } from "./hub/routes.ts";
 import { ServerPorts } from "./ports.ts";
+import { coreHandlersLayer } from "./rpc/handlers.ts";
+import { magnesiumWsRouteLayer } from "./rpc/route.ts";
 import { sessionRenewRouteLayer } from "./session/renew.ts";
+import * as ServerStatus from "./status/ServerStatus.ts";
 
 export * from "./ports.ts";
 
@@ -26,7 +30,15 @@ const routeLayers = Layer.unwrap(
   }),
 );
 
-/** Every Magnesium route, plus the hub's token renewal. `apps/server` provides `ServerPorts`. */
-export const routesLayer = Layer.mergeAll(routeLayers, HubMachines.renewalLayer).pipe(
-  Layer.provide(HubMachines.layer),
+/** Handlers for every RPC on `/api/magnesium/ws`; each feature adds its own layer here. */
+const rpcHandlersLayer = Layer.mergeAll(coreHandlersLayer);
+
+/** Every Magnesium route, plus its workers. `apps/server` provides `ServerPorts`. */
+export const routesLayer = Layer.mergeAll(
+  routeLayers,
+  magnesiumWsRouteLayer.pipe(Layer.provide(rpcHandlersLayer)),
+  HubMachines.renewalLayer,
+).pipe(
+  Layer.provide(Layer.mergeAll(HubMachines.layer, ServerStatus.layer)),
+  Layer.provide(MagnesiumDb.layer),
 );
