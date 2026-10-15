@@ -21,7 +21,8 @@ export interface FooterItemRegistration extends FooterRegistration {
   readonly Mark?: ComponentType;
 }
 
-export const footerRegistry = createFooterRegistry<FooterItemRegistration>();
+// The app host (goal 16) registers each enabled app's items here too, and disposes them when it turns off.
+const footerRegistry = createFooterRegistry<FooterItemRegistration>();
 for (const registration of CORE_FOOTER_ITEMS) footerRegistry.register(registration);
 
 export function useFooterRegistrations(): ReadonlyMap<string, FooterItemRegistration> {
