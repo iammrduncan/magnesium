@@ -6,6 +6,7 @@ import { HttpRouter } from "effect/unstable/http";
 import * as MagnesiumDb from "./db/MagnesiumDb.ts";
 import * as Fleet from "./fleet/Fleet.ts";
 import { fleetHandlersLayer } from "./fleet/handlers.ts";
+import { footerHandlersLayer } from "./footer/handlers.ts";
 import * as HubMachines from "./hub/HubMachines.ts";
 import { hubProxyRouteLayer } from "./hub/proxy.ts";
 import { hubMachineRoutesLayer } from "./hub/routes.ts";
@@ -39,6 +40,7 @@ const routeLayers = Layer.unwrap(
 const rpcHandlersLayer = Layer.mergeAll(
   coreHandlersLayer,
   fleetHandlersLayer,
+  footerHandlersLayer,
   profileRpcHandlersLayer,
 );
 
