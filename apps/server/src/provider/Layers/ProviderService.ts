@@ -1483,7 +1483,11 @@ const makeProviderService = Effect.fn("makeProviderService")(function* (
         }
         const effectiveResumeCursor =
           input.resumeCursor ??
-          (persistedBinding?.providerInstanceId === resolvedInstanceId
+          (persistedBinding?.providerInstanceId === resolvedInstanceId ||
+          // magnesium: an instance that shares the previous one's provider state
+          // (checked just above) resumes its thread, even with no session left
+          // to hand over, as after a restart (goal 03).
+          persistedBinding?.provider === resolvedProvider
             ? persistedBinding.resumeCursor
             : undefined);
         const effectiveCwd =
@@ -1525,6 +1529,18 @@ const makeProviderService = Effect.fn("makeProviderService")(function* (
           }
         }
         const adapter = yield* registry.getByInstance(resolvedInstanceId);
+        // magnesium: a thread moving to an instance that shares its provider
+        // state (Magnesium's level twins share one CODEX_HOME or Claude config
+        // dir) resumes the same provider thread, which two processes can't
+        // hold at once: Codex refuses a second writer. Stop the previous
+        // instance's session first, as an adapter does when it restarts its own.
+        if (
+          persistedBinding?.provider === resolvedProvider &&
+          persistedBinding.providerInstanceId !== resolvedInstanceId &&
+          effectiveResumeCursor !== undefined
+        ) {
+          yield* stopStaleSessionsForThread({ threadId, currentInstanceId: resolvedInstanceId });
+        }
         yield* clearTurnAnalyticsSession(resolvedInstanceId, threadId);
         yield* prepareMcpSession(threadId, resolvedInstanceId);
         const session = yield* adapter
