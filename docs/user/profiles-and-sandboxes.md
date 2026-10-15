@@ -10,14 +10,15 @@ the model.
 
 ## Sandbox levels
 
-| Level         | What the agent can do                                                                                                                                       | Needs                                                                                                  |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| **Fenced**    | Works as you, in your projects, but can't read or change Magnesium's own folder (settings, secrets, the hub's access to your machines) or its installation. | Nothing. It uses bubblewrap where it runs, else a Linux user namespace, else Linux Landlock, or macOS. |
-| **Container** | Sees only the project, its profile and its own home, in a rootless Podman container.                                                                        | Podman, and an image set by whoever installed Magnesium.                                               |
-| **Native**    | No fence. Choose it only for one thread, the way you choose full access.                                                                                    | Nothing.                                                                                               |
+| Level         | What the agent can do                                                                                                                                                                                                            | Needs                                                                                                  |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **Fenced**    | Works as you, in your projects, but can't read or change Magnesium's own files (settings, secrets, the hub's access to your machines) or its installation. Projects and worktrees Magnesium keeps in its folder stay open to it. | Nothing. It uses bubblewrap where it runs, else a Linux user namespace, else Linux Landlock, or macOS. |
+| **Container** | Sees only the project, its profile and its own home, in a rootless Podman container.                                                                                                                                             | Podman, and an image set by whoever installed Magnesium.                                               |
+| **Native**    | No fence. Choose it only for one thread, the way you choose full access.                                                                                                                                                         | Nothing.                                                                                               |
 
 The sandbox chip next to the model shows the thread's level. Choose it to
-switch: the thread keeps its conversation. A level this machine can't run is
+switch: the thread keeps its conversation, and its agent restarts at the new
+level. A level this machine can't run is
 greyed out, with the reason and how to enable it. **Settings → Connections →
 Sandboxes** lists the levels every machine supports.
 
