@@ -24,6 +24,14 @@ function makeRoot() {
     NodeFS.mkdirSync(NodePath.join(release, "apps/server/dist"), { recursive: true });
     NodeFS.writeFileSync(NodePath.join(release, "apps/server/dist/bin.mjs"), "");
     NodeFS.mkdirSync(NodePath.join(release, "magnesium/deploy/seed"), { recursive: true });
+    NodeFS.mkdirSync(NodePath.join(release, "magnesium/deploy/bin"), { recursive: true });
+    NodeFS.writeFileSync(
+      NodePath.join(release, "magnesium/deploy/bin/magnesium-fence"),
+      "#!/bin/sh\n",
+      {
+        mode: 0o755,
+      },
+    );
     NodeFS.writeFileSync(
       NodePath.join(release, "magnesium/deploy/seed/settings.json"),
       `{"from":"${name}"}`,
@@ -196,6 +204,10 @@ describe("magnesium-release", () => {
     expect(NodeFS.existsSync(NodePath.join(unpacked, "magnesium/deploy/seed/settings.json"))).toBe(
       true,
     );
+    // The agent wrappers and the fence go with the server, executable.
+    expect(
+      NodeFS.statSync(NodePath.join(unpacked, "magnesium/deploy/bin/magnesium-fence")).mode & 0o111,
+    ).not.toBe(0);
     expect(host.run("unpack", tarball).stdout).toContain("already unpacked");
     expect(host.run("activate", "abcdef1234").status).toBe(0);
     expect(host.link("current")).toBe("releases/abcdef1234");
