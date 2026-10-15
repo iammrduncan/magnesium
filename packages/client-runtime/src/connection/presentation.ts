@@ -95,7 +95,7 @@ export function presentEnvironmentConnection(
 export function connectionCatalogDisplayUrl(entry: ConnectionCatalogEntry): string | null {
   switch (entry.target._tag) {
     case "PrimaryConnectionTarget":
-    case "HubConnectionTarget": // magnesium
+    case "HubConnectionTarget": // magnesium: machines the hub carries (doc 11)
       return entry.target.httpBaseUrl;
     case "RelayConnectionTarget":
       return null;

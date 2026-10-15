@@ -557,7 +557,7 @@ const platformConnectionSourceLayer = Layer.effect(
       });
     }
     const cacheRef = yield* Ref.make(new Map<string, CachedPlatformRegistration>());
-    const hubMachineRegistrations = yield* makeHubMachineRegistrations; // magnesium
+    const hubMachineRegistrations = yield* makeHubMachineRegistrations; // magnesium: machines the hub carries (doc 11)
 
     // Resolve the full set of platform-managed environments the host currently
     // reports: the primary (same-origin cookie auth) plus any desktop-local

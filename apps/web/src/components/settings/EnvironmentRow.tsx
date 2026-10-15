@@ -19,7 +19,7 @@ export function formatDesktopSshTarget(target: DesktopSshEnvironmentTarget): str
 export function environmentTransportLabel(environment: EnvironmentPresentation): string {
   const { entry } = environment;
   if (entry.target._tag === "PrimaryConnectionTarget") return "This machine";
-  if (entry.target._tag === "HubConnectionTarget") return "Through the hub"; // magnesium (doc 11)
+  if (entry.target._tag === "HubConnectionTarget") return "Through the hub"; // magnesium: machines the hub carries (doc 11)
   if (environment.relayManaged) return "T3 Connect";
   if (isDesktopLocalConnectionTarget(entry.target)) return "WSL";
   if (

@@ -263,7 +263,7 @@ export const make = Effect.gen(function* () {
   const bearer = yield* makeBearerBroker();
   const relay = yield* makeRelayBroker();
   const ssh = yield* makeSshBroker();
-  const hub = yield* makeHubBroker(); // magnesium
+  const hub = yield* makeHubBroker(); // magnesium: machines the hub carries (doc 11)
   const httpClient = yield* HttpClient.HttpClient;
 
   const prepare = Effect.fn("clientRuntime.connection.broker.prepare")(function* (
@@ -284,7 +284,7 @@ export const make = Effect.gen(function* () {
           return relay(target);
         case "SshConnectionTarget":
           return ssh({ ...entry, target });
-        case "HubConnectionTarget": // magnesium
+        case "HubConnectionTarget": // magnesium: machines the hub carries (doc 11)
           return hub(target);
       }
     })();

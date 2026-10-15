@@ -432,12 +432,12 @@ const mintPairingLink = Effect.fn("pair.mintPairingLink")(function* (input: {
   readonly config: ServerConfig.ServerConfig["Service"];
   readonly ttl: Option.Option<Duration.Duration>;
   readonly label: Option.Option<string>;
-  readonly admin: boolean; // magnesium
+  readonly admin: boolean; // magnesium: pair --admin and --base-url (doc 11)
 }) {
   return yield* Effect.gen(function* () {
     const environmentAuth = yield* EnvironmentAuth.EnvironmentAuth;
     return yield* environmentAuth.createPairingLink({
-      scopes: input.admin ? AuthAdministrativeScopes : AuthStandardClientScopes, // magnesium
+      scopes: input.admin ? AuthAdministrativeScopes : AuthStandardClientScopes, // magnesium: pair --admin and --base-url (doc 11)
       subject: "one-time-token",
       label: Option.getOrElse(input.label, () => "t3 pair"),
       ...(Option.isSome(input.ttl) ? { ttl: input.ttl.value } : {}),
@@ -496,8 +496,8 @@ export const pairCommand = Command.make("pair", {
   baseDir: baseDirFlag,
   ttl: ttlFlag,
   label: labelFlag,
-  admin: adminFlag, // magnesium
-  baseUrl: baseUrlFlag, // magnesium
+  admin: adminFlag, // magnesium: pair --admin and --base-url (doc 11)
+  baseUrl: baseUrlFlag, // magnesium: pair --admin and --base-url (doc 11)
   tailscale: tailscaleFlag,
   tailscaleServePort: tailscaleServePortFlag,
 }).pipe(
@@ -516,7 +516,7 @@ export const pairCommand = Command.make("pair", {
       const notes: Array<string> = [];
       let pairingBaseUrl: string;
       if (Option.isSome(flags.baseUrl)) {
-        pairingBaseUrl = flags.baseUrl.value; // magnesium
+        pairingBaseUrl = flags.baseUrl.value; // magnesium: pair --admin and --base-url (doc 11)
       } else if (flags.tailscale) {
         const resolved = yield* resolveTailscalePairingBase({
           target,
@@ -543,7 +543,7 @@ export const pairCommand = Command.make("pair", {
         config,
         ttl: flags.ttl,
         label: flags.label,
-        admin: flags.admin, // magnesium
+        admin: flags.admin, // magnesium: pair --admin and --base-url (doc 11)
       });
       const pairingUrl = buildPairingUrl(pairingBaseUrl, issued.credential);
 
