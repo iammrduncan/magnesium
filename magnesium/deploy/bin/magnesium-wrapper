@@ -85,8 +85,8 @@ if [ "$level" = native ]; then
 fi
 
 if [ "$mode" = probe ] || [ "$level" = fenced ]; then
-  set -- --ro "$MG_PROFILE_DIR" --rw "$home" --ro "$attachments" -- "$real" "$@"
-  case $cwd in "$MG_STATE_HOME"/*) set -- --rw "$cwd" "$@" ;; esac
+  # magnesium-fence lets the workspaces and attachments back in itself.
+  set -- --ro "$MG_PROFILE_DIR" --rw "$home" -- "$real" "$@"
   MAGNESIUM_STATE_HOME=$MG_STATE_HOME MAGNESIUM_FENCE=$MG_FENCE MAGNESIUM_FENCE_PROTECT=$MG_PROTECT \
     exec "$bin_dir/magnesium-fence" "$@"
 fi

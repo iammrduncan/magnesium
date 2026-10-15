@@ -2,15 +2,11 @@
 # A stock provider instance (Claude, Codex, OpenCode) run fenced (D40): profile
 # sync points the instance's binary here and names the real CLI in
 # MAGNESIUM_REAL_BIN. The agent keeps its usual config and login (~/.claude,
-# ~/.codex, ~/.config/opencode); only Magnesium's state home is hidden, with the
-# attachments let back in read-only, and the workspace if it lives there.
+# ~/.codex, ~/.config/opencode); only Magnesium's state home is hidden, with its
+# workspaces and attachments let back in (magnesium-fence).
 set -eu
 
 real=${MAGNESIUM_REAL_BIN:-}
 [ -n "$real" ] || { echo "magnesium-fenced: MAGNESIUM_REAL_BIN is not set." >&2; exit 78; }
-state=${MAGNESIUM_STATE_HOME:-${T3CODE_HOME:-}}
-cwd=$(pwd -P)
 
-set -- --ro "$state/userdata/attachments" -- "$real" "$@"
-case $cwd in "$state"/*) set -- --rw "$cwd" "$@" ;; esac
-exec "$(cd "$(dirname "$0")" && pwd -P)/magnesium-fence" "$@"
+exec "$(cd "$(dirname "$0")" && pwd -P)/magnesium-fence" -- "$real" "$@"

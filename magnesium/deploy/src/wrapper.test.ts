@@ -1,4 +1,4 @@
-// @effect-diagnostics nodeBuiltinImport:off preferSchemaOverJson:off
+// @effect-diagnostics nodeBuiltinImport:off preferSchemaOverJson:off globalTimers:off
 import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
@@ -118,6 +118,31 @@ fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify({
   const claude = fake("claude");
   const codex = fake("codex");
   fake("podman");
+  // What a harness does with T3's workspaces: realpath and write each one (and its
+  // cwd), and try the secrets and the attachments. It prints what it could do.
+  const checker = NodePath.join(fakes, "check.cjs");
+  NodeFS.writeFileSync(
+    checker,
+    `const fs = require("node:fs");
+const path = require("node:path");
+const tries = (fn) => { try { fn(); return true; } catch { return false; } };
+const usable = (dir) =>
+  tries(() => fs.realpathSync(dir)) && tries(() => fs.realpathSync.native(dir)) &&
+  tries(() => fs.writeFileSync(path.join(dir, "w-" + process.pid), "x"));
+const [secret, attachment, ...workspaces] = process.argv.slice(2);
+console.log(JSON.stringify({
+  cwd: usable("."),
+  workspaces: workspaces.map(usable),
+  secret: tries(() => fs.readFileSync(secret)) ? "read" : "denied",
+  // A mount fence shows userdata as an empty stand-in holding only what comes back.
+  secretsListed: (() => {
+    try { return fs.readdirSync(path.dirname(path.dirname(secret))).includes("secrets"); } catch { return false; }
+  })(),
+  attachmentRead: tries(() => fs.readFileSync(attachment)),
+  attachmentWritable: tries(() => fs.appendFileSync(attachment, "x")),
+}));
+`,
+  );
   NodeFS.writeFileSync(
     NodePath.join(state, "launch.env"),
     [
@@ -150,17 +175,23 @@ fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify({
     NodeFS.rmSync(record, { force: true });
     return calls;
   };
-  const run = (command: string, args: ReadonlyArray<string>, env: Record<string, string> = {}) => {
+  const environment = (env: Record<string, string>) => ({
+    PATH: `${NodePath.join(fakes, "bin")}:${process.env.PATH ?? ""}`,
+    HOME: process.env.HOME ?? root,
+    TMPDIR: tmp,
+    GBRAIN_TOKEN: "secret-value",
+    ...env,
+  });
+  const run = (
+    command: string,
+    args: ReadonlyArray<string>,
+    env: Record<string, string> = {},
+    cwd = project,
+  ) => {
     const result = NodeChildProcess.spawnSync(NodePath.join(bin, command), args, {
-      cwd: project,
+      cwd,
       encoding: "utf8",
-      env: {
-        PATH: `${NodePath.join(fakes, "bin")}:${process.env.PATH ?? ""}`,
-        HOME: process.env.HOME ?? root,
-        TMPDIR: tmp,
-        GBRAIN_TOKEN: "secret-value",
-        ...env,
-      },
+      env: environment(env),
     });
     return { ...result, calls: readCalls() };
   };
@@ -176,7 +207,21 @@ fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify({
       ...env,
     });
   const log = () => NodeFS.readFileSync(NodePath.join(state, "wrapper.log"), "utf8");
-  return { root, stateHome, profileDir, state, project, out, claude, run, harness, log };
+  return {
+    root,
+    stateHome,
+    profileDir,
+    state,
+    project,
+    out,
+    claude,
+    canary,
+    checker,
+    environment,
+    run,
+    harness,
+    log,
+  };
 }
 
 const SESSION = ["--output-format", "stream-json", "--input-format", "stream-json", "--verbose"];
@@ -319,6 +364,85 @@ describe.each(MECHANISMS)("the %s fence", (mechanism) => {
       },
     ]);
   });
+
+  it.skipIf(skip)(
+    named(mechanism, "lets a harness work in T3's workspaces in the state home, wherever it runs"),
+    () => {
+      const profile = makeProfile();
+      // Where T3 puts them under its home: projects made by name, worktrees, Scratch.
+      const workspaces = ["projects/mg-scratch", "worktrees/repo/branch", "scratch/today"].map(
+        (folder) => NodePath.join(profile.stateHome, folder),
+      );
+      for (const folder of workspaces) NodeFS.mkdirSync(folder, { recursive: true });
+      const attachment = NodePath.join(profile.stateHome, "userdata", "attachments", "a.png");
+      NodeFS.mkdirSync(NodePath.dirname(attachment), { recursive: true });
+      NodeFS.writeFileSync(attachment, "png");
+      // Claude and Codex run in the thread's folder; OpenCode's server runs elsewhere
+      // and is handed each thread's folder.
+      for (const cwd of [workspaces[0]!, profile.project]) {
+        const result = profile.run(
+          "magnesium-fenced",
+          [profile.checker, profile.canary, attachment, ...workspaces],
+          {
+            MAGNESIUM_REAL_BIN: process.execPath,
+            MAGNESIUM_STATE_HOME: profile.stateHome,
+            MAGNESIUM_FENCE: mechanism,
+          },
+          cwd,
+        );
+        expect(result.status, result.stderr).toBe(0);
+        expect(JSON.parse(result.stdout), `cwd ${cwd}`).toEqual({
+          cwd: true,
+          workspaces: [true, true, true],
+          secret: "denied",
+          secretsListed: false,
+          attachmentRead: true,
+          attachmentWritable: false,
+        });
+      }
+    },
+  );
+
+  it.skipIf(skip)(
+    named(mechanism, "lets in a project T3 makes after the harness started"),
+    async () => {
+      const profile = makeProfile();
+      const later = NodePath.join(profile.stateHome, "projects", "made-later");
+      const ready = NodePath.join(profile.out, "ready");
+      const child = NodeChildProcess.spawn(
+        NodePath.join(bin, "magnesium-fenced"),
+        [
+          "-c",
+          'touch "$1"; i=0; while [ ! -d "$2" ] && [ $i -lt 400 ]; do sleep 0.05; i=$((i+1)); done; shift 2; exec "$@"',
+          "sh",
+          ready,
+          later,
+          process.execPath,
+          profile.checker,
+          profile.canary,
+          profile.canary,
+          later,
+        ],
+        {
+          cwd: profile.project,
+          env: profile.environment({
+            MAGNESIUM_REAL_BIN: "/bin/sh",
+            MAGNESIUM_STATE_HOME: profile.stateHome,
+            MAGNESIUM_FENCE: mechanism,
+          }),
+        },
+      );
+      let stdout = "";
+      child.stdout.on("data", (chunk) => (stdout += chunk));
+      const exited = new Promise((resolve) => child.on("exit", resolve));
+      for (let i = 0; i < 400 && !NodeFS.existsSync(ready); i++) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      NodeFS.mkdirSync(later);
+      await exited;
+      expect(JSON.parse(stdout)).toMatchObject({ workspaces: [true], secret: "denied" });
+    },
+  );
 
   it.skipIf(skip)(named(mechanism, "lets a protected path be read but never changed"), () => {
     const profile = makeProfile();

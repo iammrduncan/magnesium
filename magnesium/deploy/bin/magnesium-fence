@@ -8,8 +8,10 @@
 #   - it can read but never change each --protect PATH, and each path in the
 #     colon-separated MAGNESIUM_FENCE_PROTECT: Magnesium's install, its unit and
 #     env file, so an agent can't plant code the server would run on restart;
-#   - paths inside those come back read-only (--ro) or read-write (--rw): a
-#     profile's folder and home, the attachments, a workspace that lives there.
+#   - paths inside those come back read-only (--ro) or read-write (--rw), such
+#     as a profile's folder and home. T3's workspaces in the state home
+#     (projects/, worktrees/, scratch/ and the cwd) always come back read-write,
+#     and the attachments read-only.
 # Everything else is as usual for this user.
 #
 # It needs no root and nothing installed. The mechanism, best first:
@@ -108,6 +110,21 @@ old_ifs=$IFS
 IFS=:
 for path in ${MAGNESIUM_FENCE_PROTECT:-}; do [ -n "$path" ] && add protect "$path"; done
 IFS=$old_ifs
+# What every harness needs from the state home, whatever its own cwd (OpenCode's
+# server runs elsewhere and is handed each thread's folder): T3's workspaces
+# read-write (projects made by name, worktrees, Scratch, and the cwd when it is
+# in the state home), and the attachments read-only. Made first, so a folder T3
+# creates later is inside one the fence already lets through.
+for root in projects worktrees scratch; do
+  mkdir -p "$state/$root" 2>/dev/null || true
+  add rw "$state/$root"
+done
+add ro "$state/userdata/attachments"
+cwd=$(pwd -P)
+case $cwd in
+  "$state"/userdata | "$state"/userdata/*) ;; # the server's own files never come back
+  "$state"/*) add rw "$cwd" ;;
+esac
 while [ $# -gt 0 ]; do
   case $1 in
     --protect | --ro | --rw)
@@ -155,6 +172,14 @@ case $mechanism in
     policy="(version 1)(allow default)(deny file-read* file-write* (subpath $(quote "$state")))"
     for grant in $grants; do
       path=$(quote "${grant#* }")
+      # Resolving a path (realpath, getcwd) stats each folder on the way down to
+      # it, so the folders between the state home and a grant may be looked at,
+      # though not listed or read.
+      dir=${grant#* }
+      while [ "$dir" != "$state" ] && [ "${dir#"$state"/}" != "$dir" ]; do
+        dir=$(dirname "$dir")
+        policy="$policy(allow file-read-metadata (literal $(quote "$dir")))"
+      done
       case ${grant%% *} in
         protect) policy="$policy(deny file-write* (subpath $path))" ;;
         rw) policy="$policy(allow file-read* file-write* (subpath $path))" ;;
