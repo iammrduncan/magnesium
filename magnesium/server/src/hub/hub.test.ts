@@ -229,6 +229,7 @@ describe("parseProxyPath", () => {
     "/api/magnesium/env/cpu-host-1/",
     "/api/magnesium/env/cpu-host-1",
     "/api/magnesium/env//ws",
+    "/api/magnesium/env/%E0%A4%A/ws",
   ])("refuses %s", (pathname) => {
     expect(parseProxyPath(pathname)).toBeNull();
   });

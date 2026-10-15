@@ -76,7 +76,12 @@ export const parseProxyPath = (
   const rest = pathname.slice(prefix.length);
   const slash = rest.indexOf("/");
   if (slash <= 0) return null;
-  const name = decodeURIComponent(rest.slice(0, slash));
+  let name: string;
+  try {
+    name = decodeURIComponent(rest.slice(0, slash));
+  } catch {
+    return null;
+  }
   const path = rest.slice(slash);
   return ALLOWED_PATHS.some((pattern) => pattern.test(path)) ? { name, path } : null;
 };
