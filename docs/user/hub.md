@@ -66,6 +66,11 @@ lists when each machine's link came up or went down.
 Agents and command-line sessions cannot reach the hub's machines, even with an
 admin token: only devices you paired can.
 
+## Profiles
+
+The hub holds your profiles and sends each to the machines it names; see
+[Profiles and sandboxes](./profiles-and-sandboxes.md).
+
 ## If something is missing
 
 - **No Create link button:** this device cannot add others. Sign it in with an
