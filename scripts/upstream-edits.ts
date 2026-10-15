@@ -22,6 +22,7 @@ const MARKER = "magnesium:";
 
 /** Hand edits in files that cannot hold a comment, with what each one does. */
 export const UNMARKABLE_EDITS: Readonly<Record<string, string>> = {
+  "apps/server/package.json": "adds @magnesium/server (doc 11)",
   "apps/web/package.json": "drops @clerk/electron and @clerk/react (D13)",
 };
 

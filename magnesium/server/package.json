@@ -12,7 +12,15 @@
     "typecheck": "tsc --noEmit",
     "test": "vp test run --config ../../vite.config.ts --dir . --passWithNoTests"
   },
+  "dependencies": {
+    "@effect/platform-node": "catalog:",
+    "@magnesium/contracts": "workspace:*",
+    "@t3tools/contracts": "workspace:*",
+    "effect": "catalog:"
+  },
   "devDependencies": {
+    "@effect/vitest": "catalog:",
+    "@types/node": "catalog:",
     "vite-plus": "catalog:"
   }
 }

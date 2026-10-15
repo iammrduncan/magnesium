@@ -12,6 +12,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vp test run --config ../../vite.config.ts --dir . --passWithNoTests"
   },
+  "dependencies": {
+    "@t3tools/contracts": "workspace:*",
+    "effect": "catalog:"
+  },
   "devDependencies": {
     "vite-plus": "catalog:"
   }
