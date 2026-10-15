@@ -48,7 +48,7 @@ import {
   AlarmClockIcon,
   AlarmClockOffIcon,
   CheckIcon,
-  ChevronDownIcon,
+  ChevronRightIcon,
   CircleAlertIcon,
   CircleCheckIcon,
   ClockIcon,
@@ -689,6 +689,8 @@ function SidebarDragBoundary(props: {
 function SidebarSectionHeader(props: {
   marker: "working-header" | "snoozed-header" | "settled-header";
   label: string;
+  // magnesium: the shelf's size, right-aligned as on the Home board
+  count?: number;
   className?: string;
   // While dragging, the settled header reads at full strength and takes the
   // accent while the lifted row is over it.
@@ -709,25 +711,20 @@ function SidebarSectionHeader(props: {
     props.dragging && "text-sidebar-foreground/80",
     props.isDropTarget && "text-primary",
   );
+  // magnesium: chevron first and the count on the right, as on the Home board
   const content = (
     <>
-      <span className="shrink-0">{props.label}</span>
-      <span
+      <ChevronRightIcon
         aria-hidden
         className={cn(
-          "h-px min-w-2 flex-1",
-          snoozed ? "bg-info/20" : "bg-sidebar-border/60",
-          props.dragging && "bg-sidebar-foreground/25",
-          props.isDropTarget && "bg-primary/50",
+          "size-3.5 shrink-0 transition-transform",
+          props.toggle.expanded && "rotate-90",
         )}
       />
-      <ChevronDownIcon
-        aria-hidden
-        className={cn(
-          "size-3 shrink-0 transition-transform",
-          props.toggle.expanded && "rotate-180",
-        )}
-      />
+      <span className="min-w-0 flex-1 truncate">{props.label}</span>
+      {props.count === undefined ? null : (
+        <span className="shrink-0 tabular-nums">{props.count}</span>
+      )}
     </>
   );
   return (
@@ -1028,6 +1025,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   // magnesium: a compact live row leads with its status shape and names an
   // attention status in place of its time (Session board, goal 05)
   leadingStatus?: boolean;
+  // magnesium: a row inside a project folder is indented under it
+  nested?: boolean;
   // Slim rows are either settled (action: un-settle) or merely quiet
   // (seen Ready threads — action: settle).
   variantAction: "settle" | "unsettle" | "unsnooze";
@@ -1542,7 +1541,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
       className={cn(
         "min-w-0 flex-1 text-sm transition-opacity motion-reduce:transition-none",
         shouldRecede ? "font-normal" : "font-medium",
-        variant === "card"
+        // magnesium: compact live rows keep the card's title colours (Session board)
+        variant === "card" || props.leadingStatus
           ? cn(
               "truncate",
               shouldRecede
@@ -1663,6 +1663,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
           // Matches the h-9 row so unrendered rows never shift the list when they paint.
           "list-none [content-visibility:auto] [contain-intrinsic-size:auto_36px]",
           sortable?.isDragging && "relative z-20",
+          props.nested && "pl-4", // magnesium: indented under its folder
         )}
       >
         <Tooltip disabled={sortable?.isDragging}>
@@ -1844,6 +1845,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
         // Matches the h-[4.875rem] content box; the py-0.5 padding is added on top.
         "list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_78px]",
         sortable?.isDragging && "relative z-20",
+        props.nested && "pl-4", // magnesium: indented under its folder
       )}
     >
       <Tooltip disabled={snoozeMenuOpen || sortable?.isDragging}>
@@ -5010,6 +5012,7 @@ export default function Sidebar() {
                         thread: EnvironmentThreadShell,
                         section: SidebarSection,
                         sortable?: SortableThreadRowBag,
+                        nested = false, // magnesium: inside a project folder
                       ) => {
                         const threadKey = scopedThreadKey(
                           scopeThreadRef(thread.environmentId, thread.id),
@@ -5032,6 +5035,7 @@ export default function Sidebar() {
                             thread={thread}
                             variant={rowVariant}
                             leadingStatus={isLive && !isCard}
+                            nested={nested}
                             // Snoozed rows wake, settled rows un-settle, and cards settle.
                             variantAction={
                               section === "snoozed"
@@ -5122,6 +5126,7 @@ export default function Sidebar() {
                       const renderThreadRow = (
                         thread: EnvironmentThreadShell,
                         section: SidebarSection,
+                        nested = false, // magnesium: inside a project folder
                       ) => {
                         const threadKey = scopedThreadKey(
                           scopeThreadRef(thread.environmentId, thread.id),
@@ -5137,7 +5142,7 @@ export default function Sidebar() {
                               optimisticDrop !== null
                             }
                           >
-                            {(bag) => renderThreadRowInner(thread, section, bag)}
+                            {(bag) => renderThreadRowInner(thread, section, bag, nested)}
                           </SortableThreadRow>
                         );
                       };
@@ -5154,7 +5159,13 @@ export default function Sidebar() {
                       ];
                       for (const item of sidebarListItems) {
                         if (item.kind === "thread") {
-                          items.push(renderThreadRow(threadByKey.get(item.key)!, item.section));
+                          items.push(
+                            renderThreadRow(
+                              threadByKey.get(item.key)!,
+                              item.section,
+                              item.folder != null, // magnesium: rows under a folder
+                            ),
+                          );
                           continue;
                         }
                         // magnesium: project folders and their "All threads" rows (goal 05)
@@ -5254,11 +5265,8 @@ export default function Sidebar() {
                                 key="working-shelf-header"
                                 marker="working-header"
                                 className="mt-auto"
-                                label={
-                                  workingShelfExpanded
-                                    ? "Working"
-                                    : `Working (${workingThreads.length})`
-                                }
+                                label="Working"
+                                count={workingThreads.length} // magnesium: count on the right
                                 toggle={{
                                   expanded: workingShelfExpanded,
                                   onToggle: toggleWorkingShelf,
@@ -5272,11 +5280,8 @@ export default function Sidebar() {
                                 key="snoozed-shelf-header"
                                 marker="snoozed-header"
                                 className={cn(workingThreads.length === 0 && "mt-auto")}
-                                label={
-                                  snoozedShelfExpanded
-                                    ? "Snoozed"
-                                    : `Snoozed (${snoozedThreads.length})`
-                                }
+                                label="Snoozed"
+                                count={snoozedThreads.length} // magnesium: count on the right
                                 toggle={{
                                   expanded: snoozedShelfExpanded,
                                   onToggle: toggleSnoozedShelf,
@@ -5292,11 +5297,8 @@ export default function Sidebar() {
                                 className={cn(
                                   workingThreads.length + snoozedThreads.length === 0 && "mt-auto",
                                 )}
-                                label={
-                                  settledShelfExpanded
-                                    ? "Settled"
-                                    : `Settled (${settledThreads.length})`
-                                }
+                                label="Settled"
+                                count={settledThreads.length} // magnesium: count on the right
                                 dragging={from !== null}
                                 isDropTarget={dragTargetSection === "settled"}
                                 toggle={{
