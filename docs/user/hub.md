@@ -32,6 +32,19 @@ other devices too. Leave it off for a device that only needs to work.
 
 To sign a device out, choose **Revoke** next to it in the same list.
 
+## Install it as an app
+
+On a computer, Magnesium installs as an app with its own window and Dock or
+taskbar icon. Open the hub's HTTPS address, then:
+
+- **Chrome or Edge:** choose the install icon at the right of the address bar.
+- **Safari on a Mac:** choose **File → Add to Dock**.
+
+The installed app opens even when the hub can't be reached, and shows
+**Offline** rather than old threads. Choose **Retry**, or wait: it tries again
+when your network comes back. Pairing links need the hub, so open them when it
+is running.
+
 ## Machines
 
 Machines the hub carries appear under **Environments** as "Through the hub".
