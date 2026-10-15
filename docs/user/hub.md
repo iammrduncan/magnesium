@@ -55,13 +55,13 @@ access ran out" under **Hub machines**; give access again.
 
 ## Fleet
 
-**Fleet** (the server icon at the bottom of the sidebar, or "Open fleet" in the
-command palette) lists the hub and every machine it carries, live: version,
-Connected or Offline with when it was last seen, and how many threads are
-running and waiting on you. A machine that stops answering shows Offline within
-about ten seconds, and comes back on its own when its server returns. To try
-an offline machine now instead of waiting, choose **Reconnect**. **Recent**
-lists when each machine's link came up or went down.
+**Fleet** (under the search box in the sidebar, where a red dot means a machine
+is offline, or "Open fleet" in the command palette) lists the hub and every
+machine it carries, live: version, Connected or Offline with when it was last
+seen, and how many threads are running and waiting on you. A machine that stops
+answering shows Offline within about ten seconds, and comes back on its own when
+its server returns. To try an offline machine now instead of waiting, choose
+**Reconnect**. **Recent** lists when each machine's link came up or went down.
 
 Agents and command-line sessions cannot reach the hub's machines, even with an
 admin token: only devices you paired can.
