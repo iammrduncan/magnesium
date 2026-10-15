@@ -108,7 +108,12 @@ describe("rename", () => {
     expect(JSON.parse(renamed)).toMatchObject({
       name: "Magnesium",
       short_name: "Magnesium",
-      icons: [{ src: "/favicon-32x32.png" }, { src: "/icon-192.png" }, { src: "/icon-512.png" }],
+      icons: [
+        { src: "/favicon-32x32.png" },
+        { src: "/icon-192.png", purpose: "any" },
+        { src: "/icon-512.png", purpose: "any" },
+        { src: "/icon-maskable-512.png", purpose: "maskable" },
+      ],
     });
     expect(renameManifest(renamed)).toBe(renamed);
   });

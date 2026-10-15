@@ -14,12 +14,19 @@ const outDir = NodePath.resolve(import.meta.dirname, "../magnesium/web/assets");
 const BACKGROUND = "#161616";
 const FOREGROUND = "#f5f5f5";
 
-/** The mark: "Mg" on a square, rounded for favicons, full-bleed for app icons. */
-export function markSvg(options: { readonly rounded: boolean }): string {
+/**
+ * The mark: "Mg" on a square, rounded for favicons, full-bleed for app icons.
+ * `scale` shrinks the letters about the centre; the maskable icon uses it to
+ * keep them inside the safe circle (80% of the width) that launchers crop to.
+ */
+export function markSvg(options: { readonly rounded: boolean; readonly scale?: number }): string {
   const radius = options.rounded ? 112 : 0;
+  const scale = options.scale ?? 1;
+  const transform =
+    scale === 1 ? "" : ` transform="translate(256 256) scale(${scale}) translate(-256 -256)"`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="${radius}" fill="${BACKGROUND}"/>
-  <text x="256" y="320" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="248" font-weight="700" letter-spacing="-6" fill="${FOREGROUND}">Mg</text>
+  <text x="256" y="320"${transform} text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="248" font-weight="700" letter-spacing="-6" fill="${FOREGROUND}">Mg</text>
 </svg>
 `;
 }
@@ -69,5 +76,7 @@ if (import.meta.main) {
   ] as const) {
     NodeFS.writeFileSync(NodePath.join(outDir, name), await png(square, size));
   }
+  const maskable = markSvg({ rounded: false, scale: 0.8 });
+  NodeFS.writeFileSync(NodePath.join(outDir, "icon-maskable-512.png"), await png(maskable, 512));
   console.log(`Wrote the Mg icon set to ${outDir}`);
 }

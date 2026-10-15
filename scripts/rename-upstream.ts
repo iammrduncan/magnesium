@@ -72,6 +72,17 @@ const ICON_COPIES: ReadonlyArray<{ from: string; to: ReadonlyArray<string> }> = 
   },
   { from: "magnesium/web/assets/icon-192.png", to: ["apps/web/public/icon-192.png"] },
   { from: "magnesium/web/assets/icon-512.png", to: ["apps/web/public/icon-512.png"] },
+  {
+    from: "magnesium/web/assets/icon-maskable-512.png",
+    to: ["apps/web/public/icon-maskable-512.png"],
+  },
+];
+
+/** The install icons the manifest lists: Chrome needs 192 and 512, launchers that crop want a maskable one. */
+const INSTALL_ICONS = [
+  { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+  { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+  { src: "/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
 ];
 
 const MANIFEST = "apps/web/public/manifest.webmanifest";
@@ -105,17 +116,13 @@ export function renameManifest(source: string): string {
     icons?: Array<{ src: string; sizes: string; type: string; purpose?: string }>;
   };
   const icons = (manifest.icons ?? []).filter(
-    (icon) => icon.src !== "/icon-192.png" && icon.src !== "/icon-512.png",
+    (icon) => !INSTALL_ICONS.some((install) => install.src === icon.src),
   );
   const next = {
     name: TO,
     short_name: TO,
     ...manifest,
-    icons: [
-      ...icons,
-      { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-    ],
+    icons: [...icons, ...INSTALL_ICONS],
   };
   next.name = TO;
   next.short_name = TO;
