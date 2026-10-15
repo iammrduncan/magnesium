@@ -60,6 +60,7 @@ import {
   MoonIcon,
   PaletteIcon,
   RotateCcwIcon,
+  ServerIcon, // magnesium: Fleet (goal 04)
   SettingsIcon,
   SquarePenIcon,
   SunIcon,
@@ -2238,6 +2239,18 @@ function OpenCommandPaletteDialog(props: {
     shortcutCommand: "usage.open",
     run: async () => {
       await navigate({ to: "/usage" });
+    },
+  });
+
+  // magnesium: Fleet, every server the hub reaches (goal 04)
+  actionItems.push({
+    kind: "action",
+    value: "action:fleet",
+    searchTerms: ["fleet", "machines", "servers", "hub", "offline", "online"],
+    title: "Open fleet",
+    icon: <ServerIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/fleet" });
     },
   });
 
