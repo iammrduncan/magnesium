@@ -1,5 +1,7 @@
-// @effect-diagnostics globalDate:off nodeBuiltinImport:off - fixtures stand in for a server, its clock and its state directory.
+// @effect-diagnostics globalDate:off globalDateInEffect:off nodeBuiltinImport:off preferSchemaOverJson:off - fixtures stand in for a server, its clock and its state directory.
 import * as NodeFSP from "node:fs/promises";
+import * as NodeHttp from "node:http";
+import type * as NodeNet from "node:net";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
@@ -22,7 +24,13 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as PubSub from "effect/PubSub";
 import * as Stream from "effect/Stream";
-import { HttpRouter, HttpServer, type HttpServerRequest } from "effect/unstable/http";
+import {
+  FetchHttpClient,
+  HttpRouter,
+  HttpServer,
+  HttpServerRequest,
+  HttpServerResponse,
+} from "effect/unstable/http";
 import type * as NetAddress from "effect/unstable/net/NetAddress";
 
 import { routesLayer } from "./index.ts";
@@ -134,6 +142,48 @@ export const noThreads: ThreadPorts = {
 };
 
 /**
+ * Upstream's ticket route on a machine: `token` (the hub's) buys a ticket for
+ * the paired `operator` session; anything else gets 401.
+ */
+export const testTicketRoute = (token: string) =>
+  HttpRouter.add(
+    "POST",
+    "/api/auth/websocket-ticket",
+    Effect.gen(function* () {
+      const request = yield* HttpServerRequest.HttpServerRequest;
+      if (request.headers.authorization !== `Bearer ${token}`) {
+        return HttpServerResponse.jsonUnsafe({ error: "nope" }, { status: 401 });
+      }
+      return HttpServerResponse.jsonUnsafe({
+        ticket: "operator",
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      });
+    }),
+  );
+
+/** A hub's secret store holding `token` for each named machine, as `HubMachines` writes it. */
+export const testHubSecrets =
+  (tokens: Readonly<Record<string, string>>) =>
+  (name: string): Effect.Effect<Option.Option<Uint8Array>> => {
+    const machine = name.replace(/^magnesium-hub-machine-/, "");
+    const token = tokens[machine];
+    if (token === undefined || machine === name) return Effect.succeedNone;
+    const stored = JSON.stringify({
+      token,
+      environmentId: TEST_ENVIRONMENT_ID,
+      label: machine,
+      expiresAt: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    return Effect.succeedSome(new TextEncoder().encode(stored));
+  };
+
+/** `hub-machines.json` for a hub that carries these machines. */
+export const testHubConfig = (machines: Readonly<Record<string, string>>) =>
+  JSON.stringify({
+    machines: Object.entries(machines).map(([name, url]) => ({ name, url })),
+  });
+
+/**
  * Every Magnesium route on a real socket, with a fake host server behind the
  * ports and its state in a temporary directory, for the life of the scope.
  * `routes` adds stand-ins for upstream routes a test needs.
@@ -142,6 +192,8 @@ export const startTestServer = (
   options: {
     readonly routes?: Layer.Layer<never, never, HttpRouter.HttpRouter>;
     readonly ports?: Partial<ServerPorts["Service"]>;
+    /** Files written into the server's base directory before it starts, such as `hub-machines.json`. */
+    readonly files?: Readonly<Record<string, string>>;
   } = {},
 ) =>
   Effect.gen(function* () {
@@ -149,6 +201,9 @@ export const startTestServer = (
       Effect.promise(() => NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "mg-server-"))),
       (dir) => Effect.promise(() => NodeFSP.rm(dir, { recursive: true, force: true })),
     );
+    for (const [name, content] of Object.entries(options.files ?? {})) {
+      yield* Effect.promise(() => NodeFSP.writeFile(NodePath.join(stateDir, name), content));
+    }
     const ports = ServerPorts.of({
       baseDir: stateDir,
       stateDir,
@@ -162,14 +217,27 @@ export const startTestServer = (
       removeSecret: () => Effect.void,
       ...options.ports,
     });
+    // Closing the scope drops every socket first, WebSockets included, the way
+    // a stopped server does; Node's own close would wait for them.
+    const server = NodeHttp.createServer();
+    const sockets = new Set<NodeNet.Socket>();
+    server.on("connection", (socket) => {
+      sockets.add(socket);
+      socket.on("close", () => sockets.delete(socket));
+    });
     const context = yield* Layer.build(
       HttpRouter.serve(Layer.mergeAll(routesLayer, options.routes ?? Layer.empty), {
         disableListenLog: true,
         disableLogger: true,
       }).pipe(
-        Layer.provide(Layer.succeed(ServerPorts, ports)),
-        Layer.provideMerge(NodeHttpServer.layerTest),
+        Layer.provide(Layer.mergeAll(Layer.succeed(ServerPorts, ports), FetchHttpClient.layer)),
+        Layer.provideMerge(NodeHttpServer.layer(() => server, { port: 0, host: "127.0.0.1" })),
       ),
+    );
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        for (const socket of sockets) socket.destroy();
+      }),
     );
     const address = Context.get(context, HttpServer.HttpServer).address as NetAddress.InetAddress;
     const origin = `http://127.0.0.1:${address.port}`;

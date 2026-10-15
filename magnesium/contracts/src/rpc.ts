@@ -1,4 +1,5 @@
 import {
+  AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
   type AuthEnvironmentScope,
   EnvironmentAuthorizationError,
@@ -9,8 +10,15 @@ import * as Rpc from "effect/unstable/rpc/Rpc";
 import * as RpcGroup from "effect/unstable/rpc/RpcGroup";
 import * as RpcMiddleware from "effect/unstable/rpc/RpcMiddleware";
 
+import { FleetEvent, FleetMachine, FleetReconnectInput } from "./fleet.ts";
 import { PingResult, ServerStatus } from "./status.ts";
-import { liveTableItem, StreamSubscribeInput } from "./stream.ts";
+import {
+  historyPage,
+  liveLogItem,
+  liveTableItem,
+  StreamHistoryInput,
+  StreamSubscribeInput,
+} from "./stream.ts";
 
 /**
  * Magnesium's own RPC route, next to upstream's `/ws` and with the same auth
@@ -24,6 +32,10 @@ export const MAGNESIUM_WS_PATH = "/api/magnesium/ws";
 export const MAGNESIUM_WS_METHODS = {
   ping: "magnesium.ping",
   serverStatus: "magnesium.server.status",
+  fleetMachines: "magnesium.fleet.machines",
+  fleetEvents: "magnesium.fleet.events",
+  fleetEventHistory: "magnesium.fleet.eventHistory",
+  fleetReconnect: "magnesium.fleet.reconnect",
 } as const;
 
 /**
@@ -55,6 +67,43 @@ const ServerStatusRpc = Rpc.make(MAGNESIUM_WS_METHODS.serverStatus, {
   stream: true,
 }).annotate(RequiredScope, AuthOrchestrationReadScope);
 
-export const MagnesiumRpcGroup = RpcGroup.make(PingRpc, ServerStatusRpc).middleware(ScopeGuard);
+export const FleetMachinesItem = liveTableItem(FleetMachine);
+export type FleetMachinesItem = typeof FleetMachinesItem.Type;
+
+/** Every server the hub reaches, keyed by `fleetMachineKey`. */
+const FleetMachinesRpc = Rpc.make(MAGNESIUM_WS_METHODS.fleetMachines, {
+  payload: StreamSubscribeInput,
+  success: FleetMachinesItem,
+  stream: true,
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
+
+export const FleetEventsItem = liveLogItem(FleetEvent);
+export type FleetEventsItem = typeof FleetEventsItem.Type;
+
+/** Links coming up and going down, newest last. */
+const FleetEventsRpc = Rpc.make(MAGNESIUM_WS_METHODS.fleetEvents, {
+  payload: StreamSubscribeInput,
+  success: FleetEventsItem,
+  stream: true,
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
+
+const FleetEventHistoryRpc = Rpc.make(MAGNESIUM_WS_METHODS.fleetEventHistory, {
+  payload: StreamHistoryInput,
+  success: historyPage(FleetEvent),
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
+
+/** Try a machine's link now instead of waiting out the backoff. */
+const FleetReconnectRpc = Rpc.make(MAGNESIUM_WS_METHODS.fleetReconnect, {
+  payload: FleetReconnectInput,
+}).annotate(RequiredScope, AuthOrchestrationOperateScope);
+
+export const MagnesiumRpcGroup = RpcGroup.make(
+  PingRpc,
+  ServerStatusRpc,
+  FleetMachinesRpc,
+  FleetEventsRpc,
+  FleetEventHistoryRpc,
+  FleetReconnectRpc,
+).middleware(ScopeGuard);
 export type MagnesiumRpcs = RpcGroup.Rpcs<typeof MagnesiumRpcGroup>;
 export type MagnesiumRpcMethod = MagnesiumRpcs["_tag"];

@@ -4,6 +4,8 @@ import * as Layer from "effect/Layer";
 import { HttpRouter } from "effect/unstable/http";
 
 import * as MagnesiumDb from "./db/MagnesiumDb.ts";
+import * as Fleet from "./fleet/Fleet.ts";
+import { fleetHandlersLayer } from "./fleet/handlers.ts";
 import * as HubMachines from "./hub/HubMachines.ts";
 import { hubProxyRouteLayer } from "./hub/proxy.ts";
 import { hubMachineRoutesLayer } from "./hub/routes.ts";
@@ -31,7 +33,7 @@ const routeLayers = Layer.unwrap(
 );
 
 /** Handlers for every RPC on `/api/magnesium/ws`; each feature adds its own layer here. */
-const rpcHandlersLayer = Layer.mergeAll(coreHandlersLayer);
+const rpcHandlersLayer = Layer.mergeAll(coreHandlersLayer, fleetHandlersLayer);
 
 /** Every Magnesium route, plus its workers. `apps/server` provides `ServerPorts`. */
 export const routesLayer = Layer.mergeAll(
@@ -39,6 +41,7 @@ export const routesLayer = Layer.mergeAll(
   magnesiumWsRouteLayer.pipe(Layer.provide(rpcHandlersLayer)),
   HubMachines.renewalLayer,
 ).pipe(
+  Layer.provide(Fleet.layer),
   Layer.provide(Layer.mergeAll(HubMachines.layer, ServerStatus.layer)),
   Layer.provide(MagnesiumDb.layer),
 );

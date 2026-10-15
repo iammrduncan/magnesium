@@ -10,12 +10,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
-import {
-  FetchHttpClient,
-  HttpRouter,
-  HttpServerRequest,
-  HttpServerResponse,
-} from "effect/unstable/http";
+import { FetchHttpClient } from "effect/unstable/http";
 
 import { ServerPorts } from "../ports.ts";
 import {
@@ -24,25 +19,10 @@ import {
   startTestServer,
   TEST_ENVIRONMENT_ID,
   testDescriptor,
+  testTicketRoute,
 } from "../testing.ts";
 import * as HubMachines from "./HubMachines.ts";
 import { connectMachine } from "./machineRpc.ts";
-
-/** Upstream's ticket route on the machine: the hub's token buys a ticket for a standard session. */
-const ticketRoute = HttpRouter.add(
-  "POST",
-  "/api/auth/websocket-ticket",
-  Effect.gen(function* () {
-    const request = yield* HttpServerRequest.HttpServerRequest;
-    if (request.headers.authorization !== "Bearer machine-token") {
-      return HttpServerResponse.jsonUnsafe({ error: "nope" }, { status: 401 });
-    }
-    return HttpServerResponse.jsonUnsafe({
-      ticket: "operator",
-      expiresAt: new Date(Date.now() + 60_000).toISOString(),
-    });
-  }),
-);
 
 /** A hub that carries one machine, `cpu-host-1`, holding `token` for it. */
 const hubFor = (machineOrigin: string, token: string) =>
@@ -94,7 +74,7 @@ const hubFor = (machineOrigin: string, token: string) =>
 describe("the hub dialing a machine", () => {
   it.live("opens the machine's route with a ticket its own token bought", () =>
     Effect.gen(function* () {
-      const machine = yield* startTestServer({ routes: ticketRoute });
+      const machine = yield* startTestServer({ routes: testTicketRoute("machine-token") });
       const hub = yield* hubFor(machine.origin, "machine-token");
       const client = yield* connectMachine("cpu-host-1").pipe(Effect.provide(hub));
       expect(yield* client[MAGNESIUM_WS_METHODS.ping]({})).toMatchObject({
@@ -110,7 +90,7 @@ describe("the hub dialing a machine", () => {
 
   it.live("fails, and says so, when the machine refuses the hub's token", () =>
     Effect.gen(function* () {
-      const machine = yield* startTestServer({ routes: ticketRoute });
+      const machine = yield* startTestServer({ routes: testTicketRoute("machine-token") });
       const hub = yield* hubFor(machine.origin, "revoked-token");
       const error = yield* connectMachine("cpu-host-1").pipe(Effect.provide(hub), Effect.flip);
       expect(error).toMatchObject({ _tag: "MachineRequestError", rejected: true });

@@ -14,9 +14,11 @@ import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
+import * as PubSub from "effect/PubSub";
 import * as Ref from "effect/Ref";
 import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
+import * as Stream from "effect/Stream";
 import { HttpClient } from "effect/unstable/http";
 
 import { ServerPorts, type ServerPortError } from "../ports.ts";
@@ -108,6 +110,10 @@ export class HubMachines extends Context.Service<
     /** The machine refused the hub's token; show the machine as needing access. */
     readonly markRejected: (name: string) => Effect.Effect<void>;
     readonly renewDue: Effect.Effect<void>;
+    /** The machines in the config, by name; read fresh each time. */
+    readonly names: Effect.Effect<ReadonlyArray<string>>;
+    /** The name of each machine whose access was just given or removed. */
+    readonly accessChanged: Stream.Stream<string>;
   }
 >()("@magnesium/server/hub/HubMachines") {}
 
@@ -119,6 +125,7 @@ export const make = Effect.gen(function* () {
   const configPath = path.join(ports.baseDir, HUB_MACHINES_CONFIG_FILE);
   const probes = yield* Ref.make(new Map<string, Probe>());
   const rejected = yield* Ref.make(new Set<string>());
+  const accessChanged = yield* PubSub.unbounded<string>();
 
   const withHttp = <A, E>(effect: Effect.Effect<A, E, HttpClient.HttpClient>) =>
     Effect.provideService(effect, HttpClient.HttpClient, httpClient);
@@ -305,6 +312,7 @@ export const make = Effect.gen(function* () {
       return next;
     });
     yield* Effect.logInfo("The hub has access to a machine.", { name });
+    yield* PubSub.publish(accessChanged, name);
     return yield* describe(machine);
   });
 
@@ -317,6 +325,7 @@ export const make = Effect.gen(function* () {
       return next;
     });
     yield* Effect.logInfo("The hub no longer has access to a machine.", { name });
+    yield* PubSub.publish(accessChanged, name);
   });
 
   const upstream = Effect.fn("HubMachines.upstream")(function* (name: string) {
@@ -371,7 +380,16 @@ export const make = Effect.gen(function* () {
     Effect.withSpan("HubMachines.renewDue"),
   );
 
-  return HubMachines.of({ list, giveAccess, removeAccess, upstream, markRejected, renewDue });
+  return HubMachines.of({
+    list,
+    giveAccess,
+    removeAccess,
+    upstream,
+    markRejected,
+    renewDue,
+    names: readConfig.pipe(Effect.map((machines) => machines.map((machine) => machine.name))),
+    accessChanged: Stream.fromPubSub(accessChanged),
+  });
 });
 
 export const layer = Layer.effect(HubMachines, make);
