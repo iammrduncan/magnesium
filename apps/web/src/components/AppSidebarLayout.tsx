@@ -31,6 +31,8 @@ import {
   usePanelAnimationSettings,
   usePanelNavigationSuppression,
 } from "../panelAnimations";
+// magnesium: the footer status bar (goal 05)
+import { AppFooter } from "./footer/AppFooter";
 import LegacyThreadSidebar from "./LegacySidebar";
 import ThreadSidebar from "./Sidebar";
 import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
@@ -294,7 +296,9 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
   return (
     <PanelAnimationSuppressionProvider value={panelAnimationsSuppressed}>
       <SidebarProvider
-        className="h-dvh! min-h-0!"
+        // magnesium: the footer takes the bottom of the window, across its full width (goal 05).
+        // Pages size their inset to the window, so inside the shell they stop above it.
+        className="h-dvh! min-h-0! [--app-footer-height:--spacing(7.5)] [&_[data-slot=sidebar-container]]:bottom-(--app-footer-height) [&_[data-slot=sidebar-container]]:h-auto [&_[data-slot=sidebar-inset]]:h-[calc(100dvh-var(--app-footer-height))]"
         data-panel-animations={routePanelAnimationsActive ? "true" : "false"}
         defaultOpen
         style={sidebarProviderStyle}
@@ -332,6 +336,8 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
         <SidebarControl />
         <NavigationHistoryShortcuts />
         <MainAppLocationTracker />
+        {/* magnesium: the footer, on every page (goal 05) */}
+        <AppFooter />
       </SidebarProvider>
     </PanelAnimationSuppressionProvider>
   );
