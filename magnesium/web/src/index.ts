@@ -2,6 +2,7 @@
 export * from "./fleet.ts";
 export * from "./footer.ts";
 export * from "./hubMachines.ts";
+export * from "./offline.ts";
 export * from "./pwa/register.ts";
 export * from "./rpc.ts";
 export * from "./sandboxes.ts";

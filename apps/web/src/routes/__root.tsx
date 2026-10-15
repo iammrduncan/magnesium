@@ -80,6 +80,9 @@ import {
 import { getDesktopSnapShotBridge } from "../lib/desktopSnapShot";
 import { installDesktopPasteAsText } from "../lib/desktopPasteAsText";
 import { shouldResumeSnapShotSetupOnStartup } from "../lib/snapShotSetupResume";
+// magnesium: Offline at boot (goal 05)
+import { isServerUnreachableError } from "@magnesium/web";
+import { OfflineScreen } from "../components/magnesium/OfflineScreen";
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
@@ -113,7 +116,7 @@ export const Route = createRootRoute({
     };
   },
   component: RootRouteView,
-  errorComponent: RootRouteErrorView,
+  errorComponent: RootRouteOfflineOrErrorView, // magnesium: Offline when the hub is unreachable (goal 05)
   notFoundComponent: RootRouteNotFoundView,
   head: () => ({
     meta: [{ name: "title", content: APP_DISPLAY_NAME }],
@@ -373,6 +376,16 @@ function HostedStaticEnvironmentBootstrap() {
   }, [activeEnvironmentId, environments]);
 
   return null;
+}
+
+// magnesium: a boot that can't reach the hub (no network, or the hub down) shows
+// Offline with Retry, not an error report (goal 05).
+function RootRouteOfflineOrErrorView(props: ErrorComponentProps) {
+  return isServerUnreachableError(props.error) ? (
+    <OfflineScreen />
+  ) : (
+    <RootRouteErrorView {...props} />
+  );
 }
 
 function RootRouteErrorView({ error }: ErrorComponentProps) {
