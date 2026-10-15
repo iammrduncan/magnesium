@@ -66,6 +66,16 @@ lists when each machine's link came up or went down.
 Agents and command-line sessions cannot reach the hub's machines, even with an
 admin token: only devices you paired can.
 
+## The footer
+
+The bar along the bottom of every page shows how many machines the hub reaches
+and how many are offline, and how many threads need you across all of them.
+Hover an item for what its label leaves out, such as a machine whose threads
+can't be counted while it is offline. Click it to see each machine; from
+**Needs you**, open a waiting thread. **+ Footer** chooses which items show,
+and the choice is kept on that device. While the hub can't be reached, the
+footer says **Offline** instead of showing old numbers.
+
 ## Profiles
 
 The hub holds your profiles and sends each to the machines it names; see
