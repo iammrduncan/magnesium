@@ -151,8 +151,9 @@ export const checkProfiles = Effect.fn("profiles.checkProfiles")(function* (
 
 const FENCE_NOTES: Record<string, string> = {
   bwrap: "bubblewrap: the state home is hidden, and the agent has its own process view.",
+  userns: "A user namespace of its own: the state home is hidden, as with bubblewrap.",
   landlock:
-    "Landlock: the agent can't list / or your home folder, or create files directly in your home folder.",
+    "Landlock alone: the agent can't create files directly in your home folder, or list it. Install bubblewrap to lift that.",
   seatbelt: "macOS Seatbelt.",
 };
 

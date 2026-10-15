@@ -1,6 +1,6 @@
 #!/bin/sh
 # magnesium-fence [--protect PATH]... [--ro PATH]... [--rw PATH]... -- COMMAND [ARGS...]
-# magnesium-fence --probe
+# magnesium-fence --probe [bwrap|userns|landlock|seatbelt]
 #
 # Runs COMMAND as this user, fenced (D40):
 #   - it can neither read nor write MAGNESIUM_STATE_HOME (default T3CODE_HOME),
@@ -16,11 +16,16 @@
 #   bwrap     bubblewrap, where it runs: the state home is an empty tmpfs, and the
 #             command gets its own PID namespace, so it can't reach the server
 #             through /proc, and it dies with this process
-#   landlock  Linux Landlock through Python 3 (magnesium-landlock): no namespaces;
-#             Landlock also keeps it from reading the server's /proc
+#   userns    the same mount fence without bubblewrap, through Python 3
+#             (magnesium-fence-helper), where unprivileged user namespaces are
+#             allowed (Debian's default); a Landlock domain keeps it out of the
+#             server's /proc
+#   landlock  Linux Landlock alone, through Python 3: no namespaces. Its limit:
+#             nothing new can be created directly in the state home's parent
+#             folders (your home folder), and they can't be listed
 #   seatbelt  macOS sandbox-exec
-# MAGNESIUM_FENCE picks one; `--probe` prints the one this machine would use, or
-# `none: <reason>` and exits 1.
+# MAGNESIUM_FENCE picks one. `--probe` prints the one this machine would use, or
+# `none: <reason>` and exits 1; `--probe NAME` checks one mechanism ("ok", or why not).
 set -eu
 
 bin_dir=$(cd "$(dirname "$0")" && pwd -P)
@@ -30,33 +35,54 @@ fail() {
   exit 78
 }
 
-probe() {
-  case $(uname -s) in
-    Darwin)
-      if command -v sandbox-exec >/dev/null 2>&1; then echo seatbelt; return 0; fi
-      echo "none: sandbox-exec is missing"
-      return 1
+# check NAME: prints "ok", or why this machine can't use it, and returns 0 or 1.
+check() {
+  case $1 in
+    bwrap)
+      if [ "$(uname -s)" != Linux ]; then echo "bubblewrap runs on Linux only"; return 1; fi
+      if ! command -v bwrap >/dev/null 2>&1; then echo "bubblewrap is not installed"; return 1; fi
+      if ! bwrap --dev-bind / / --unshare-pid --proc /proc --die-with-parent true >/dev/null 2>&1; then
+        echo "bubblewrap can't make namespaces here"
+        return 1
+      fi
+      echo ok
       ;;
-    Linux)
-      if command -v bwrap >/dev/null 2>&1 &&
-        bwrap --dev-bind / / --unshare-pid --proc /proc --die-with-parent true >/dev/null 2>&1; then
-        echo bwrap
-        return 0
-      fi
-      if command -v python3 >/dev/null 2>&1 && python3 "$bin_dir/magnesium-landlock" --probe >/dev/null 2>&1; then
-        echo landlock
-        return 0
-      fi
-      echo "none: no bubblewrap, and no Landlock in this kernel (or no python3)"
+    userns | landlock)
+      if [ "$(uname -s)" != Linux ]; then echo "$1 is Linux only"; return 1; fi
+      if ! command -v python3 >/dev/null 2>&1; then echo "python3 is missing"; return 1; fi
+      python3 "$bin_dir/magnesium-fence-helper" --probe "$1"
+      ;;
+    seatbelt)
+      if [ "$(uname -s)" != Darwin ]; then echo "Seatbelt is macOS only"; return 1; fi
+      if ! command -v sandbox-exec >/dev/null 2>&1; then echo "sandbox-exec is missing"; return 1; fi
+      echo ok
+      ;;
+    *)
+      echo "no fence called $1"
       return 1
       ;;
   esac
-  echo "none: no fence for $(uname -s)"
+}
+
+probe() {
+  reasons=
+  for candidate in bwrap userns landlock seatbelt; do
+    if reason=$(check "$candidate"); then
+      echo "$candidate"
+      return 0
+    fi
+    reasons="$reasons${reasons:+; }$candidate: $reason"
+  done
+  echo "none: $reasons"
   return 1
 }
 
 if [ "${1:-}" = --probe ]; then
-  probe
+  if [ $# -ge 2 ]; then
+    check "$2"
+  else
+    probe
+  fi
   exit $?
 fi
 
@@ -115,13 +141,13 @@ case $mechanism in
     IFS=$old_ifs
     exec bwrap --dev-bind / / --tmpfs "$state" "$@"
     ;;
-  landlock)
+  userns | landlock)
     set -- -- "$@"
     for grant in $grants; do
       set -- "--${grant%% *}" "${grant#* }" "$@"
     done
     IFS=$old_ifs
-    exec python3 "$bin_dir/magnesium-landlock" --hide "$state" "$@"
+    exec python3 "$bin_dir/magnesium-fence-helper" "$mechanism" --hide "$state" "$@"
     ;;
   seatbelt)
     quote() { printf '"%s"' "$(printf '%s' "$1" | sed 's/[\\"]/\\&/g')"; }

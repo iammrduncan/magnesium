@@ -15,11 +15,25 @@ afterEach(() => {
 
 const quote = (value: string) => `'${value.replaceAll("'", `'\\''`)}'`;
 
-/** Whether this machine can fence (bubblewrap, Landlock or Seatbelt); fence tests need one. */
-const fence = NodeChildProcess.spawnSync(NodePath.join(bin, "magnesium-fence"), ["--probe"], {
-  encoding: "utf8",
-});
-const canFence = fence.status === 0;
+const probe = (...args: ReadonlyArray<string>) => {
+  const result = NodeChildProcess.spawnSync(
+    NodePath.join(bin, "magnesium-fence"),
+    ["--probe", ...args],
+    { encoding: "utf8" },
+  );
+  return { ok: result.status === 0, said: result.stdout.trim() };
+};
+
+/** Each fence this machine can run; every test of one runs it on purpose, through MAGNESIUM_FENCE. */
+const MECHANISMS = ["bwrap", "userns", "landlock", "seatbelt"] as const;
+type Mechanism = (typeof MECHANISMS)[number];
+const available = Object.fromEntries(
+  MECHANISMS.map((mechanism) => [mechanism, probe(mechanism)]),
+) as Record<Mechanism, { ok: boolean; said: string }>;
+/** The test's name, with why it is skipped on this machine. */
+const named = (mechanism: Mechanism, name: string) =>
+  available[mechanism].ok ? name : `${name} (skipped: ${available[mechanism].said})`;
+const anyFence = MECHANISMS.find((mechanism) => available[mechanism].ok);
 
 interface Call {
   readonly name: string;
@@ -28,14 +42,25 @@ interface Call {
   /** What happened when it tried to read the state home's canary. */
   readonly canary: "read" | "denied";
   readonly homeWritable: boolean;
+  readonly workspaceWritable: boolean;
+  /** A new file in a folder beside the state home, under the same parent. */
+  readonly besideWritable: boolean;
+  readonly tmpWritable: boolean;
 }
 
 /**
  * A server's state home with a canary in its secrets, a profile in it as sync
  * writes it, and fake `claude`, `codex` and `podman` that record their argv, a
- * secret they inherit, and whether they can read the canary.
+ * secret they inherit, and what they could read and write. The record goes to a
+ * folder beside the state home, as a project or cache would be.
  */
-function makeProfile(options: { readonly image?: string; readonly mcp?: boolean } = {}) {
+function makeProfile(
+  options: {
+    readonly image?: string;
+    readonly mcp?: boolean;
+    readonly fence?: Mechanism | undefined;
+  } = {},
+) {
   const root = NodeFS.realpathSync(NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "mg-wrap-")));
   roots.push(root);
   const stateHome = NodePath.join(root, "state");
@@ -44,7 +69,10 @@ function makeProfile(options: { readonly image?: string; readonly mcp?: boolean 
   const state = NodePath.join(profileDir, ".magnesium");
   const fakes = NodePath.join(root, "fakes");
   const project = NodePath.join(root, "project");
-  const record = NodePath.join(root, "calls.jsonl");
+  const out = NodePath.join(root, "out");
+  // The machine's tmp is not beside the state home in a real install (~/.magnesium).
+  const tmp = NodePath.join(root, "tmp");
+  const record = NodePath.join(out, "calls.jsonl");
   for (const dir of [
     NodePath.dirname(canary),
     NodePath.join(state, "claude"),
@@ -52,6 +80,8 @@ function makeProfile(options: { readonly image?: string; readonly mcp?: boolean 
     NodePath.join(state, "home"),
     NodePath.join(fakes, "bin"),
     project,
+    out,
+    tmp,
   ]) {
     NodeFS.mkdirSync(dir, { recursive: true });
   }
@@ -59,13 +89,21 @@ function makeProfile(options: { readonly image?: string; readonly mcp?: boolean 
   NodeFS.writeFileSync(
     NodePath.join(fakes, "fake.cjs"),
     `const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const [name, ...args] = process.argv.slice(2);
-let canary = "denied";
-try { fs.readFileSync(${JSON.stringify(canary)}); canary = "read"; } catch {}
-let homeWritable = false;
+const tries = (fn) => { try { fn(); return true; } catch { return false; } };
 const home = process.env.CLAUDE_CONFIG_DIR || process.env.CODEX_HOME;
-try { if (home) { fs.writeFileSync(home + "/probe", "x"); homeWritable = true; } } catch {}
-fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify({ name, args, secret: process.env.GBRAIN_TOKEN ?? null, canary, homeWritable }) + "\\n");
+fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify({
+  name,
+  args,
+  secret: process.env.GBRAIN_TOKEN ?? null,
+  canary: tries(() => fs.readFileSync(${JSON.stringify(canary)})) ? "read" : "denied",
+  homeWritable: Boolean(home) && tries(() => fs.writeFileSync(home + "/probe", "x")),
+  workspaceWritable: tries(() => fs.writeFileSync("written-here", "x")),
+  besideWritable: tries(() => fs.writeFileSync(path.join(${JSON.stringify(out)}, "new-" + process.pid), "x")),
+  tmpWritable: tries(() => fs.rmSync(fs.mkdtempSync(path.join(os.tmpdir(), "t-")), { recursive: true })),
+}) + "\\n");
 `,
   );
   const fake = (name: string) => {
@@ -87,7 +125,7 @@ fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify({ name, args, secret
       `MG_PROFILE_DIR=${quote(profileDir)}`,
       `MG_STATE_DIR=${quote(state)}`,
       `MG_STATE_HOME=${quote(stateHome)}`,
-      `MG_FENCE=''`,
+      `MG_FENCE=${quote(options.fence ?? "")}`,
       `MG_PROTECT=''`,
       `MG_CONTAINER_HOME=${quote(NodePath.join(state, "home"))}`,
       `MG_IMAGE=${quote(options.image ?? "docker.io/library/node@sha256:abc")}`,
@@ -119,6 +157,7 @@ fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify({ name, args, secret
       env: {
         PATH: `${NodePath.join(fakes, "bin")}:${process.env.PATH ?? ""}`,
         HOME: process.env.HOME ?? root,
+        TMPDIR: tmp,
         GBRAIN_TOKEN: "secret-value",
         ...env,
       },
@@ -137,11 +176,20 @@ fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify({ name, args, secret
       ...env,
     });
   const log = () => NodeFS.readFileSync(NodePath.join(state, "wrapper.log"), "utf8");
-  return { root, stateHome, profileDir, state, project, claude, run, harness, log };
+  return { root, stateHome, profileDir, state, project, out, claude, run, harness, log };
 }
 
 const SESSION = ["--output-format", "stream-json", "--input-format", "stream-json", "--verbose"];
 const PROBE = [...SESSION, "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}'];
+
+/** What every fence promises: only the state home is out of reach. */
+const FENCED = {
+  canary: "denied",
+  homeWritable: true,
+  workspaceWritable: true,
+  besideWritable: true,
+  tmpWritable: true,
+} as const;
 
 describe("magnesium-claude and magnesium-codex", () => {
   it("run native only when asked, with the profile's MCP servers and nothing hidden", () => {
@@ -161,24 +209,6 @@ describe("magnesium-claude and magnesium-codex", () => {
     expect(profile.log()).toContain(`cwd=${profile.project}`);
     expect(profile.log()).toContain("level=native mode=session");
   });
-
-  it.skipIf(!canFence)(
-    "fence by default: the state home is unreadable, the profile's home is not",
-    () => {
-      const profile = makeProfile();
-      const result = profile.harness("claude", "fenced", SESSION);
-      expect(result.status, result.stderr).toBe(0);
-      expect(result.calls).toMatchObject([
-        {
-          name: "claude",
-          args: SESSION,
-          secret: "secret-value",
-          canary: "denied",
-          homeWritable: true,
-        },
-      ]);
-    },
-  );
 
   it("run a container session through podman, with secrets by name only", () => {
     const profile = makeProfile();
@@ -210,10 +240,27 @@ describe("magnesium-claude and magnesium-codex", () => {
     expect(profile.log()).toContain("level=container mode=session");
   });
 
-  it.skipIf(!canFence)(
-    "run probes fenced at any level, so a provider refresh starts no container",
+  it("pass Codex the arguments T3 gives it, at every level", () => {
+    // Codex's own sandbox is switched off by the server under the fence or a
+    // container (CodexSessionRuntime), never by a launch flag the wrapper adds.
+    const profile = makeProfile({ fence: anyFence });
+    expect(profile.harness("codex", "native", ["app-server"]).calls[0]?.args).toEqual([
+      "app-server",
+    ]);
+    expect(profile.harness("codex", "container", ["app-server"]).calls[0]?.args.slice(-1)).toEqual([
+      "app-server",
+    ]);
+    if (anyFence !== undefined) {
+      expect(profile.harness("codex", "fenced", ["app-server"]).calls[0]?.args).toEqual([
+        "app-server",
+      ]);
+    }
+  });
+
+  it.skipIf(anyFence === undefined)(
+    `run probes fenced at any level, so a provider refresh starts no container${anyFence === undefined ? " (skipped: no fence here)" : ""}`,
     () => {
-      const profile = makeProfile();
+      const profile = makeProfile({ fence: anyFence });
       expect(profile.harness("claude", "container", ["--version"]).calls[0]).toMatchObject({
         name: "claude",
         canary: "denied",
@@ -225,13 +272,6 @@ describe("magnesium-claude and magnesium-codex", () => {
       expect(profile.log().match(/mode=probe/g)).toHaveLength(3);
     },
   );
-
-  it("treat every codex app-server as a session", () => {
-    const profile = makeProfile();
-    const result = profile.harness("codex", "container", ["app-server"]);
-    expect(result.calls[0]?.name).toBe("podman");
-    expect(result.calls[0]?.args.slice(-1)).toEqual(["app-server"]);
-  });
 
   it("refuse to start without a profile home, a level it knows, or an image", () => {
     const profile = makeProfile({ image: "" });
@@ -247,20 +287,40 @@ describe("magnesium-claude and magnesium-codex", () => {
   });
 });
 
-describe("magnesium-fenced and magnesium-fence", () => {
-  it.skipIf(!canFence)("fence a stock instance's CLI from the state home", () => {
+describe.each(MECHANISMS)("the %s fence", (mechanism) => {
+  const skip = !available[mechanism].ok;
+
+  it.skipIf(skip)(
+    named(mechanism, "hides the state home and nothing else from a profile's agent"),
+    () => {
+      const profile = makeProfile({ fence: mechanism });
+      const result = profile.harness("claude", "fenced", SESSION);
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.calls).toMatchObject([{ name: "claude", args: SESSION, ...FENCED }]);
+      expect(result.calls[0]?.secret).toBe("secret-value");
+    },
+  );
+
+  it.skipIf(skip)(named(mechanism, "fences a stock instance's CLI the same way"), () => {
     const profile = makeProfile();
     const result = profile.run("magnesium-fenced", ["app-server"], {
       MAGNESIUM_REAL_BIN: profile.claude,
       MAGNESIUM_STATE_HOME: profile.stateHome,
+      MAGNESIUM_FENCE: mechanism,
     });
     expect(result.status, result.stderr).toBe(0);
     expect(result.calls).toMatchObject([
-      { name: "claude", args: ["app-server"], canary: "denied" },
+      {
+        name: "claude",
+        args: ["app-server"],
+        canary: "denied",
+        workspaceWritable: true,
+        tmpWritable: true,
+      },
     ]);
   });
 
-  it.skipIf(!canFence)("let a protected path be read but never changed", () => {
+  it.skipIf(skip)(named(mechanism, "lets a protected path be read but never changed"), () => {
     const profile = makeProfile();
     const installed = NodePath.join(profile.root, "install", "server.js");
     NodeFS.mkdirSync(NodePath.dirname(installed), { recursive: true });
@@ -276,14 +336,48 @@ describe("magnesium-fenced and magnesium-fence", () => {
       {
         MAGNESIUM_STATE_HOME: profile.stateHome,
         MAGNESIUM_FENCE_PROTECT: NodePath.dirname(installed),
+        MAGNESIUM_FENCE: mechanism,
       },
     );
     expect(result.stdout).toContain("code");
     expect(result.stdout).toContain("protected");
     expect(NodeFS.readFileSync(installed, "utf8")).toBe("code");
   });
+});
 
-  it("say which fence this machine has", () => {
-    expect(fence.stdout.trim()).toMatch(/^(bwrap|landlock|seatbelt|none: .+)$/);
+describe("the landlock fence's limit", () => {
+  // Landlock can only grant: "everything but the state home" is every sibling on
+  // the way down to it, so its parent folders themselves get nothing. Files and
+  // folders already beside it work; nothing new can be made directly in them.
+  it.skipIf(!available.landlock.ok)(
+    named("landlock", "keeps what is beside the state home, but nothing new appears there"),
+    () => {
+      const profile = makeProfile();
+      const existing = NodePath.join(profile.root, "existing.log");
+      NodeFS.writeFileSync(existing, "");
+      const result = profile.run(
+        "magnesium-fence",
+        [
+          "--",
+          "sh",
+          "-c",
+          `echo x >> ${quote(existing)} && echo existing-ok; (echo x > ${quote(NodePath.join(profile.root, "new.log"))}) 2>/dev/null || echo new-refused`,
+        ],
+        { MAGNESIUM_STATE_HOME: profile.stateHome, MAGNESIUM_FENCE: "landlock" },
+      );
+      expect(result.stdout).toContain("existing-ok");
+      expect(result.stdout).toContain("new-refused");
+    },
+  );
+});
+
+describe("magnesium-fence --probe", () => {
+  it("says which fence this machine uses, and why a missing one is missing", () => {
+    expect(probe().said).toMatch(/^(bwrap|userns|landlock|seatbelt|none: .+)$/);
+    for (const mechanism of MECHANISMS) {
+      expect(available[mechanism].said.length).toBeGreaterThan(0);
+      if (available[mechanism].ok) expect(available[mechanism].said).toBe("ok");
+    }
+    expect(probe("nothing").said).toBe("no fence called nothing");
   });
 });

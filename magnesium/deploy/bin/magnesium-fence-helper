@@ -1,0 +1,273 @@
+#!/usr/bin/env python3
+"""magnesium-fence-helper userns|landlock [--hide DIR]... [--protect PATH]... [--ro PATH]... [--rw PATH]... -- COMMAND [ARGS...]
+magnesium-fence-helper --probe userns|landlock
+
+The two fences `magnesium-fence` uses where bubblewrap doesn't run. Both need
+nothing installed beyond Python 3. COMMAND runs as this user, and:
+  --hide DIR      it can neither read nor write DIR (Magnesium's state home)
+  --protect PATH  it can read PATH but never change it (Magnesium's install and config)
+  --ro / --rw     paths inside those come back read-only or read-write
+
+userns    what bubblewrap does: a user and mount namespace of the command's own,
+          where each hidden folder is an empty tmpfs, each protected path is a
+          read-only mount, and the paths that come back are mounted over them.
+          Everything else is exactly as usual. Needs unprivileged user
+          namespaces (Debian's default; Ubuntu's AppArmor blocks them for
+          programs it has no profile for) and Landlock.
+landlock  Linux Landlock only. Landlock can only grant, so "everything but DIR"
+          is every sibling along the way from / down to DIR. The limit: nothing
+          new can be created directly in DIR's parent folders (such as your
+          home folder, when DIR is ~/.magnesium), and they can't be listed.
+          Files already in them can be read and changed in place.
+
+Both also put the command in a Landlock domain, which keeps it from tracing or
+reading /proc of processes outside it, such as the Magnesium server. `--probe`
+exits 0 and prints "ok" when this machine allows the mode, else prints why.
+"""
+import ctypes
+import os
+import struct
+import sys
+
+SYS_CREATE_RULESET, SYS_ADD_RULE, SYS_RESTRICT_SELF = 444, 445, 446  # same on every arch
+CREATE_RULESET_VERSION = 1
+RULE_PATH_BENEATH = 1
+PR_SET_NO_NEW_PRIVS = 38
+EXECUTE, WRITE_FILE, READ_FILE, READ_DIR = 1 << 0, 1 << 1, 1 << 2, 1 << 3
+DIR_ONLY = sum(1 << bit for bit in range(4, 13))  # remove and make, all kinds
+REFER, TRUNCATE, IOCTL_DEV = 1 << 13, 1 << 14, 1 << 15
+READ = EXECUTE | READ_FILE | READ_DIR
+
+CLONE_NEWNS, CLONE_NEWUSER = 0x00020000, 0x10000000
+MS_RDONLY, MS_NOSUID, MS_NODEV, MS_REMOUNT, MS_BIND, MS_REC, MS_PRIVATE = 1, 2, 4, 32, 4096, 16384, 1 << 18
+# statvfs flag -> mount flag, for the flags a remount in a user namespace must keep (the kernel locks them).
+LOCKED = [(1, 1), (2, 2), (4, 4), (8, 8), (1024, 1024), (2048, 2048), (4096, 1 << 21)]
+
+
+class RulesetAttr(ctypes.Structure):
+    _fields_ = [("handled_access_fs", ctypes.c_uint64)]
+
+
+libc = ctypes.CDLL(None, use_errno=True)
+libc.syscall.restype = ctypes.c_long
+libc.mount.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_ulong, ctypes.c_char_p]
+
+
+class Refused(Exception):
+    pass
+
+
+def errno_text():
+    return os.strerror(ctypes.get_errno())
+
+
+def abi_version():
+    return libc.syscall(SYS_CREATE_RULESET, None, ctypes.c_size_t(0), ctypes.c_uint32(CREATE_RULESET_VERSION))
+
+
+class Ruleset:
+    def __init__(self, handled):
+        attr = RulesetAttr(handled)
+        self.file_rights = (EXECUTE | READ_FILE | WRITE_FILE | (handled & (TRUNCATE | IOCTL_DEV)))
+        self.fd = libc.syscall(SYS_CREATE_RULESET, ctypes.byref(attr), ctypes.c_size_t(ctypes.sizeof(attr)), ctypes.c_uint32(0))
+        if self.fd < 0:
+            raise Refused(f"could not create a Landlock ruleset: {errno_text()}")
+
+    def allow(self, path, rights):
+        try:
+            fd = os.open(path, os.O_PATH | os.O_CLOEXEC)
+        except OSError:
+            return
+        try:
+            if not os.path.isdir(path):
+                rights &= self.file_rights
+            # struct landlock_path_beneath_attr is packed: u64 allowed_access, s32 parent_fd.
+            rule = ctypes.create_string_buffer(struct.pack("=Qi", rights, fd), 12)
+            if libc.syscall(SYS_ADD_RULE, ctypes.c_int(self.fd), ctypes.c_uint32(RULE_PATH_BENEATH), rule, ctypes.c_uint32(0)) < 0:
+                raise Refused(f"could not allow {path}: {errno_text()}")
+        finally:
+            os.close(fd)
+
+    def enforce(self):
+        if libc.prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0:
+            raise Refused("could not set no_new_privs")
+        if libc.syscall(SYS_RESTRICT_SELF, ctypes.c_int(self.fd), ctypes.c_uint32(0)) < 0:
+            raise Refused(f"could not enter the Landlock domain: {errno_text()}")
+        os.close(self.fd)
+
+
+def landlock_abi():
+    abi = abi_version()
+    if abi < 1:
+        raise Refused("this kernel has no Landlock")
+    return abi
+
+
+# The usual per-user folders (XDG): made before the fence when the home folder is
+# one of the hidden folder's parents, since nothing can be created there after.
+USER_FOLDERS = [".cache", ".config", ".local/bin", ".local/share", ".local/state"]
+
+
+def landlock(hide, protect, readonly, readwrite):
+    abi = landlock_abi()
+    home = os.path.realpath(os.path.expanduser("~"))
+    if any(path.startswith(home + "/") for path in hide):
+        for folder in USER_FOLDERS:
+            os.makedirs(os.path.join(home, folder), exist_ok=True)
+    every = READ | WRITE_FILE | DIR_ONLY | (REFER if abi >= 2 else 0) | (TRUNCATE if abi >= 3 else 0) | (IOCTL_DEV if abi >= 5 else 0)
+    rules = Ruleset(every)
+    special = {path: "protect" for path in protect}
+    special.update({path: "hide" for path in hide})
+
+    def walk(folder):
+        try:
+            entries = os.listdir(folder)
+        except OSError:
+            return
+        for entry in entries:
+            path = os.path.join(folder, entry)
+            mode = special.get(path)
+            if mode == "protect":
+                rules.allow(path, READ)
+            elif mode == "hide":
+                continue
+            elif any(other.startswith(path + "/") for other in special):
+                walk(path)
+            else:
+                rules.allow(path, every)
+
+    walk("/")
+    for path in readonly:
+        rules.allow(path, READ)
+    for path in readwrite:
+        rules.allow(path, every)
+    rules.enforce()
+
+
+def mount(source, target, fstype, flags, data=None):
+    enc = lambda value: value.encode() if value is not None else None
+    if libc.mount(enc(source), enc(target), enc(fstype), flags, enc(data)) != 0:
+        raise Refused(f"could not mount {target}: {errno_text()}")
+
+
+def read_only(path):
+    flags = os.statvfs(path).f_flag
+    kept = sum(ms for st, ms in LOCKED if flags & st)
+    mount(None, path, None, MS_REMOUNT | MS_BIND | MS_RDONLY | kept)
+
+
+def write(path, text):
+    try:
+        with open(path, "w") as f:
+            f.write(text)
+    except OSError as error:
+        raise Refused(f"user namespaces are not allowed here ({path}: {error.strerror})")
+
+
+def userns(hide, protect, readonly, readwrite):
+    landlock_abi()
+    uid, gid = os.getuid(), os.getgid()
+    if libc.unshare(CLONE_NEWUSER | CLONE_NEWNS) != 0:
+        raise Refused(f"user namespaces are not allowed here ({errno_text()})")
+    write("/proc/self/setgroups", "deny")
+    write("/proc/self/uid_map", f"{uid} {uid} 1")
+    write("/proc/self/gid_map", f"{gid} {gid} 1")
+    mount(None, "/", None, MS_REC | MS_PRIVATE)  # nothing done here reaches the host's mounts
+    # Open what comes back before anything hides it, and mount it from the open fd
+    # after. Opened here, inside the new mount namespace: a bind from a mount in
+    # another namespace is refused.
+    grants = sorted(((path, os.open(path, os.O_PATH | os.O_CLOEXEC), rw) for path, rw in
+                     [(p, False) for p in readonly] + [(p, True) for p in readwrite] if os.path.exists(path)),
+                    key=lambda grant: len(grant[0]))
+    for path in sorted(protect, key=len):
+        if os.path.exists(path):
+            mount(path, path, None, MS_BIND | MS_REC)
+            read_only(path)
+    for path in sorted(hide, key=len):
+        mount("tmpfs", path, "tmpfs", MS_NOSUID | MS_NODEV, "mode=0700")
+    for path, fd, rw in grants:
+        source = f"/proc/self/fd/{fd}"
+        if os.path.isdir(source):
+            os.makedirs(path, exist_ok=True)
+        else:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            open(path, "a").close()
+        mount(source, path, None, MS_BIND | MS_REC)
+        if not rw:
+            read_only(path)
+        os.close(fd)
+    # A domain that restricts no files: it only keeps the command out of other processes' /proc.
+    rules = Ruleset(EXECUTE)
+    rules.allow("/", EXECUTE)
+    rules.enforce()
+
+
+MODES = {"userns": userns, "landlock": landlock}
+
+
+def fence(mode, args):
+    lists = {"--hide": [], "--protect": [], "--ro": [], "--rw": []}
+    args = list(args)
+    while args and args[0] != "--":
+        flag = args.pop(0)
+        if flag not in lists or not args:
+            raise Refused(f"bad option {flag}")
+        lists[flag].append(os.path.realpath(args.pop(0)))
+    if len(args) < 2:
+        raise Refused("usage: magnesium-fence-helper userns|landlock [--hide DIR]... [--protect PATH]... [--ro PATH]... [--rw PATH]... -- COMMAND [ARGS...]")
+    cwd = os.getcwd()
+    MODES[mode](lists["--hide"], lists["--protect"], lists["--ro"], lists["--rw"])
+    # Through the new view: the old cwd could still reach a hidden folder.
+    os.chdir(cwd)
+    command = args[1:]
+    try:
+        os.execvp(command[0], command)
+    except OSError as error:
+        raise Refused(f"could not run {command[0]}: {error.strerror}")
+
+
+def probe(mode):
+    """Try the whole fence in a child, on a scratch folder, so this process stays as it is."""
+    import tempfile
+    scratch = tempfile.mkdtemp(prefix="mg-fence-probe-")
+    hidden = os.path.join(scratch, "hidden")
+    os.makedirs(os.path.join(hidden, "back"))
+    read, write_end = os.pipe()
+    pid = os.fork()
+    if pid == 0:
+        os.close(read)
+        os.chdir(scratch)
+        try:
+            MODES[mode]([hidden], [], [os.path.join(hidden, "back")], [])
+            os.write(write_end, b"ok")
+            os._exit(0)
+        except Refused as refused:
+            os.write(write_end, str(refused).encode())
+        except BaseException as error:
+            os.write(write_end, f"{type(error).__name__}: {error}".encode())
+        os._exit(1)
+    os.close(write_end)
+    message = os.read(read, 4096).decode() or "the probe died"
+    os.waitpid(pid, 0)
+    for path in (os.path.join(hidden, "back"), hidden, scratch):
+        os.rmdir(path)
+    print(message)
+    sys.exit(0 if message == "ok" else 1)
+
+
+def main():
+    args = sys.argv[1:]
+    if len(args) == 2 and args[0] == "--probe" and args[1] in MODES:
+        probe(args[1])
+        return
+    if not args or args[0] not in MODES:
+        sys.stderr.write("usage: magnesium-fence-helper userns|landlock ... -- COMMAND, or --probe userns|landlock\n")
+        sys.exit(64)
+    try:
+        fence(args[0], args[1:])
+    except Refused as refused:
+        sys.stderr.write(f"magnesium-fence-helper: {refused}\n")
+        sys.exit(78)
+
+
+main()
