@@ -10,6 +10,8 @@ import { defineConfig, type Connect, type Plugin } from "vite-plus";
 import pkg from "./package.json" with { type: "json" };
 
 import { DEV_PROXIED_PATH_PREFIXES } from "@t3tools/shared/devProxy";
+// magnesium: the shell service worker, sw.js, for the installable PWA (goal 05)
+import { shellServiceWorkerPlugin } from "@magnesium/web/vite-plugin";
 
 import { loadRepoEnv } from "../../scripts/lib/public-config";
 import { thirdPartyLicensesPlugin } from "../../scripts/lib/third-party-licenses";
@@ -180,6 +182,7 @@ export default defineConfig(() => {
         presets: [reactCompilerPreset()],
       }),
       tailwindPlugins(bundledDev),
+      shellServiceWorkerPlugin(), // magnesium: production builds only (goal 05)
     ],
     optimizeDeps: {
       // magnesium: no Clerk prebundles (D13)

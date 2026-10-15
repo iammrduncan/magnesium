@@ -6,6 +6,10 @@
     ".": {
       "types": "./src/index.ts",
       "import": "./src/index.ts"
+    },
+    "./vite-plugin": {
+      "types": "./src/pwa/vitePlugin.ts",
+      "import": "./src/pwa/vitePlugin.ts"
     }
   },
   "scripts": {
@@ -16,6 +20,7 @@
     "@magnesium/contracts": "workspace:*",
     "@t3tools/client-runtime": "workspace:*",
     "@t3tools/contracts": "workspace:*",
+    "@t3tools/shared": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

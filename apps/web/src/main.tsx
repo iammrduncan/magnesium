@@ -13,6 +13,7 @@ import {
 } from "./lib/windowControlsOverlay";
 import { AppRoot } from "./AppRoot";
 import { clearChunkReloadGuard, reloadOnceForChunkLoadError } from "./lib/chunkReloadGuard";
+import { registerShellServiceWorker } from "@magnesium/web"; // magnesium: goal 05
 
 prepareProviderAuthDelivery();
 
@@ -39,6 +40,9 @@ window.addEventListener("vite:preloadError", (event) => {
 });
 
 // magnesium: no Clerk managed-auth shell; pairing is the only sign-in (D13)
+
+// magnesium: the shell service worker, so the installed PWA opens offline (goal 05)
+registerShellServiceWorker({ enabled: import.meta.env.PROD && !isElectron });
 
 // The index.html boot splash lives inside #root, and React's first commit
 // clears it. Resolve everything that first commit needs, the initial route's
