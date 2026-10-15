@@ -4,6 +4,7 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
+import { tokenizeCliArgs } from "@t3tools/shared/cliArgs";
 import { nativeTwinInstanceId, type ProfileBundle, profileInstanceId } from "@magnesium/contracts";
 import {
   DEFAULT_SERVER_SETTINGS,
@@ -23,7 +24,13 @@ import {
   ProfilesConfig,
 } from "./catalog.ts";
 import { planProfile, writeHomes } from "./homes.ts";
-import { loadProfile, refusedLaunchArgs, resolveProfile } from "./profileFolder.ts";
+import {
+  joinLaunchArgs,
+  launchArgList,
+  loadProfile,
+  refusedLaunchArgs,
+  resolveProfile,
+} from "./profileFolder.ts";
 import { receivePush } from "./receive.ts";
 import type { DetectedSetup } from "./setup.ts";
 import { desiredInstances } from "./stock.ts";
@@ -100,6 +107,49 @@ describe("the profile check", () => {
   it("lets other launch args through", () => {
     expect(refusedLaunchArgs('--add-dir /data -c model_reasoning_effort="high"')).toEqual([]);
   });
+
+  it.each([
+    [["--dangerously-skip-permissions"]],
+    [["--permission-mode", "bypassPermissions"]],
+    [["--permission-mode bypassPermissions"]],
+    [["-c", "approval_policy=never"]],
+  ])("refuses %j in launch args written as a list", (args) => {
+    expect(refusedLaunchArgs(args)[0]).toContain("is refused");
+  });
+
+  it("reads launch args as a string or a list, and hands T3 the same arguments", () => {
+    const list = ["--add-dir", "/data/my files", "-c", 'model_reasoning_effort="high"'];
+    expect(launchArgList('--add-dir "/data/my files" -c model_reasoning_effort=high')).toEqual([
+      "--add-dir",
+      "/data/my files",
+      "-c",
+      "model_reasoning_effort=high",
+    ]);
+    expect(launchArgList(list)).toEqual(list);
+    expect(tokenizeCliArgs(joinLaunchArgs(list))).toEqual(list);
+    expect(refusedLaunchArgs(list)).toEqual([]);
+  });
+
+  it.effect("refuses a permission flag in a launch_args list, not as a parse error", () =>
+    Effect.gen(function* () {
+      const root = tempRoot();
+      const config = setupFor(root);
+      writeProfile(config.folder, "scratch-b", {
+        ...SCRATCH_A,
+        "profile.yaml": 'name: scratch-b\nlaunch_args: ["--dangerously-skip-permissions"]\n',
+      });
+      writeProfile(config.folder, "scratch-c", {
+        ...SCRATCH_A,
+        "profile.yaml": "name: scratch-c\nlaunch_args:\n  - --add-dir\n  - /data\n",
+      });
+      const result = yield* checkProfiles().pipe(Effect.provide(provide(config)));
+      const byName = Object.fromEntries(result.profiles.map((p) => [p.name, p.issues]));
+      expect(byName["scratch-b"]?.map((issue) => issue.message)).toEqual([
+        "launch_args: --dangerously-skip-permissions is refused: full access is a per-thread choice, never a profile setting.",
+      ]);
+      expect(byName["scratch-c"]?.filter((issue) => issue.level === "error")).toEqual([]);
+    }),
+  );
 
   it.effect("refuses a profile with a permission flag and passes the others", () =>
     Effect.gen(function* () {

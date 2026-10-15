@@ -19,6 +19,7 @@ import {
   decodeHooksFile,
   decodeMcpFile,
   FILES,
+  joinLaunchArgs,
   readOptional,
   type ResolvedProfile,
   STATE_DIR,
@@ -122,7 +123,7 @@ export const planProfile = (
           config: {
             binaryPath: path.join(setup.wrapperDir, `magnesium-${harness}`),
             homePath: path.join(state, harness),
-            launchArgs: profile.launchArgs,
+            launchArgs: joinLaunchArgs(profile.launchArgs),
           },
         },
       });

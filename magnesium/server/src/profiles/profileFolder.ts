@@ -12,6 +12,7 @@ import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
+import { tokenizeCliArgs } from "@t3tools/shared/cliArgs";
 import { parse as parseYaml } from "yaml";
 
 /**
@@ -48,7 +49,8 @@ const ProfileMeta = Schema.Struct({
   harness: Schema.optionalKey(Schema.String),
   harnesses: Schema.optionalKey(Schema.Array(Schema.String)),
   env: Schema.optionalKey(Schema.Array(Schema.String)),
-  launch_args: Schema.optionalKey(Schema.String),
+  /** A command-line string, or a YAML list with one argument per item. */
+  launch_args: Schema.optionalKey(Schema.Union([Schema.String, Schema.Array(Schema.String)])),
   native_memory: Schema.optionalKey(Schema.Boolean),
   sandbox: Schema.optionalKey(
     Schema.Struct({
@@ -97,7 +99,8 @@ export interface ResolvedProfile {
   readonly machines: ReadonlyArray<string>;
   /** Environment variable names passed into a sandbox, never values. */
   readonly passEnv: ReadonlyArray<string>;
-  readonly launchArgs: string;
+  /** One argument per item, whichever form profile.yaml used. */
+  readonly launchArgs: ReadonlyArray<string>;
   readonly nativeMemory: boolean;
   readonly image: string | undefined;
   readonly network: "internet" | "none";
@@ -203,7 +206,7 @@ export const resolveProfile = (profile: Profile): ResolvedProfile => {
     sandbox: level,
     machines: meta.machines ?? [],
     passEnv,
-    launchArgs: meta.launch_args?.trim() ?? "",
+    launchArgs: launchArgList(meta.launch_args),
     nativeMemory: meta.native_memory ?? false,
     image: meta.sandbox?.image?.trim() || undefined,
     network: meta.sandbox?.network === "none" ? "none" : "internet",
@@ -214,14 +217,26 @@ export const resolveProfile = (profile: Profile): ResolvedProfile => {
   };
 };
 
-/** Split launch args the way a shell would: whitespace, with quotes kept together. */
-export const splitArgs = (text: string): string[] => {
-  const out: string[] = [];
-  for (const match of text.matchAll(/"((?:[^"\\]|\\.)*)"|'([^']*)'|(\S+)/g)) {
-    out.push(match[1] ?? match[2] ?? match[3] ?? "");
-  }
-  return out;
-};
+/**
+ * `launch_args` as a list, one argument per item: a string is split the way T3
+ * splits an instance's launch args (quotes kept together); a list is taken as is.
+ */
+export const launchArgList = (value: string | ReadonlyArray<string> | undefined): string[] =>
+  value === undefined
+    ? []
+    : typeof value === "string"
+      ? [...tokenizeCliArgs(value)]
+      : value.filter((arg) => arg.length > 0);
+
+const PLAIN_ARG = /^[\w@%+=:,./-]+$/;
+
+/** The list back as the one string a provider instance takes, quoted so T3 splits it the same way. */
+export const joinLaunchArgs = (args: ReadonlyArray<string>): string =>
+  args
+    .map((arg) =>
+      PLAIN_ARG.test(arg) ? arg : `"${arg.replace(/["\\$`]/g, (char) => `\\${char}`)}"`,
+    )
+    .join(" ");
 
 /**
  * Flags that would decide a thread's permissions, its sandbox, or the settings
@@ -253,8 +268,9 @@ const REFUSED_FLAGS = new Map<string, string>([
 const CONFIG_FLAGS = new Set(["-c", "--config"]);
 const REFUSED_CONFIG_KEY = /approval|sandbox|permission|bypass|trust/i;
 
-export const refusedLaunchArgs = (launchArgs: string): string[] => {
-  const tokens = splitArgs(launchArgs);
+export const refusedLaunchArgs = (launchArgs: string | ReadonlyArray<string>): string[] => {
+  // Each item is split again too, so "--permission-mode plan" as one item is caught.
+  const tokens = launchArgList(launchArgs).flatMap((arg) => [...tokenizeCliArgs(arg)]);
   const messages: string[] = [];
   tokens.forEach((token, index) => {
     const [flag, inline] = token.split(/=(.*)/s, 2) as [string, string | undefined];
