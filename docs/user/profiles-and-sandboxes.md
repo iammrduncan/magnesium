@@ -10,11 +10,11 @@ the model.
 
 ## Sandbox levels
 
-| Level         | What the agent can do                                                                                                                                       | Needs                                                                     |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| **Fenced**    | Works as you, in your projects, but can't read or change Magnesium's own folder (settings, secrets, the hub's access to your machines) or its installation. | Nothing. It uses bubblewrap where it runs, else Linux Landlock, or macOS. |
-| **Container** | Sees only the project, its profile and its own home, in a rootless Podman container.                                                                        | Podman, and an image set by whoever installed Magnesium.                  |
-| **Native**    | No fence. Choose it only for one thread, the way you choose full access.                                                                                    | Nothing.                                                                  |
+| Level         | What the agent can do                                                                                                                                       | Needs                                                                                                  |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **Fenced**    | Works as you, in your projects, but can't read or change Magnesium's own folder (settings, secrets, the hub's access to your machines) or its installation. | Nothing. It uses bubblewrap where it runs, else a Linux user namespace, else Linux Landlock, or macOS. |
+| **Container** | Sees only the project, its profile and its own home, in a rootless Podman container.                                                                        | Podman, and an image set by whoever installed Magnesium.                                               |
+| **Native**    | No fence. Choose it only for one thread, the way you choose full access.                                                                                    | Nothing.                                                                                               |
 
 The sandbox chip next to the model shows the thread's level. Choose it to
 switch: the thread keeps its conversation. A level this machine can't run is
@@ -25,7 +25,17 @@ The sandbox is separate from the permission mode. New threads start in
 **Supervised** mode on every level; see [Permission modes](./permission-modes.md).
 
 Codex has a sandbox of its own, which can't start inside the fence or a
-container. There, the fence or the container is what protects your machine.
+container, so Magnesium turns it off there and the fence or container takes its
+place. Codex still asks before acting exactly as the permission mode says: once
+per command in **Supervised**. In the auto modes, a fenced Codex can change files
+outside the project, but never Magnesium's own.
+
+Where Linux has neither bubblewrap nor user namespaces (Ubuntu blocks them for
+programs without an AppArmor profile), the fence uses Landlock alone. Then a
+fenced agent can't create new files directly in your home folder, or list it;
+folders in it (`~/.cache`, your projects) work as usual. Install bubblewrap
+(`sudo apt install bubblewrap`) to lift that. **Settings → Connections →
+Sandboxes** shows which one each machine uses.
 
 ## Add a profile
 
