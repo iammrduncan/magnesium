@@ -8,7 +8,10 @@ import {
   magnesiumSocketUrl,
   watchHome,
 } from "@magnesium/web";
+import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { useSyncExternalStore } from "react";
+
+import { useComposerDraftStore } from "../../composerDraftStore";
 
 let view: HomeView = initialHomeView;
 let watch: HomeWatch | null = null;
@@ -44,8 +47,18 @@ export function currentHomeWatch(): HomeWatch | null {
 
 /** Answers held for Undo, one per card; they go to the hub when the hold runs out. */
 export const answerHold = createAnswerHold({
-  send: (key, answer) =>
-    watch?.answer(key, answer) ?? Promise.reject(new Error("Not connected to the hub.")),
+  send: async (key, answer) => {
+    const item = view.items.rows.get(key);
+    if (watch === null) throw new Error("Not connected to the hub.");
+    await watch.answer(key, answer);
+    // An implemented plan leaves plan mode, as the thread's own Implement does, so
+    // the next message from its composer doesn't put the thread back into planning.
+    if (answer._tag === "plan" && item?.machine.environmentId != null) {
+      useComposerDraftStore
+        .getState()
+        .setInteractionMode(scopeThreadRef(item.machine.environmentId, item.threadId), "default");
+    }
+  },
 });
 
 export function useHeldAnswers(): ReadonlyMap<string, HeldAnswer> {
