@@ -1,15 +1,7 @@
-import type { FleetMachine, FooterItem } from "@magnesium/contracts";
-import { EnvironmentId } from "@t3tools/contracts";
+import type { FooterItem } from "@magnesium/contracts";
 import { describe, expect, it } from "@effect/vitest";
 
-import {
-  createFooterRegistry,
-  describeWaiting,
-  footerToggles,
-  layoutFooter,
-  setFooterItemShown,
-  waitingByMachine,
-} from "./footer.ts";
+import { createFooterRegistry, footerToggles, layoutFooter, setFooterItemShown } from "./footer.ts";
 
 const item = (
   id: string,
@@ -108,76 +100,5 @@ describe("the footer's layout", () => {
     expect(setFooterItemShown(hidden, "core:fleet", false)).toBe(hidden);
     expect(setFooterItemShown(hidden, "core:needs-you", true)).toBe(hidden);
     expect(setFooterItemShown(hidden, "core:fleet", true)).toEqual([]);
-  });
-});
-
-const machine = (name: string | null, overrides: Partial<FleetMachine> = {}): FleetMachine => ({
-  name,
-  label: name ?? "hub",
-  kind: name === null ? "hub" : "machine",
-  link: "connected",
-  environmentId: EnvironmentId.make(`env-${name ?? "hub"}`),
-  serverVersion: "0.0.45",
-  release: null,
-  startedAt: "2026-10-15T04:00:00.000Z",
-  lastSeenAt: null,
-  threads: { total: 3, running: 0, waiting: 0, approvals: 0, questions: 0 },
-  detail: null,
-  ...overrides,
-});
-
-const thread = (environment: string, id: string, waiting: "approval" | "question" | null) => ({
-  environmentId: `env-${environment}`,
-  id,
-  title: id,
-  hasPendingApprovals: waiting === "approval",
-  hasPendingUserInput: waiting === "question",
-});
-
-describe("Needs you", () => {
-  it("lists machines with something waiting, then those it can't count, with the threads it knows", () => {
-    const machines = [
-      machine(null),
-      machine("cpu-host-1", {
-        threads: { total: 9, running: 1, waiting: 3, approvals: 2, questions: 1 },
-      }),
-      machine("gpu-host-2", { link: "offline", threads: null }),
-      machine("gpu-host-1", {
-        threads: { total: 2, running: 0, waiting: 1, approvals: 0, questions: 1 },
-      }),
-    ];
-    const threads = [
-      thread("cpu-host-1", "a", "approval"),
-      thread("cpu-host-1", "b", null),
-      thread("cpu-host-1", "c", "question"),
-      thread("cpu-host-1", "d", "approval"),
-      thread("gpu-host-2", "e", "approval"),
-      thread("somewhere-else", "f", "approval"),
-    ];
-    const groups = waitingByMachine(machines, threads, 2);
-    expect(groups.map((group) => group.machine.name)).toEqual([
-      "cpu-host-1",
-      "gpu-host-1",
-      "gpu-host-2",
-    ]);
-    expect(groups[0]?.threads.map((entry) => entry.id)).toEqual(["a", "c"]);
-    expect(groups[0]?.more).toBe(1);
-    // The browser knows no waiting thread there; the count still says one.
-    expect(groups[1]).toMatchObject({ threads: [], more: 0 });
-    // What the browser holds for a machine the hub can't see may be stale: none listed.
-    expect(groups[2]).toMatchObject({ threads: [], more: 0 });
-  });
-
-  it("says what waits on each machine, and never shows unknown counts as nothing", () => {
-    expect(describeWaiting({ total: 9, running: 1, waiting: 3, approvals: 2, questions: 1 })).toBe(
-      "2 approvals · 1 question",
-    );
-    expect(describeWaiting({ total: 9, running: 1, waiting: 1, approvals: 1, questions: 0 })).toBe(
-      "1 approval",
-    );
-    expect(describeWaiting({ total: 1, running: 1, waiting: 0, approvals: 0, questions: 0 })).toBe(
-      "Nothing waiting",
-    );
-    expect(describeWaiting(null)).toBe("Not counted, not connected");
   });
 });

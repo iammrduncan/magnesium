@@ -1,10 +1,8 @@
 import {
   FOOTER_ITEM_ID_PATTERN,
-  type FleetMachine,
   type FooterItem,
   footerItemKey,
   MAGNESIUM_WS_METHODS,
-  type ThreadCounts,
 } from "@magnesium/contracts";
 
 import {
@@ -146,63 +144,4 @@ export function setFooterItemShown(
   const isHidden = hidden.includes(id);
   if (shown) return isHidden ? hidden.filter((other) => other !== id) : hidden;
   return isHidden ? hidden : [...hidden, id];
-}
-
-/** A thread as the browser already holds it, reduced to what Needs you lists. */
-export interface WaitingThread {
-  readonly environmentId: string;
-  readonly id: string;
-  readonly hasPendingApprovals: boolean;
-  readonly hasPendingUserInput: boolean;
-}
-
-export interface WaitingGroup<Thread> {
-  readonly machine: FleetMachine;
-  /** The waiting threads this browser knows on that machine, at most the limit. */
-  readonly threads: ReadonlyArray<Thread>;
-  /** How many more it knows past the limit. */
-  readonly more: number;
-}
-
-/**
- * The machines in Needs you: those with something waiting, then those whose
- * counts the hub can't see, each with the waiting threads the browser
- * already holds for it. `machines` comes in Fleet's order and keeps it.
- */
-export function waitingByMachine<Thread extends WaitingThread>(
-  machines: ReadonlyArray<FleetMachine>,
-  threads: ReadonlyArray<Thread>,
-  limit = 5,
-): ReadonlyArray<WaitingGroup<Thread>> {
-  const waiting = new Map<string, Array<Thread>>();
-  for (const thread of threads) {
-    if (!thread.hasPendingApprovals && !thread.hasPendingUserInput) continue;
-    const known = waiting.get(thread.environmentId);
-    if (known === undefined) waiting.set(thread.environmentId, [thread]);
-    else known.push(thread);
-  }
-  const groupOf = (machine: FleetMachine): WaitingGroup<Thread> => {
-    const known =
-      machine.threads === null || machine.environmentId === null
-        ? []
-        : (waiting.get(machine.environmentId) ?? []);
-    return { machine, threads: known.slice(0, limit), more: Math.max(0, known.length - limit) };
-  };
-  return [
-    ...machines.filter((machine) => (machine.threads?.waiting ?? 0) > 0),
-    ...machines.filter((machine) => machine.threads === null),
-  ].map(groupOf);
-}
-
-/** What waits on you on one machine; unknown counts are said to be unknown. */
-export function describeWaiting(threads: ThreadCounts | null): string {
-  if (threads === null) return "Not counted, not connected";
-  if (threads.waiting === 0) return "Nothing waiting";
-  const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
-  return [
-    threads.approvals > 0 ? plural(threads.approvals, "approval") : null,
-    threads.questions > 0 ? plural(threads.questions, "question") : null,
-  ]
-    .filter((part) => part !== null)
-    .join(" · ");
 }

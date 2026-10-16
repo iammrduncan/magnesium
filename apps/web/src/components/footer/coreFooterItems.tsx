@@ -1,13 +1,21 @@
-// magnesium: Magnesium's own footer items, Fleet and Needs you (goal 05, Footer board)
+// magnesium: Magnesium's own footer items, Fleet and Needs you (goals 05 and 06, Footer board)
 import { type FleetMachine, fleetMachineKey } from "@magnesium/contracts";
-import { describeLink, describeWaiting, fleetRows, waitingByMachine } from "@magnesium/web";
+import {
+  describeLink,
+  describeNeed,
+  fleetRows,
+  homeNeeds,
+  homeNeedsByMachine,
+} from "@magnesium/web";
+import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { Link } from "@tanstack/react-router";
 import { TriangleIcon } from "lucide-react";
 import { useMemo } from "react";
 
 import { cn } from "../../lib/utils";
-import { useThreadShells } from "../../state/entities";
+import { buildThreadRouteParams } from "../../threadRoutes";
 import { useFleetView } from "../fleet/fleetStore";
+import { useHomeView } from "../home/homeStore";
 import type { FooterItemRegistration, FooterPopoverProps } from "./footerRegistry";
 import { FooterPopoverHeader, FooterPopoverNote } from "./FooterParts";
 
@@ -87,54 +95,62 @@ function FleetPopover({ close }: FooterPopoverProps) {
   );
 }
 
-/** What waits on you, machine by machine, with the waiting threads this browser already holds. */
+/** What waits on you, machine by machine, from Home, and the way to Home. */
 function NeedsYouPopover({ close }: FooterPopoverProps) {
-  const fleet = useFleetView();
-  const threads = useThreadShells();
+  const home = useHomeView();
   const groups = useMemo(
-    () => waitingByMachine(fleetRows(fleet.machines), threads),
-    [fleet.machines, threads],
+    () => homeNeedsByMachine(homeNeeds(home.items), home.summary?.unseen ?? []),
+    [home.items, home.summary],
   );
   return (
     <div className="flex flex-col text-xs">
       <FooterPopoverHeader title="Needs you" />
-      {fleet.connection !== "live" ? (
-        <FleetNotLive connection={fleet.connection} />
+      {home.connection !== "live" ? (
+        <FleetNotLive connection={home.connection} />
       ) : groups.length === 0 ? (
         <FooterPopoverNote>Nothing waits on you.</FooterPopoverNote>
       ) : (
         groups.map((group) => (
-          <section key={fleetMachineKey(group.machine)} className="flex flex-col py-1">
+          <section key={group.label} className="flex flex-col py-1">
             <div className="flex items-baseline gap-2">
               <span className="min-w-0 flex-1 truncate font-medium text-foreground">
-                {group.machine.label}
+                {group.label}
               </span>
               <span
                 className={cn(
                   "shrink-0",
-                  group.machine.threads === null
-                    ? "text-muted-foreground"
-                    : "text-warning-foreground",
+                  group.reachable ? "text-warning-foreground" : "text-muted-foreground",
                 )}
               >
-                {describeWaiting(group.machine.threads)}
+                {!group.reachable
+                  ? group.needs.length === 0
+                    ? "Not counted, not connected"
+                    : "Offline"
+                  : `${group.needs.length + group.more} waiting`}
               </span>
             </div>
-            {group.threads.length > 0 ? (
+            {group.needs.length > 0 ? (
               <ul className="-mx-1 mt-0.5 flex flex-col">
-                {group.threads.map((thread) => (
-                  <li key={thread.id}>
-                    <Link
-                      to="/$environmentId/$threadId"
-                      params={{ environmentId: thread.environmentId, threadId: thread.id }}
-                      onClick={close}
-                      className="flex items-center gap-2 rounded-sm px-1 py-0.5 text-foreground hover:bg-accent"
-                    >
-                      <span className="min-w-0 flex-1 truncate">{thread.title}</span>
-                      <span className="shrink-0 text-muted-foreground">
-                        {thread.hasPendingApprovals ? "Approval" : "Question"}
+                {group.needs.map((need) => (
+                  <li key={need.key}>
+                    {need.machine.environmentId === null ? (
+                      <span className="flex items-center gap-2 px-1 py-0.5 text-foreground">
+                        <span className="min-w-0 flex-1 truncate">{need.title}</span>
+                        <span className="shrink-0 text-muted-foreground">{describeNeed(need)}</span>
                       </span>
-                    </Link>
+                    ) : (
+                      <Link
+                        to="/$environmentId/$threadId"
+                        params={buildThreadRouteParams(
+                          scopeThreadRef(need.machine.environmentId, need.threadId),
+                        )}
+                        onClick={close}
+                        className="flex items-center gap-2 rounded-sm px-1 py-0.5 text-foreground hover:bg-accent"
+                      >
+                        <span className="min-w-0 flex-1 truncate">{need.title}</span>
+                        <span className="shrink-0 text-muted-foreground">{describeNeed(need)}</span>
+                      </Link>
+                    )}
                   </li>
                 ))}
                 {group.more > 0 ? (
@@ -145,6 +161,13 @@ function NeedsYouPopover({ close }: FooterPopoverProps) {
           </section>
         ))
       )}
+      <Link
+        to="/home"
+        onClick={close}
+        className="mt-1 inline-flex self-start py-1 text-xs font-medium text-info-foreground hover:underline"
+      >
+        Open Home
+      </Link>
     </div>
   );
 }
