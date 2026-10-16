@@ -6,6 +6,7 @@ import * as Stream from "effect/Stream";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
 import type { MachineSetup } from "./homes.ts";
+import { deploymentOf } from "../status/release.ts";
 
 /**
  * What this server can run agents with: its name among the fleet, the real
@@ -104,21 +105,24 @@ export const detectSetup = Effect.fn("profiles.detectSetup")(function* (input: {
               fenceProbe?.stdout.replace(/^none: /, "") || "The fence probe did not run.",
           };
 
+  const deployment = deploymentOf(env.MAGNESIUM_DEPLOY);
   const image = env.MAGNESIUM_SANDBOX_IMAGE?.trim() || undefined;
-  const podman = yield* onPath("podman");
+  const podman = deployment === "pod" ? undefined : yield* onPath("podman");
   const podmanWorks =
     podman === undefined
       ? false
       : (yield* runCommand(podman, ["info", "--format", "{{.Host.Security.Rootless}}"]))?.code ===
         0;
   const container: MachineSetup["container"] =
-    podman === undefined
-      ? { unavailable: "Podman is not installed." }
-      : !podmanWorks
-        ? { unavailable: "Podman does not run for this user." }
-        : image === undefined
-          ? { unavailable: "No image is set (MAGNESIUM_SANDBOX_IMAGE)." }
-          : { image };
+    deployment === "pod"
+      ? { unavailable: "Agents can't start containers inside a pod." }
+      : podman === undefined
+        ? { unavailable: "Podman is not installed." }
+        : !podmanWorks
+          ? { unavailable: "Podman does not run for this user." }
+          : image === undefined
+            ? { unavailable: "No image is set (MAGNESIUM_SANDBOX_IMAGE)." }
+            : { image };
 
   // What a fenced agent may read but never change: the installed server (not a
   // checkout, where agents work on the code), its unit and its env file.
@@ -152,6 +156,7 @@ export const detectSetup = Effect.fn("profiles.detectSetup")(function* (input: {
       userHome,
       fence,
       container,
+      deployment,
       protect,
       serverPort: input.serverPort,
     },

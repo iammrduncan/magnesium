@@ -18,7 +18,7 @@ import {
   testDescriptor,
   testThread,
 } from "../testing.ts";
-import { releaseOf } from "./release.ts";
+import { deploymentOf, releaseOf } from "./release.ts";
 import { countThreads, ServerStatus, layer, threadStateOf } from "./ServerStatus.ts";
 
 const encodeItem = Schema.encodeSync(ServerStatusItem);
@@ -112,7 +112,19 @@ describe("the release a server runs", () => {
     expect(
       releaseOf("/home/agent/.local/share/magnesium/releases/f0d9e1703a/apps/server/dist/bin.mjs"),
     ).toBe("f0d9e1703a");
+    // The image keeps the same layout under /opt/magnesium (goal 25).
+    expect(releaseOf("/opt/magnesium/releases/742bb8fa1f/apps/server/dist/bin.mjs")).toBe(
+      "742bb8fa1f",
+    );
     expect(releaseOf("/home/agent/magnesium/apps/server/src/bin.ts")).toBeNull();
+  });
+
+  it("says how the server is deployed when MAGNESIUM_DEPLOY names a known way", () => {
+    expect(deploymentOf("pod")).toBe("pod");
+    expect(deploymentOf(" vm\n")).toBe("vm");
+    expect(deploymentOf("bare-metal")).toBe("bare-metal");
+    expect(deploymentOf("docker")).toBeNull();
+    expect(deploymentOf(undefined)).toBeNull();
   });
 
   it("is unknown, not an error, from a server that predates it", () => {
@@ -124,5 +136,6 @@ describe("the release a server runs", () => {
       threads: { total: 0, running: 0, waiting: 0, approvals: 0, questions: 0 },
     });
     expect(fromOlderServer.release).toBeNull();
+    expect(fromOlderServer.deployment).toBeNull();
   });
 });

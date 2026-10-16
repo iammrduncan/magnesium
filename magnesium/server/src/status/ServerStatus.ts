@@ -1,5 +1,6 @@
 import type {
   LiveTableItem,
+  ServerDeployment,
   ServerStatus as ServerStatusRow,
   StreamSubscribeInput,
   ThreadCounts,
@@ -18,7 +19,7 @@ import * as Stream from "effect/Stream";
 
 import { ServerPorts } from "../ports.ts";
 import * as LiveTable from "../stream/LiveTable.ts";
-import { currentRelease } from "./release.ts";
+import { currentRelease, deploymentOf } from "./release.ts";
 
 /**
  * What this server says about itself: version, start time, and a count of its
@@ -74,6 +75,8 @@ export class ServerStatus extends Context.Service<
     readonly serverVersion: string;
     /** The build it runs; null in development. */
     readonly release: string | null;
+    /** How it is deployed; null when `MAGNESIUM_DEPLOY` is unset. */
+    readonly deployment: ServerDeployment | null;
     readonly startedAt: string;
     /** The status as a one-row table. Threads are followed only while someone subscribes. */
     readonly subscribe: (
@@ -89,6 +92,7 @@ export const layer = Layer.effect(
     const startedAt = DateTime.formatIso(yield* DateTime.now);
     const descriptor = yield* ports.environment;
     const release = yield* currentRelease;
+    const deployment = deploymentOf(process.env.MAGNESIUM_DEPLOY);
     const table = yield* LiveTable.make<ServerStatusRow>({ key: (row) => row.environmentId });
     const threads = new Map<ThreadId, ThreadState>();
 
@@ -98,6 +102,7 @@ export const layer = Layer.effect(
         label: descriptor.label,
         serverVersion: descriptor.serverVersion,
         release,
+        deployment,
         startedAt,
         threads: countThreads(threads.values()),
       }),
@@ -160,6 +165,7 @@ export const layer = Layer.effect(
     return ServerStatus.of({
       serverVersion: descriptor.serverVersion,
       release,
+      deployment,
       startedAt,
       subscribe: (input) =>
         Stream.unwrap(RcRef.get(tracker).pipe(Effect.as(table.subscribe(input)))),

@@ -1,0 +1,11 @@
+# magnesium: what an image build from the repo root leaves out (goal 25).
+# Builds from `git archive` never see these; a local checkout does.
+.git
+.repos
+.t3
+**/node_modules
+**/dist
+**/.turbo
+magnesium/deploy/ansible/.packs
+magnesium/deploy/ansible/inventory.yml
+magnesium/deploy/ansible/group_vars/*.yml

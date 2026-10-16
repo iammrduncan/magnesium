@@ -19,6 +19,7 @@ const machine = (name: string | null, overrides: Partial<FleetMachine> = {}): Fl
   environmentId: EnvironmentId.make(`env-${name ?? "hub"}`),
   serverVersion: "0.0.45",
   release: "f0d9e1703a",
+  deployment: null,
   startedAt: "2026-10-15T04:00:00.000Z",
   lastSeenAt: null,
   threads: { total: 4, running: 2, waiting: 1, approvals: 1, questions: 0 },
@@ -77,5 +78,16 @@ describe("Fleet in the browser", () => {
     );
     // A server that predates releases, or one in development, shows its version alone.
     expect(describeVersion(machine("gpu-host-1", { release: null }), hub.release)).toBe("0.0.45");
+  });
+
+  it("says how each server runs once it reports it", () => {
+    const hub = machine(null, { deployment: "vm" });
+    expect(describeVersion(hub, hub.release)).toBe("0.0.45 · f0d9e1703a · VM");
+    expect(describeVersion(machine("cpu-host-1", { deployment: "pod" }), hub.release)).toBe(
+      "0.0.45 · f0d9e1703a · pod",
+    );
+    expect(
+      describeVersion(machine("cpu-host-2", { deployment: "bare-metal", release: null }), null),
+    ).toBe("0.0.45 · bare metal");
   });
 });

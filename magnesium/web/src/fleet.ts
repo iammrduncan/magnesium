@@ -149,16 +149,25 @@ export const describeLink = (
   }
 };
 
+const DEPLOYMENT_LABEL: Record<NonNullable<FleetMachine["deployment"]>, string> = {
+  "bare-metal": "bare metal",
+  vm: "VM",
+  pod: "pod",
+};
+
 /**
- * The version and the build, which tells a mixed deploy apart: the package
- * version stays the same across commits. `hubRelease` is the build of the
- * server serving the list.
+ * The version, the build and how it runs, which tells a mixed deploy apart: the
+ * package version stays the same across commits. `hubRelease` is the build of
+ * the server serving the list.
  */
 export const describeVersion = (machine: FleetMachine, hubRelease: string | null): string => {
-  const version = machine.serverVersion ?? "Version unknown";
-  if (machine.release === null) return version;
-  const note = differsFromHub(machine, hubRelease) ? " (not the hub's build)" : "";
-  return `${version} · ${machine.release}${note}`;
+  const parts = [machine.serverVersion ?? "Version unknown"];
+  if (machine.release !== null) {
+    const note = differsFromHub(machine, hubRelease) ? " (not the hub's build)" : "";
+    parts.push(`${machine.release}${note}`);
+  }
+  if (machine.deployment !== null) parts.push(DEPLOYMENT_LABEL[machine.deployment]);
+  return parts.join(" · ");
 };
 
 /** Whether a machine runs a different build than the hub. */

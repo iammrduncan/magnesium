@@ -3,6 +3,7 @@ import {
   type ProfileIssue,
   profileInstanceId,
   type SandboxLevel,
+  type ServerDeployment,
 } from "@magnesium/contracts";
 import {
   ProviderDriverKind,
@@ -50,6 +51,8 @@ export interface MachineSetup {
   readonly fence: { readonly mechanism: string } | { readonly unavailable: string };
   /** Rootless Podman with an image, or why not. */
   readonly container: { readonly image: string } | { readonly unavailable: string };
+  /** How this server is deployed. In a pod, neither a stronger fence nor containers can be added. */
+  readonly deployment?: ServerDeployment | null | undefined;
 }
 
 export interface PlannedInstance {

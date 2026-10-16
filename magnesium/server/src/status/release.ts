@@ -1,5 +1,7 @@
+import { ServerDeployment } from "@magnesium/contracts";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
+import * as Schema from "effect/Schema";
 
 /**
  * The release a server runs. `magnesium-release` keeps each build in
@@ -20,3 +22,14 @@ export const currentRelease = Effect.gen(function* () {
   const real = yield* fileSystem.realPath(script).pipe(Effect.orElseSucceed(() => script));
   return releaseOf(real);
 });
+
+const isDeployment = Schema.is(ServerDeployment);
+
+/**
+ * How this server is deployed, from `MAGNESIUM_DEPLOY`: the image sets `pod`,
+ * the Ansible role `bare-metal` or `vm`. Anything else is unknown.
+ */
+export const deploymentOf = (value: string | undefined): ServerDeployment | null => {
+  const trimmed = value?.trim();
+  return isDeployment(trimmed) ? trimmed : null;
+};

@@ -28,6 +28,8 @@ applied by hand.
   - `bin/magnesium-agents`: `list`, `check`, `sandboxes` and `new` for profiles; the role links it into `~/.local/bin`.
   - The container level is off until `magnesium_sandbox_image` names a base image pinned by digest; the role pulls it. Profiles name machines by `magnesium_machine_name` (the hub is `hub`).
 
+- `container/` and `kubernetes/`: a machine server as an image, and what a pod running it needs (goal 25, D52). The image is the release; `magnesium-release` keeps `pair`, `backup`, `restore` and `status` inside it. See [the Kubernetes README](kubernetes/README.md).
+
 `vp run --filter @magnesium/deploy test` checks the unit, the seed, the release switching, the wrappers and every fence this host can run.
 
 `ansible/` rolls these out to every machine and the hub; see [its README](ansible/README.md).

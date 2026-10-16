@@ -50,6 +50,7 @@ const machine = (name: string | null, overrides: Partial<FleetMachine> = {}): Fl
   environmentId: EnvironmentId.make(`env-${name ?? "hub"}`),
   serverVersion: "0.0.45",
   release: null,
+  deployment: null,
   startedAt: "2026-10-15T04:00:00.000Z",
   lastSeenAt: null,
   threads: { total: 4, running: 1, waiting: 0, approvals: 0, questions: 0 },

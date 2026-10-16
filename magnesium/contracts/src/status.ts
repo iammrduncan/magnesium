@@ -19,6 +19,10 @@ export const ThreadCounts = Schema.Struct({
 });
 export type ThreadCounts = typeof ThreadCounts.Type;
 
+/** How a server is deployed (goal 25, D52): on a host, in a VM, or as an image in a pod. */
+export const ServerDeployment = Schema.Literals(["bare-metal", "vm", "pod"]);
+export type ServerDeployment = typeof ServerDeployment.Type;
+
 export const ServerStatus = Schema.Struct({
   environmentId: EnvironmentId,
   label: Schema.String,
@@ -29,6 +33,10 @@ export const ServerStatus = Schema.Struct({
    * it sends none.
    */
   release: Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  /** How it is deployed (`MAGNESIUM_DEPLOY`); null when unset, as in development. */
+  deployment: Schema.NullOr(ServerDeployment).pipe(
+    Schema.withDecodingDefault(Effect.succeed(null)),
+  ),
   startedAt: IsoDateTime,
   threads: ThreadCounts,
 });

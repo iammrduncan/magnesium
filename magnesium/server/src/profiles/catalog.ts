@@ -168,13 +168,18 @@ export const listSandboxes = Effect.fn("profiles.listSandboxes")(function* () {
   const config = yield* ProfilesConfig;
   const source = yield* InstanceSource;
   const { fence, container } = config.setup;
+  // A pod allows no stronger fence and no containers: say what works there instead.
+  const inPod = config.setup.deployment === "pod";
   const levels: SandboxLevelInfo[] = [
     "mechanism" in fence
       ? {
           level: "fenced",
           available: true,
           mechanism: fence.mechanism,
-          note: FENCE_NOTES[fence.mechanism] ?? null,
+          note:
+            inPod && fence.mechanism === "landlock"
+              ? "Landlock alone, the strongest fence a pod allows: the agent can't create files directly in your home folder, or list it."
+              : (FENCE_NOTES[fence.mechanism] ?? null),
           enable: null,
         }
       : {
@@ -192,8 +197,9 @@ export const listSandboxes = Effect.fn("profiles.listSandboxes")(function* () {
           available: false,
           mechanism: null,
           note: container.unavailable,
-          enable:
-            "Install rootless Podman and set MAGNESIUM_SANDBOX_IMAGE to an image pinned by digest, then restart Magnesium.",
+          enable: inPod
+            ? "Run this machine's server on bare metal or in a VM, with rootless Podman, for this level."
+            : "Install rootless Podman and set MAGNESIUM_SANDBOX_IMAGE to an image pinned by digest, then restart Magnesium.",
         },
     {
       level: "native",

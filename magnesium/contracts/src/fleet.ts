@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
 import { HubMachineName } from "./hub.ts";
-import { ThreadCounts } from "./status.ts";
+import { ServerDeployment, ThreadCounts } from "./status.ts";
 
 /**
  * Fleet: every server the hub reaches, live (goal 04). The hub keeps one link
@@ -31,6 +31,10 @@ export const FleetMachine = Schema.Struct({
   serverVersion: Schema.NullOr(Schema.String),
   /** The build it runs (`ServerStatus.release`); null when unknown. */
   release: Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  /** How it is deployed (`ServerStatus.deployment`); null when unknown. */
+  deployment: Schema.NullOr(ServerDeployment).pipe(
+    Schema.withDecodingDefault(Effect.succeed(null)),
+  ),
   startedAt: Schema.NullOr(IsoDateTime),
   /** When the hub last heard from it; set when a link drops, kept across hub restarts. */
   lastSeenAt: Schema.NullOr(IsoDateTime),

@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Starts a Magnesium spoke in its image (goal 25): the state in $HOME/.magnesium,
+# settings seeded on the first start as `magnesium-release activate` does, and
+# OpenCode's config written from the environment when it asks for one.
+#
+#   MAGNESIUM_OPENCODE_BASE_URL  the LiteLLM gateway OpenCode uses (unset: leave
+#                                ~/.config/opencode alone)
+#   MAGNESIUM_OPENCODE_MODELS    its models, comma-separated; the first is the default
+#   MAGNESIUM_OPENCODE_API_KEY_ENV  the env var holding the key (LITELLM_API_KEY);
+#                                the config names it, never holds it (D36)
+set -euo pipefail
+
+die() {
+  echo "magnesium: $*" >&2
+  exit 1
+}
+
+release="${MAGNESIUM_ROOT:-/opt/magnesium}/current"
+[ -n "${HOME:-}" ] && [ -d "$HOME" ] && [ -w "$HOME" ] ||
+  die "HOME ($HOME) must be a writable folder: mount the spoke's volume there"
+export T3CODE_HOME="${T3CODE_HOME:-$HOME/.magnesium}"
+# CLIs the user installs or updates in their home come before the image's.
+export PATH="$HOME/.local/bin:$PATH"
+
+mkdir -p "$T3CODE_HOME/userdata"
+settings="$T3CODE_HOME/userdata/settings.json"
+if [ ! -f "$settings" ]; then
+  cp "$release/magnesium/deploy/seed/settings.json" "$settings"
+  echo "magnesium: seeded $settings" >&2
+fi
+
+if [ -n "${MAGNESIUM_OPENCODE_BASE_URL:-}" ]; then
+  [ -n "${MAGNESIUM_OPENCODE_MODELS:-}" ] || die "MAGNESIUM_OPENCODE_MODELS is empty"
+  mkdir -p "$HOME/.config/opencode"
+  chmod 700 "$HOME/.config/opencode"
+  (
+    umask 077
+    node --no-warnings -e '
+      const [baseURL, models, keyEnv] = process.argv.slice(1);
+      const names = models.split(",").map((name) => name.trim()).filter(Boolean);
+      const config = {
+        $schema: "https://opencode.ai/config.json",
+        enabled_providers: ["litellm"],
+        provider: {
+          litellm: {
+            npm: "@ai-sdk/openai-compatible",
+            name: "LLM gateway",
+            options: { baseURL, apiKey: `{env:${keyEnv}}` },
+            models: Object.fromEntries(names.map((name) => [name, { name }])),
+          },
+        },
+        model: `litellm/${names[0]}`,
+        small_model: `litellm/${names[0]}`,
+        autoupdate: false,
+        share: "disabled",
+      };
+      process.stdout.write(JSON.stringify(config, null, 2) + "\n");
+    ' "$MAGNESIUM_OPENCODE_BASE_URL" "$MAGNESIUM_OPENCODE_MODELS" \
+      "${MAGNESIUM_OPENCODE_API_KEY_ENV:-LITELLM_API_KEY}" > "$HOME/.config/opencode/opencode.json.new"
+  )
+  mv "$HOME/.config/opencode/opencode.json.new" "$HOME/.config/opencode/opencode.json"
+fi
+
+cd "$HOME"
+# `serve` prints a pairing token at every start; keep it out of the pod's log.
+# Pair on demand with `magnesium-release pair`.
+exec node "$release/apps/server/dist/bin.mjs" serve > /dev/null

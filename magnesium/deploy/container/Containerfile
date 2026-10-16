@@ -1,0 +1,89 @@
+# A Magnesium machine server (a spoke) as an image (goal 25, D52).
+#
+# Build from the repo root at a pinned commit, naming that commit:
+#   podman build -f magnesium/deploy/container/Containerfile \
+#     --build-arg MAGNESIUM_COMMIT=<10-character sha> -t magnesium:<sha> .
+# What the image expects at run time (HOME, env, port, health check, security
+# context) is in magnesium/deploy/kubernetes/README.md.
+#
+# The build reaches the npm registry (pnpm and the dependencies), Debian's
+# mirrors (the toolchain below) and OpenCode's GitHub release, checked against
+# a pinned checksum. Base images are pinned by digest.
+
+ARG NODE_IMAGE=docker.io/library/node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
+
+# ── The server, built and packed as `magnesium-release build` and `pack` do ──
+FROM ${NODE_IMAGE} AS build
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates g++ git make python3 \
+  && rm -rf /var/lib/apt/lists/*
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 CI=true
+WORKDIR /src
+COPY . .
+RUN corepack pnpm install --frozen-lockfile
+RUN PATH="/src/node_modules/.bin:$PATH" vp run --filter t3 build
+# The published `t3` package's shape: dist plus its production dependencies.
+RUN corepack pnpm --filter t3 deploy --prod --legacy /pack/apps/server \
+  && mkdir -p /pack/magnesium/deploy \
+  && cp -a magnesium/deploy/seed magnesium/deploy/bin /pack/magnesium/deploy/ \
+  && cp magnesium/deploy/container/entrypoint /pack/entrypoint \
+  && test -f /pack/apps/server/dist/bin.mjs
+
+# ── The spoke ──
+FROM ${NODE_IMAGE}
+ARG TARGETARCH
+ARG MAGNESIUM_COMMIT
+# The OpenCode the Ansible role pins (D36); empty leaves it out.
+ARG OPENCODE_VERSION=1.18.34
+ARG OPENCODE_SHA256_AMD64=0f22479647226d1d2dd99595d20082ee7bda3870b62dc6a90b41efc1a71d7e9a
+ARG OPENCODE_SHA256_ARM64=bbdb3f00c2c51e42e315525233151309724226a8776da8e9145e3b0fa3d5310f
+
+# What agents find here: the basics, more only when a project needs it (D52).
+# bubblewrap and python3 also serve the fence.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    build-essential bubblewrap ca-certificates curl git jq less procps python3 ripgrep tini \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN set -eu; \
+  if [ -n "$OPENCODE_VERSION" ]; then \
+    case "$TARGETARCH" in \
+      amd64) arch=x64; sum="$OPENCODE_SHA256_AMD64" ;; \
+      arm64) arch=arm64; sum="$OPENCODE_SHA256_ARM64" ;; \
+      *) echo "no OpenCode for $TARGETARCH" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL -o /tmp/opencode.tar.gz \
+      "https://github.com/anomalyco/opencode/releases/download/v$OPENCODE_VERSION/opencode-linux-$arch.tar.gz"; \
+    echo "$sum  /tmp/opencode.tar.gz" | sha256sum -c -; \
+    mkdir -p /opt/opencode; \
+    tar -xzf /tmp/opencode.tar.gz -C /opt/opencode; \
+    rm /tmp/opencode.tar.gz; \
+    ln -s /opt/opencode/opencode /usr/local/bin/opencode; \
+  fi
+
+# The release layout `magnesium-release` keeps, so Fleet shows the commit and
+# the fence protects the install. The image is the release: no build, activate
+# or rollback in a pod; roll back by running the previous image.
+COPY --from=build /pack /opt/magnesium/releases/${MAGNESIUM_COMMIT}
+RUN set -eu; \
+  case "$MAGNESIUM_COMMIT" in \
+    [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*) ;; \
+    *) echo "set --build-arg MAGNESIUM_COMMIT to the commit's short sha" >&2; exit 1 ;; \
+  esac; \
+  echo "$MAGNESIUM_COMMIT" > "/opt/magnesium/releases/$MAGNESIUM_COMMIT/RELEASE"; \
+  ln -s "releases/$MAGNESIUM_COMMIT" /opt/magnesium/current; \
+  for tool in magnesium-release magnesium-agents magnesium-fence; do \
+    ln -s "/opt/magnesium/current/magnesium/deploy/bin/$tool" "/usr/local/bin/$tool"; \
+  done; \
+  groupadd --gid 10001 magnesium; \
+  useradd --uid 10001 --gid 10001 --home-dir /home/magnesium --create-home --shell /bin/bash magnesium
+
+ENV MAGNESIUM_ROOT=/opt/magnesium \
+  MAGNESIUM_DEPLOY=pod \
+  T3CODE_HOST=0.0.0.0 \
+  T3CODE_PORT=3773 \
+  T3CODE_TELEMETRY_ENABLED=false \
+  T3CODE_NO_BROWSER=true
+USER 10001:10001
+EXPOSE 3773
+ENTRYPOINT ["/usr/bin/tini", "--", "/opt/magnesium/current/entrypoint"]

@@ -89,3 +89,43 @@ jobs:
 
       - name: Build server and web
         run: vp run --filter t3 build
+
+  image:
+    name: Spoke image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Build the image (goal 25)
+        run: |
+          docker build -f magnesium/deploy/container/Containerfile \
+            --build-arg MAGNESIUM_COMMIT="${GITHUB_SHA::10}" -t magnesium-spoke:ci .
+
+      - name: It serves as a pod would run it
+        run: |
+          docker run -d --name spoke --user 10001:10001 --cap-drop ALL \
+            --security-opt no-new-privileges --read-only --tmpfs /tmp \
+            --mount type=tmpfs,destination=/home/agent,tmpfs-mode=0777 \
+            -e HOME=/home/agent -e MAGNESIUM_MACHINE=ci-spoke -p 127.0.0.1:3773:3773 \
+            magnesium-spoke:ci
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3773/.well-known/t3/environment > /dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:3773/.well-known/t3/environment
+          echo
+          # A fence works with no capabilities, and the pairing token stays out of the log.
+          docker exec spoke magnesium-fence --probe
+          docker exec spoke magnesium-release status
+          if docker logs spoke 2>&1 | grep -qi "token"; then echo "the log holds a token" >&2; exit 1; fi
+
+      - name: Logs on failure
+        if: failure()
+        run: docker logs spoke || true

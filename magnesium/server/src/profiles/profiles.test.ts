@@ -496,4 +496,25 @@ describe("list_sandboxes", () => {
       ]);
     }),
   );
+
+  it.effect("in a pod, says what works there instead of what to install (goal 25)", () =>
+    Effect.gen(function* () {
+      const base = setupFor(tempRoot());
+      const inPod = {
+        ...base,
+        setup: {
+          ...base.setup,
+          deployment: "pod" as const,
+          fence: { mechanism: "landlock" },
+          container: { unavailable: "Agents can't start containers inside a pod." },
+        },
+      };
+      const list = yield* listSandboxes().pipe(
+        Effect.provide(provide(inPod, {} as ServerSettings["providerInstances"])),
+      );
+      expect(list.levels[0]?.note).toContain("the strongest fence a pod allows");
+      expect(list.levels[1]?.note).toBe("Agents can't start containers inside a pod.");
+      expect(list.levels[1]?.enable).toContain("on bare metal or in a VM");
+    }),
+  );
 });
