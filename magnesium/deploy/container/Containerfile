@@ -72,8 +72,10 @@ RUN set -eu; \
   esac; \
   echo "$MAGNESIUM_COMMIT" > "/opt/magnesium/releases/$MAGNESIUM_COMMIT/RELEASE"; \
   ln -s "releases/$MAGNESIUM_COMMIT" /opt/magnesium/current; \
+  # Shims, not links: the tools find their helpers beside their own path.
   for tool in magnesium-release magnesium-agents magnesium-fence; do \
-    ln -s "/opt/magnesium/current/magnesium/deploy/bin/$tool" "/usr/local/bin/$tool"; \
+    printf '#!/bin/sh\nexec /opt/magnesium/current/magnesium/deploy/bin/%s "$@"\n' "$tool" > "/usr/local/bin/$tool"; \
+    chmod 755 "/usr/local/bin/$tool"; \
   done; \
   groupadd --gid 10001 magnesium; \
   useradd --uid 10001 --gid 10001 --home-dir /home/magnesium --create-home --shell /bin/bash magnesium
