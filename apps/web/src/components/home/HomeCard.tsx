@@ -16,6 +16,7 @@ import { type ReactNode, useEffect, useState } from "react";
 
 import { cn } from "../../lib/utils";
 import { buildThreadRouteParams } from "../../threadRoutes";
+import ChatMarkdown from "../ChatMarkdown";
 import { STATUS_SHAPE_TONE, StatusShape, type StatusShapeKind } from "../sidebar/StatusShape";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -344,8 +345,14 @@ function PlanBody({
 }) {
   return (
     <>
-      <div className="max-h-72 overflow-y-auto rounded-lg bg-muted px-3 py-2 text-sm whitespace-pre-wrap text-foreground">
-        {body.markdown}
+      <div className="max-h-72 overflow-y-auto rounded-lg bg-muted px-3 py-2">
+        <ChatMarkdown
+          text={body.markdown}
+          cwd={undefined}
+          environmentId={item.machine.environmentId ?? undefined}
+          isStreaming={false}
+          headingLevelOffset={3}
+        />
       </div>
       {body.truncated ? (
         <p className="text-xs text-muted-foreground">
