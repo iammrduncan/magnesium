@@ -77,7 +77,9 @@ import {
 } from "./EnvironmentRow";
 import { FoldedSettingsSection } from "./FoldedSettingsSection";
 import { HubMachinesSection, removeHubMachineAccess } from "./HubMachinesSection"; // magnesium: machines the hub carries (doc 11)
+import { ModelKeysSection } from "./ModelKeysSection"; // magnesium: model keys the hub holds (goal 25)
 import { SandboxesSection } from "./SandboxesSection"; // magnesium: sandbox levels per machine (goal 03)
+import { SpokesSection } from "./SpokesSection"; // magnesium: machines in Kubernetes (goal 25)
 import { LoadBalancingSettings } from "./LoadBalancingSettings";
 import { GitHubRoutingSettings } from "./GitHubRoutingSettings";
 import { Input } from "../ui/input";
@@ -3608,6 +3610,9 @@ export function ConnectionsSettings() {
       </SettingsSection>
       {/* magnesium: machines the hub carries but cannot reach yet (doc 11) */}
       <HubMachinesSection canManage={canManageLocalBackend} />
+      {/* magnesium: machines the hub runs in Kubernetes, and the model keys they get (goal 25) */}
+      <SpokesSection canManage={canManageLocalBackend} />
+      <ModelKeysSection canManage={canManageLocalBackend} />
       {/* magnesium: the sandbox levels each machine runs (goal 03) */}
       <SandboxesSection />
       <LoadBalancingSettings environments={loadBalancingEnvironments} />

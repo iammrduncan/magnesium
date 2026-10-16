@@ -12,6 +12,7 @@ import * as RpcGroup from "effect/unstable/rpc/RpcGroup";
 import * as RpcMiddleware from "effect/unstable/rpc/RpcMiddleware";
 
 import { FleetEvent, FleetMachine, FleetReconnectInput } from "./fleet.ts";
+import { HubMachineName } from "./hub.ts";
 import { FooterItem } from "./footer.ts";
 import {
   HomeAnswerError,
@@ -89,6 +90,7 @@ export const MAGNESIUM_WS_METHODS = {
   hubSpokesList: "magnesium.hubSpokes.list",
   hubSpokesApply: "magnesium.hubSpokes.apply",
   hubSpokesRemove: "magnesium.hubSpokes.remove",
+  hubSpokesGateways: "magnesium.hubSpokes.gateways",
   modelKeysList: "magnesium.modelKeys.list",
   modelKeysSet: "magnesium.modelKeys.set",
   modelKeysRemove: "magnesium.modelKeys.remove",
@@ -284,6 +286,12 @@ const HubSpokesRemoveRpc = Rpc.make(MAGNESIUM_WS_METHODS.hubSpokesRemove, {
   error: SpokeError,
 }).annotate(RequiredScope, AuthAccessWriteScope);
 
+/** The hub's machines that are gateways: the ones that answer for their spokes. */
+const HubSpokesGatewaysRpc = Rpc.make(MAGNESIUM_WS_METHODS.hubSpokesGateways, {
+  success: Schema.Array(HubMachineName),
+  error: SpokeError,
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
+
 /** The names of the model keys the hub holds; their values never leave it except to a spoke. */
 const ModelKeysListRpc = Rpc.make(MAGNESIUM_WS_METHODS.modelKeysList, {
   success: Schema.Array(ModelKeyName),
@@ -327,6 +335,7 @@ export const MagnesiumRpcGroup = RpcGroup.make(
   HubSpokesListRpc,
   HubSpokesApplyRpc,
   HubSpokesRemoveRpc,
+  HubSpokesGatewaysRpc,
   ModelKeysListRpc,
   ModelKeysSetRpc,
   ModelKeysRemoveRpc,

@@ -35,12 +35,16 @@ export class HubSpokes extends Context.Service<
     readonly list: Effect.Effect<ReadonlyArray<HubSpoke>, SpokeError>;
     readonly apply: (input: HubSpokeApplyInput) => Effect.Effect<HubSpoke, SpokeError>;
     readonly remove: (input: SpokeRemoveInput) => Effect.Effect<void, SpokeError>;
+    /** The hub's machines that answer for their spokes. */
+    readonly gateways: Effect.Effect<ReadonlyArray<string>, SpokeError>;
   }
 >()("@magnesium/server/hub/HubSpokes") {}
 
 /** How long a new spoke may take to come up and pair: an image pull and a first start. */
 const PAIR_RETRIES = 120;
 const PAIR_EVERY = Duration.seconds(5);
+/** A machine that hasn't answered for its spokes by then isn't a gateway the hub can use now. */
+const GATEWAY_PROBE = Duration.seconds(4);
 
 export const make = Effect.gen(function* () {
   const ports = yield* ServerPorts;
@@ -186,7 +190,23 @@ export const make = Effect.gen(function* () {
     );
   });
 
-  return HubSpokes.of({ list, apply, remove });
+  const gateways_ = Effect.gen(function* () {
+    const spokeNames = new Set((yield* records).map((record) => record.name));
+    const names = (yield* machines.names).filter((name) => !spokeNames.has(name));
+    const answered = yield* Effect.forEach(
+      names,
+      (name) =>
+        gateways.list(name).pipe(
+          Effect.timeout(GATEWAY_PROBE),
+          Effect.as(true),
+          Effect.orElseSucceed(() => false),
+        ),
+      { concurrency: "unbounded" },
+    );
+    return names.filter((_, index) => answered[index]);
+  });
+
+  return HubSpokes.of({ list, apply, remove, gateways: gateways_ });
 });
 
 export const layer = Layer.effect(HubSpokes, make);
