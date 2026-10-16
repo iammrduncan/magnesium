@@ -31,7 +31,7 @@ export const SidebarPlaces = memo(function SidebarPlaces() {
             {needs > 0 ? (
               <span
                 aria-label={`${needs} need you`}
-                className="flex h-4.5 min-w-4.5 shrink-0 items-center justify-center rounded-full bg-warning px-1 text-2xs font-semibold text-neutral-950 tabular-nums"
+                className="flex h-4.5 min-w-4.5 shrink-0 items-center justify-center rounded-full bg-warning/16 px-1 text-2xs font-semibold text-warning-foreground tabular-nums dark:bg-warning/24"
               >
                 {needs}
               </span>
