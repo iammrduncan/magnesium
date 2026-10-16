@@ -104,8 +104,9 @@ export function FolderRollupLabel(props: { rollup: FolderRollup }) {
 
 /**
  * A project folder. The chevron opens and closes it; the name opens the
- * project (its first thread until goal 15 builds the project page). The
- * roll-up names the most urgent status inside.
+ * project (its first thread until goal 15 builds the project page), and a
+ * right-click opens the project's menu. The roll-up names the most urgent
+ * status inside.
  */
 export const SidebarFolderRow = memo(function SidebarFolderRow(props: {
   id: string;
@@ -117,10 +118,17 @@ export const SidebarFolderRow = memo(function SidebarFolderRow(props: {
   rollup: FolderRollup | null;
   onSetOpen: (folder: string, open: boolean) => void;
   onOpenProject: (folder: string) => void;
+  onContextMenu: (folder: string, position: { x: number; y: number }) => void;
 }) {
   return (
     <SortableStructureRow id={props.id} data-testid="sidebar-folder">
-      <div className="group/folder flex h-8 items-center gap-1 rounded-md pr-2 text-sm hover:bg-sidebar-row-hover">
+      <div
+        className="group/folder flex h-8 items-center gap-1 rounded-md pr-2 text-sm hover:bg-sidebar-row-hover"
+        onContextMenu={(event) => {
+          event.preventDefault();
+          props.onContextMenu(props.folder, { x: event.clientX, y: event.clientY });
+        }}
+      >
         <button
           type="button"
           aria-expanded={props.open}

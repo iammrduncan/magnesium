@@ -3769,7 +3769,8 @@ export default function Sidebar() {
   );
   const sortableIds = useMemo(() => sidebarListItems.map(sidebarListItemId), [sidebarListItems]);
   // magnesium: folder actions (goal 05). A folder's name opens the project, its
-  // first thread until goal 15's page; "All N threads" scopes the list to it.
+  // first thread until goal 15's page; "All N threads" scopes the list to it;
+  // its right-click menu holds the project items of a thread's menu.
   const openFolderProject = useCallback(
     (folder: string) => {
       setFolderOpen(folder, true);
@@ -3783,6 +3784,33 @@ export default function Sidebar() {
     [setProjectScopeKey],
   );
   const showAllProjects = useCallback(() => setProjectScopeKey(null), [setProjectScopeKey]);
+  const handleFolderContextMenu = useCallback(
+    (folder: string, position: { x: number; y: number }) => {
+      void (async () => {
+        const api = readLocalApi();
+        const projectGroup = projectGroupByScopeKey.get(folder);
+        if (!api || !projectGroup) return;
+        const scoped = projectScopeKey === folder;
+        const clicked = await settlePromise(() =>
+          api.contextMenu.show(
+            [
+              {
+                id: "filter-by-project",
+                label: scoped ? "Show all projects" : `Filter by ${projectGroup.displayName}`,
+                icon: "folder-tree",
+              },
+              { id: "project-settings", label: "Project settings", icon: "settings" },
+            ],
+            position,
+          ),
+        );
+        if (clicked._tag === "Failure") return;
+        if (clicked.value === "filter-by-project") setProjectScopeKey(scoped ? null : folder);
+        if (clicked.value === "project-settings") openProjectSettings(projectGroup);
+      })();
+    },
+    [openProjectSettings, projectGroupByScopeKey, projectScopeKey, setProjectScopeKey],
+  );
   const draggedSettledOrder = useMemo(() => {
     const thread = dragState === null ? undefined : threadByKey.get(dragState.activeKey);
     if (dragState === null || thread === undefined) return [];
@@ -5212,6 +5240,7 @@ export default function Sidebar() {
                               rollup={folderRollups.get(item.folder) ?? null}
                               onSetOpen={setFolderOpen}
                               onOpenProject={openFolderProject}
+                              onContextMenu={handleFolderContextMenu}
                             />,
                           );
                           continue;
