@@ -1,17 +1,18 @@
 import { HUB_ENVIRONMENT_ROUTE_PREFIX } from "@magnesium/contracts";
 import { AuthOrchestrationOperateScope, AuthOrchestrationReadScope } from "@t3tools/contracts";
-import * as NodeSocket from "@effect/platform-node/NodeSocket";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import {
-  HttpClient,
-  HttpClientRequest,
-  HttpRouter,
-  HttpServerRequest,
-  HttpServerResponse,
-} from "effect/unstable/http";
-import * as Socket from "effect/unstable/socket/Socket";
+import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 
+import {
+  forwardedHeaders,
+  forwardHttp,
+  forwardWebSocket,
+  HOP_HEADERS,
+  HOP_RESPONSE_HEADERS,
+  isWebSocketUpgrade,
+  urlUnder,
+} from "../forward.ts";
 import { NOT_PAIRED_DETAIL, ServerPorts } from "../ports.ts";
 import { HubMachines } from "./HubMachines.ts";
 import * as MachineApi from "./machineApi.ts";
@@ -32,37 +33,23 @@ const ALLOWED_PATHS: ReadonlyArray<RegExp> = [
   /^\/api\/(?!auth\/|magnesium\/)[a-z0-9-]+(\/.*)?$/,
 ];
 
-const DROPPED_REQUEST_HEADERS = new Set([
-  "host",
-  "connection",
-  "upgrade",
-  "sec-websocket-key",
-  "sec-websocket-version",
-  "sec-websocket-extensions",
-  "sec-websocket-protocol",
+const DROPPED_REQUEST_HEADERS: ReadonlySet<string> = new Set([
+  ...HOP_HEADERS,
   // The hub's credentials end here; the machine gets the hub's own token.
   "cookie",
   "authorization",
   "dpop",
   "origin",
   "referer",
-  "content-length",
-  "accept-encoding",
 ]);
 
 /** A machine's cookies must never land on the hub's origin, next to the hub's session cookie. */
-const DROPPED_RESPONSE_HEADERS = new Set([
+const DROPPED_RESPONSE_HEADERS: ReadonlySet<string> = new Set([
+  ...HOP_RESPONSE_HEADERS,
   "set-cookie",
-  "content-encoding",
-  "content-length",
-  "transfer-encoding",
-  "connection",
 ]);
 
 const WEBSOCKET_TICKET_PARAM = "wsTicket";
-
-const isWebSocketUpgrade = (request: HttpServerRequest.HttpServerRequest) =>
-  request.headers.upgrade?.toLowerCase() === "websocket";
 
 const jsonError = (status: number, error: string) =>
   HttpServerResponse.jsonUnsafe({ error }, { status });
@@ -85,73 +72,6 @@ export const parseProxyPath = (
   const path = rest.slice(slash);
   return ALLOWED_PATHS.some((pattern) => pattern.test(path)) ? { name, path } : null;
 };
-
-const proxyWebSocket = Effect.fn("HubProxy.proxyWebSocket")(function* (
-  request: HttpServerRequest.HttpServerRequest,
-  upstreamUrl: string,
-) {
-  const client = yield* request.upgrade;
-  const upstream = yield* Socket.makeWebSocket(upstreamUrl, {
-    openTimeout: "10 seconds",
-  }).pipe(Effect.provide(NodeSocket.layerWebSocketConstructor));
-  yield* Effect.scoped(
-    Effect.gen(function* () {
-      const writeToClient = yield* client.writer;
-      const writeToUpstream = yield* upstream.writer;
-      // Frames pass through untouched, text as text. Whichever side closes first
-      // ends the other through scope teardown.
-      return yield* Effect.raceFirst(
-        pumpFrames(upstream, writeToClient),
-        pumpFrames(client, writeToUpstream),
-      );
-    }),
-  ).pipe(Effect.ignoreCause);
-  return HttpServerResponse.empty();
-});
-
-const pumpFrames = (source: Socket.Socket, sink: Socket.Writer) =>
-  Effect.gen(function* () {
-    const { pull } = yield* source.reader;
-    while (true) {
-      yield* sink.writeAll(yield* pull);
-    }
-  });
-
-const proxyHttp = Effect.fn("HubProxy.proxyHttp")(function* (
-  request: HttpServerRequest.HttpServerRequest,
-  upstreamUrl: string,
-  token: string,
-) {
-  const headers: Record<string, string> = {};
-  for (const [name, value] of Object.entries(request.headers)) {
-    if (DROPPED_REQUEST_HEADERS.has(name) || value === undefined) continue;
-    headers[name] = value;
-  }
-  headers.authorization = `Bearer ${token}`;
-  const method = request.method;
-  const httpClient = HttpClient.withScope(yield* HttpClient.HttpClient);
-  const response = yield* httpClient.execute(
-    HttpClientRequest.make(method)(upstreamUrl).pipe(
-      HttpClientRequest.setHeaders(headers),
-      method === "GET" || method === "HEAD"
-        ? (self) => self
-        : HttpClientRequest.bodyStream(request.stream),
-    ),
-  );
-  const responseHeaders: Record<string, string> = {};
-  for (const [name, value] of Object.entries(response.headers)) {
-    if (DROPPED_RESPONSE_HEADERS.has(name) || value === undefined) continue;
-    responseHeaders[name] = value;
-  }
-  return {
-    status: response.status,
-    response: HttpServerResponse.stream(response.stream, {
-      status: response.status,
-      headers: responseHeaders,
-      ...(responseHeaders["content-type"] ? { contentType: responseHeaders["content-type"] } : {}),
-    }),
-  };
-});
 
 const handler = Effect.gen(function* () {
   const request = yield* HttpServerRequest.HttpServerRequest;
@@ -196,14 +116,18 @@ const handler = Effect.gen(function* () {
       }
       search.set(WEBSOCKET_TICKET_PARAM, ticket.value.ticket);
     }
-    const wsUrl = new URL(`${target.path}?${search.toString()}`, upstream.value.url);
+    const wsUrl = urlUnder(upstream.value.url, `${target.path}?${search.toString()}`);
     wsUrl.protocol = wsUrl.protocol === "https:" ? "wss:" : "ws:";
-    return yield* proxyWebSocket(request, wsUrl.toString());
+    return yield* forwardWebSocket(request, wsUrl.toString());
   }
 
   const query = search.size > 0 ? `?${search.toString()}` : "";
-  const httpUrl = new URL(`${target.path}${query}`, upstream.value.url).toString();
-  const proxied = yield* proxyHttp(request, httpUrl, upstream.value.token).pipe(Effect.option);
+  const httpUrl = urlUnder(upstream.value.url, `${target.path}${query}`).toString();
+  const headers = forwardedHeaders(request, DROPPED_REQUEST_HEADERS);
+  headers.authorization = `Bearer ${upstream.value.token}`;
+  const proxied = yield* forwardHttp(request, httpUrl, headers, DROPPED_RESPONSE_HEADERS).pipe(
+    Effect.option,
+  );
   if (Option.isNone(proxied)) return jsonError(502, `${target.name} did not answer.`);
   if (proxied.value.status === 401) yield* machines.markRejected(target.name);
   return proxied.value.response;

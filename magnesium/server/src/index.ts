@@ -7,6 +7,7 @@ import * as MagnesiumDb from "./db/MagnesiumDb.ts";
 import * as Fleet from "./fleet/Fleet.ts";
 import { fleetHandlersLayer } from "./fleet/handlers.ts";
 import { footerHandlersLayer } from "./footer/handlers.ts";
+import { gatewayConfigFromEnv, gatewayRouteLayer } from "./gateway/gateway.ts";
 import { homeHandlersLayer } from "./home/handlers.ts";
 import * as Home from "./home/Home.ts";
 import * as LocalHome from "./home/LocalHome.ts";
@@ -29,7 +30,14 @@ const routeLayers = Layer.unwrap(
   Effect.gen(function* () {
     const machines = yield* HubMachines.HubMachines;
     const ports = yield* ServerPorts;
-    return Layer.mergeAll(hubProxyRouteLayer, hubMachineRoutesLayer, sessionRenewRouteLayer).pipe(
+    // A gateway also passes the hub through to the spokes in its namespace (goal 25).
+    const gateway = gatewayConfigFromEnv(process.env);
+    return Layer.mergeAll(
+      hubProxyRouteLayer,
+      hubMachineRoutesLayer,
+      sessionRenewRouteLayer,
+      gateway === null ? Layer.empty : gatewayRouteLayer(gateway),
+    ).pipe(
       HttpRouter.provideRequest(
         Layer.mergeAll(
           Layer.succeed(HubMachines.HubMachines, machines),

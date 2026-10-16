@@ -17,6 +17,8 @@ import {
 } from "effect/unstable/http";
 import * as HttpApiClient from "effect/unstable/httpapi/HttpApiClient";
 
+import { urlUnder } from "../forward.ts";
+
 /** How the hub talks to a machine server, at the machine's own origin (its loopback relay). */
 
 const REQUEST_TIMEOUT = Duration.seconds(5);
@@ -110,7 +112,7 @@ export const renewSession = (baseUrl: string, token: string) =>
     Effect.flatMap(HttpClient.HttpClient, (httpClient) =>
       httpClient
         .execute(
-          HttpClientRequest.post(new URL(SESSION_RENEW_PATH, baseUrl).toString()).pipe(
+          HttpClientRequest.post(urlUnder(baseUrl, SESSION_RENEW_PATH).toString()).pipe(
             HttpClientRequest.setHeaders(bearer(token)),
           ),
         )

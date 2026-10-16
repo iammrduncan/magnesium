@@ -1,6 +1,7 @@
 import { MAGNESIUM_WS_PATH } from "@magnesium/contracts";
 import * as Effect from "effect/Effect";
 
+import { urlUnder } from "../forward.ts";
 import { connect } from "../rpc/client.ts";
 import { HubMachines } from "./HubMachines.ts";
 import * as MachineApi from "./machineApi.ts";
@@ -17,7 +18,7 @@ export const connectMachine = Effect.fn("HubMachines.connectMachine")(function* 
   const ticket = yield* MachineApi.issueWebSocketTicket(upstream.url, upstream.token).pipe(
     Effect.tapError((error) => (error.rejected ? machines.markRejected(name) : Effect.void)),
   );
-  const url = new URL(MAGNESIUM_WS_PATH, upstream.url);
+  const url = urlUnder(upstream.url, MAGNESIUM_WS_PATH);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.searchParams.set("wsTicket", ticket.ticket);
   return yield* connect(url.toString());
