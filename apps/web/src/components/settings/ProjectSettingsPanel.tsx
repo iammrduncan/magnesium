@@ -69,6 +69,13 @@ export function ProjectSettingsPanel({
   const groups = useSettingsProjectGroups();
   const navigate = useNavigate({ from: "/settings" });
   const pathname = useLocation({ select: (location) => location.pathname });
+  // magnesium: projects arrive machine by machine; one still connecting may hold this one.
+  const { environments } = useEnvironments();
+  const connecting = environments.filter(
+    (environment) =>
+      environment.connection.phase === "connecting" ||
+      environment.connection.phase === "reconnecting",
+  );
 
   const selected = groups.find((group) => group.projectKey === projectKey) ?? null;
   const members = useMemo(
@@ -130,9 +137,12 @@ export function ProjectSettingsPanel({
   if (!selected) {
     return (
       <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">
-        {groups.length === 0
-          ? "Add a project from the sidebar to configure it here."
-          : "This project is no longer available."}
+        {/* magnesium: say a machine is still loading before calling the project missing */}
+        {connecting.length > 0
+          ? `Loading projects from ${connecting.map((environment) => environment.label).join(", ")}…`
+          : groups.length === 0
+            ? "Add a project from the sidebar to configure it here."
+            : "This project is no longer available."}
       </div>
     );
   }
