@@ -8,6 +8,9 @@ import * as Fleet from "./fleet/Fleet.ts";
 import { fleetHandlersLayer } from "./fleet/handlers.ts";
 import { footerHandlersLayer } from "./footer/handlers.ts";
 import { gatewayConfigFromEnv, gatewayRouteLayer } from "./gateway/gateway.ts";
+import { spokeHandlersLayer } from "./gateway/handlers.ts";
+import { inClusterLayer } from "./gateway/kube.ts";
+import * as Spokes from "./gateway/Spokes.ts";
 import { homeHandlersLayer } from "./home/handlers.ts";
 import * as Home from "./home/Home.ts";
 import * as LocalHome from "./home/LocalHome.ts";
@@ -22,6 +25,7 @@ import { coreHandlersLayer } from "./rpc/handlers.ts";
 import { magnesiumWsRouteLayer } from "./rpc/route.ts";
 import { pairingCodeLayer } from "./session/pairingCode.ts";
 import { sessionRenewRouteLayer } from "./session/renew.ts";
+import { currentRelease } from "./status/release.ts";
 import * as ServerStatus from "./status/ServerStatus.ts";
 
 export * from "./ports.ts";
@@ -56,6 +60,24 @@ const rpcHandlersLayer = Layer.mergeAll(
   footerHandlersLayer,
   homeHandlersLayer,
   profileRpcHandlersLayer,
+  spokeHandlersLayer,
+);
+
+/** A gateway deploys spokes with its namespace's identity; other servers say they can't. */
+const spokesLayer = Layer.unwrap(
+  Effect.gen(function* () {
+    const gateway = gatewayConfigFromEnv(process.env);
+    if (gateway === null) return Spokes.notAGatewayLayer;
+    const release = yield* currentRelease;
+    return Layer.effect(
+      Spokes.Spokes,
+      Spokes.make({
+        image: gateway.image,
+        defaultBuild: release ?? "unknown",
+        storageClass: gateway.storageClass,
+      }),
+    ).pipe(Layer.provide(inClusterLayer));
+  }),
 );
 
 /** Every Magnesium route, plus its workers. `apps/server` provides `ServerPorts`. */
@@ -71,6 +93,7 @@ export const routesLayer = Layer.mergeAll(
   Layer.provide(Fleet.layer),
   Layer.provide(Layer.mergeAll(LocalHome.layer, HomeRelay.layer)),
   Layer.provide(profileServicesLayer),
+  Layer.provide(spokesLayer),
   Layer.provide(Layer.mergeAll(HubMachines.layer, ServerStatus.layer)),
   Layer.provide(MagnesiumDb.layer),
 );

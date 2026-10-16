@@ -28,22 +28,36 @@ export const GATEWAY_ROUTE_PREFIX = "/spokes";
 /** Where a spoke's server answers inside the namespace: its Service, by default. */
 export const DEFAULT_SPOKE_URL = "http://magnesium-{name}:3773";
 
+/** The image for a spoke's build, by default; the cluster's operator names its images. */
+export const DEFAULT_SPOKE_IMAGE = "magnesium:{build}";
+
 export interface GatewayConfig {
   /** The origin of the spoke named `name`. */
   readonly spokeOrigin: (name: string) => string;
+  /** The image a spoke of `build` runs. */
+  readonly image: (build: string) => string;
+  /** The storage class for spokes' volumes; null takes the namespace's default. */
+  readonly storageClass: string | null;
 }
 
 /**
  * The gateway's config from its environment, or null when this server is not
- * a gateway: `MAGNESIUM_ROLE=gateway`, and `MAGNESIUM_SPOKE_URL` as a template
- * with `{name}` (default `http://magnesium-{name}:3773`).
+ * a gateway: `MAGNESIUM_ROLE=gateway`; `MAGNESIUM_SPOKE_URL`, a template with
+ * `{name}` (default `http://magnesium-{name}:3773`); `MAGNESIUM_SPOKE_IMAGE`,
+ * a template with `{build}` (default `magnesium:{build}`); and
+ * `MAGNESIUM_SPOKE_STORAGE_CLASS`.
  */
 export const gatewayConfigFromEnv = (
   env: Readonly<Record<string, string | undefined>>,
 ): GatewayConfig | null => {
   if (env.MAGNESIUM_ROLE?.trim() !== "gateway") return null;
-  const template = env.MAGNESIUM_SPOKE_URL?.trim() || DEFAULT_SPOKE_URL;
-  return { spokeOrigin: (name) => template.replaceAll("{name}", name) };
+  const url = env.MAGNESIUM_SPOKE_URL?.trim() || DEFAULT_SPOKE_URL;
+  const image = env.MAGNESIUM_SPOKE_IMAGE?.trim() || DEFAULT_SPOKE_IMAGE;
+  return {
+    spokeOrigin: (name) => url.replaceAll("{name}", name),
+    image: (build) => image.replaceAll("{build}", build),
+    storageClass: env.MAGNESIUM_SPOKE_STORAGE_CLASS?.trim() || null,
+  };
 };
 
 const isSpokeName = Schema.is(HubMachineName);

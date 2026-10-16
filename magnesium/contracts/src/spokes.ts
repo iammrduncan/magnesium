@@ -1,0 +1,85 @@
+import * as Schema from "effect/Schema";
+
+import { HubMachineName } from "./hub.ts";
+
+/**
+ * Spokes in Kubernetes (goal 25, D57): the hub asks a namespace's gateway to
+ * run, change or remove its spokes. Everything here is what Magnesium decides;
+ * the operator's envelope (nodes, quota, security level, network) is checked by the
+ * cluster and can only refuse.
+ */
+
+/** A DNS label: a pod's host name and the parts of object names. */
+const DnsLabel = Schema.String.check(Schema.isPattern(/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/));
+
+export const SpokeSpec = Schema.Struct({
+  /** The spoke's name on the hub, its `MAGNESIUM_MACHINE`; its objects are `magnesium-<name>`. */
+  name: HubMachineName,
+  /** The node it runs on, from the namespace's allowed list. */
+  node: Schema.String.check(Schema.isMinLength(1)),
+  /** `HOME`: where its volume is mounted. A moved machine keeps its user's home path. */
+  home: Schema.String.check(Schema.isPattern(/^\/[^\0]*$/)),
+  /** The pod's host name, which Fleet and Home show as its label. */
+  hostname: DnsLabel,
+  /** The build it runs (a commit); null runs the gateway's own. */
+  build: Schema.NullOr(Schema.String.check(Schema.isPattern(/^[0-9a-f]{7,40}$/))),
+  /** Its volume's size, such as `100Gi`. Growing it later needs a storage class that allows it. */
+  volumeSize: Schema.String.check(Schema.isPattern(/^[1-9][0-9]*(Mi|Gi|Ti)$/)),
+  /** OpenCode's gateway and models; null leaves OpenCode unconfigured. */
+  opencode: Schema.NullOr(
+    Schema.Struct({
+      baseUrl: Schema.String.check(Schema.isPattern(/^https?:\/\//)),
+      models: Schema.NonEmptyArray(Schema.String.check(Schema.isMinLength(1))),
+    }),
+  ),
+  /** 1 runs it, 0 stops it and keeps its volume. */
+  replicas: Schema.Literals([0, 1]),
+});
+export type SpokeSpec = typeof SpokeSpec.Type;
+
+/**
+ * Values a spoke reads from its Secret, by name only. Sent with a spec and
+ * written straight to the Secret; never stored on the gateway or sent back.
+ */
+export const SpokeSecrets = Schema.Struct({
+  /** A one-time code the hub pairs with (`MAGNESIUM_HUB_PAIRING_CODE`); null once paired. */
+  pairingCode: Schema.NullOr(Schema.String.check(Schema.isMinLength(16))),
+  /** Keys agents use, by environment name, such as `LITELLM_API_KEY`. */
+  keys: Schema.Record(
+    Schema.String.check(Schema.isPattern(/^[A-Z][A-Z0-9_]*$/)),
+    Schema.String.check(Schema.isMinLength(1)),
+  ),
+});
+export type SpokeSecrets = typeof SpokeSecrets.Type;
+
+export const SpokeApplyInput = Schema.Struct({
+  spec: SpokeSpec,
+  /** Null keeps the Secret as it is. */
+  secrets: Schema.NullOr(SpokeSecrets),
+});
+export type SpokeApplyInput = typeof SpokeApplyInput.Type;
+
+export const SpokeRemoveInput = Schema.Struct({
+  name: HubMachineName,
+  /** Keep the spoke's volume (its home), so it can come back. */
+  keepVolume: Schema.Boolean,
+});
+export type SpokeRemoveInput = typeof SpokeRemoveInput.Type;
+
+/** A spoke as the cluster sees it. */
+export const SpokeStatus = Schema.Struct({
+  name: HubMachineName,
+  node: Schema.NullOr(Schema.String),
+  /** The build its pod runs; null when its image doesn't say. */
+  build: Schema.NullOr(Schema.String),
+  replicas: Schema.Number,
+  ready: Schema.Boolean,
+  /** Why it isn't ready, in a sentence, such as the cluster's refusal. */
+  detail: Schema.NullOr(Schema.String),
+});
+export type SpokeStatus = typeof SpokeStatus.Type;
+
+export class SpokeError extends Schema.TaggedError<SpokeError>()("SpokeError", {
+  /** What went wrong, in a sentence for Fleet, such as the cluster refusing a node. */
+  detail: Schema.String,
+}) {}

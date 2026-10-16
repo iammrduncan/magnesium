@@ -19,6 +19,11 @@ release="${MAGNESIUM_ROOT:-/opt/magnesium}/current"
 [ -n "${HOME:-}" ] && [ -d "$HOME" ] && [ -w "$HOME" ] ||
   die "HOME ($HOME) must be a writable folder: mount the spoke's volume there"
 export T3CODE_HOME="${T3CODE_HOME:-$HOME/.magnesium}"
+# A gateway talks to its cluster's API, whose CA comes with its service account.
+sa_ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+if [ -z "${NODE_EXTRA_CA_CERTS:-}" ] && [ -r "$sa_ca" ]; then
+  export NODE_EXTRA_CA_CERTS="$sa_ca"
+fi
 # CLIs the user installs or updates in their home come before the image's.
 export PATH="$HOME/.local/bin:$PATH"
 

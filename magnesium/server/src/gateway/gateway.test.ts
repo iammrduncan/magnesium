@@ -88,6 +88,8 @@ describe("the hub through a gateway", () => {
       const gateway = yield* startTestServer({
         routes: gatewayRouteLayer({
           spokeOrigin: (name) => (name === "cpu-host-2" ? spoke.origin : "http://127.0.0.1:9"),
+          image: (build) => `magnesium:${build}`,
+          storageClass: null,
         }).pipe(HttpRouter.provideRequest(FetchHttpClient.layer)),
       });
 

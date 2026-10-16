@@ -32,6 +32,7 @@ import {
   ProfileRevision,
   SandboxList,
 } from "./profiles.ts";
+import { SpokeApplyInput, SpokeError, SpokeRemoveInput, SpokeStatus } from "./spokes.ts";
 import { PingResult, ServerStatus } from "./status.ts";
 import {
   historyPage,
@@ -71,6 +72,9 @@ export const MAGNESIUM_WS_METHODS = {
   homeAnswer: "magnesium.home.answer",
   homePin: "magnesium.home.pin",
   homeDetail: "magnesium.home.detail",
+  spokesList: "magnesium.spokes.list",
+  spokesApply: "magnesium.spokes.apply",
+  spokesRemove: "magnesium.spokes.remove",
 } as const;
 
 /**
@@ -226,6 +230,25 @@ const HomeDetailRpc = Rpc.make(MAGNESIUM_WS_METHODS.homeDetail, {
   error: HomeAnswerError,
 }).annotate(RequiredScope, AuthOrchestrationReadScope);
 
+/** A gateway's spokes, as its cluster sees them (goal 25). Other servers answer with an error. */
+const SpokesListRpc = Rpc.make(MAGNESIUM_WS_METHODS.spokesList, {
+  success: Schema.Array(SpokeStatus),
+  error: SpokeError,
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
+
+/** Runs, changes or stops (`replicas: 0`) a spoke through its gateway. */
+const SpokesApplyRpc = Rpc.make(MAGNESIUM_WS_METHODS.spokesApply, {
+  payload: SpokeApplyInput,
+  success: SpokeStatus,
+  error: SpokeError,
+}).annotate(RequiredScope, AuthOrchestrationOperateScope);
+
+/** Removes a spoke, keeping its volume unless told otherwise. */
+const SpokesRemoveRpc = Rpc.make(MAGNESIUM_WS_METHODS.spokesRemove, {
+  payload: SpokeRemoveInput,
+  error: SpokeError,
+}).annotate(RequiredScope, AuthOrchestrationOperateScope);
+
 export const MagnesiumRpcGroup = RpcGroup.make(
   PingRpc,
   ServerStatusRpc,
@@ -247,6 +270,9 @@ export const MagnesiumRpcGroup = RpcGroup.make(
   HomeAnswerRpc,
   HomePinRpc,
   HomeDetailRpc,
+  SpokesListRpc,
+  SpokesApplyRpc,
+  SpokesRemoveRpc,
 ).middleware(ScopeGuard);
 export type MagnesiumRpcs = RpcGroup.Rpcs<typeof MagnesiumRpcGroup>;
 export type MagnesiumRpcMethod = MagnesiumRpcs["_tag"];
