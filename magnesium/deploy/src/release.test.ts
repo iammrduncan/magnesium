@@ -119,6 +119,41 @@ describe("magnesium-release", () => {
     expect(release.link("current")).toBe("releases/a");
   });
 
+  it("prunes old releases, keeping current, previous, the newest few and any build in progress", () => {
+    const release = makeRoot();
+    release.run("activate", "a");
+    release.run("activate", "b");
+    // Older to newer: d, e, f. A build still running hides in .build-*.
+    const hour = 3600;
+    const now = Date.now() / 1000;
+    ["d", "e", "f"].forEach((name, index) => {
+      const dir = NodePath.join(release.root, "releases", name);
+      NodeFS.mkdirSync(NodePath.join(dir, "apps/server/dist"), { recursive: true });
+      NodeFS.writeFileSync(NodePath.join(dir, "apps/server/dist/bin.mjs"), "");
+      const at = now - (3 - index) * hour;
+      NodeFS.utimesSync(dir, at, at);
+    });
+    for (const name of ["a", "b"]) {
+      const at = now - 10 * hour;
+      NodeFS.utimesSync(NodePath.join(release.root, "releases", name), at, at);
+    }
+    NodeFS.mkdirSync(NodePath.join(release.root, "releases", ".build-123"));
+
+    const result = release.run("prune");
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("Removed 1 old release(s).");
+    expect(NodeFS.readdirSync(NodePath.join(release.root, "releases")).toSorted()).toEqual([
+      ".build-123",
+      "a",
+      "b",
+      "c",
+      "e",
+      "f",
+    ]);
+    expect(release.link("current")).toBe("releases/b");
+    expect(release.link("previous")).toBe("releases/a");
+  });
+
   it("seeds settings once and never overwrites them", () => {
     const release = makeRoot();
     release.run("activate", "a");

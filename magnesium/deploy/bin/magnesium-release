@@ -10,6 +10,9 @@
 #                                               doesn't build (the server and its runtime
 #                                               dependencies only, about 300 MB)
 #   magnesium-release unpack <file.tar.gz>      unpack a packed release into releases/<sha>
+#   magnesium-release prune                     remove built releases beyond the newest
+#                                               $MAGNESIUM_RELEASE_KEEP (default 2), never
+#                                               current or previous
 #   magnesium-release backup                    copy the state folder into backups/<UTC time>
 #   magnesium-release restore <backup>          stop the server, put a backup back, start it
 #   magnesium-release pair [--admin]            print a one-time pairing code, link and QR code
@@ -162,6 +165,34 @@ prune_backups() {
     rm -rf "${STATE_HOME:?}/backups/${all[$i]}"
     i=$((i + 1))
   done
+}
+
+# Removes built releases beyond the newest $MAGNESIUM_RELEASE_KEEP, besides current
+# and previous. A folder still being built or unpacked is never touched: it is
+# hidden (.build-*, .unpack-*) or not built yet.
+prune_releases() {
+  local keep="${MAGNESIUM_RELEASE_KEEP:-2}"
+  [[ "$keep" =~ ^[0-9]+$ ]] || die "MAGNESIUM_RELEASE_KEEP must be a number"
+  local current previous
+  current="$(readlink "$ROOT/current" 2> /dev/null || true)"
+  previous="$(readlink "$ROOT/previous" 2> /dev/null || true)"
+  local kept=0 removed=0 dir name
+  # Newest first.
+  while IFS= read -r dir; do
+    dir="${dir%/}"
+    name="$(basename "$dir")"
+    is_built "$dir" || continue
+    if [ "releases/$name" = "$current" ] || [ "releases/$name" = "$previous" ]; then
+      continue
+    fi
+    if [ "$kept" -lt "$keep" ]; then
+      kept=$((kept + 1))
+      continue
+    fi
+    rm -rf "${ROOT:?}/releases/$name"
+    removed=$((removed + 1))
+  done < <(ls -1td "$ROOT"/releases/*/ 2> /dev/null || true)
+  echo "Removed $removed old release(s)."
 }
 
 restore() {
@@ -325,6 +356,10 @@ case "${1:-}" in
     [ $# -eq 2 ] || die "usage: magnesium-release unpack <file.tar.gz>"
     unpack "$2"
     ;;
+  prune)
+    [ $# -eq 1 ] || die "usage: magnesium-release prune"
+    prune_releases
+    ;;
   backup)
     [ $# -eq 1 ] || die "usage: magnesium-release backup"
     backup
@@ -338,6 +373,6 @@ case "${1:-}" in
     pair "${2:-}"
     ;;
   *)
-    die "usage: magnesium-release build|activate|rollback|status|pack|unpack|backup|restore|pair"
+    die "usage: magnesium-release build|activate|rollback|status|pack|unpack|prune|backup|restore|pair"
     ;;
 esac

@@ -11,13 +11,14 @@ applied by hand.
   that file does not exist yet. New threads start supervised, and the provider
   update checks, which poll npm and T3 Code's model manifest, stay off.
 
-- `bin/magnesium-release`: builds a commit into `~/.local/share/magnesium/releases/<sha>`, switches the `current` symlink the unit runs, and restarts the unit. `magnesium-release rollback` goes back to the previous release in one command.
+- `bin/magnesium-release`: builds a commit into `~/.local/share/magnesium/releases/<sha>`, switches the `current` symlink the unit runs, and restarts the unit. `magnesium-release rollback` goes back to the previous release in one command. `prune` removes old releases, keeping current, previous and the newest two; the Ansible role runs it after every activate.
 
   ```bash
   magnesium-release build <git-ref> <repo-url-or-path>
   magnesium-release activate <sha>
   magnesium-release rollback
   magnesium-release status
+  magnesium-release prune
   magnesium-release pair [--admin]
   ```
 
