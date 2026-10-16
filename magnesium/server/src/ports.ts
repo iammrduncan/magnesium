@@ -109,6 +109,16 @@ export class ServerPorts extends Context.Service<
       { readonly token: string; readonly expiresAt: DateTime.Utc },
       ServerPortError
     >;
+    /**
+     * Registers `code` as a one-time pairing code until `expiresAt`, unless that
+     * code was ever registered here, used or not, so a restart can't re-arm it.
+     * Answers whether it was registered now. Absent where nothing can pair.
+     */
+    readonly registerPairingCode?: (input: {
+      readonly code: string;
+      readonly label: string;
+      readonly expiresAt: DateTime.Utc;
+    }) => Effect.Effect<boolean, ServerPortError>;
     readonly getSecret: (name: string) => Effect.Effect<Option.Option<Uint8Array>, ServerPortError>;
     readonly setSecret: (name: string, value: Uint8Array) => Effect.Effect<void, ServerPortError>;
     readonly removeSecret: (name: string) => Effect.Effect<void, ServerPortError>;

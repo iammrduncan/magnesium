@@ -4,6 +4,8 @@ import * as NodeCrypto from "node:crypto";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { AuthAdministrativeScopes, AuthSessionId } from "@t3tools/contracts";
 import { expect, it } from "@effect/vitest";
+import * as Crypto from "effect/Crypto";
+import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Redacted from "effect/Redacted";
@@ -14,7 +16,8 @@ import * as ServerSecretStore from "./auth/ServerSecretStore.ts";
 import * as SessionStore from "./auth/SessionStore.ts";
 import * as ServerConfig from "./config.ts";
 import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
-import { callerAuthentication } from "./magnesiumRoutes.ts";
+import { callerAuthentication, registerPairingCode } from "./magnesiumRoutes.ts";
+import * as AuthPairingLinks from "./persistence/AuthPairingLinks.ts";
 import { SqlitePersistenceMemory } from "./persistence/Layers/Sqlite.ts";
 
 const DEV_TOKEN = "reusable-dev-auth-token-that-is-long-enough";
@@ -111,5 +114,43 @@ it.layer(NodeServices.layer)("Magnesium's callers", (it) => {
       );
       expect(socket.paired).toBe(true);
     }).pipe(Effect.provide(authLayer)),
+  );
+  it.effect(
+    "a pairing code from the environment pairs the hub once, and a restart never re-arms it",
+    () =>
+      Effect.gen(function* () {
+        const auth = yield* EnvironmentAuth.EnvironmentAuth;
+        const callers = callerAuthentication(auth);
+        const pairingLinks = yield* AuthPairingLinks.AuthPairingLinkRepository;
+        const crypto = yield* Crypto.Crypto;
+        const code = "GATEWAY-BOOTSTRAP-0123456789";
+        const input = {
+          code,
+          label: "Magnesium hub",
+          expiresAt: DateTime.add(yield* DateTime.now, { days: 7 }),
+        };
+
+        expect(yield* registerPairingCode(pairingLinks, crypto, input)).toBe(true);
+        // The server restarts with the same Secret before the hub pairs: nothing changes.
+        expect(yield* registerPairingCode(pairingLinks, crypto, input)).toBe(false);
+
+        const token = yield* auth.exchangeBootstrapCredentialForAccessToken(code, undefined, {
+          ...metadata,
+          deviceType: "bot",
+        });
+        const hub = yield* callers.http(request({ bearer: token.access_token }));
+        expect(hub).toMatchObject({ method: "bearer-access-token", paired: true });
+
+        // Spent: it can't pair anyone again, even after another restart.
+        const again = yield* auth
+          .exchangeBootstrapCredentialForAccessToken(code, undefined, metadata)
+          .pipe(Effect.flip);
+        expect(again._tag).toBe("ServerAuthInvalidCredentialError");
+        expect(yield* registerPairingCode(pairingLinks, crypto, input)).toBe(false);
+      }).pipe(
+        Effect.provide(
+          Layer.mergeAll(authLayer, AuthPairingLinks.layer.pipe(Layer.provide(authLayer))),
+        ),
+      ),
   );
 });

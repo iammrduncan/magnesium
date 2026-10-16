@@ -6,7 +6,9 @@ import {
   ServerPortError,
   ServerPorts,
 } from "@magnesium/server";
-import { ThreadId } from "@t3tools/contracts";
+import { AuthStandardClientScopes, ThreadId } from "@t3tools/contracts";
+import * as Crypto from "effect/Crypto";
+import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
@@ -18,6 +20,7 @@ import * as ServerSecretStore from "./auth/ServerSecretStore.ts";
 import * as ServerConfig from "./config.ts";
 import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
 import * as OrchestrationEngine from "./orchestration/Services/OrchestrationEngine.ts";
+import * as AuthPairingLinks from "./persistence/AuthPairingLinks.ts";
 import * as ProjectionSnapshotQuery from "./orchestration/Services/ProjectionSnapshotQuery.ts";
 import * as ServerSettings from "./serverSettings.ts";
 
@@ -67,6 +70,33 @@ export const callerAuthentication = (auth: EnvironmentAuth.EnvironmentAuth["Serv
   };
 };
 
+/**
+ * A pairing code from the environment (goal 25), stored the way `t3 auth
+ * pairing create` stores one, so exchanging it is the usual one-time pairing.
+ * A code ever registered here, used or not, is left alone.
+ */
+export const registerPairingCode = (
+  pairingLinks: AuthPairingLinks.AuthPairingLinkRepository["Service"],
+  crypto: Crypto.Crypto,
+  input: { readonly code: string; readonly label: string; readonly expiresAt: DateTime.Utc },
+) =>
+  Effect.gen(function* () {
+    const existing = yield* pairingLinks.getByCredential({ credential: input.code });
+    if (Option.isSome(existing)) return false;
+    yield* pairingLinks.create({
+      id: yield* crypto.randomUUIDv4,
+      credential: input.code,
+      method: "one-time-token",
+      scopes: AuthStandardClientScopes,
+      subject: "one-time-token",
+      label: input.label,
+      proofKeyThumbprint: null,
+      createdAt: yield* DateTime.now,
+      expiresAt: input.expiresAt,
+    });
+    return true;
+  });
+
 const serverPortsLayer = Layer.effect(
   ServerPorts,
   Effect.gen(function* () {
@@ -78,6 +108,8 @@ const serverPortsLayer = Layer.effect(
     const engine = yield* OrchestrationEngine.OrchestrationEngineService;
     const callers = callerAuthentication(auth);
     const settings = yield* ServerSettings.ServerSettingsService;
+    const pairingLinks = yield* AuthPairingLinks.AuthPairingLinkRepository;
+    const crypto = yield* Crypto.Crypto;
     return ServerPorts.of({
       baseDir: config.baseDir,
       stateDir: config.stateDir,
@@ -118,6 +150,10 @@ const serverPortsLayer = Layer.effect(
         auth.issueSession(input).pipe(
           Effect.map((issued) => ({ token: issued.token, expiresAt: issued.expiresAt })),
           Effect.mapError(portError("Could not issue a session.")),
+        ),
+      registerPairingCode: (input) =>
+        registerPairingCode(pairingLinks, crypto, input).pipe(
+          Effect.mapError(portError("Could not register the pairing code.")),
         ),
       getSecret: (name) =>
         secrets.get(name).pipe(Effect.mapError(portError(`Could not read ${name}.`))),

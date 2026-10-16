@@ -20,6 +20,7 @@ import { profileServicesLayer, profilesLayer } from "./profiles/layer.ts";
 import { profileRpcHandlersLayer } from "./profiles/rpcHandlers.ts";
 import { coreHandlersLayer } from "./rpc/handlers.ts";
 import { magnesiumWsRouteLayer } from "./rpc/route.ts";
+import { pairingCodeLayer } from "./session/pairingCode.ts";
 import { sessionRenewRouteLayer } from "./session/renew.ts";
 import * as ServerStatus from "./status/ServerStatus.ts";
 
@@ -63,6 +64,7 @@ export const routesLayer = Layer.mergeAll(
   magnesiumWsRouteLayer.pipe(Layer.provide(rpcHandlersLayer)),
   HubMachines.renewalLayer,
   profilesLayer,
+  pairingCodeLayer,
 ).pipe(
   Layer.provide(Home.layer),
   // Fleet carries each machine's Home items in the relay that Home reads.
