@@ -106,10 +106,9 @@ const serverPortsLayer = Layer.effect(
               Effect.map(Option.map((snapshot) => snapshot.thread)),
               Effect.mapError(portError("Could not read a thread.")),
             ),
-        projects: snapshots.getShellSnapshot().pipe(
-          Effect.map((snapshot) => snapshot.projects),
-          Effect.mapError(portError("Could not read the projects.")),
-        ),
+        projects: snapshots
+          .getProjectShells()
+          .pipe(Effect.mapError(portError("Could not read the projects."))),
         dispatch: (command) =>
           engine
             .dispatch(command)

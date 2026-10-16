@@ -19,11 +19,13 @@ import {
 import type { EnvironmentId } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
+import * as Deferred from "effect/Deferred";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
+import * as RcRef from "effect/RcRef";
 import * as Stream from "effect/Stream";
 
 import { Fleet } from "../fleet/Fleet.ts";
@@ -39,10 +41,17 @@ import { HomeRelay } from "./relay.ts";
  * as `magnesium.home.needs`, counted on `magnesium.home.summary` (which the
  * footer reads too). Answers go to the thread on its own machine. The browser
  * sorts with `compareHomeNeeds`; the hub only keeps the rows.
+ *
+ * It follows this server's threads, Fleet and the machines' items only while
+ * someone watches Home, as the footer follows Fleet: a server nobody looks at
+ * does no work for it. (The hub's links to the machines carry their items
+ * either way; push, in goal 07, will keep Home followed on the hub.)
  */
 
 /** Changes from the threads, the links and Fleet come in bursts; rebuild once per window. */
 const REBUILD_COALESCE = Duration.millis(50);
+/** Keep following this long after the last watcher leaves, for quick reloads. */
+export const IDLE_TIME_TO_LIVE = Duration.seconds(30);
 const MAX_ITEMS = 2_000;
 
 export interface HomeSource {
@@ -186,42 +195,54 @@ export const make = Effect.gen(function* () {
     shown = next;
   });
 
-  // Follow the sources for the life of the server: Home and its push (goal 07) need them always.
-  yield* local.subscribe({}).pipe(
-    Stream.runForEach((item) =>
-      Effect.sync(() => {
-        if (item._tag === "snapshot") selfItems.clear();
-        for (const row of item._tag === "snapshot" ? item.rows : item.upserts) {
-          selfItems.set(localHomeItemKey(row), row);
-        }
-        if (item._tag === "changes") for (const key of item.removals) selfItems.delete(key);
-      }).pipe(Effect.andThen(poke)),
-    ),
-    Effect.forkScoped,
-  );
-  yield* fleet.subscribeMachines({}).pipe(
-    Stream.runForEach((item) =>
-      Effect.sync(() => {
-        if (item._tag === "snapshot") fleetRows.clear();
-        for (const row of item._tag === "snapshot" ? item.rows : item.upserts) {
-          fleetRows.set(fleetMachineKey(row), row);
-        }
-        if (item._tag === "changes") for (const key of item.removals) fleetRows.delete(key);
-      }).pipe(Effect.andThen(poke)),
-    ),
-    Effect.forkScoped,
-  );
-  yield* relay.changes.pipe(
-    Stream.runForEach(() => poke),
-    Effect.forkScoped,
-  );
-  yield* Queue.take(dirty).pipe(
-    Effect.andThen(Effect.sleep(REBUILD_COALESCE)),
-    Effect.andThen(Queue.clear(dirty)),
-    Effect.andThen(rebuild),
-    Effect.forever,
-    Effect.forkScoped,
-  );
+  const follow = yield* RcRef.make({
+    acquire: Effect.gen(function* () {
+      const localRead = yield* Deferred.make<void>();
+      const fleetRead = yield* Deferred.make<void>();
+      yield* local.subscribe({}).pipe(
+        Stream.runForEach((item) =>
+          Effect.sync(() => {
+            if (item._tag === "snapshot") selfItems.clear();
+            for (const row of item._tag === "snapshot" ? item.rows : item.upserts) {
+              selfItems.set(localHomeItemKey(row), row);
+            }
+            if (item._tag === "changes") for (const key of item.removals) selfItems.delete(key);
+          }).pipe(Effect.andThen(Deferred.succeed(localRead, undefined)), Effect.andThen(poke)),
+        ),
+        Effect.forkScoped,
+      );
+      yield* fleet.subscribeMachines({}).pipe(
+        Stream.runForEach((item) =>
+          Effect.sync(() => {
+            if (item._tag === "snapshot") fleetRows.clear();
+            for (const row of item._tag === "snapshot" ? item.rows : item.upserts) {
+              fleetRows.set(fleetMachineKey(row), row);
+            }
+            if (item._tag === "changes") for (const key of item.removals) fleetRows.delete(key);
+          }).pipe(Effect.andThen(Deferred.succeed(fleetRead, undefined)), Effect.andThen(poke)),
+        ),
+        Effect.forkScoped,
+      );
+      yield* relay.changes.pipe(
+        Stream.runForEach(() => poke),
+        Effect.forkScoped,
+      );
+      // A first watcher sees Home built from both first reads, never an empty or stale one.
+      yield* Deferred.await(localRead);
+      yield* Deferred.await(fleetRead);
+      yield* rebuild;
+      yield* Queue.take(dirty).pipe(
+        Effect.andThen(Effect.sleep(REBUILD_COALESCE)),
+        Effect.andThen(Queue.clear(dirty)),
+        Effect.andThen(rebuild),
+        Effect.forever,
+        Effect.forkScoped,
+      );
+    }),
+    idleTimeToLive: IDLE_TIME_TO_LIVE,
+  });
+  const followed = <A, E>(effect: Effect.Effect<A, E>) =>
+    Effect.scoped(RcRef.get(follow).pipe(Effect.andThen(effect)));
 
   /** The machine to send an item's answer or detail request to, if it can take one. */
   const route = (key: string) =>
@@ -242,11 +263,15 @@ export const make = Effect.gen(function* () {
     });
 
   return Home.of({
-    subscribeNeeds: itemsTable.subscribe,
-    subscribeSummary: summaryTable.subscribe,
+    subscribeNeeds: (input) =>
+      Stream.unwrap(RcRef.get(follow).pipe(Effect.as(itemsTable.subscribe(input)))),
+    subscribeSummary: (input) =>
+      Stream.unwrap(RcRef.get(follow).pipe(Effect.as(summaryTable.subscribe(input)))),
     answer: ({ key, answer }) =>
-      route(key).pipe(
-        Effect.flatMap(({ item, calls }) => calls.answer({ threadId: item.threadId, answer })),
+      followed(
+        route(key).pipe(
+          Effect.flatMap(({ item, calls }) => calls.answer({ threadId: item.threadId, answer })),
+        ),
       ),
     pin: ({ key, pinned }) =>
       Effect.gen(function* () {
@@ -261,7 +286,7 @@ export const make = Effect.gen(function* () {
         yield* poke;
       }),
     detail: (key) =>
-      route(key).pipe(Effect.flatMap(({ item, calls }) => calls.detail(item.threadId))),
+      followed(route(key).pipe(Effect.flatMap(({ item, calls }) => calls.detail(item.threadId)))),
   });
 });
 
