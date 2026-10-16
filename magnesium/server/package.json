@@ -23,6 +23,7 @@
   "dependencies": {
     "@effect/platform-node": "catalog:",
     "@magnesium/contracts": "workspace:*",
+    "@t3tools/client-runtime": "workspace:*",
     "@t3tools/contracts": "workspace:*",
     "@t3tools/shared": "workspace:*",
     "effect": "catalog:",

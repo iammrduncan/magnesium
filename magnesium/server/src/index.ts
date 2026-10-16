@@ -7,6 +7,10 @@ import * as MagnesiumDb from "./db/MagnesiumDb.ts";
 import * as Fleet from "./fleet/Fleet.ts";
 import { fleetHandlersLayer } from "./fleet/handlers.ts";
 import { footerHandlersLayer } from "./footer/handlers.ts";
+import { homeHandlersLayer } from "./home/handlers.ts";
+import * as Home from "./home/Home.ts";
+import * as LocalHome from "./home/LocalHome.ts";
+import * as HomeRelay from "./home/relay.ts";
 import * as HubMachines from "./hub/HubMachines.ts";
 import { hubProxyRouteLayer } from "./hub/proxy.ts";
 import { hubMachineRoutesLayer } from "./hub/routes.ts";
@@ -41,6 +45,7 @@ const rpcHandlersLayer = Layer.mergeAll(
   coreHandlersLayer,
   fleetHandlersLayer,
   footerHandlersLayer,
+  homeHandlersLayer,
   profileRpcHandlersLayer,
 );
 
@@ -51,7 +56,10 @@ export const routesLayer = Layer.mergeAll(
   HubMachines.renewalLayer,
   profilesLayer,
 ).pipe(
+  Layer.provide(Home.layer),
+  // Fleet carries each machine's Home items in the relay that Home reads.
   Layer.provide(Fleet.layer),
+  Layer.provide(Layer.mergeAll(LocalHome.layer, HomeRelay.layer)),
   Layer.provide(profileServicesLayer),
   Layer.provide(Layer.mergeAll(HubMachines.layer, ServerStatus.layer)),
   Layer.provide(MagnesiumDb.layer),

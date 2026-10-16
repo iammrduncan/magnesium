@@ -1,6 +1,9 @@
 import type {
   AuthEnvironmentScope,
   ExecutionEnvironmentDescriptor,
+  OrchestrationCommand,
+  OrchestrationProjectShell,
+  OrchestrationThread,
   OrchestrationThreadShell,
   ProviderInstanceConfigMap,
   ServerAuthSessionMethod,
@@ -25,6 +28,18 @@ export interface ThreadPorts {
   ) => Effect.Effect<Option.Option<OrchestrationThreadShell>, ServerPortError>;
   /** The id of each thread as its events commit; ids repeat. Attach before reading `active`. */
   readonly changes: Stream.Stream<ThreadId>;
+  /**
+   * One thread's latest turn, with every request still open and every plan;
+   * None once the thread is archived or deleted. Home reads what a thread
+   * waits on from it.
+   */
+  readonly detail: (
+    threadId: ThreadId,
+  ) => Effect.Effect<Option.Option<OrchestrationThread>, ServerPortError>;
+  /** The server's active projects, for their titles. */
+  readonly projects: Effect.Effect<ReadonlyArray<OrchestrationProjectShell>, ServerPortError>;
+  /** Runs a command as a client's would run: answers to approvals and questions, plans to implement. */
+  readonly dispatch: (command: OrchestrationCommand) => Effect.Effect<void, ServerPortError>;
 }
 
 /** The caller of one of our routes, as the host server authenticated it. */

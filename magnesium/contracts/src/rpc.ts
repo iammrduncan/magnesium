@@ -13,6 +13,18 @@ import * as RpcMiddleware from "effect/unstable/rpc/RpcMiddleware";
 import { FleetEvent, FleetMachine, FleetReconnectInput } from "./fleet.ts";
 import { FooterItem } from "./footer.ts";
 import {
+  HomeAnswerError,
+  HomeAnswerInput,
+  HomeDetail,
+  HomeDetailInput,
+  HomeItem,
+  HomePinInput,
+  HomeSummary,
+  LocalAnswerInput,
+  LocalDetailInput,
+  LocalHomeItem,
+} from "./home.ts";
+import {
   ProfileCheckResult,
   ProfileList,
   ProfilePush,
@@ -51,6 +63,14 @@ export const MAGNESIUM_WS_METHODS = {
   listSandboxes: "magnesium.sandboxes.list",
   profileRevision: "magnesium.profiles.revision",
   pushProfiles: "magnesium.profiles.push",
+  needsLocal: "magnesium.needs.local",
+  needsAnswer: "magnesium.needs.answer",
+  needsDetail: "magnesium.needs.detail",
+  homeNeeds: "magnesium.home.needs",
+  homeSummary: "magnesium.home.summary",
+  homeAnswer: "magnesium.home.answer",
+  homePin: "magnesium.home.pin",
+  homeDetail: "magnesium.home.detail",
 } as const;
 
 /**
@@ -146,6 +166,66 @@ const PushProfilesRpc = Rpc.make(MAGNESIUM_WS_METHODS.pushProfiles, {
   success: ProfilePushResult,
 }).annotate(RequiredScope, AuthOrchestrationOperateScope);
 
+// Home (goal 06). Each server's own items, which the hub follows on every machine,
+// and the hub's gathered Home the browser shows.
+export const LocalHomeItemsItem = liveTableItem(LocalHomeItem);
+export type LocalHomeItemsItem = typeof LocalHomeItemsItem.Type;
+
+/** This server's threads that wait on you or are working, keyed by `localHomeItemKey`. */
+const NeedsLocalRpc = Rpc.make(MAGNESIUM_WS_METHODS.needsLocal, {
+  payload: StreamSubscribeInput,
+  success: LocalHomeItemsItem,
+  stream: true,
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
+
+/** Answer one of this server's items in its thread. */
+const NeedsAnswerRpc = Rpc.make(MAGNESIUM_WS_METHODS.needsAnswer, {
+  payload: LocalAnswerInput,
+  error: HomeAnswerError,
+}).annotate(RequiredScope, AuthOrchestrationOperateScope);
+
+const NeedsDetailRpc = Rpc.make(MAGNESIUM_WS_METHODS.needsDetail, {
+  payload: LocalDetailInput,
+  success: HomeDetail,
+  error: HomeAnswerError,
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
+
+export const HomeItemsItem = liveTableItem(HomeItem);
+export type HomeItemsItem = typeof HomeItemsItem.Type;
+
+/** Every server's items with their machine and pin, keyed by `homeItemKey`. */
+const HomeNeedsRpc = Rpc.make(MAGNESIUM_WS_METHODS.homeNeeds, {
+  payload: StreamSubscribeInput,
+  success: HomeItemsItem,
+  stream: true,
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
+
+export const HomeSummaryItem = liveTableItem(HomeSummary);
+export type HomeSummaryItem = typeof HomeSummaryItem.Type;
+
+const HomeSummaryRpc = Rpc.make(MAGNESIUM_WS_METHODS.homeSummary, {
+  payload: StreamSubscribeInput,
+  success: HomeSummaryItem,
+  stream: true,
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
+
+/** Answer an item on Home; the hub sends it to the thread on its machine. */
+const HomeAnswerRpc = Rpc.make(MAGNESIUM_WS_METHODS.homeAnswer, {
+  payload: HomeAnswerInput,
+  error: HomeAnswerError,
+}).annotate(RequiredScope, AuthOrchestrationOperateScope);
+
+const HomePinRpc = Rpc.make(MAGNESIUM_WS_METHODS.homePin, {
+  payload: HomePinInput,
+}).annotate(RequiredScope, AuthOrchestrationOperateScope);
+
+/** An item's thread's latest work, for Detail. */
+const HomeDetailRpc = Rpc.make(MAGNESIUM_WS_METHODS.homeDetail, {
+  payload: HomeDetailInput,
+  success: HomeDetail,
+  error: HomeAnswerError,
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
+
 export const MagnesiumRpcGroup = RpcGroup.make(
   PingRpc,
   ServerStatusRpc,
@@ -159,6 +239,14 @@ export const MagnesiumRpcGroup = RpcGroup.make(
   ListSandboxesRpc,
   ProfileRevisionRpc,
   PushProfilesRpc,
+  NeedsLocalRpc,
+  NeedsAnswerRpc,
+  NeedsDetailRpc,
+  HomeNeedsRpc,
+  HomeSummaryRpc,
+  HomeAnswerRpc,
+  HomePinRpc,
+  HomeDetailRpc,
 ).middleware(ScopeGuard);
 export type MagnesiumRpcs = RpcGroup.Rpcs<typeof MagnesiumRpcGroup>;
 export type MagnesiumRpcMethod = MagnesiumRpcs["_tag"];

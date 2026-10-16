@@ -9,6 +9,7 @@ import {
 import { ThreadId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
 import type { HttpServerRequest } from "effect/unstable/http";
 
@@ -97,6 +98,22 @@ const serverPortsLayer = Layer.effect(
           Stream.filter((event) => event.aggregateKind === "thread"),
           Stream.map((event) => ThreadId.make(event.aggregateId)),
         ),
+        // Open requests are pinned into a windowed read, and plans are never windowed.
+        detail: (threadId) =>
+          snapshots
+            .getThreadDetailSnapshot(threadId, { turnLimit: 1 })
+            .pipe(
+              Effect.map(Option.map((snapshot) => snapshot.thread)),
+              Effect.mapError(portError("Could not read a thread.")),
+            ),
+        projects: snapshots.getShellSnapshot().pipe(
+          Effect.map((snapshot) => snapshot.projects),
+          Effect.mapError(portError("Could not read the projects.")),
+        ),
+        dispatch: (command) =>
+          engine
+            .dispatch(command)
+            .pipe(Effect.asVoid, Effect.mapError(portError("Could not send that to the thread."))),
       },
       issueBearerSession: (input) =>
         auth.issueSession(input).pipe(

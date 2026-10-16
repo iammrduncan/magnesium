@@ -16,6 +16,11 @@ import {
   DEFAULT_SERVER_SETTINGS,
   type ExecutionEnvironmentDescriptor,
   EnvironmentId,
+  type OrchestrationCommand,
+  type OrchestrationProjectShell,
+  type OrchestrationProposedPlan,
+  type OrchestrationThread,
+  type OrchestrationThreadActivity,
   type OrchestrationThreadShell,
   type ServerAuthSessionMethod,
   ThreadId,
@@ -95,44 +100,139 @@ export const authenticateTestSocket = (request: HttpServerRequest.HttpServerRequ
 export const testThread = (
   id: string,
   state: {
-    readonly session?: "running" | "starting" | "ready" | "idle";
+    readonly session?: "running" | "starting" | "ready" | "idle" | "error";
     readonly approval?: boolean;
     readonly question?: boolean;
     readonly background?: "working" | "monitoring";
   } = {},
+  overrides: Partial<OrchestrationThreadShell> = {},
 ): OrchestrationThreadShell =>
   ({
     id: ThreadId.make(id),
+    projectId: "project-1",
     title: id,
+    interactionMode: "default",
+    runtimeMode: "approval-required",
+    modelSelection: { instanceId: "opencode", model: "test-model" },
     session:
       state.session === undefined
         ? null
-        : { threadId: ThreadId.make(id), status: state.session, activeTurnId: null },
+        : {
+            threadId: ThreadId.make(id),
+            status: state.session,
+            activeTurnId: null,
+            lastError: null,
+            updatedAt: "2026-10-16T01:00:00.000Z",
+          },
+    latestTurn: null,
     hasPendingApprovals: state.approval ?? false,
     hasPendingUserInput: state.question ?? false,
     hasActionableProposedPlan: false,
     backgroundLiveness: state.background ?? null,
+    settledAt: null,
+    updatedAt: "2026-10-16T01:00:00.000Z",
+    ...overrides,
   }) as unknown as OrchestrationThreadShell;
 
-/** In-memory threads that announce each change, like the server's projections. */
+/** A thread's detail with only what Home reads: its activities and plans. */
+export const testThreadDetail = (
+  id: string,
+  detail: {
+    readonly activities?: ReadonlyArray<OrchestrationThreadActivity>;
+    readonly proposedPlans?: ReadonlyArray<OrchestrationProposedPlan>;
+  } = {},
+): OrchestrationThread =>
+  ({
+    id: ThreadId.make(id),
+    activities: detail.activities ?? [],
+    proposedPlans: detail.proposedPlans ?? [],
+    latestTurn: null,
+  }) as unknown as OrchestrationThread;
+
+/** The agent asks to run `command`, as a provider's request reaches the thread. */
+export const approvalActivity = (
+  requestId: string,
+  createdAt: string,
+  command = "rm -rf build",
+): OrchestrationThreadActivity =>
+  ({
+    id: `event-${requestId}`,
+    tone: "approval",
+    kind: "approval.requested",
+    summary: "Command approval requested",
+    payload: {
+      requestId,
+      requestKind: "command",
+      requestType: "command_execution_approval",
+      detail: command,
+    },
+    turnId: null,
+    createdAt,
+  }) as unknown as OrchestrationThreadActivity;
+
+/** The agent asks one question with these options. */
+export const questionActivity = (
+  requestId: string,
+  createdAt: string,
+  options: ReadonlyArray<string> = ["Suite A", "Needle tests only"],
+): OrchestrationThreadActivity =>
+  ({
+    id: `event-${requestId}`,
+    tone: "info",
+    kind: "user-input.requested",
+    summary: "User input requested",
+    payload: {
+      requestId,
+      questions: [
+        {
+          id: "eval-set",
+          header: "Eval set",
+          question: "Which eval set should the run use?",
+          options: options.map((label) => ({ label, description: `${label}, described.` })),
+          multiSelect: false,
+        },
+      ],
+    },
+    turnId: null,
+    createdAt,
+  }) as unknown as OrchestrationThreadActivity;
+
+/**
+ * In-memory threads that announce each change, like the server's projections.
+ * A thread's detail is set with it; commands are recorded, never run.
+ */
 export const makeTestThreads = Effect.gen(function* () {
   const threads = new Map<ThreadId, OrchestrationThreadShell>();
+  const details = new Map<ThreadId, OrchestrationThread>();
+  const projects: Array<OrchestrationProjectShell> = [];
+  const dispatched: Array<OrchestrationCommand> = [];
   const changes = yield* PubSub.unbounded<ThreadId>();
   const ports: ThreadPorts = {
     active: Effect.sync(() => [...threads.values()]),
     byId: (threadId) => Effect.sync(() => Option.fromNullishOr(threads.get(threadId))),
     changes: Stream.fromPubSub(changes),
+    detail: (threadId) =>
+      Effect.sync(() =>
+        threads.has(threadId) ? Option.fromNullishOr(details.get(threadId)) : Option.none(),
+      ),
+    projects: Effect.sync(() => [...projects]),
+    dispatch: (command) => Effect.sync(() => void dispatched.push(command)),
   };
   return {
     ports,
-    upsert: (thread: OrchestrationThreadShell) =>
-      Effect.sync(() => threads.set(thread.id, thread)).pipe(
-        Effect.andThen(PubSub.publish(changes, thread.id)),
-      ),
+    dispatched,
+    upsert: (thread: OrchestrationThreadShell, detail?: OrchestrationThread) =>
+      Effect.sync(() => {
+        threads.set(thread.id, thread);
+        if (detail === undefined) details.delete(thread.id);
+        else details.set(thread.id, detail);
+      }).pipe(Effect.andThen(PubSub.publish(changes, thread.id))),
     remove: (id: string) =>
       Effect.sync(() => threads.delete(ThreadId.make(id))).pipe(
         Effect.andThen(PubSub.publish(changes, ThreadId.make(id))),
       ),
+    addProject: (project: OrchestrationProjectShell) =>
+      Effect.sync(() => void projects.push(project)),
   };
 });
 
@@ -147,6 +247,9 @@ export const noThreads: ThreadPorts = {
   active: Effect.succeed([]),
   byId: () => Effect.succeedNone,
   changes: Stream.never,
+  detail: () => Effect.succeedNone,
+  projects: Effect.succeed([]),
+  dispatch: () => Effect.void,
 };
 
 /**

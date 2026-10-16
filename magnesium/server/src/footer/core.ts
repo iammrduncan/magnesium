@@ -1,8 +1,9 @@
-import type { FleetMachine, FooterItem } from "@magnesium/contracts";
+import type { FleetMachine, FooterItem, HomeSummary } from "@magnesium/contracts";
 
 /**
- * Magnesium's own footer items, derived from Fleet's rows (goal 05). They are
- * plain rows like any app's, so the browser treats every item the same way.
+ * Magnesium's own footer items: Machines from Fleet's rows (goal 05), Needs
+ * you from Home's summary (goal 06). They are plain rows like any app's, so
+ * the browser treats every item the same way.
  */
 
 export const CORE_FLEET_ITEM_ID = "core:fleet";
@@ -42,48 +43,44 @@ export const fleetItem = (machines: ReadonlyArray<FleetMachine>): FooterItem => 
   };
 };
 
+/** "a, b and c". */
+const listOf = (parts: ReadonlyArray<string>) =>
+  parts.length <= 1
+    ? (parts[0] ?? "")
+    : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+
 /**
- * How many threads wait on you across the machines whose counts the hub can
- * see. A machine it can't see is named in the detail, never counted as zero.
+ * How many things wait on you, from Home's summary: the same count Home shows.
+ * A machine the hub can't see is named in the detail, never counted as zero.
  */
-export const needsYouItem = (machines: ReadonlyArray<FleetMachine>): FooterItem => {
-  let waiting = 0;
-  let approvals = 0;
-  let questions = 0;
-  const unknown: Array<FleetMachine> = [];
-  for (const machine of machines) {
-    if (machine.threads === null) {
-      unknown.push(machine);
-      continue;
-    }
-    waiting += machine.threads.waiting;
-    approvals += machine.threads.approvals;
-    questions += machine.threads.questions;
-  }
+export const needsYouItem = (summary: HomeSummary): FooterItem => {
+  const { counts, unseen } = summary;
   const kinds = [
-    approvals > 0 ? count(approvals, "approval") : null,
-    questions > 0 ? count(questions, "question") : null,
+    counts.approval > 0 ? count(counts.approval, "approval") : null,
+    counts.question > 0 ? count(counts.question, "question") : null,
+    counts.plan > 0 ? `${count(counts.plan, "plan")} ready` : null,
+    counts.failure > 0 ? count(counts.failure, "failure") : null,
   ].filter((kind) => kind !== null);
   const notes = [
-    waiting > 0
-      ? `${kinds.join(" and ")}.`
-      : unknown.length > 0
+    counts.total > 0
+      ? `${listOf(kinds)}.`
+      : unseen.length > 0
         ? "Nothing waits on you on the machines the hub can see."
         : "Nothing waits on you.",
   ];
-  if (unknown.length > 0) notes.push(`Not counted, not connected: ${labels(unknown)}.`);
+  if (unseen.length > 0) notes.push(`Not counted, not connected: ${unseen.join(", ")}.`);
   return {
     id: CORE_NEEDS_YOU_ITEM_ID,
     side: "left",
     order: 20,
-    label: `Needs you ${waiting}`,
+    label: `Needs you ${counts.total}`,
     detail: notes.join(" "),
-    tone: waiting > 0 ? "warning" : "neutral",
+    tone: counts.total > 0 ? "warning" : "neutral",
     toggleLabel: "Needs you",
   };
 };
 
-export const coreItems = (machines: ReadonlyArray<FleetMachine>): ReadonlyArray<FooterItem> => [
-  fleetItem(machines),
-  needsYouItem(machines),
-];
+export const coreItems = (
+  machines: ReadonlyArray<FleetMachine>,
+  summary: HomeSummary,
+): ReadonlyArray<FooterItem> => [fleetItem(machines), needsYouItem(summary)];

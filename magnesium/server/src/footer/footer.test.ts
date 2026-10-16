@@ -5,6 +5,9 @@ import {
   type FooterItem,
   footerItemKey,
   FooterItemsItem,
+  type HomeCounts,
+  type HomeSummary,
+  homeSummaryKey,
   type LiveTableItem,
   MAGNESIUM_WS_METHODS,
 } from "@magnesium/contracts";
@@ -20,16 +23,20 @@ import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 
 import { Fleet } from "../fleet/Fleet.ts";
+import { Home } from "../home/Home.ts";
 import { HUB_MACHINES_CONFIG_FILE } from "../hub/HubMachines.ts";
 import { connect } from "../rpc/client.ts";
 import * as LiveTable from "../stream/LiveTable.ts";
 import {
+  approvalActivity,
   makeTestThreads,
+  questionActivity,
   startTestServer,
   testDescriptor,
   testHubConfig,
   testHubSecrets,
   testThread,
+  testThreadDetail,
   testTicketRoute,
 } from "../testing.ts";
 import { coreItems, fleetItem, needsYouItem } from "./core.ts";
@@ -61,6 +68,22 @@ const waitingOn = (approvals: number, questions: number) => ({
 const down = (name: string, link: "offline" | "no-access" | "connecting" = "offline") =>
   machine(name, { link, threads: null });
 
+/** Home's summary with these needs; `total` is their sum. */
+const summaryOf = (
+  needs: Partial<Omit<HomeCounts, "total" | "running">> = {},
+  unseen: ReadonlyArray<string> = [],
+): HomeSummary => {
+  const counts = { approval: 0, question: 0, plan: 0, failure: 0, running: 1, ...needs };
+  return {
+    key: "home",
+    counts: {
+      ...counts,
+      total: counts.approval + counts.question + counts.plan + counts.failure,
+    },
+    unseen,
+  };
+};
+
 describe("the core footer items", () => {
   it("count every server, the hub's own among them, and stay quiet while all are up", () => {
     const fleet = [machine(null), machine("cpu-host-1"), machine("gpu-host-1")];
@@ -89,28 +112,26 @@ describe("the core footer items", () => {
     });
   });
 
-  it("sum what waits on you, and name the machines whose counts the hub can't see", () => {
-    const fleet = [
-      machine(null, { threads: waitingOn(1, 0) }),
-      machine("cpu-host-1", { threads: waitingOn(2, 1) }),
-      down("gpu-host-2"),
-    ];
-    expect(needsYouItem(fleet)).toMatchObject({
+  it("count what waits on you from Home's summary, and name the machines it can't see", () => {
+    expect(needsYouItem(summaryOf({ approval: 3, question: 1 }, ["gpu-host-2"]))).toMatchObject({
       id: "core:needs-you",
       label: "Needs you 4",
       detail: "3 approvals and 1 question. Not counted, not connected: gpu-host-2.",
       tone: "warning",
     });
+    expect(needsYouItem(summaryOf({ approval: 1, question: 1, plan: 1, failure: 2 })).detail).toBe(
+      "1 approval, 1 question, 1 plan ready and 2 failures.",
+    );
 
     // Unknown is never zero: the detail says what the hub can't see.
-    expect(needsYouItem([machine(null), down("gpu-host-2")])).toMatchObject({
+    expect(needsYouItem(summaryOf({}, ["gpu-host-2"]))).toMatchObject({
       label: "Needs you 0",
       detail:
         "Nothing waits on you on the machines the hub can see. Not counted, not connected: gpu-host-2.",
       tone: "neutral",
     });
-    expect(needsYouItem([machine(null)]).detail).toBe("Nothing waits on you.");
-    expect(needsYouItem([machine(null, { threads: waitingOn(0, 1) })]).detail).toBe("1 question.");
+    expect(needsYouItem(summaryOf()).detail).toBe("Nothing waits on you.");
+    expect(needsYouItem(summaryOf({ question: 1 })).detail).toBe("1 question.");
   });
 });
 
@@ -133,6 +154,19 @@ const fakeFleet = Effect.gen(function* () {
   return { table, service, watchers: () => watchers };
 });
 
+/** A stand-in for Home: its summary as a live table the test edits. */
+const fakeHome = Effect.gen(function* () {
+  const summary = yield* LiveTable.make<HomeSummary>({ key: homeSummaryKey });
+  const service = Home.of({
+    subscribeNeeds: () => Stream.empty,
+    subscribeSummary: (input) => summary.subscribe(input),
+    answer: () => Effect.die("unused"),
+    pin: () => Effect.die("unused"),
+    detail: () => Effect.die("unused"),
+  });
+  return { summary, service };
+});
+
 /** Runs a stream into a queue, in a fiber the test can stop. */
 const collect = <A>(stream: Stream.Stream<A>) =>
   Effect.gen(function* () {
@@ -150,9 +184,14 @@ describe("Footer", () => {
   it.effect("opens with the core items, then sends one change when a machine goes down", () =>
     Effect.gen(function* () {
       const fleet = yield* fakeFleet;
+      const home = yield* fakeHome;
       yield* fleet.table.set(machine(null));
       yield* fleet.table.set(machine("cpu-host-1", { threads: waitingOn(1, 0) }));
-      const footer = yield* Footer.make.pipe(Effect.provideService(Fleet, fleet.service));
+      yield* home.summary.set(summaryOf({ approval: 1 }));
+      const footer = yield* Footer.make.pipe(
+        Effect.provideService(Fleet, fleet.service),
+        Effect.provideService(Home, home.service),
+      );
 
       const { items } = yield* collect(footer.subscribeItems({}));
       const opened = yield* Queue.take(items);
@@ -161,7 +200,8 @@ describe("Footer", () => {
       expect(rowsOf(opened).get("core:needs-you")?.label).toBe("Needs you 1");
 
       yield* fleet.table.set(down("cpu-host-1"));
-      // Fleet's coalescing window, then the footer's.
+      yield* home.summary.set(summaryOf({}, ["cpu-host-1"]));
+      // Fleet's and Home's coalescing windows, then the footer's.
       yield* TestClock.adjust("50 millis");
       yield* TestClock.adjust("50 millis");
       const changed = yield* Queue.take(items);
@@ -187,8 +227,13 @@ describe("Footer", () => {
   it.effect("follows Fleet only while someone watches, and lets go once it has sat idle", () =>
     Effect.gen(function* () {
       const fleet = yield* fakeFleet;
+      const home = yield* fakeHome;
       yield* fleet.table.set(machine(null));
-      const footer = yield* Footer.make.pipe(Effect.provideService(Fleet, fleet.service));
+      yield* home.summary.set(summaryOf());
+      const footer = yield* Footer.make.pipe(
+        Effect.provideService(Fleet, fleet.service),
+        Effect.provideService(Home, home.service),
+      );
       expect(fleet.watchers()).toBe(0);
 
       const first = yield* collect(footer.subscribeItems({}));
@@ -254,9 +299,15 @@ describe("magnesium.footer.items on the hub", () => {
   it.live("counts the hub and its machines, what waits on you, and a machine that stops", () =>
     Effect.gen(function* () {
       const threads = yield* makeTestThreads;
-      yield* threads.upsert(testThread("a", { session: "running", approval: true }));
+      yield* threads.upsert(
+        testThread("a", { session: "running", approval: true }),
+        testThreadDetail("a", { activities: [approvalActivity("r1", "2026-10-16T01:00:00.000Z")] }),
+      );
       const hubThreads = yield* makeTestThreads;
-      yield* hubThreads.upsert(testThread("b", { question: true }));
+      yield* hubThreads.upsert(
+        testThread("b", { question: true }),
+        testThreadDetail("b", { activities: [questionActivity("r2", "2026-10-16T01:00:00.000Z")] }),
+      );
 
       const machineRun = yield* Scope.make();
       const cpu = yield* startTestServer({
@@ -329,8 +380,9 @@ describe("the footer's byte budget", () => {
     tone: "neutral",
     toggleLabel: label.split(" ")[0]!,
   });
+  const summary = summaryOf({ approval: 3, question: 2 }, ["gpu-host-2"]);
   const rows = [
-    ...coreItems(fleet),
+    ...coreItems(fleet, summary),
     app("gpu-board:load", "GPU 78%", "gpu-host-1 78%, gpu-host-2 idle.", 10),
     app("ingest-queue:pending", "Ingest 31/58", "31 of 58 pages ingested today.", 20),
     app("cost-and-usage:week", "Week 42%", "42% of this week's budget used.", 30),
@@ -343,7 +395,7 @@ describe("the footer's byte budget", () => {
     const change: FooterItemsItem = {
       _tag: "changes",
       sequence: 1_760_503_780_968,
-      upserts: coreItems([...fleet.slice(0, 4), machine("gpu-host-2")]),
+      upserts: coreItems([...fleet.slice(0, 4), machine("gpu-host-2")], summaryOf({ approval: 3 })),
       removals: [],
     };
     // Measured: 1,031 and 357 bytes.

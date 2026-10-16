@@ -23,6 +23,8 @@ import * as Stream from "effect/Stream";
 export interface LinkConnection<E> {
   readonly status: Stream.Stream<ServerStatusItem, E>;
   readonly ping: Effect.Effect<unknown, E>;
+  /** More that rides the link for its life, such as Home's items; its failures are its own. */
+  readonly alongside?: Effect.Effect<never>;
 }
 
 /** Why a dial failed: the hub holds no usable token, or the machine did not answer. */
@@ -118,7 +120,10 @@ export const runLink = <E>(input: {
           Effect.andThen(alive),
           Effect.forever,
         );
-        yield* Effect.raceFirst(status, heartbeat);
+        yield* Effect.raceFirst(
+          Effect.raceFirst(status, heartbeat),
+          connection.alongside ?? Effect.never,
+        );
       }),
     ).pipe(Effect.result);
     const now = yield* Clock.currentTimeMillis;

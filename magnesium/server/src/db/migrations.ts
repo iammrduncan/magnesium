@@ -29,6 +29,17 @@ const fleet = Effect.gen(function* () {
     )`;
 });
 
+/** Home (goal 06): the items you pinned to the top, by Home key. */
+const homePins = Effect.gen(function* () {
+  const sql = yield* SqlClient.SqlClient;
+  yield* sql`
+    CREATE TABLE home_pins (
+      key TEXT PRIMARY KEY,
+      pinned_at TEXT NOT NULL
+    )`;
+});
+
 export const migrations = Migrator.fromRecord({
   "1_Fleet": fleet,
+  "2_HomePins": homePins,
 });

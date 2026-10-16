@@ -3,6 +3,7 @@ import {
   type FleetLink,
   type FleetMachine,
   fleetMachineKey,
+  HomeAnswerError,
   type HistoryPage,
   type LiveLogItem,
   type LiveTableItem,
@@ -25,8 +26,10 @@ import * as Schedule from "effect/Schedule";
 import * as Stream from "effect/Stream";
 import { HttpClient } from "effect/unstable/http";
 
+import { HomeRelay } from "../home/relay.ts";
 import { HubMachines } from "../hub/HubMachines.ts";
 import { connectMachine } from "../hub/machineRpc.ts";
+import type { MagnesiumRpcClient } from "../rpc/client.ts";
 import { ServerPorts } from "../ports.ts";
 import { ServerStatus } from "../status/ServerStatus.ts";
 import * as LiveLog from "../stream/LiveLog.ts";
@@ -74,6 +77,8 @@ export const make = (
     const machines = yield* HubMachines;
     const status = yield* ServerStatus;
     const httpClient = yield* HttpClient.HttpClient;
+    // Home's items ride each link when Home is in the server (goal 06).
+    const relay = Option.getOrUndefined(yield* Effect.serviceOption(HomeRelay));
     const store = yield* makeFleetStore;
     const descriptor = yield* ports.environment;
     const timings = options.timings ?? DEFAULT_LINK_TIMINGS;
@@ -166,6 +171,7 @@ export const make = (
         Effect.gen(function* () {
           const previous = Option.getOrUndefined(yield* table.get(name));
           if (previous === undefined) return;
+          if (relay !== undefined) yield* relay.down(name);
           const lastSeenAt =
             down.lastSeenAt === null ? previous.lastSeenAt : isoAt(down.lastSeenAt);
           yield* table.set({
@@ -188,12 +194,49 @@ export const make = (
         }),
     });
 
+    /**
+     * The machine's Home items, kept in the relay for the life of the link. A
+     * machine whose build has no Home keeps its link; its items just aren't seen.
+     */
+    const followHome = (name: string, client: MagnesiumRpcClient): Effect.Effect<never> => {
+      if (relay === undefined) return Effect.never;
+      const toAnswerError = (error: { readonly _tag: string }) =>
+        error._tag === "HomeAnswerError"
+          ? (error as HomeAnswerError)
+          : new HomeAnswerError({ detail: `${name} did not answer.` });
+      return relay
+        .connected(name, {
+          answer: (input) =>
+            client[MAGNESIUM_WS_METHODS.needsAnswer](input).pipe(Effect.mapError(toAnswerError)),
+          detail: (threadId) =>
+            client[MAGNESIUM_WS_METHODS.needsDetail]({ threadId }).pipe(
+              Effect.mapError(toAnswerError),
+            ),
+        })
+        .pipe(
+          Effect.andThen(
+            client[MAGNESIUM_WS_METHODS.needsLocal]({}).pipe(
+              Stream.runForEach((item) => relay.apply(name, item)),
+            ),
+          ),
+          Effect.catchCause((cause) =>
+            Effect.logWarning("Stopped following a machine's Home items.", {
+              machine: name,
+              cause,
+            }),
+          ),
+          Effect.andThen(relay.down(name)),
+          Effect.andThen(Effect.never),
+        );
+    };
+
     /** Dial a machine's `MagnesiumRpcGroup`, as the hub, and keep its status and ping. */
     const dial = (name: string) =>
       connectMachine(name).pipe(
         Effect.map((client) => ({
           status: client[MAGNESIUM_WS_METHODS.serverStatus]({}),
           ping: client[MAGNESIUM_WS_METHODS.ping]({}),
+          alongside: followHome(name, client),
         })),
         Effect.catchTags({
           HubMachineNotFoundError: () =>
@@ -251,6 +294,7 @@ export const make = (
         wakes.delete(name);
         yield* FiberMap.remove(links, name);
         yield* table.remove(name);
+        if (relay !== undefined) yield* relay.forget(name);
       });
 
     /** Follow the hub's machine list: start new links, stop removed ones. */
