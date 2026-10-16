@@ -1,4 +1,5 @@
 import {
+  AuthAccessWriteScope,
   AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
   type AuthEnvironmentScope,
@@ -32,7 +33,17 @@ import {
   ProfileRevision,
   SandboxList,
 } from "./profiles.ts";
-import { SpokeApplyInput, SpokeError, SpokeRemoveInput, SpokeStatus } from "./spokes.ts";
+import {
+  HubSpoke,
+  HubSpokeApplyInput,
+  ModelKeyName,
+  ModelKeyRemoveInput,
+  ModelKeySetInput,
+  SpokeApplyInput,
+  SpokeError,
+  SpokeRemoveInput,
+  SpokeStatus,
+} from "./spokes.ts";
 import { PingResult, ServerStatus } from "./status.ts";
 import {
   historyPage,
@@ -75,6 +86,12 @@ export const MAGNESIUM_WS_METHODS = {
   spokesList: "magnesium.spokes.list",
   spokesApply: "magnesium.spokes.apply",
   spokesRemove: "magnesium.spokes.remove",
+  hubSpokesList: "magnesium.hubSpokes.list",
+  hubSpokesApply: "magnesium.hubSpokes.apply",
+  hubSpokesRemove: "magnesium.hubSpokes.remove",
+  modelKeysList: "magnesium.modelKeys.list",
+  modelKeysSet: "magnesium.modelKeys.set",
+  modelKeysRemove: "magnesium.modelKeys.remove",
 } as const;
 
 /**
@@ -249,6 +266,40 @@ const SpokesRemoveRpc = Rpc.make(MAGNESIUM_WS_METHODS.spokesRemove, {
   error: SpokeError,
 }).annotate(RequiredScope, AuthOrchestrationOperateScope);
 
+/** The spokes the hub runs through gateways, with each gateway's view (goal 25). */
+const HubSpokesListRpc = Rpc.make(MAGNESIUM_WS_METHODS.hubSpokesList, {
+  success: Schema.Array(HubSpoke),
+  error: SpokeError,
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
+
+/** Adds or changes a spoke; a new one pairs with the hub once it is up. Admins only. */
+const HubSpokesApplyRpc = Rpc.make(MAGNESIUM_WS_METHODS.hubSpokesApply, {
+  payload: HubSpokeApplyInput,
+  success: HubSpoke,
+  error: SpokeError,
+}).annotate(RequiredScope, AuthAccessWriteScope);
+
+const HubSpokesRemoveRpc = Rpc.make(MAGNESIUM_WS_METHODS.hubSpokesRemove, {
+  payload: SpokeRemoveInput,
+  error: SpokeError,
+}).annotate(RequiredScope, AuthAccessWriteScope);
+
+/** The names of the model keys the hub holds; their values never leave it except to a spoke. */
+const ModelKeysListRpc = Rpc.make(MAGNESIUM_WS_METHODS.modelKeysList, {
+  success: Schema.Array(ModelKeyName),
+  error: SpokeError,
+}).annotate(RequiredScope, AuthAccessWriteScope);
+
+const ModelKeysSetRpc = Rpc.make(MAGNESIUM_WS_METHODS.modelKeysSet, {
+  payload: ModelKeySetInput,
+  error: SpokeError,
+}).annotate(RequiredScope, AuthAccessWriteScope);
+
+const ModelKeysRemoveRpc = Rpc.make(MAGNESIUM_WS_METHODS.modelKeysRemove, {
+  payload: ModelKeyRemoveInput,
+  error: SpokeError,
+}).annotate(RequiredScope, AuthAccessWriteScope);
+
 export const MagnesiumRpcGroup = RpcGroup.make(
   PingRpc,
   ServerStatusRpc,
@@ -273,6 +324,12 @@ export const MagnesiumRpcGroup = RpcGroup.make(
   SpokesListRpc,
   SpokesApplyRpc,
   SpokesRemoveRpc,
+  HubSpokesListRpc,
+  HubSpokesApplyRpc,
+  HubSpokesRemoveRpc,
+  ModelKeysListRpc,
+  ModelKeysSetRpc,
+  ModelKeysRemoveRpc,
 ).middleware(ScopeGuard);
 export type MagnesiumRpcs = RpcGroup.Rpcs<typeof MagnesiumRpcGroup>;
 export type MagnesiumRpcMethod = MagnesiumRpcs["_tag"];

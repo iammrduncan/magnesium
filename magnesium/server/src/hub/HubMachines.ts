@@ -23,6 +23,7 @@ import { HttpClient } from "effect/unstable/http";
 
 import { ServerPorts, type ServerPortError } from "../ports.ts";
 import * as MachineApi from "./machineApi.ts";
+import { readSpokeRecords } from "./spokeRecords.ts";
 
 /**
  * The machines this hub carries, and the token it holds for each (D14: tokens
@@ -114,6 +115,8 @@ export class HubMachines extends Context.Service<
     readonly names: Effect.Effect<ReadonlyArray<string>>;
     /** The name of each machine whose access was just given or removed. */
     readonly accessChanged: Stream.Stream<string>;
+    /** Forget what the hub last saw of a machine and reconnect to it, as when its address changed. */
+    readonly refresh: (name: string) => Effect.Effect<void>;
   }
 >()("@magnesium/server/hub/HubMachines") {}
 
@@ -131,7 +134,7 @@ export const make = Effect.gen(function* () {
     Effect.provideService(effect, HttpClient.HttpClient, httpClient);
 
   // Missing or unreadable config means no machines: this server is not a hub.
-  const readConfig = fileSystem.readFileString(configPath).pipe(
+  const readDeployConfig = fileSystem.readFileString(configPath).pipe(
     Effect.flatMap(decodeConfig),
     Effect.map((config) => config.machines),
     Effect.catch((error) =>
@@ -141,6 +144,23 @@ export const make = Effect.gen(function* () {
             Effect.as([] as ReadonlyArray<HubMachineConfig>),
           ),
     ),
+  );
+
+  // The hub's own spokes (goal 25) join the deploy config's machines, replacing one of the same name.
+  const readConfig = Effect.all([
+    readDeployConfig,
+    readSpokeRecords(ports.baseDir).pipe(
+      Effect.provideService(FileSystem.FileSystem, fileSystem),
+      Effect.provideService(Path.Path, path),
+    ),
+  ]).pipe(
+    Effect.map(([machines, spokes]): ReadonlyArray<HubMachineConfig> => {
+      const spokeNames = new Set(spokes.map((spoke) => spoke.name));
+      return [
+        ...machines.filter((machine) => !spokeNames.has(machine.name)),
+        ...spokes.map((spoke) => ({ name: spoke.name, url: spoke.url })),
+      ];
+    }),
   );
 
   const findMachine = (name: string) =>
@@ -389,6 +409,20 @@ export const make = Effect.gen(function* () {
     renewDue,
     names: readConfig.pipe(Effect.map((machines) => machines.map((machine) => machine.name))),
     accessChanged: Stream.fromPubSub(accessChanged),
+    refresh: (name) =>
+      Effect.gen(function* () {
+        yield* Ref.update(probes, (current) => {
+          const next = new Map(current);
+          next.delete(name);
+          return next;
+        });
+        yield* Ref.update(rejected, (current) => {
+          const next = new Set(current);
+          next.delete(name);
+          return next;
+        });
+        yield* PubSub.publish(accessChanged, name);
+      }),
   });
 });
 

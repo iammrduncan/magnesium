@@ -15,9 +15,13 @@ import { homeHandlersLayer } from "./home/handlers.ts";
 import * as Home from "./home/Home.ts";
 import * as LocalHome from "./home/LocalHome.ts";
 import * as HomeRelay from "./home/relay.ts";
+import * as GatewayClient from "./hub/gatewayClient.ts";
 import * as HubMachines from "./hub/HubMachines.ts";
+import * as HubSpokes from "./hub/HubSpokes.ts";
+import * as ModelKeys from "./hub/ModelKeys.ts";
 import { hubProxyRouteLayer } from "./hub/proxy.ts";
 import { hubMachineRoutesLayer } from "./hub/routes.ts";
+import { hubSpokeHandlersLayer } from "./hub/spokeHandlers.ts";
 import { ServerPorts } from "./ports.ts";
 import { profileServicesLayer, profilesLayer } from "./profiles/layer.ts";
 import { profileRpcHandlersLayer } from "./profiles/rpcHandlers.ts";
@@ -61,6 +65,7 @@ const rpcHandlersLayer = Layer.mergeAll(
   homeHandlersLayer,
   profileRpcHandlersLayer,
   spokeHandlersLayer,
+  hubSpokeHandlersLayer,
 );
 
 /** A gateway deploys spokes with its namespace's identity; other servers say they can't. */
@@ -94,6 +99,8 @@ export const routesLayer = Layer.mergeAll(
   Layer.provide(Layer.mergeAll(LocalHome.layer, HomeRelay.layer)),
   Layer.provide(profileServicesLayer),
   Layer.provide(spokesLayer),
+  Layer.provide(HubSpokes.layer),
+  Layer.provide(Layer.mergeAll(GatewayClient.layer, ModelKeys.layer)),
   Layer.provide(Layer.mergeAll(HubMachines.layer, ServerStatus.layer)),
   Layer.provide(MagnesiumDb.layer),
 );

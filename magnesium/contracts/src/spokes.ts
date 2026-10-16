@@ -83,3 +83,39 @@ export class SpokeError extends Schema.TaggedError<SpokeError>()("SpokeError", {
   /** What went wrong, in a sentence for Fleet, such as the cluster refusing a node. */
   detail: Schema.String,
 }) {}
+
+/** A spoke the hub runs through a gateway, as the hub keeps it. */
+export const HubSpoke = Schema.Struct({
+  name: HubMachineName,
+  /** The hub machine that is its namespace's gateway. */
+  gateway: HubMachineName,
+  spec: SpokeSpec,
+  /** Model keys it gets from the hub, by environment name. */
+  keys: Schema.Array(Schema.String),
+  /** As its gateway sees it; null when the gateway can't be asked. */
+  status: Schema.NullOr(SpokeStatus),
+  /** Whether the hub has access to it yet; a new spoke pairs once it is up. */
+  paired: Schema.Boolean,
+  /** What's in the way, in a sentence, such as an unreachable gateway. */
+  detail: Schema.NullOr(Schema.String),
+});
+export type HubSpoke = typeof HubSpoke.Type;
+
+export const HubSpokeApplyInput = Schema.Struct({
+  gateway: HubMachineName,
+  spec: SpokeSpec,
+  keys: Schema.Array(Schema.String.check(Schema.isPattern(/^[A-Z][A-Z0-9_]*$/))),
+});
+export type HubSpokeApplyInput = typeof HubSpokeApplyInput.Type;
+
+/** A model key's environment name, such as `LITELLM_API_KEY`. Its value is never sent back. */
+export const ModelKeyName = Schema.String.check(Schema.isPattern(/^[A-Z][A-Z0-9_]*$/));
+
+export const ModelKeySetInput = Schema.Struct({
+  name: ModelKeyName,
+  value: Schema.String.check(Schema.isMinLength(1)),
+});
+export type ModelKeySetInput = typeof ModelKeySetInput.Type;
+
+export const ModelKeyRemoveInput = Schema.Struct({ name: ModelKeyName });
+export type ModelKeyRemoveInput = typeof ModelKeyRemoveInput.Type;
