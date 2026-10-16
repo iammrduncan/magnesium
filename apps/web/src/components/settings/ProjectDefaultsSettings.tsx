@@ -52,7 +52,13 @@ function isWorktreeSubmodules(value: string | null): value is WorktreeSubmodules
 }
 
 export function ProjectDefaultsSettings({ category }: { category: ProjectSettingsCategory }) {
-  const { scope, target, targets, connectedEnvironments } = useSettingsScope();
+  const {
+    scope,
+    target,
+    targets,
+    connectedEnvironments,
+    environments: scopeEnvironments,
+  } = useSettingsScope();
   const settings = useScopedSettings();
   const updateSettings = useUpdateScopedSettings();
   const navigate = useNavigate();
@@ -83,6 +89,15 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
   const modelSource = useScopedSettingSource(["defaultModelSelection"]);
   const isProjectScope = scope.kind === "project" || scope.kind === "checkout";
   const unavailable = connectedEnvironments.length === 0;
+  // magnesium: a machine the hub is still connecting to says so, instead of
+  // reading as having no providers (goal 05).
+  const connecting = unavailable
+    ? scopeEnvironments.find(
+        (environment) =>
+          environment.connection.phase === "connecting" ||
+          environment.connection.phase === "reconnecting",
+      )
+    : undefined;
   // File-backed keys show their effective value; the target already carries
   // the checkout's t3.json, and a null file here only fills the built-in.
   // The reset arrow beside the title clears the tier (SettingsRow handles a
@@ -194,7 +209,9 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
             ) : null}
           </div>
         ) : (
-          <span className="text-sm text-muted-foreground">No providers available</span>
+          <span className="text-sm text-muted-foreground">
+            {connecting ? `Connecting to ${connecting.label}…` : "No providers available"}
+          </span>
         )
       }
     />
@@ -233,7 +250,9 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
                 value === "local" || value === "worktree"
                   ? resolveEnvModeLabel(value)
                   : unavailable
-                    ? "Unavailable"
+                    ? connecting
+                      ? "Connecting…"
+                      : "Unavailable"
                     : "Mixed"
               }
             </SelectValue>
