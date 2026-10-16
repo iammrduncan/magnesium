@@ -8,9 +8,11 @@ import {
   differsFromHub,
   fleetRows,
 } from "@magnesium/web";
+import { TerminalIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { currentFleetWatch, useFleetView } from "./fleetStore";
+import { MachineTerminal } from "./MachineTerminal";
 
 import { isElectron } from "../../env";
 import { cn } from "../../lib/utils";
@@ -56,6 +58,9 @@ function MachineRow({
 }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [terminalOpen, setTerminalOpen] = useState(false);
+  const environmentId = machine.environmentId;
+  const canOpenTerminal = environmentId !== null && machine.link === "connected";
   const canReconnect =
     machine.name !== null && (machine.link === "offline" || machine.link === "no-access");
   const reconnect = () => {
@@ -110,9 +115,29 @@ function MachineRow({
             Reconnect
           </Button>
         ) : null}
+        {canOpenTerminal ? (
+          <Button
+            size="compact"
+            variant="outline"
+            aria-pressed={terminalOpen}
+            onClick={() => setTerminalOpen((open) => !open)}
+          >
+            <TerminalIcon />
+            Terminal
+          </Button>
+        ) : null}
       </div>
       {machine.detail !== null && machine.link !== "connected" ? (
         <p className="text-xs text-muted-foreground sm:col-span-5">{machine.detail}</p>
+      ) : null}
+      {terminalOpen && environmentId !== null ? (
+        <div className="pt-2 sm:col-span-5">
+          <MachineTerminal
+            environmentId={environmentId}
+            label={machine.label}
+            onClose={() => setTerminalOpen(false)}
+          />
+        </div>
       ) : null}
     </li>
   );

@@ -87,6 +87,7 @@ import { UsageProviderSettings } from "./UsageProviderSettings";
 import { ProviderSetupSection, readAntigravityAuthMethod } from "./ProviderSetupSection";
 import { CodexSetupSection, CodexManagedRuntimeFields } from "./CodexSetupSection";
 import { readCodexSetupMode } from "./CodexSetupSection.logic";
+import { ProviderSignInRow } from "./ProviderSignInRow"; // magnesium: CLI sign-in on the provider's machine
 import { DRIVER_OPTIONS, getDriverOption } from "./providerDriverMeta";
 import { searchableSetting } from "./settingsSearch";
 import {
@@ -987,6 +988,17 @@ export function EnvironmentProviderSettings({
                   },
                 })
               }
+            />
+          ) : mode === "editor" &&
+            !readOnly &&
+            liveProvider !== undefined &&
+            liveProvider.installed &&
+            (row.driver === "claudeAgent" || row.driver === "codex") ? (
+            // magnesium: Claude and an existing Codex sign in through a terminal on their machine
+            <ProviderSignInRow
+              environmentId={environmentId}
+              environmentLabel={environmentLabel}
+              provider={liveProvider}
             />
           ) : null
         }
