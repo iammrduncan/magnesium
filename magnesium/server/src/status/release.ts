@@ -33,3 +33,10 @@ export const deploymentOf = (value: string | undefined): ServerDeployment | null
   const trimmed = value?.trim();
   return isDeployment(trimmed) ? trimmed : null;
 };
+
+/** Where this server runs, from `MAGNESIUM_NODE`: a pod's node, or what its deployer says. */
+export const nodeOf = (value: string | undefined): string | null => value?.trim() || null;
+
+/** `gateway` when `MAGNESIUM_ROLE` says so (goal 25). */
+export const roleOf = (value: string | undefined): "gateway" | null =>
+  value?.trim() === "gateway" ? "gateway" : null;

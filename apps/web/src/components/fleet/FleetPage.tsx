@@ -4,8 +4,10 @@ import {
   describeEvent,
   describeLink,
   describeThreads,
+  describePlace,
   describeVersion,
   differsFromHub,
+  KIND_HINT,
   fleetRows,
 } from "@magnesium/web";
 import { TerminalIcon } from "lucide-react";
@@ -20,6 +22,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
 import { SidebarInset } from "../ui/sidebar";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { WorkspaceBreadcrumb, WorkspaceBreadcrumbItem } from "../WorkspaceBreadcrumb";
 import { WorkspacePageContainer } from "../WorkspacePageContainer";
 import { WorkspacePageHeader } from "../WorkspacePageHeader";
@@ -73,15 +76,24 @@ function MachineRow({
       )
       .finally(() => setPending(false));
   };
+  const place = describePlace(machine);
   return (
     <li className="grid grid-cols-1 gap-x-4 gap-y-1 border-b border-border py-3 last:border-b-0 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_auto] sm:items-center">
       <div className="flex min-w-0 items-center gap-2">
         <span className="truncate text-sm font-medium text-foreground">{machine.label}</span>
-        <Badge size="sm" variant={machine.kind === "hub" ? "info" : "outline"}>
-          {machine.kind}
-        </Badge>
+        <Tooltip>
+          <TooltipTrigger render={<span className="inline-flex shrink-0" />}>
+            <Badge size="sm" variant={machine.kind === "hub" ? "info" : "outline"}>
+              {machine.kind}
+            </Badge>
+          </TooltipTrigger>
+          <TooltipPopup>{KIND_HINT[machine.kind]}</TooltipPopup>
+        </Tooltip>
         {machine.name !== null && machine.name !== machine.label ? (
           <span className="truncate text-xs text-muted-foreground">{machine.name}</span>
+        ) : null}
+        {place !== null ? (
+          <span className="shrink-0 text-xs text-muted-foreground">{place}</span>
         ) : null}
       </div>
       <span

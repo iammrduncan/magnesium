@@ -24,8 +24,11 @@ export const FleetMachine = Schema.Struct({
   /** The machine's name on the hub; null for the server serving the list. */
   name: Schema.NullOr(HubMachineName),
   label: Schema.String,
-  /** `hub` for a server that carries machines, `machine` for the rest. */
-  kind: Schema.Literals(["hub", "machine"]),
+  /**
+   * `hub` for a server that carries machines, `gateway` for a Kubernetes
+   * namespace's gateway (goal 25), `machine` for the rest.
+   */
+  kind: Schema.Literals(["hub", "machine", "gateway"]),
   link: FleetLink,
   environmentId: Schema.NullOr(EnvironmentId),
   serverVersion: Schema.NullOr(Schema.String),
@@ -35,6 +38,8 @@ export const FleetMachine = Schema.Struct({
   deployment: Schema.NullOr(ServerDeployment).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
+  /** Where it runs (`ServerStatus.node`); null when unknown. */
+  node: Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
   startedAt: Schema.NullOr(IsoDateTime),
   /** When the hub last heard from it; set when a link drops, kept across hub restarts. */
   lastSeenAt: Schema.NullOr(IsoDateTime),

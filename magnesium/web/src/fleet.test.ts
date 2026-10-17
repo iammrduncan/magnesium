@@ -6,6 +6,7 @@ import {
   describeEvent,
   describeLink,
   describeThreads,
+  describePlace,
   describeVersion,
   fleetRows,
 } from "./fleet.ts";
@@ -20,6 +21,7 @@ const machine = (name: string | null, overrides: Partial<FleetMachine> = {}): Fl
   serverVersion: "0.0.45",
   release: "f0d9e1703a",
   deployment: null,
+  node: null,
   startedAt: "2026-10-15T04:00:00.000Z",
   lastSeenAt: null,
   threads: { total: 4, running: 2, waiting: 1, approvals: 1, questions: 0 },
@@ -80,14 +82,17 @@ describe("Fleet in the browser", () => {
     expect(describeVersion(machine("gpu-host-1", { release: null }), hub.release)).toBe("0.0.45");
   });
 
-  it("says how each server runs once it reports it", () => {
-    const hub = machine(null, { deployment: "vm" });
-    expect(describeVersion(hub, hub.release)).toBe("0.0.45 · f0d9e1703a · VM");
-    expect(describeVersion(machine("cpu-host-1", { deployment: "pod" }), hub.release)).toBe(
-      "0.0.45 · f0d9e1703a · pod",
+  it("says where and how each server runs, beside its name", () => {
+    expect(describePlace(machine(null, { deployment: "vm" }))).toBe("VM");
+    expect(describePlace(machine("cpu-host-1", { deployment: "bare-metal" }))).toBe("bare metal");
+    // A pod's name says nothing about its machine: say which node it is on.
+    expect(describePlace(machine("cpu-host-2", { deployment: "pod", node: "node-b" }))).toBe(
+      "pod on node-b",
     );
+    expect(describePlace(machine("gpu-host-1", { deployment: null }))).toBeNull();
+    // The version line keeps to the version and the build.
     expect(
-      describeVersion(machine("cpu-host-2", { deployment: "bare-metal", release: null }), null),
-    ).toBe("0.0.45 · bare metal");
+      describeVersion(machine("cpu-host-2", { deployment: "pod", node: "node-b" }), "f0d9e1703a"),
+    ).toBe("0.0.45 · f0d9e1703a");
   });
 });

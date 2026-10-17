@@ -31,9 +31,9 @@ export class KubeApi extends Context.Service<
     readonly get: (path: KubeObjectPath) => Effect.Effect<Option.Option<unknown>, SpokeError>;
     readonly list: (
       path: KubeObjectPath,
-      labelSelector: string,
+      selector: { readonly labelSelector?: string; readonly fieldSelector?: string },
     ) => Effect.Effect<ReadonlyArray<unknown>, SpokeError>;
-    /** Deletes an object; one that is already gone is fine. */
+    /** Deletes an object and what it owns; one that is already gone is fine. */
     readonly remove: (path: KubeObjectPath) => Effect.Effect<void, SpokeError>;
   }
 >()("@magnesium/server/gateway/kube/KubeApi") {}
@@ -106,10 +106,14 @@ export const make = (access: KubeAccess) =>
                 : Effect.fail(refusal(status, body)),
           ),
         ),
-      list: (path, labelSelector) =>
+      list: (path, selector) =>
         send(
           HttpClientRequest.get(
-            `${objectUrl(access, path)}?labelSelector=${encodeURIComponent(labelSelector)}`,
+            `${objectUrl(access, path)}?${new URLSearchParams(
+              Object.entries(selector).filter(
+                (entry): entry is [string, string] => entry[1] !== undefined,
+              ),
+            ).toString()}`,
           ),
         ).pipe(
           Effect.flatMap(({ status, body }) => {
@@ -125,7 +129,9 @@ export const make = (access: KubeAccess) =>
           }),
         ),
       remove: (path) =>
-        send(HttpClientRequest.delete(objectUrl(access, path))).pipe(
+        send(
+          HttpClientRequest.delete(`${objectUrl(access, path)}?propagationPolicy=Background`),
+        ).pipe(
           Effect.flatMap(({ status, body }) =>
             status === 404 || (status >= 200 && status < 300)
               ? Effect.void

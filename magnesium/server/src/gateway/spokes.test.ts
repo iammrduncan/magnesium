@@ -8,7 +8,7 @@ import { HttpClient, HttpClientResponse } from "effect/unstable/http";
 import { KubeApi, make as makeKube } from "./kube.ts";
 import {
   type RenderContext,
-  renderDeployment,
+  renderWorkload,
   renderSecret,
   renderVolume,
   spokeStatusOf,
@@ -35,8 +35,11 @@ const context: RenderContext = {
 
 describe("a spoke's objects", () => {
   it("run it as the contract says: restricted, one pod at a time, its home where it was", () => {
-    const deployment = renderDeployment(spec, context);
-    expect(deployment.spec.strategy).toEqual({ type: "Recreate" });
+    const deployment = renderWorkload(spec, context);
+    // A StatefulSet: one pod with a stable name, magnesium-<name>-0, never two at once.
+    expect(deployment.kind).toBe("StatefulSet");
+    expect(deployment.metadata.name).toBe("magnesium-cpu-host-2");
+    expect(deployment.spec.serviceName).toBe("magnesium-cpu-host-2");
     expect(deployment.spec.replicas).toBe(1);
     const pod = deployment.spec.template.spec;
     expect(pod).toMatchObject({
@@ -60,6 +63,8 @@ describe("a spoke's objects", () => {
     expect(container.env).toEqual([
       { name: "HOME", value: "/home/agent" },
       { name: "MAGNESIUM_MACHINE", value: "cpu-host-2" },
+      // Where it runs, from Kubernetes, for Fleet.
+      { name: "MAGNESIUM_NODE", valueFrom: { fieldRef: { fieldPath: "spec.nodeName" } } },
       { name: "MAGNESIUM_OPENCODE_BASE_URL", value: "https://litellm.example.com/v1" },
       { name: "MAGNESIUM_OPENCODE_MODELS", value: "model-a,model-b" },
     ]);
@@ -69,7 +74,7 @@ describe("a spoke's objects", () => {
     ]);
     expect(container.volumeMounts).toContainEqual({ name: "home", mountPath: "/home/agent" });
     expect(
-      renderDeployment({ ...spec, build: "8c2913d863" }, context).spec.template.spec.containers[0]!
+      renderWorkload({ ...spec, build: "8c2913d863" }, context).spec.template.spec.containers[0]!
         .image,
     ).toBe("localhost/magnesium:8c2913d863");
   });
@@ -95,7 +100,7 @@ describe("a spoke's objects", () => {
   });
 
   it("read back as a status, with the cluster's refusal when it has one", () => {
-    const deployment = renderDeployment(spec, context);
+    const deployment = renderWorkload(spec, context);
     expect(spokeStatusOf({ ...deployment, status: { readyReplicas: 1 } })).toEqual({
       name: "cpu-host-2",
       node: "node-b",
@@ -183,7 +188,7 @@ const fakeCluster = (allowed: ReadonlyArray<string>) => {
         if (node !== undefined && !allowed.includes(node)) {
           return reply(422, {
             kind: "Status",
-            message: `deployments.apps is forbidden: ValidatingAdmissionPolicy denied request: node ${node} is not allowed`,
+            message: `statefulsets.apps is forbidden: ValidatingAdmissionPolicy denied request: node ${node} is not allowed`,
           });
         }
         objects.set(url.pathname, body);
@@ -191,14 +196,32 @@ const fakeCluster = (allowed: ReadonlyArray<string>) => {
       }
       if (request.method === "DELETE") {
         objects.delete(url.pathname);
+        // As the garbage collector does: a workload's pods go with it.
+        const owner = url.pathname.split("/").at(-1)!;
+        for (const path of Array.from(objects.keys())) {
+          if (path.includes("/pods/") && path.split("/").at(-1)!.startsWith(`${owner}-`)) {
+            objects.delete(path);
+          }
+        }
         return reply(200, { kind: "Status", status: "Success" });
       }
       if (objects.has(url.pathname)) return reply(200, objects.get(url.pathname));
-      if (url.pathname.endsWith("/deployments")) {
-        const items = [...objects.entries()]
-          .filter(([path]) => path.includes("/deployments/"))
-          .map(([, value]) => value);
-        return reply(200, { kind: "DeploymentList", items });
+      const items = [...objects.entries()]
+        .filter(([path]) => path.startsWith(`${url.pathname}/`))
+        .map(([, value]) => value as Record<string, any>)
+        .filter((item) => {
+          const label = url.searchParams.get("labelSelector");
+          const field = url.searchParams.get("fieldSelector");
+          if (label?.startsWith("magnesium.machine=")) {
+            return item.metadata?.labels?.["magnesium.machine"] === label.split("=")[1];
+          }
+          if (field?.startsWith("involvedObject.name=")) {
+            return item.involvedObject?.name === field.split("=")[1];
+          }
+          return true;
+        });
+      if (items.length > 0 || /\/(statefulsets|deployments|pods|events)$/.test(url.pathname)) {
+        return reply(200, { kind: "List", items });
       }
       return reply(404, { kind: "Status", message: "not found" });
     }),
@@ -232,9 +255,11 @@ describe("a gateway's spokes", () => {
         "PATCH /api/v1/namespaces/magnesium/persistentvolumeclaims/magnesium-cpu-host-2-home",
         "PATCH /api/v1/namespaces/magnesium/secrets/magnesium-cpu-host-2",
         "PATCH /api/v1/namespaces/magnesium/services/magnesium-cpu-host-2",
-        "PATCH /apis/apps/v1/namespaces/magnesium/deployments/magnesium-cpu-host-2",
+        // No Deployment from before StatefulSets to retire.
+        "GET /apis/apps/v1/namespaces/magnesium/deployments/magnesium-cpu-host-2",
+        "PATCH /apis/apps/v1/namespaces/magnesium/statefulsets/magnesium-cpu-host-2",
       ]);
-      for (const call of cluster.calls) {
+      for (const call of cluster.calls.filter((call) => call.method === "PATCH")) {
         expect(call.contentType).toBe("application/apply-patch+yaml");
         expect(call.query).toEqual({ fieldManager: "magnesium", force: "true" });
         expect(call.authorization).toBe("Bearer sa-token");
@@ -263,7 +288,7 @@ describe("a gateway's spokes", () => {
     const cluster = fakeCluster(["node-b"]);
     const fingerprint = () => {
       const deployment = cluster.objects.get(
-        "/apis/apps/v1/namespaces/magnesium/deployments/magnesium-cpu-host-2",
+        "/apis/apps/v1/namespaces/magnesium/statefulsets/magnesium-cpu-host-2",
       ) as { spec: { template: { metadata: { annotations?: Record<string, string> } } } };
       return deployment.spec.template.metadata.annotations?.["magnesium.dev/secret"];
     };
@@ -279,6 +304,59 @@ describe("a gateway's spokes", () => {
       // A change that sends no secrets keeps the Secret, and the pod with it.
       yield* spokes.apply({ spec: { ...spec, build: "8c2913d863" }, secrets: null });
       expect(fingerprint()).toBe(second);
+    }).pipe(Effect.provide(cluster.spokes));
+  });
+
+  it.effect("moves a spoke from its old Deployment to a StatefulSet, one pod at a time", () => {
+    const cluster = fakeCluster(["node-b"]);
+    const base = "/apis/apps/v1/namespaces/magnesium";
+    cluster.objects.set(`${base}/deployments/magnesium-cpu-host-2`, {
+      metadata: {
+        labels: { "app.kubernetes.io/name": "magnesium-spoke", "magnesium.machine": "cpu-host-2" },
+      },
+      spec: { replicas: 1 },
+      status: { readyReplicas: 1 },
+    });
+    cluster.objects.set("/api/v1/namespaces/magnesium/pods/magnesium-cpu-host-2-7c9f-x2k4p", {
+      metadata: { labels: { "magnesium.machine": "cpu-host-2" } },
+    });
+    return Effect.gen(function* () {
+      const spokes = yield* Spokes.Spokes;
+      // Before its next change it still lists, from the Deployment.
+      expect(yield* spokes.list).toMatchObject([{ name: "cpu-host-2", ready: true }]);
+      yield* spokes.apply({ spec, secrets: null });
+      const order = cluster.calls
+        .filter((call) => call.method !== "GET" || call.path.endsWith("/pods"))
+        .map((call) => `${call.method} ${call.path.replace(base, "")}`);
+      // The old Deployment and its pod go before the StatefulSet starts its own.
+      expect(order.indexOf("DELETE /deployments/magnesium-cpu-host-2")).toBeGreaterThan(-1);
+      expect(order.indexOf("DELETE /deployments/magnesium-cpu-host-2")).toBeLessThan(
+        order.indexOf("PATCH /statefulsets/magnesium-cpu-host-2"),
+      );
+      expect(cluster.objects.has(`${base}/deployments/magnesium-cpu-host-2`)).toBe(false);
+      expect(cluster.objects.has(`${base}/statefulsets/magnesium-cpu-host-2`)).toBe(true);
+    }).pipe(Effect.provide(cluster.spokes));
+  });
+
+  it.effect("shows why a spoke isn't starting, from the cluster's events", () => {
+    const cluster = fakeCluster(["node-b"]);
+    cluster.objects.set("/api/v1/namespaces/magnesium/events/a", {
+      type: "Warning",
+      involvedObject: { name: "magnesium-cpu-host-2" },
+      message:
+        "create Pod magnesium-cpu-host-2-0 failed: images may only come from localhost/magnesium",
+      lastTimestamp: "2026-10-17T03:00:00Z",
+    });
+    return Effect.gen(function* () {
+      const spokes = yield* Spokes.Spokes;
+      yield* spokes.apply({ spec, secrets: null });
+      expect(yield* spokes.list).toMatchObject([
+        {
+          name: "cpu-host-2",
+          ready: false,
+          detail: expect.stringContaining("localhost/magnesium"),
+        },
+      ]);
     }).pipe(Effect.provide(cluster.spokes));
   });
 

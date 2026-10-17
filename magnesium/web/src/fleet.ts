@@ -156,9 +156,9 @@ const DEPLOYMENT_LABEL: Record<NonNullable<FleetMachine["deployment"]>, string> 
 };
 
 /**
- * The version, the build and how it runs, which tells a mixed deploy apart: the
- * package version stays the same across commits. `hubRelease` is the build of
- * the server serving the list.
+ * The version and the build, which tells a mixed deploy apart: the package
+ * version stays the same across commits. `hubRelease` is the build of the
+ * server serving the list.
  */
 export const describeVersion = (machine: FleetMachine, hubRelease: string | null): string => {
   const parts = [machine.serverVersion ?? "Version unknown"];
@@ -166,8 +166,25 @@ export const describeVersion = (machine: FleetMachine, hubRelease: string | null
     const note = differsFromHub(machine, hubRelease) ? " (not the hub's build)" : "";
     parts.push(`${machine.release}${note}`);
   }
-  if (machine.deployment !== null) parts.push(DEPLOYMENT_LABEL[machine.deployment]);
   return parts.join(" · ");
+};
+
+/**
+ * Where and how a server runs, beside its name: a pod's name says nothing
+ * about the machine it is on (goal 25). Null when it doesn't report it.
+ */
+export const describePlace = (machine: FleetMachine): string | null => {
+  if (machine.deployment === null) return machine.node;
+  const how = DEPLOYMENT_LABEL[machine.deployment];
+  return machine.node === null ? how : `${how} on ${machine.node}`;
+};
+
+/** What a row's badge means, for its tooltip. */
+export const KIND_HINT: Record<FleetMachine["kind"], string> = {
+  hub: "The server you reach Magnesium through; it carries the others.",
+  machine: "A server that runs agents.",
+  gateway:
+    "The hub's door into a Kubernetes namespace, where it runs machines for the hub. It runs no agents.",
 };
 
 /** Whether a machine runs a different build than the hub. */

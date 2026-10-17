@@ -3,7 +3,7 @@ import type { SpokeSecrets, SpokeSpec, SpokeStatus } from "@magnesium/contracts"
 /**
  * A spoke's Kubernetes objects, rendered from its spec the way
  * `magnesium/deploy/kubernetes/spoke.yaml` lays them out: a volume for its
- * home, a Secret for its keys, a Deployment and a Service. Pure, so the shape
+ * home, a Secret for its keys, a StatefulSet and a Service. Pure, so the shape
  * the cluster gets is tested here.
  */
 
@@ -11,14 +11,18 @@ export const SPOKE_APP = "magnesium-spoke";
 const MANAGED_BY = "magnesium";
 
 export interface SpokeObjectNames {
-  readonly deployment: string;
+  /** The StatefulSet; its one pod is `<workload>-0`. */
+  readonly workload: string;
+  /** The Deployment a spoke ran as before StatefulSets, removed when it is next applied. */
+  readonly legacyDeployment: string;
   readonly service: string;
   readonly secret: string;
   readonly volume: string;
 }
 
 export const spokeObjectNames = (name: string): SpokeObjectNames => ({
-  deployment: `magnesium-${name}`,
+  workload: `magnesium-${name}`,
+  legacyDeployment: `magnesium-${name}`,
   service: `magnesium-${name}`,
   secret: `magnesium-${name}`,
   volume: `magnesium-${name}-home`,
@@ -94,16 +98,29 @@ export const secretFingerprint = (data: Readonly<Record<string, string>>): strin
 
 export const SECRET_FINGERPRINT = "magnesium.dev/secret";
 
-export const renderDeployment = (
+/**
+ * The spoke's one pod, as a StatefulSet: its pod has a stable name,
+ * `magnesium-<name>-0`, and a rollout removes the old pod before it starts
+ * the next, so its SQLite database never has two writers.
+ */
+export const renderWorkload = (
   spec: SpokeSpec,
   context: RenderContext,
   /** The spoke's Secret's fingerprint; null leaves it out. */
   secret: string | null = null,
 ) => {
   const names = spokeObjectNames(spec.name);
-  const env: Array<{ readonly name: string; readonly value: string }> = [
+  const env: Array<
+    | { readonly name: string; readonly value: string }
+    | {
+        readonly name: string;
+        readonly valueFrom: { readonly fieldRef: { readonly fieldPath: string } };
+      }
+  > = [
     { name: "HOME", value: spec.home },
     { name: "MAGNESIUM_MACHINE", value: spec.name },
+    // Where it runs, for Fleet: its name doesn't say.
+    { name: "MAGNESIUM_NODE", valueFrom: { fieldRef: { fieldPath: "spec.nodeName" } } },
   ];
   if (spec.opencode !== null) {
     env.push(
@@ -113,12 +130,12 @@ export const renderDeployment = (
   }
   return {
     apiVersion: "apps/v1",
-    kind: "Deployment",
-    metadata: { name: names.deployment, namespace: context.namespace, labels: labels(spec.name) },
+    kind: "StatefulSet",
+    metadata: { name: names.workload, namespace: context.namespace, labels: labels(spec.name) },
     spec: {
       replicas: spec.replicas,
-      // One SQLite database: never two pods on it, not even during a rollout.
-      strategy: { type: "Recreate" },
+      serviceName: names.service,
+      updateStrategy: { type: "RollingUpdate" },
       selector: {
         matchLabels: { "app.kubernetes.io/name": SPOKE_APP, "magnesium.machine": spec.name },
       },
@@ -187,8 +204,8 @@ export const renderService = (spec: SpokeSpec, context: RenderContext) => ({
   },
 });
 
-/** The parts of a Deployment the gateway reads back. */
-export interface DeploymentView {
+/** The parts of a spoke's StatefulSet (or its old Deployment) the gateway reads back. */
+export interface WorkloadView {
   readonly metadata?: { readonly labels?: Readonly<Record<string, string>> };
   readonly spec?: {
     readonly replicas?: number;
@@ -209,8 +226,15 @@ export interface DeploymentView {
   };
 }
 
-/** A spoke's status from its Deployment; null for one that isn't a spoke. */
-export const spokeStatusOf = (deployment: DeploymentView): SpokeStatus | null => {
+/**
+ * A spoke's status from its workload; null for one that isn't a spoke.
+ * `warning` is the cluster's latest warning about it, such as an admission
+ * refusal, which a StatefulSet reports only as an event.
+ */
+export const spokeStatusOf = (
+  deployment: WorkloadView,
+  warning: string | null = null,
+): SpokeStatus | null => {
   const name = deployment.metadata?.labels?.["magnesium.machine"];
   if (name === undefined) return null;
   const replicas = deployment.spec?.replicas ?? 1;
@@ -230,6 +254,7 @@ export const spokeStatusOf = (deployment: DeploymentView): SpokeStatus | null =>
     build,
     replicas,
     ready,
-    detail: replicas === 0 ? "Stopped." : ready ? null : (problem?.message ?? "Starting."),
+    detail:
+      replicas === 0 ? "Stopped." : ready ? null : (problem?.message ?? warning ?? "Starting."),
   };
 };

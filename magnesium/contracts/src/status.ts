@@ -37,6 +37,12 @@ export const ServerStatus = Schema.Struct({
   deployment: Schema.NullOr(ServerDeployment).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
+  /** Where it runs, for a pod its node (`MAGNESIUM_NODE`); null when it doesn't say. */
+  node: Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  /** `gateway` for a namespace's gateway (goal 25); null for a server that runs agents. */
+  role: Schema.NullOr(Schema.Literals(["gateway"])).pipe(
+    Schema.withDecodingDefault(Effect.succeed(null)),
+  ),
   startedAt: IsoDateTime,
   threads: ThreadCounts,
 });

@@ -5,14 +5,15 @@ import {
   type SpokeStatus,
 } from "@magnesium/contracts";
 import * as Context from "effect/Context";
+import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Schedule from "effect/Schedule";
 
 import { KubeApi } from "./kube.ts";
 import {
-  type DeploymentView,
   type RenderContext,
-  renderDeployment,
+  renderWorkload,
   renderSecret,
   secretFingerprint,
   renderService,
@@ -20,6 +21,7 @@ import {
   SPOKE_APP,
   spokeObjectNames,
   spokeStatusOf,
+  type WorkloadView,
 } from "./manifests.ts";
 
 /**
@@ -39,6 +41,18 @@ export class Spokes extends Context.Service<
 
 const CORE = "/api/v1";
 const APPS = "/apis/apps/v1";
+/** How long to wait for an old Deployment's pod to stop: up to a minute and a half. */
+const LEGACY_POLL = Duration.seconds(3);
+const LEGACY_TRIES = 30;
+
+/** The parts of an event the gateway reads. */
+interface EventView {
+  readonly type?: string;
+  readonly message?: string;
+  readonly lastTimestamp?: string;
+  readonly eventTime?: string;
+}
+const eventTime = (event: EventView) => event.lastTimestamp ?? event.eventTime ?? "";
 
 export const make = (context: Omit<RenderContext, "namespace">) =>
   Effect.gen(function* () {
@@ -80,12 +94,13 @@ export const make = (context: Omit<RenderContext, "namespace">) =>
         { group: CORE, resource: "services", name: names.service },
         renderService(spec, render),
       );
-      const deployment = yield* kube.apply(
-        { group: APPS, resource: "deployments", name: names.deployment },
-        renderDeployment(spec, render, secretData === null ? null : secretFingerprint(secretData)),
+      yield* retireLegacyDeployment(spec.name);
+      const workload = yield* kube.apply(
+        { group: APPS, resource: "statefulsets", name: names.workload },
+        renderWorkload(spec, render, secretData === null ? null : secretFingerprint(secretData)),
       );
       return (
-        spokeStatusOf(deployment as DeploymentView) ?? {
+        spokeStatusOf(workload as WorkloadView) ?? {
           name: spec.name,
           node: spec.node,
           build: null,
@@ -96,20 +111,84 @@ export const make = (context: Omit<RenderContext, "namespace">) =>
       );
     });
 
-    const list = kube
-      .list({ group: APPS, resource: "deployments" }, `app.kubernetes.io/name=${SPOKE_APP}`)
-      .pipe(
-        Effect.map((items) =>
-          items
-            .map((item) => spokeStatusOf(item as DeploymentView))
-            .filter((status) => status !== null)
-            .toSorted((left, right) => left.name.localeCompare(right.name)),
-        ),
+    /**
+     * A spoke made before StatefulSets ran as a Deployment. Remove it, and wait
+     * for its pod to go, before the StatefulSet's pod opens the same database.
+     */
+    const retireLegacyDeployment = Effect.fn("Spokes.retireLegacyDeployment")(function* (
+      name: string,
+    ) {
+      const legacy = {
+        group: APPS,
+        resource: "deployments",
+        name: spokeObjectNames(name).legacyDeployment,
+      };
+      if ((yield* kube.get(legacy))._tag === "None") return;
+      yield* kube.remove(legacy);
+      const podsGone = kube
+        .list({ group: CORE, resource: "pods" }, { labelSelector: `magnesium.machine=${name}` })
+        .pipe(
+          Effect.flatMap((pods) =>
+            pods.length === 0
+              ? Effect.void
+              : Effect.fail(new SpokeError({ detail: `${name}'s old pod is still stopping.` })),
+          ),
+        );
+      yield* podsGone.pipe(
+        Effect.retry({ schedule: Schedule.spaced(LEGACY_POLL), times: LEGACY_TRIES }),
       );
+    });
+
+    /** The cluster's latest warning about a spoke's workload or its pod, such as a refusal. */
+    const latestWarning = (name: string) => {
+      const workload = spokeObjectNames(name).workload;
+      return Effect.forEach([workload, `${workload}-0`], (involved) =>
+        kube.list(
+          { group: CORE, resource: "events" },
+          { fieldSelector: `involvedObject.name=${involved}` },
+        ),
+      ).pipe(
+        Effect.map((lists) => {
+          const warnings = lists
+            .flat()
+            .map((event) => event as EventView)
+            .filter((event) => event.type === "Warning" && typeof event.message === "string")
+            .toSorted((left, right) => eventTime(right).localeCompare(eventTime(left)));
+          return warnings[0]?.message ?? null;
+        }),
+        Effect.orElseSucceed(() => null),
+      );
+    };
+
+    const list = Effect.gen(function* () {
+      const selector = { labelSelector: `app.kubernetes.io/name=${SPOKE_APP}` };
+      const [workloads, legacy] = yield* Effect.all([
+        kube.list({ group: APPS, resource: "statefulsets" }, selector),
+        kube.list({ group: APPS, resource: "deployments" }, selector),
+      ]);
+      const statuses = new Map<string, SpokeStatus>();
+      // A spoke not yet moved to a StatefulSet still shows, from its Deployment.
+      for (const item of [...legacy, ...workloads]) {
+        const status = spokeStatusOf(item as WorkloadView);
+        if (status !== null) statuses.set(status.name, status);
+      }
+      return yield* Effect.forEach(
+        [...statuses.values()].toSorted((left, right) => left.name.localeCompare(right.name)),
+        (status) =>
+          status.ready || status.replicas === 0 || status.detail !== "Starting."
+            ? Effect.succeed(status)
+            : latestWarning(status.name).pipe(
+                Effect.map((warning) =>
+                  warning === null ? status : { ...status, detail: warning },
+                ),
+              ),
+      );
+    });
 
     const remove = Effect.fn("Spokes.remove")(function* (input: SpokeRemoveInput) {
       const names = spokeObjectNames(input.name);
-      yield* kube.remove({ group: APPS, resource: "deployments", name: names.deployment });
+      yield* kube.remove({ group: APPS, resource: "statefulsets", name: names.workload });
+      yield* kube.remove({ group: APPS, resource: "deployments", name: names.legacyDeployment });
       yield* kube.remove({ group: CORE, resource: "services", name: names.service });
       yield* kube.remove({ group: CORE, resource: "secrets", name: names.secret });
       if (!input.keepVolume) {
