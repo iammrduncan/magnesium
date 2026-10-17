@@ -44,3 +44,6 @@ node_modules/
 
 # pnpm content-addressable store; never belongs in the repo.
 .pnpm-store/
+
+# magnesium: internal notes about the owner's own setup (lab, deploys, scratch); never published
+.internal/

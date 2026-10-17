@@ -3,7 +3,8 @@
 # settings seeded on the first start as `magnesium-release activate` does, and
 # OpenCode's config written from the environment when it asks for one.
 #
-#   MAGNESIUM_OPENCODE_BASE_URL  the LiteLLM gateway OpenCode uses (unset: leave
+#   MAGNESIUM_OPENCODE_BASE_URL  the LLM gateway OpenCode uses (LiteLLM or another
+#                                OpenAI-compatible one) (unset: leave
 #                                ~/.config/opencode alone)
 #   MAGNESIUM_OPENCODE_MODELS    its models, comma-separated; the first is the default
 #   MAGNESIUM_OPENCODE_API_KEY_ENV  the env var holding the key (LITELLM_API_KEY);

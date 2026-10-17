@@ -9,3 +9,4 @@
 magnesium/deploy/ansible/.packs
 magnesium/deploy/ansible/inventory.yml
 magnesium/deploy/ansible/group_vars/*.yml
+.internal

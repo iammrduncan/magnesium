@@ -19,7 +19,7 @@ import * as HttpApiClient from "effect/unstable/httpapi/HttpApiClient";
 
 import { urlUnder } from "../forward.ts";
 
-/** How the hub talks to a machine server, at the machine's own origin (its loopback relay). */
+/** How the hub talks to a machine server, at the machine's own origin (its URL, or a loopback relay to it). */
 
 const REQUEST_TIMEOUT = Duration.seconds(5);
 

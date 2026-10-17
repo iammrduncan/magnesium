@@ -42,7 +42,7 @@ Magnesium starts from [T3 Code](https://github.com/pingdotgg/t3code), and keeps 
 The rest diverges:
 
 - **One client.** Magnesium's own web UI, installed as an app on desktop and phone. T3 Code's desktop, mobile and hosted apps are removed.
-- **Nothing hosted.** T3 Connect, the hosted sign-in and product analytics are gone. Pairing is the sign-in, and the tailnet is the reach.
+- **Nothing hosted.** T3 Connect, the hosted sign-in and product analytics are gone. Pairing is the sign-in, and any network that routes is the reach: a LAN, a tailnet or a VPN.
 - **New features in new packages.** Magnesium's code goes in `magnesium/*`, and every edit to a T3 Code file is marked `magnesium:`, so merges stay measurable.
 
 Magnesium is not made, endorsed or supported by T3 Tools Inc. See [NOTICE](NOTICE).

@@ -5,7 +5,7 @@ import { HubMachineName } from "./hub.ts";
 /**
  * Spokes in Kubernetes (goal 25, D57): the hub asks a namespace's gateway to
  * run, change or remove its spokes. Everything here is what Magnesium decides;
- * the operator's envelope (nodes, quota, security level, network) is checked by the
+ * the cluster operator's envelope (nodes, quota, security level, network) is checked by the
  * cluster and can only refuse.
  */
 

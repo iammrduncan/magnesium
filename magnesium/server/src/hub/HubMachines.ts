@@ -37,7 +37,7 @@ const HubMachinesConfig = Schema.Struct({
   machines: Schema.Array(
     Schema.Struct({
       name: HubMachineName,
-      /** The machine server's origin as the hub reaches it: its loopback relay. */
+      /** The machine server's origin as the hub reaches it (its URL, or a loopback relay to it). */
       url: Schema.String,
     }),
   ),
