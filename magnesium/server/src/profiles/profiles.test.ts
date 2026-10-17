@@ -8,6 +8,7 @@ import { tokenizeCliArgs } from "@t3tools/shared/cliArgs";
 import { nativeTwinInstanceId, type ProfileBundle, profileInstanceId } from "@magnesium/contracts";
 import {
   DEFAULT_SERVER_SETTINGS,
+  ProviderDriverKind,
   ProviderInstanceId,
   type ServerSettings,
 } from "@t3tools/contracts";
@@ -293,6 +294,29 @@ describe("stock instances", () => {
         installed,
       }),
     );
+
+  it.effect("are all off on a gateway, which holds its namespace's deploy identity", () =>
+    Effect.gen(function* () {
+      const root = tempRoot();
+      const path = yield* Path.Path;
+      const current = settings({
+        providerInstances: {
+          [ProviderInstanceId.make("codex")]: { driver: ProviderDriverKind.make("codex") },
+        },
+      });
+      const base = setupFor(root);
+      const next = desiredInstances({
+        path,
+        settings: current,
+        setup: { ...base.setup, runsAgents: false },
+        profiles: [],
+        installed: () => true,
+      });
+      // Every instance there, and every driver's default, is off; no twin, no profile.
+      expect(Object.values(next).every((instance) => instance.enabled === false)).toBe(true);
+      expect(Object.keys(next).toSorted()).toEqual(Object.keys(current.providers).toSorted());
+    }).pipe(Effect.provide(NodeServices.layer)),
+  );
 
   it.effect("are fenced under their own ids, each with a native twin", () =>
     Effect.gen(function* () {

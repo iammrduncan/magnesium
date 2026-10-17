@@ -53,6 +53,11 @@ export interface MachineSetup {
   readonly container: { readonly image: string } | { readonly unavailable: string };
   /** How this server is deployed. In a pod, neither a stronger fence nor containers can be added. */
   readonly deployment?: ServerDeployment | null | undefined;
+  /**
+   * False on a gateway (goal 25): it holds its namespace's deploy identity, so
+   * no agent may run beside it and every provider is turned off.
+   */
+  readonly runsAgents?: boolean | undefined;
 }
 
 export interface PlannedInstance {

@@ -121,6 +121,21 @@ describe("a spoke's objects", () => {
       spokeStatusOf({ ...deployment, spec: { ...deployment.spec, replicas: 0 } }),
     ).toMatchObject({ replicas: 0, detail: "Stopped." });
     expect(spokeStatusOf({ metadata: { labels: {} } })).toBeNull();
+    // Not available yet is starting, whatever Kubernetes calls it.
+    expect(
+      spokeStatusOf({
+        ...deployment,
+        status: {
+          conditions: [
+            {
+              type: "Available",
+              status: "False",
+              message: "Deployment does not have minimum availability.",
+            },
+          ],
+        },
+      }),
+    ).toMatchObject({ ready: false, detail: "Starting." });
   });
 });
 
@@ -178,6 +193,7 @@ const fakeCluster = (allowed: ReadonlyArray<string>) => {
         objects.delete(url.pathname);
         return reply(200, { kind: "Status", status: "Success" });
       }
+      if (objects.has(url.pathname)) return reply(200, objects.get(url.pathname));
       if (url.pathname.endsWith("/deployments")) {
         const items = [...objects.entries()]
           .filter(([path]) => path.includes("/deployments/"))
@@ -227,7 +243,9 @@ describe("a gateway's spokes", () => {
       // Without new secrets, the Secret is left as it is; the spoke is listed.
       cluster.calls.length = 0;
       yield* spokes.apply({ spec: { ...spec, replicas: 0 }, secrets: null });
-      expect(cluster.calls.some((call) => call.path.includes("/secrets/"))).toBe(false);
+      expect(
+        cluster.calls.some((call) => call.method === "PATCH" && call.path.includes("/secrets/")),
+      ).toBe(false);
       expect(yield* spokes.list).toMatchObject([
         { name: "cpu-host-2", replicas: 0, detail: "Stopped." },
       ]);
@@ -238,6 +256,29 @@ describe("a gateway's spokes", () => {
         "/api/v1/namespaces/magnesium/persistentvolumeclaims/magnesium-cpu-host-2-home",
       ]);
       expect(yield* spokes.list).toEqual([]);
+    }).pipe(Effect.provide(cluster.spokes));
+  });
+
+  it.effect("rolls a spoke's pod when its Secret changes, and only then", () => {
+    const cluster = fakeCluster(["node-b"]);
+    const fingerprint = () => {
+      const deployment = cluster.objects.get(
+        "/apis/apps/v1/namespaces/magnesium/deployments/magnesium-cpu-host-2",
+      ) as { spec: { template: { metadata: { annotations?: Record<string, string> } } } };
+      return deployment.spec.template.metadata.annotations?.["magnesium.dev/secret"];
+    };
+    return Effect.gen(function* () {
+      const spokes = yield* Spokes.Spokes;
+      yield* spokes.apply({ spec, secrets: { pairingCode: "PAIR-WITH-HUB-0123456789", keys: {} } });
+      const first = fingerprint();
+      expect(first).toMatch(/^[0-9a-f]{8}$/);
+      // Paired: the code leaves the Secret, so the pod restarts without it.
+      yield* spokes.apply({ spec, secrets: { pairingCode: null, keys: {} } });
+      const second = fingerprint();
+      expect(second).not.toBe(first);
+      // A change that sends no secrets keeps the Secret, and the pod with it.
+      yield* spokes.apply({ spec: { ...spec, build: "8c2913d863" }, secrets: null });
+      expect(fingerprint()).toBe(second);
     }).pipe(Effect.provide(cluster.spokes));
   });
 

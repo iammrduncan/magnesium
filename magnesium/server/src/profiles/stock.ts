@@ -42,6 +42,22 @@ const ourEnv = (values: Record<string, string>): ProviderInstanceEnvironmentVari
     .map(([name, value]) => ({ name, value, sensitive: false }));
 
 /**
+ * A gateway holds its namespace's deploy identity (goal 25), so no agent may run
+ * beside it: every instance, and every driver's default, is turned off, and no
+ * profile gets one.
+ */
+const agentsOff = (settings: ServerSettings): Record<string, ProviderInstanceConfig> => {
+  const next: Record<string, ProviderInstanceConfig> = {};
+  for (const [id, instance] of Object.entries(settings.providerInstances)) {
+    next[id] = { ...instance, enabled: false };
+  }
+  for (const driver of Object.keys(settings.providers)) {
+    next[driver] ??= { driver: ProviderDriverKind.make(driver), enabled: false };
+  }
+  return next;
+};
+
+/**
  * The provider instances settings should hold: every instance profile sync does
  * not own, as it is but fenced, plus the profiles' instances. Pure, so it can be
  * compared with what is there and written only on a change.
@@ -55,6 +71,7 @@ export const desiredInstances = (input: {
   readonly installed: (binary: string) => boolean;
 }): Record<string, ProviderInstanceConfig> => {
   const { path, settings, setup } = input;
+  if (setup.runsAgents === false) return agentsOff(settings);
   const next: Record<string, ProviderInstanceConfig> = {};
   for (const [id, instance] of Object.entries(settings.providerInstances)) {
     if (!isManagedInstanceId(id)) next[id] = instance;

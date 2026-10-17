@@ -76,7 +76,30 @@ export const renderSecret = (spec: SpokeSpec, secrets: SpokeSecrets, context: Re
   };
 };
 
-export const renderDeployment = (spec: SpokeSpec, context: RenderContext) => {
+/**
+ * A short fingerprint of a Secret's data. A pod reads its Secret only when it
+ * starts, so the Deployment carries this and rolls when the Secret changes: a
+ * new pairing code or key then takes effect.
+ */
+export const secretFingerprint = (data: Readonly<Record<string, string>>): string => {
+  let hash = 0x811c9dc5;
+  for (const [key, value] of Object.entries(data).toSorted(([a], [b]) => a.localeCompare(b))) {
+    for (const char of `${key}=${value};`) {
+      hash ^= char.charCodeAt(0);
+      hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+  }
+  return hash.toString(16).padStart(8, "0");
+};
+
+export const SECRET_FINGERPRINT = "magnesium.dev/secret";
+
+export const renderDeployment = (
+  spec: SpokeSpec,
+  context: RenderContext,
+  /** The spoke's Secret's fingerprint; null leaves it out. */
+  secret: string | null = null,
+) => {
   const names = spokeObjectNames(spec.name);
   const env: Array<{ readonly name: string; readonly value: string }> = [
     { name: "HOME", value: spec.home },
@@ -100,7 +123,10 @@ export const renderDeployment = (spec: SpokeSpec, context: RenderContext) => {
         matchLabels: { "app.kubernetes.io/name": SPOKE_APP, "magnesium.machine": spec.name },
       },
       template: {
-        metadata: { labels: labels(spec.name) },
+        metadata: {
+          labels: labels(spec.name),
+          ...(secret === null ? {} : { annotations: { [SECRET_FINGERPRINT]: secret } }),
+        },
         spec: {
           automountServiceAccountToken: false,
           hostname: spec.hostname,
@@ -191,11 +217,12 @@ export const spokeStatusOf = (deployment: DeploymentView): SpokeStatus | null =>
   const ready = (deployment.status?.readyReplicas ?? 0) >= 1;
   const image = deployment.spec?.template?.spec?.containers?.[0]?.image ?? "";
   const build = /:([0-9a-f]{7,40})$/.exec(image)?.[1] ?? null;
-  // The cluster's refusal (a node outside the list, say) lands on ReplicaFailure.
+  // The cluster's refusal (a node outside the list, say) lands on ReplicaFailure,
+  // and a rollout that gave up on Progressing. Not available yet is just starting.
   const problem = (deployment.status?.conditions ?? []).find(
     (condition) =>
       (condition.type === "ReplicaFailure" && condition.status === "True") ||
-      (condition.type !== "ReplicaFailure" && condition.status === "False"),
+      (condition.type === "Progressing" && condition.status === "False"),
   );
   return {
     name,

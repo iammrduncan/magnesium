@@ -14,6 +14,7 @@ import {
   type RenderContext,
   renderDeployment,
   renderSecret,
+  secretFingerprint,
   renderService,
   renderVolume,
   SPOKE_APP,
@@ -47,6 +48,24 @@ export const make = (context: Omit<RenderContext, "namespace">) =>
     const apply = Effect.fn("Spokes.apply")(function* (input: SpokeApplyInput) {
       const { spec, secrets } = input;
       const names = spokeObjectNames(spec.name);
+      // The Secret as it will be: the one sent, or the one already there.
+      const secretData: Readonly<Record<string, string>> | null =
+        secrets !== null
+          ? renderSecret(spec, secrets, render).data
+          : yield* kube
+              .get({ group: CORE, resource: "secrets", name: names.secret })
+              .pipe(
+                Effect.map((found) =>
+                  found._tag === "Some" &&
+                  typeof found.value === "object" &&
+                  found.value !== null &&
+                  "data" in found.value &&
+                  typeof found.value.data === "object" &&
+                  found.value.data !== null
+                    ? (found.value.data as Record<string, string>)
+                    : null,
+                ),
+              );
       yield* kube.apply(
         { group: CORE, resource: "persistentvolumeclaims", name: names.volume },
         renderVolume(spec, render),
@@ -63,7 +82,7 @@ export const make = (context: Omit<RenderContext, "namespace">) =>
       );
       const deployment = yield* kube.apply(
         { group: APPS, resource: "deployments", name: names.deployment },
-        renderDeployment(spec, render),
+        renderDeployment(spec, render, secretData === null ? null : secretFingerprint(secretData)),
       );
       return (
         spokeStatusOf(deployment as DeploymentView) ?? {

@@ -157,6 +157,7 @@ export const detectSetup = Effect.fn("profiles.detectSetup")(function* (input: {
       fence,
       container,
       deployment,
+      runsAgents: env.MAGNESIUM_ROLE?.trim() !== "gateway",
       protect,
       serverPort: input.serverPort,
     },
