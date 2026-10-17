@@ -97,7 +97,7 @@ Provider logins work from inside the pod: Settings → Providers → **Sign in**
    - **Carry:**
      - `~/.magnesium/`, all of it (the database with its `-wal` and `-shm`, so copy with the server stopped);
      - Claude Code's `~/.claude/` and `~/.claude.json`, and a native install (`~/.local/share/claude/`, `~/.local/bin/claude`);
-     - Codex's `auth.json` and `config.toml` from `~/.codex/` (and any instructions files there), and its binary if it lives under `~/.local`. Carry `~/.codex/sessions/` only where Magnesium's threads use Codex and should keep their live context; without it an old Codex thread keeps its messages but starts its conversation fresh. Leave Codex's logs, log databases, archived sessions and caches, which can be gigabytes;
+     - Codex's `auth.json` and `config.toml` from `~/.codex/` (and any instructions files there), and its binary if it lives under `~/.local`. A harness installed outside the home, such as Codex as a global npm package, doesn't come along: install the same version into the new home's `~/.local` (`npm i -g --prefix ~/.local @openai/codex@<version>`), which comes first on the server's `PATH`. Carry `~/.codex/sessions/` only where Magnesium's threads use Codex and should keep their live context; without it an old Codex thread keeps its messages but starts its conversation fresh. Leave Codex's logs, log databases, archived sessions and caches, which can be gigabytes;
      - OpenCode's `~/.local/share/opencode/` and `~/.local/state/opencode/`;
      - `~/.gitconfig`;
      - every project folder outside `~/.magnesium`. Get the list from a copy of the database: `SELECT workspace_root FROM projection_projects WHERE deleted_at IS NULL`.
