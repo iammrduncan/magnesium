@@ -98,13 +98,13 @@ The operator bootstraps Magnesium's gateway there once. From then on Magnesium d
   - a server in a pod went by the pod's generated host name; it now goes by `MAGNESIUM_MACHINE`;
   - OpenCode instances starting together failed on "database is locked"; a start now tries again;
   - profile sync only knew the CLIs present when the server started, so one copied in later stayed broken until a restart; it now looks each run.
+- **One build on every server (2026-10-17):** the hub, a gateway, two machines attached to workloads and two on bare metal all run the same build, and Fleet shows none differing from the hub.
 - **Two builds of one commit on a host** (a host building for itself and for a hub that doesn't build) now wait for each other instead of the second refusing.
 
 ## Next steps
 
 1. Tests 4, 5 and 7 on attached machines, and the rollback (test 6) on a machine still on bare metal.
 2. Model keys reach attached and bare-metal machines from the hub (goal 30); until then a workload's deploy gives OpenCode its key.
-3. One build on every server.
-4. Then goal 24, upstream V2.
+3. Then goal 24, upstream V2.
 
 Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).
