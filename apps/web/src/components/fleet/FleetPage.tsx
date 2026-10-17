@@ -76,24 +76,29 @@ function MachineRow({
       )
       .finally(() => setPending(false));
   };
-  const place = describePlace(machine);
+  // Under the label: the hub's name for it, when that differs, and where it runs.
+  const subtitle = [
+    machine.name !== null && machine.name !== machine.label ? machine.name : null,
+    describePlace(machine),
+  ]
+    .filter((part) => part !== null)
+    .join(" · ");
   return (
     <li className="grid grid-cols-1 gap-x-4 gap-y-1 border-b border-border py-3 last:border-b-0 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_auto] sm:items-center">
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="truncate text-sm font-medium text-foreground">{machine.label}</span>
-        <Tooltip>
-          <TooltipTrigger render={<span className="inline-flex shrink-0" />}>
-            <Badge size="sm" variant={machine.kind === "hub" ? "info" : "outline"}>
-              {machine.kind}
-            </Badge>
-          </TooltipTrigger>
-          <TooltipPopup>{KIND_HINT[machine.kind]}</TooltipPopup>
-        </Tooltip>
-        {machine.name !== null && machine.name !== machine.label ? (
-          <span className="truncate text-xs text-muted-foreground">{machine.name}</span>
-        ) : null}
-        {place !== null ? (
-          <span className="shrink-0 text-xs text-muted-foreground">{place}</span>
+      <div className="flex min-w-0 flex-col">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-medium text-foreground">{machine.label}</span>
+          <Tooltip>
+            <TooltipTrigger render={<span className="inline-flex shrink-0" />}>
+              <Badge size="sm" variant={machine.kind === "hub" ? "info" : "outline"}>
+                {machine.kind}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipPopup>{KIND_HINT[machine.kind]}</TooltipPopup>
+          </Tooltip>
+        </div>
+        {subtitle !== "" ? (
+          <span className="truncate text-xs text-muted-foreground">{subtitle}</span>
         ) : null}
       </div>
       <span
