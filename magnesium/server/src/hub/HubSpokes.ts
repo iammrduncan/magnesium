@@ -344,8 +344,9 @@ export const make = Effect.gen(function* () {
       });
     }
     yield* FiberMap.remove(pairings, input.name);
-    // The way back out of attach: the record and the hub's access both go.
-    yield* machines.removeAccess(input.name).pipe(Effect.ignore);
+    // The way back out of attach: the record goes, and the hub's access with it
+    // unless the machine is going back to where it ran before.
+    if (!input.keepAccess) yield* machines.removeAccess(input.name).pipe(Effect.ignore);
     yield* saveAttached(known.filter((record) => record.name !== input.name));
     yield* machines.refresh(input.name);
   });

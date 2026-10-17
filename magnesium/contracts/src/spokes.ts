@@ -152,7 +152,14 @@ export const HubAttachInput = Schema.Struct({
 });
 export type HubAttachInput = typeof HubAttachInput.Type;
 
-export const HubDetachInput = Schema.Struct({ name: HubMachineName });
+export const HubDetachInput = Schema.Struct({
+  name: HubMachineName,
+  /**
+   * Keep the hub's access, for a machine going back to where it ran before (its
+   * bare metal, say), whose state accepts the same token.
+   */
+  keepAccess: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+});
 export type HubDetachInput = typeof HubDetachInput.Type;
 
 /** A model key's environment name, such as `LITELLM_API_KEY`. Its value is never sent back. */

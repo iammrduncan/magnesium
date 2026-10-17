@@ -431,6 +431,7 @@ function DetachDialog({
   readonly onDetached: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [keepAccess, setKeepAccess] = useState(false);
   const action = useAction(() => setOpen(false));
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -444,7 +445,14 @@ function DetachDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogPanel>
-          {action.error ? <p className="text-xs text-destructive">{action.error}</p> : null}
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={keepAccess}
+              onCheckedChange={(checked) => setKeepAccess(checked === true)}
+            />
+            Keep the hub's access, to move it back where it ran before
+          </label>
+          {action.error ? <p className="mt-2 text-xs text-destructive">{action.error}</p> : null}
         </DialogPanel>
         <DialogFooter>
           <Button
@@ -452,7 +460,7 @@ function DetachDialog({
             disabled={action.busy}
             onClick={() =>
               void action
-                .run(() => detachMachine(hubUrl(), machine.name))
+                .run(() => detachMachine(hubUrl(), machine.name, keepAccess))
                 .then((done) => (done ? onDetached() : undefined))
             }
           >

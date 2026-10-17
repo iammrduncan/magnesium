@@ -331,7 +331,7 @@ describe("machines attached to workloads", () => {
         .pipe(Effect.flip);
       expect(taken.detail).toContain("attached to a workload");
 
-      yield* hub.spokes.detach({ name: "cpu-host-2" });
+      yield* hub.spokes.detach({ name: "cpu-host-2", keepAccess: false });
       expect(hub.removedAccess).toEqual(["cpu-host-2"]);
       expect(yield* hub.spokes.attached).toEqual([]);
     }).pipe(Effect.scoped),
@@ -415,15 +415,19 @@ describe("machines found through their gateway", () => {
       hub.routed.push({ name: "cpu-host-2", workload: "display", paired: true, pairingCode: null });
       yield* hub.spokes.discover;
       // Still routed: its workload's deploy is the way out.
-      const refused = yield* hub.spokes.detach({ name: "cpu-host-2" }).pipe(Effect.flip);
+      const refused = yield* hub.spokes
+        .detach({ name: "cpu-host-2", keepAccess: false })
+        .pipe(Effect.flip);
       expect(refused.detail).toContain("still runs Magnesium");
 
       hub.routed.splice(0);
       yield* hub.spokes.discover;
       const [gone] = yield* hub.spokes.attached;
       expect(gone?.detail).toContain("no longer routes to it");
-      yield* hub.spokes.detach({ name: "cpu-host-2" });
+      // Going back to bare metal: the record goes, the hub's access stays.
+      yield* hub.spokes.detach({ name: "cpu-host-2", keepAccess: true });
       expect(yield* hub.spokes.attached).toEqual([]);
+      expect(hub.access.has("cpu-host-2")).toBe(true);
     }).pipe(Effect.scoped),
   );
 });

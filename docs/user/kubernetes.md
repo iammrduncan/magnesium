@@ -113,3 +113,5 @@ The machine shows in **Fleet** as "in notebook on <node>", and under **Attached 
 ### Taking it out
 
 Remove the init container, the wrapper, the environment and the route from the manifest, and apply it: the workload runs on as before. **Attached machines** then says its route has gone; choose **Detach** to let it go from the hub. While the workload still runs Magnesium, Detach refuses, since the hub would find it again.
+
+**Moving a machine back** to where it ran before, such as its bare metal: take Magnesium out of the workload, start the old server again, and Detach with **Keep the hub's access** ticked. The hub reaches it where it was, with the same access, and its threads up to the move.

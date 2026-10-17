@@ -64,8 +64,8 @@ export const listAttached = (pageUrl: string) =>
 export const attachMachine = (pageUrl: string, input: HubAttachInput) =>
   callHub(pageUrl, (client) => client[MAGNESIUM_WS_METHODS.hubAttach](input));
 
-export const detachMachine = (pageUrl: string, name: string) =>
-  callHub(pageUrl, (client) => client[MAGNESIUM_WS_METHODS.hubDetach]({ name }));
+export const detachMachine = (pageUrl: string, name: string, keepAccess: boolean) =>
+  callHub(pageUrl, (client) => client[MAGNESIUM_WS_METHODS.hubDetach]({ name, keepAccess }));
 
 /** An attached machine's row: how the hub reaches it, and whether it can yet. */
 export const describeAttached = (machine: HubAttached): string => {
