@@ -92,12 +92,18 @@ The operator bootstraps Magnesium's gateway there once. From then on Magnesium d
   - a change cut off when the hub restarted left a spoke with nothing running; a change now runs to the end.
 - **Direction (D59):** servers attach inside the workloads that do the work. The portable install, `magnesium-attach`, attached machines in Settings and Fleet's "in <workload> on <node>" are built, and CI attaches the image to a bare Debian image as a non-root uid on amd64 and arm64.
 - **Attached machines join by themselves:** an operator's deploy labels the route to a machine and, for a new one, leaves its one-time code beside the gateway. The hub asks its gateways every minute, attaches new machines, pairs once each answers, and has the gateway mark the route paired and delete the spent code. A machine whose route goes is shown as gone, never removed on its own.
+- **Two machines moved into workloads (2026-10-17):** a machine in Magnesium's own pod, and one on bare metal, each moved into an existing workload's pod with its name, threads and logins. The hub found each by itself within seconds of the workload starting, with no code (it kept its access), and marked its route paired. An agent there runs in the workload's own container, as its user, with the bundle's git where the image has none. What the moves found and fixed:
+  - the gateway's calls for attached machines needed a scope a paired hub doesn't hold (a test now checks every call the hub makes on a gateway);
+  - `cp -a` into the init container's volume fails as a non-root user; the bundle ships `magnesium-bundle-copy`, and CI copies as one;
+  - a server in a pod went by the pod's generated host name; it now goes by `MAGNESIUM_MACHINE`;
+  - OpenCode instances starting together failed on "database is locked"; a start now tries again;
+  - profile sync only knew the CLIs present when the server started, so one copied in later stayed broken until a restart; it now looks each run.
 - **Two builds of one commit on a host** (a host building for itself and for a hub that doesn't build) now wait for each other instead of the second refusing.
 
 ## Next steps
 
-1. Move a bare-metal machine into a workload with Magnesium attached, keeping its name and state; then a second, testing the rollback (test 6) before its bare metal goes.
-2. Tests 4, 5 and 7 on attached machines.
+1. Tests 4, 5 and 7 on attached machines, and the rollback (test 6) on a machine still on bare metal.
+2. Model keys reach attached and bare-metal machines from the hub (goal 30); until then a workload's deploy gives OpenCode its key.
 3. One build on every server.
 4. Shrink the image: each build takes about 5 GB on a node.
 5. Then goal 24, upstream V2.
