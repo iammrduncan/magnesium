@@ -24,6 +24,7 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as P from "effect/Predicate";
 import * as Ref from "effect/Ref";
+import * as Schedule from "effect/Schedule";
 import * as Result from "effect/Result";
 import * as Scope from "effect/Scope";
 import * as Schema from "effect/Schema";
@@ -660,7 +661,21 @@ const makeOpenCodeRuntime = Effect.gen(function* () {
       throwOnError: true,
     });
 
+  // magnesium: OpenCode instances on one machine share its data folder, and one that
+  // starts while another holds the database's lock exits "database is locked".
+  // Start it again shortly, a few times, rather than failing the provider.
   const startOpenCodeServerProcess: OpenCodeRuntimeShape["startOpenCodeServerProcess"] = (input) =>
+    startOpenCodeServerProcessOnce(input).pipe(
+      Effect.retry({
+        schedule: Schedule.exponential("250 millis"),
+        times: 4,
+        while: (error) => error.detail.includes("database is locked"),
+      }),
+    );
+
+  const startOpenCodeServerProcessOnce: OpenCodeRuntimeShape["startOpenCodeServerProcess"] = (
+    input,
+  ) =>
     Effect.gen(function* () {
       // Bind this server's lifetime to the caller's scope. When the caller's
       // scope closes, the spawned child is killed and all associated fibers

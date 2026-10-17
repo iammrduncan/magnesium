@@ -237,3 +237,71 @@ server.listen(0, "127.0.0.1", () => {
     10_000,
   );
 });
+
+// magnesium: OpenCode instances on one machine share a data folder; a start that
+// meets another's database lock tries again instead of failing the provider.
+describe("OpenCode server start", () => {
+  effectIt.live(
+    "tries again when another OpenCode holds the database's lock",
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const environment = yield* HostProcessEnvironment;
+        const executablePath = yield* HostProcessExecutablePath;
+        const platform = yield* HostProcessPlatform;
+        if (platform === "win32") return;
+        const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-opencode-locked-" });
+        const binaryPath = path.join(tempDir, "opencode");
+        const scriptPath = path.join(tempDir, "opencode.mjs");
+        const marker = path.join(tempDir, "first-start");
+
+        yield* fs.writeFileString(
+          scriptPath,
+          `import { existsSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
+if (!existsSync(process.env.T3_TEST_MARKER)) {
+  writeFileSync(process.env.T3_TEST_MARKER, "locked");
+  process.stderr.write("Error: Unexpected error database is locked\\n");
+  process.exit(1);
+}
+const server = createServer((request, response) => {
+  response.setHeader("Content-Type", "application/json");
+  response.end(JSON.stringify({ healthy: true, version: "1.14.19" }));
+});
+server.listen(0, "127.0.0.1", () => {
+  process.stdout.write("opencode server listening on http://127.0.0.1:" + server.address().port + "\\n");
+});
+`,
+        );
+        yield* fs.writeFileString(
+          binaryPath,
+          '#!/bin/sh\nexec "$T3_TEST_NODE_BINARY" "$T3_TEST_OPENCODE_SCRIPT" "$@"\n',
+        );
+        yield* fs.chmod(binaryPath, 0o755);
+
+        const runtime = yield* OpenCodeRuntime;
+        const server = yield* runtime.startOpenCodeServerProcess({
+          binaryPath,
+          directory: tempDir,
+          port: 0,
+          environment: {
+            ...environment,
+            T3_TEST_NODE_BINARY: executablePath,
+            T3_TEST_OPENCODE_SCRIPT: scriptPath,
+            T3_TEST_MARKER: marker,
+          },
+        });
+
+        expect(yield* fs.exists(marker)).toBe(true);
+        expect(yield* server.isRunning).toBe(true);
+      }).pipe(
+        Effect.scoped,
+        Effect.provide([
+          OpenCodeRuntimeLive.pipe(Layer.provideMerge(NodeServices.layer)),
+          FetchHttpClient.layer,
+        ]),
+      ),
+    10_000,
+  );
+});
