@@ -10,10 +10,10 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
-import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
-import type * as Rpc from "effect/unstable/rpc/Rpc";
-import * as RpcSerialization from "effect/unstable/rpc/RpcSerialization";
-import * as RpcServer from "effect/unstable/rpc/RpcServer";
+import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
+import type * as Rpc from "effect/rpc/Rpc";
+import * as RpcSerialization from "effect/rpc/RpcSerialization";
+import * as RpcServer from "effect/rpc/RpcServer";
 
 import { NOT_PAIRED_DETAIL, ServerPorts } from "../ports.ts";
 

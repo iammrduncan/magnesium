@@ -27,7 +27,7 @@ const DPOP_KEY_STORE_NAME = "keys";
 const DPOP_KEY_ID = "relay-dpop-proof-key";
 const decodeDpopPublicJwk = Schema.decodeUnknownEffect(DpopPublicJwk);
 
-export const browserCryptoLayer = Layer.succeed(
+export const layer = Layer.succeed(
   Crypto.Crypto,
   Crypto.make({
     randomBytes: (size) => globalThis.crypto.getRandomValues(new Uint8Array(size)),
@@ -160,7 +160,7 @@ export function createBrowserDpopProof(input: {
     normalizedUrl.search = "";
     normalizedUrl.hash = "";
     const jti = yield* Crypto.Crypto.pipe(
-      Effect.flatMap((crypto) => crypto.randomUUIDv4),
+      Effect.flatMap((crypto) => crypto.randomUUIDv4()),
       Effect.mapError((cause) => dpopError("Could not generate DPoP proof identifier.", cause)),
     );
     const proof = yield* Effect.tryPromise({

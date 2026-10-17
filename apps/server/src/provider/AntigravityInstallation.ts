@@ -1,11 +1,7 @@
 // @effect-diagnostics nodeBuiltinImport:off - Effect has no incremental digest or free-space query.
 import * as EffectNodeStream from "@effect/platform-node/NodeStream";
 import { ProviderDriverKind, type ProviderInstallState } from "@t3tools/contracts";
-import {
-  HostProcessArchitecture,
-  HostProcessEnvironment,
-  HostProcessPlatform,
-} from "@t3tools/shared/hostProcess";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import { resolveNodeExecutable, nodeRuntimeUnavailableMessage } from "@t3tools/shared/nodeRuntime";
 import * as Clock from "effect/Clock";
 import * as Cause from "effect/Cause";
@@ -19,18 +15,18 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
+import * as Schedule from "effect/Schedule";
 import * as Scope from "effect/Scope";
 import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 import * as SubscriptionRef from "effect/SubscriptionRef";
-import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
-import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
+import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http";
+import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 import * as NodeCrypto from "node:crypto";
 import * as NodeFSP from "node:fs/promises";
-import type * as NodeStream from "node:stream";
-import * as Yauzl from "yauzl";
 
-import { ServerConfig } from "../config.ts";
+import * as ServerConfig from "../config.ts";
+import { openZipArchive } from "../zipArchive.ts";
 import { makeAntigravityAcpRuntime } from "./acp/AntigravityAcpSupport.ts";
 import {
   buildAntigravityAcpSpawnInput,
@@ -111,7 +107,7 @@ export class AntigravityInstallation extends Context.Service<
   static readonly layer = Layer.effect(
     AntigravityInstallation,
     Effect.gen(function* () {
-      const config = yield* ServerConfig;
+      const config = yield* ServerConfig.ServerConfig;
       return yield* makeAntigravityInstallation({ baseDir: config.baseDir });
     }),
   );
@@ -148,121 +144,6 @@ function isRunning(state: ProviderInstallState) {
   );
 }
 
-/** Open only a verified local archive. Entries stay lazy and extraction stays bounded. */
-const openArchive = Effect.fn("AntigravityInstallation.openArchive")(function* (
-  archivePath: string,
-) {
-  const opened = yield* Effect.acquireRelease(
-    Effect.callback<
-      {
-        readonly zip: Yauzl.ZipFile;
-        readonly error: () => AntigravityInstallationError | undefined;
-        readonly close: Effect.Effect<void>;
-      },
-      AntigravityInstallationError
-    >((resume) => {
-      Yauzl.open(
-        archivePath,
-        { lazyEntries: true, autoClose: false, validateEntrySizes: true, strictFileNames: true },
-        (error, zip) => {
-          if (error || !zip) {
-            resume(
-              Effect.fail(
-                installationError("extract", "Could not open the verified archive.", error),
-              ),
-            );
-            return;
-          }
-          let closed = false;
-          let archiveError: AntigravityInstallationError | undefined;
-          zip.on("close", () => {
-            closed = true;
-          });
-          zip.on("error", (cause: unknown) => {
-            archiveError = installationError("extract", "The archive could not be read.", cause);
-          });
-          resume(
-            Effect.succeed({
-              zip,
-              error: () => archiveError,
-              close: Effect.callback<void>((finish) => {
-                if (closed) {
-                  finish(Effect.void);
-                  return;
-                }
-                const onClose = () => {
-                  zip.removeListener("error", onError);
-                  finish(Effect.void);
-                };
-                const onError = (cause: unknown) => {
-                  zip.removeListener("close", onClose);
-                  finish(
-                    Effect.die(installationError("extract", "Could not close the archive.", cause)),
-                  );
-                };
-                zip.once("close", onClose);
-                zip.once("error", onError);
-                zip.close();
-              }),
-            }),
-          );
-        },
-      );
-    }),
-    (opened) => opened.close,
-  );
-
-  const next = Effect.callback<Yauzl.Entry | null, AntigravityInstallationError>((resume) => {
-    const existingError = opened.error();
-    if (existingError) {
-      resume(Effect.fail(existingError));
-      return;
-    }
-    const cleanup = () => {
-      opened.zip.removeListener("entry", onEntry);
-      opened.zip.removeListener("end", onEnd);
-      opened.zip.removeListener("error", onError);
-    };
-    const onEntry = (entry: Yauzl.Entry) => {
-      cleanup();
-      resume(Effect.succeed(entry));
-    };
-    const onEnd = () => {
-      cleanup();
-      resume(Effect.succeed(null));
-    };
-    const onError = (cause: unknown) => {
-      cleanup();
-      resume(Effect.fail(installationError("extract", "The archive could not be read.", cause)));
-    };
-    opened.zip.once("entry", onEntry);
-    opened.zip.once("end", onEnd);
-    opened.zip.once("error", onError);
-    opened.zip.readEntry();
-    return Effect.sync(cleanup);
-  });
-
-  const streamEntry = (entry: Yauzl.Entry) =>
-    Effect.acquireRelease(
-      Effect.callback<NodeStream.Readable, AntigravityInstallationError>((resume) => {
-        opened.zip.openReadStream(entry, (cause, readable) => {
-          resume(
-            cause || !readable
-              ? Effect.fail(
-                  installationError("extract", "Could not read an archive member.", cause),
-                )
-              : Effect.succeed(readable),
-          );
-        });
-      }),
-      (readable) =>
-        Effect.sync(() => {
-          readable.destroy();
-        }),
-    );
-  return { entryCount: opened.zip.entryCount, next, streamEntry };
-});
-
 export const makeAntigravityInstallation = Effect.fn("AntigravityInstallation.make")(function* (
   options: AntigravityInstallationOptions,
 ) {
@@ -272,9 +153,9 @@ export const makeAntigravityInstallation = Effect.fn("AntigravityInstallation.ma
   const http = yield* HttpClient.HttpClient;
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
   const serviceScope = yield* Effect.scope;
-  const platform = yield* HostProcessPlatform;
-  const arch = yield* HostProcessArchitecture;
-  const environment = yield* HostProcessEnvironment;
+  const platform = yield* HostProcess.Platform;
+  const arch = yield* HostProcess.Architecture;
+  const environment = yield* HostProcess.Environment;
   const releaseAsset =
     options.releaseAsset === undefined
       ? resolveAntigravityReleaseAsset(platform, arch)
@@ -469,9 +350,23 @@ export const makeAntigravityInstallation = Effect.fn("AntigravityInstallation.ma
     options.validate ??
     Effect.fn("AntigravityInstallation.validate")(
       function* (executable: AntigravityExecutable, expectedVersion: string) {
-        const profileDirectory = yield* fs.makeTempDirectoryScoped({
-          prefix: "t3-antigravity-validate-",
-        });
+        const validationScope = yield* Effect.scope;
+        const profileDirectory = yield* Effect.acquireRelease(
+          fs.makeTempDirectory({ prefix: "t3-antigravity-validate-" }),
+          (directory) =>
+            fs.remove(directory, { recursive: true, force: true }).pipe(
+              // Windows may retain DLL handles briefly after taskkill returns.
+              Effect.retry({
+                times: platform === "win32" ? 10 : 0,
+                schedule: Schedule.spaced("100 millis"),
+                while: (error) =>
+                  error.reason._tag === "PermissionDenied" ||
+                  error.reason._tag === "Busy" ||
+                  error.reason._tag === "Unknown",
+              }),
+              Effect.orDie,
+            ),
+        );
         const profile = yield* prepareAntigravityProfile({
           profileDirectory,
           platform,
@@ -488,14 +383,31 @@ export const makeAntigravityInstallation = Effect.fn("AntigravityInstallation.ma
             baseEnv: environment,
           }),
           cwd: profileDirectory,
-          childProcessSpawner: spawner,
+          childProcessSpawner:
+            platform === "win32"
+              ? ChildProcessSpawner.make(
+                  Effect.fnUntraced(function* (command) {
+                    const child = yield* spawner.spawn(command);
+                    // Stop PyInstaller's tree before ACP closes its pipes. Once
+                    // the launcher exits, taskkill cannot reach its children,
+                    // which keep the executable and unpacked DLLs locked.
+                    yield* Scope.addFinalizer(
+                      validationScope,
+                      child.kill({ forceKillAfter: "1 second" }).pipe(Effect.orDie),
+                    );
+                    return child;
+                  }),
+                )
+              : spawner,
           clientInfo: { name: "t3-code", version: "0.0.0" },
         });
         const initialized = yield* runtime.initialize();
         if (
           initialized.agentInfo?.name !== "antigravity-acp" ||
           initialized.agentInfo.version !== expectedVersion ||
-          initialized.protocolVersion !== 1 ||
+          // Antigravity 1.1.1 can report 2 with the legacy ACP response shape.
+          // The ACP client chooses the session wire format from that shape.
+          (initialized.protocolVersion !== 1 && initialized.protocolVersion !== 2) ||
           initialized.agentCapabilities?.loadSession !== true ||
           !initialized.agentCapabilities.sessionCapabilities?.resume ||
           !initialized.agentCapabilities.auth?.logout ||
@@ -524,7 +436,7 @@ export const makeAntigravityInstallation = Effect.fn("AntigravityInstallation.ma
       yield* resolveNodeExecutable("Antigravity", environment).pipe(
         Effect.provideService(FileSystem.FileSystem, fs),
         Effect.provideService(Path.Path, path),
-        Effect.provideService(HostProcessPlatform, platform),
+        Effect.provideService(HostProcess.Platform, platform),
         Effect.mapError((cause) =>
           installationError("verify", nodeRuntimeUnavailableMessage("Antigravity"), cause),
         ),
@@ -663,7 +575,9 @@ export const makeAntigravityInstallation = Effect.fn("AntigravityInstallation.ma
 
       yield* report("extracting", "Extracting the verified runtime.");
       yield* Effect.gen(function* () {
-        const archive = yield* openArchive(archivePath);
+        const archive = yield* openZipArchive(archivePath, (detail, cause) =>
+          installationError("extract", detail, cause),
+        );
         if (archive.entryCount !== 2) {
           return yield* installationError(
             "extract",
@@ -804,7 +718,7 @@ export const makeAntigravityInstallation = Effect.fn("AntigravityInstallation.ma
             `Google does not publish an Antigravity runtime for ${platform}-${arch}. Use a supported remote environment or a custom executable.`,
           );
         }
-        const operationId = yield* crypto.randomUUIDv4;
+        const operationId = yield* crypto.randomUUIDv4();
         const next: ProviderInstallState = {
           driver: DRIVER,
           operationId,

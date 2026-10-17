@@ -3,7 +3,7 @@ import { AuthOrchestrationReadScope } from "@t3tools/contracts";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
+import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 
 import { connectMachine } from "../hub/machineRpc.ts";
 import { NOT_PAIRED_DETAIL, ServerPorts } from "../ports.ts";

@@ -7,7 +7,7 @@ import {
 import type { SandboxLevel, SandboxList } from "@magnesium/contracts";
 import type { EnvironmentId, ProviderInstanceId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
-import { FetchHttpClient } from "effect/unstable/http";
+import { FetchHttpClient } from "effect/http";
 import { BoxIcon, ShieldCheckIcon, ShieldOffIcon } from "lucide-react";
 import { memo, useMemo, useState } from "react";
 

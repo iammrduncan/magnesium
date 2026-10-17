@@ -1,12 +1,7 @@
 import * as NodeSocket from "@effect/platform-node/NodeSocket";
 import * as Effect from "effect/Effect";
-import {
-  HttpClient,
-  HttpClientRequest,
-  HttpServerRequest,
-  HttpServerResponse,
-} from "effect/unstable/http";
-import * as Socket from "effect/unstable/socket/Socket";
+import { HttpClient, HttpClientRequest, HttpServerRequest, HttpServerResponse } from "effect/http";
+import * as Socket from "effect/socket/Socket";
 
 /**
  * Passing a request on to another server, for the hub's proxy to its machines

@@ -11,7 +11,7 @@ import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
-import { Argument, Command, Flag } from "effect/unstable/cli";
+import { Argument, Command, Flag } from "effect/cli";
 
 import { InstanceSource, ProfilesConfig } from "../profiles/catalog.ts";
 import { detectSetup, wrapperCandidates } from "../profiles/setup.ts";

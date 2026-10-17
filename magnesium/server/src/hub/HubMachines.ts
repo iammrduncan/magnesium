@@ -19,7 +19,7 @@ import * as Ref from "effect/Ref";
 import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
-import { HttpClient } from "effect/unstable/http";
+import { HttpClient } from "effect/http";
 
 import { ServerPorts, type ServerPortError } from "../ports.ts";
 import * as MachineApi from "./machineApi.ts";

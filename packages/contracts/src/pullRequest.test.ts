@@ -1,3 +1,4 @@
+import { SourceControlProviderKind } from "./sourceControl.ts";
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -25,7 +26,7 @@ const LIST_RESULT: PullRequestListResult = {
   providers: [
     {
       host: "github.com",
-      kind: "github",
+      kind: SourceControlProviderKind.make("github"),
       searchesOnHost: true,
       projectCount: 1,
       configured: true,
@@ -33,7 +34,7 @@ const LIST_RESULT: PullRequestListResult = {
     },
     {
       host: "gitlab.com",
-      kind: "gitlab",
+      kind: SourceControlProviderKind.make("gitlab"),
       searchesOnHost: true,
       projectCount: 1,
       configured: false,
@@ -42,7 +43,7 @@ const LIST_RESULT: PullRequestListResult = {
   ],
   entries: [
     {
-      provider: "github",
+      provider: SourceControlProviderKind.make("github"),
       host: "github.com",
       projectId: "project-1" as PullRequestListResult["entries"][number]["projectId"],
       projectTitle: "t3code",
@@ -75,12 +76,16 @@ describe("PullRequestListResult", () => {
       canonicalKey: "forge.example/team/repo",
       locator: { remoteUrl: "http://forge.example:3000/team/repo.git" },
     };
-    expect(pullRequestHostOf(identity, "forgejo")).toBe("forge.example:3000");
-    expect(pullRequestHostOf(identity, "gitlab")).toBe("forge.example");
+    expect(pullRequestHostOf(identity, SourceControlProviderKind.make("forgejo"))).toBe(
+      "forge.example:3000",
+    );
+    expect(pullRequestHostOf(identity, SourceControlProviderKind.make("gitlab"))).toBe(
+      "forge.example",
+    );
     expect(
       pullRequestHostOf(
         { ...identity, locator: { remoteUrl: "ssh://git@forge.example:2222/team/repo.git" } },
-        "forgejo",
+        SourceControlProviderKind.make("forgejo"),
       ),
     ).toBe("forge.example");
   });
@@ -215,6 +220,16 @@ describe("leaving a merge for the host to make once it is ready", () => {
 });
 
 describe("reverting a merged pull request", () => {
+  it("carries a standalone branch deletion action", () => {
+    expect(
+      decodeAction({
+        projectId: "project-1",
+        repository: "acme/web",
+        number: 7,
+        action: "delete-branch",
+      }).action,
+    ).toBe("delete-branch");
+  });
   it("carries the revert action without merge options", () => {
     const action = decodeAction({
       projectId: "project-1",
@@ -255,6 +270,11 @@ describe("PullRequestCapabilities", () => {
 
   it("decodes a server that says nothing about reactions as a server with none", () => {
     expect(decodeCapabilities(base).reactions).toBeUndefined();
+  });
+
+  it("only offers branch deletion when the server advertises it", () => {
+    expect(decodeCapabilities(base).deleteBranch).toBeUndefined();
+    expect(decodeCapabilities({ ...base, deleteBranch: true }).deleteBranch).toBe(true);
   });
 });
 

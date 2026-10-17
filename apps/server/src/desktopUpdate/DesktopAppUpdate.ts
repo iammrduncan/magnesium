@@ -15,7 +15,7 @@ import * as Ref from "effect/Ref";
 import * as Result from "effect/Result";
 import * as Stream from "effect/Stream";
 
-import { ServerConfig } from "../config.ts";
+import * as ServerConfig from "../config.ts";
 import * as DesktopTelemetryReceiver from "../resourceTelemetry/DesktopTelemetryReceiver.ts";
 
 /** Backstop for a desktop updater that hangs without ever reporting a
@@ -63,7 +63,7 @@ export class DesktopAppUpdate extends Context.Service<
 >()("t3/desktopUpdate/DesktopAppUpdate") {}
 
 export const make = Effect.fn("desktopUpdate.desktopAppUpdate.make")(function* () {
-  const config = yield* ServerConfig;
+  const config = yield* ServerConfig.ServerConfig;
   const crypto = yield* Crypto.Crypto;
   const receiver = yield* DesktopTelemetryReceiver.DesktopTelemetryReceiver;
   const inFlight = yield* Ref.make(false);
@@ -156,11 +156,13 @@ export const make = Effect.fn("desktopUpdate.desktopAppUpdate.make")(function* (
 
       return yield* Effect.scoped(
         Effect.gen(function* () {
-          const requestId = yield* crypto.randomUUIDv4.pipe(
-            Effect.mapError((error) =>
-              failWith("Could not generate a desktop update request id.", error),
-            ),
-          );
+          const requestId = yield* crypto
+            .randomUUIDv4()
+            .pipe(
+              Effect.mapError((error) =>
+                failWith("Could not generate a desktop update request id.", error),
+              ),
+            );
           // Subscribe before sending the request so a fast first report
           // cannot be missed.
           const { changes } = yield* receiver.desktopUpdates;

@@ -37,8 +37,8 @@ import {
   HttpServer,
   HttpServerRequest,
   HttpServerResponse,
-} from "effect/unstable/http";
-import type * as NetAddress from "effect/unstable/net/NetAddress";
+} from "effect/http";
+import type * as NetAddress from "effect/net/NetAddress";
 
 import { routesLayer } from "./index.ts";
 import {

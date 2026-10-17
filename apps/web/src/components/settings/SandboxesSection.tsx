@@ -2,7 +2,7 @@
 import { type HubMachine, hubEnvironmentBasePath, type SandboxList } from "@magnesium/contracts";
 import { fetchHubMachines, fetchSandboxes, runHubRequest } from "@magnesium/web";
 import * as Effect from "effect/Effect";
-import { FetchHttpClient } from "effect/unstable/http";
+import { FetchHttpClient } from "effect/http";
 import { useEffect, useState } from "react";
 
 import { Badge } from "../ui/badge";

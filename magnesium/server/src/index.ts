@@ -1,7 +1,7 @@
 // Magnesium's server features: routes, workers and its own database (doc 11).
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
-import { HttpRouter } from "effect/unstable/http";
+import { HttpRouter } from "effect/http";
 
 import * as MagnesiumDb from "./db/MagnesiumDb.ts";
 import * as Fleet from "./fleet/Fleet.ts";

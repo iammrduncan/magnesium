@@ -17,7 +17,7 @@ import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
-import { HttpClient, HttpClientResponse, HttpRouter } from "effect/unstable/http";
+import { HttpClient, HttpClientResponse, HttpRouter } from "effect/http";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 
 import { routesLayer } from "../index.ts";

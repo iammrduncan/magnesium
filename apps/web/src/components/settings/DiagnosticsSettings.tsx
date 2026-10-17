@@ -1,13 +1,12 @@
 import { ProcessSignalActions } from "./ProcessSignalActions";
+import { resolveUsageAccess } from "@t3tools/client-runtime/state/usage-access";
+import { environmentSession } from "../../state/session";
+import { AuthOrchestrationOperateScope } from "@t3tools/contracts";
+import { readEnvironmentScope, useEnvironmentScope } from "../../state/session";
+import { AuthEnvironmentMaintainScope } from "@t3tools/contracts";
 import { RefreshIcon } from "~/components/ui/refresh-icon";
-import {
-  AlertTriangleIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-  CopyIcon,
-  FolderOpenIcon,
-  InfoIcon,
-} from "lucide-react";
+import { AlertTriangleIcon, CopyIcon, FolderOpenIcon, InfoIcon } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
@@ -23,13 +22,13 @@ import * as Option from "effect/Option";
 
 import { cn } from "../../lib/utils";
 import { ensureLocalApi } from "../../localApi";
-import { resolveAndPersistPreferredEditor } from "../../editorPreferences";
+import { useOpenInPreferredEditor } from "../../editorPreferences";
 import { formatRelativeTimeLabel, getRelativeTimeState } from "../../timestampFormat";
 import { useEnvironmentQuery } from "../../state/query";
 import { serverEnvironment } from "../../state/server";
-import { shellEnvironment } from "../../state/shell";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
 import { Button } from "../ui/button";
+import { MorphIcon } from "~/components/MorphIcon";
 import { ScrollArea } from "../ui/scroll-area";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
@@ -39,6 +38,7 @@ import { ResourceTelemetryDiagnostics } from "./ResourceTelemetryDiagnostics";
 import { SettingsPageContainer, SettingsSection, useRelativeTimeTick } from "./settingsLayout";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { useSettingsScope } from "./SettingsScopeContext";
+import { TelemetryExportSettings } from "./TelemetryExportSettings";
 
 const NUMBER_FORMAT = new Intl.NumberFormat();
 
@@ -268,7 +268,6 @@ function ProcessNameCell({
 }) {
   const name = formatProcessName(process.command);
   const hasChildren = process.childPids.length > 0;
-  const ChevronIcon = isExpanded ? ChevronDownIcon : ChevronRightIcon;
 
   return (
     <div
@@ -282,7 +281,7 @@ function ProcessNameCell({
           aria-label={isExpanded ? `Collapse ${name}` : `Expand ${name}`}
           onClick={() => onToggle(process.pid)}
         >
-          <ChevronIcon className="size-3.5" />
+          <MorphIcon className="size-3.5" icon={isExpanded ? ChevronDown : ChevronRight} />
         </Button>
       ) : (
         <span className="size-5 shrink-0" aria-hidden="true" />
@@ -302,11 +301,13 @@ function ProcessNameCell({
 
 function ProcessDiagnosticsTable({
   processes,
+  canMaintainEnvironment,
   signalingPid,
   onSignal,
   emptyLabel,
 }: {
   processes: ReadonlyArray<ServerProcessDiagnosticsEntry>;
+  canMaintainEnvironment: boolean;
   signalingPid: number | null;
   onSignal: (pid: number, signal: ServerProcessSignal) => void;
   emptyLabel?: string;
@@ -414,7 +415,7 @@ function ProcessDiagnosticsTable({
                 </td>
                 <td className="p-2 align-middle sm:pr-4">
                   <ProcessSignalActions
-                    disabled={signalingPid === process.pid}
+                    disabled={!canMaintainEnvironment || signalingPid === process.pid}
                     onSignal={(signal) => onSignal(process.pid, signal)}
                   />
                 </td>
@@ -716,20 +717,29 @@ export function DiagnosticsSettingsPanel() {
   // The boundary only mounts this page when the selection resolves to one
   // connected environment, so the representative is the one to inspect.
   const environmentId = environment?.environmentId ?? null;
+  const canMaintainEnvironment = useEnvironmentScope(environmentId, AuthEnvironmentMaintainScope);
   const observability = environment?.serverConfig?.observability;
   const availableEditors = environment?.serverConfig?.availableEditors;
+  const canOpenHostEditor = useEnvironmentScope(environmentId, AuthOrchestrationOperateScope);
+  const session = useEnvironmentQuery(
+    environmentId === null ? null : environmentSession.sessionStateAtom(environmentId),
+  );
+  const diagnosticsAccess = resolveUsageAccess({
+    connectionPhase: environment?.connection.phase ?? "available",
+    session: session.data,
+    hasSessionError: session.error !== null,
+  });
+  const canReadDiagnostics = diagnosticsAccess.canReadDiagnostics;
   const signalServerProcess = useAtomCommand(serverEnvironment.signalProcess, {
     reportFailure: false,
   });
-  const openInEditor = useAtomCommand(shellEnvironment.openInEditor, {
-    reportFailure: false,
-  });
+  const openInEditor = useOpenInPreferredEditor(environmentId, availableEditors ?? []);
   const [resourceWindowMs, setResourceWindowMs] = useState(15 * 60_000);
   const selectedResourceWindow =
     RESOURCE_HISTORY_WINDOWS.find((option) => option.windowMs === resourceWindowMs) ??
     RESOURCE_HISTORY_WINDOWS[1];
   const { data, error, isPending, refresh } = useEnvironmentQuery(
-    environmentId === null
+    environmentId === null || !canReadDiagnostics
       ? null
       : serverEnvironment.traceDiagnostics({ environmentId, input: {} }),
   );
@@ -739,7 +749,7 @@ export function DiagnosticsSettingsPanel() {
     isPending: isProcessPending,
     refresh: refreshProcesses,
   } = useEnvironmentQuery(
-    environmentId === null
+    environmentId === null || !canReadDiagnostics
       ? null
       : serverEnvironment.processDiagnostics({ environmentId, input: {} }),
   );
@@ -749,7 +759,7 @@ export function DiagnosticsSettingsPanel() {
     isPending: isResourcePending,
     refresh: refreshResources,
   } = useEnvironmentQuery(
-    environmentId === null
+    environmentId === null || !canReadDiagnostics
       ? null
       : serverEnvironment.processResourceHistory({
           environmentId,
@@ -779,26 +789,17 @@ export function DiagnosticsSettingsPanel() {
     const logsDirectoryPath = observability?.logsDirectoryPath ?? null;
     if (!logsDirectoryPath) return;
 
-    const editor = resolveAndPersistPreferredEditor(availableEditors ?? []);
-    if (!editor) {
-      setOpenLogsDirectoryError("No available editors found.");
-      return;
-    }
-    if (environmentId === null) {
-      setOpenLogsDirectoryError("No environment is selected.");
+    if (
+      environmentId === null ||
+      !readEnvironmentScope(environmentId, AuthOrchestrationOperateScope)
+    ) {
       return;
     }
 
     setIsOpeningLogsDirectory(true);
     setOpenLogsDirectoryError(null);
     void (async () => {
-      const result = await openInEditor({
-        environmentId,
-        input: {
-          cwd: logsDirectoryPath,
-          editor,
-        },
-      });
+      const result = await openInEditor(logsDirectoryPath);
       setIsOpeningLogsDirectory(false);
       if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
         const error = squashAtomCommandFailure(result);
@@ -807,15 +808,34 @@ export function DiagnosticsSettingsPanel() {
         );
       }
     })();
-  }, [availableEditors, environmentId, observability?.logsDirectoryPath, openInEditor]);
+  }, [environmentId, observability?.logsDirectoryPath, openInEditor]);
 
   const isInitialLoading = isPending && data === null;
   const isProcessInitialLoading = isProcessPending && processData === null;
+  const isResourceInitialLoading = isResourcePending && resourceData === null;
+  // The export form waits for each environment's first tables so a search target below them
+  // stays in view. Later loads, such as a new resource window, must not remount it and drop drafts.
+  const [exportFormEnvironmentId, setExportFormEnvironmentId] =
+    useState<typeof environmentId>(null);
+  if (
+    exportFormEnvironmentId !== environmentId &&
+    canReadDiagnostics &&
+    !isInitialLoading &&
+    !isProcessInitialLoading &&
+    !isResourceInitialLoading
+  ) {
+    setExportFormEnvironmentId(environmentId);
+  }
   const signalProcess = useCallback(
     async (pid: number, signal: ServerProcessSignal) => {
       const targetEnvironmentId = environmentIdRef.current;
       const process = processDataRef.current?.processes.find((entry) => entry.pid === pid);
-      if (targetEnvironmentId === null || process === undefined) return;
+      if (
+        targetEnvironmentId === null ||
+        process === undefined ||
+        !readEnvironmentScope(targetEnvironmentId, AuthEnvironmentMaintainScope)
+      )
+        return;
       if (signalingPidRef.current !== null) return;
       signalingPidRef.current = pid;
       setSignalingPid(pid);
@@ -844,7 +864,12 @@ export function DiagnosticsSettingsPanel() {
           return;
         }
       }
-      if (environmentIdRef.current !== targetEnvironmentId) {
+      const currentEnvironmentId = environmentIdRef.current;
+      if (
+        currentEnvironmentId === null ||
+        currentEnvironmentId !== targetEnvironmentId ||
+        !readEnvironmentScope(currentEnvironmentId, AuthEnvironmentMaintainScope)
+      ) {
         clearSignaling();
         return;
       }
@@ -907,6 +932,20 @@ export function DiagnosticsSettingsPanel() {
     ? Option.getOrElse(data.partialFailure, () => false)
     : false;
 
+  if (!canReadDiagnostics) {
+    return (
+      <SettingsPageContainer>
+        <p className="text-sm text-muted-foreground">
+          {environmentId === null
+            ? "Connect an environment to see diagnostics."
+            : diagnosticsAccess.isPending
+              ? "Checking diagnostics access…"
+              : diagnosticsAccess.error}
+        </p>
+      </SettingsPageContainer>
+    );
+  }
+
   return (
     <SettingsPageContainer width="expanded" className="gap-10">
       <ResourceTelemetryDiagnostics environmentId={environmentId} />
@@ -962,6 +1001,7 @@ export function DiagnosticsSettingsPanel() {
         ) : null}
         <ProcessDiagnosticsTable
           processes={processData?.processes ?? []}
+          canMaintainEnvironment={canMaintainEnvironment}
           signalingPid={signalingPid}
           onSignal={signalProcess}
           emptyLabel={
@@ -998,11 +1038,17 @@ export function DiagnosticsSettingsPanel() {
           <StatBlock
             label="Samples"
             value={resourceData ? formatCount(resourceData.retainedSampleCount) : "..."}
-            tooltip="In-memory process samples retained by the server. This resets when the server restarts."
+            tooltip="In-memory process samples retained by the server. The server samples only while diagnostics is open, and this resets when the server restarts."
           />
           <StatBlock
             label="Interval"
-            value={resourceData ? formatDuration(resourceData.sampleIntervalMs) : "..."}
+            value={
+              resourceData
+                ? resourceData.sampleIntervalMs === 0
+                  ? "On demand"
+                  : formatDuration(resourceData.sampleIntervalMs)
+                : "..."
+            }
           />
           <StatBlock
             label="Processes"
@@ -1029,7 +1075,7 @@ export function DiagnosticsSettingsPanel() {
         <ProcessResourceHistoryTable
           processes={resourceData?.topProcesses ?? []}
           emptyLabel={
-            isResourcePending && resourceData === null
+            isResourceInitialLoading
               ? "Collecting process resource samples..."
               : "No process resource samples found for this window."
           }
@@ -1047,7 +1093,11 @@ export function DiagnosticsSettingsPanel() {
                   <Button
                     size="icon-xs"
                     variant="ghost-muted"
-                    disabled={!observability?.logsDirectoryPath || isOpeningLogsDirectory}
+                    disabled={
+                      !canOpenHostEditor ||
+                      !observability?.logsDirectoryPath ||
+                      isOpeningLogsDirectory
+                    }
                     onClick={openLogsDirectory}
                     aria-label="Open logs folder"
                   >
@@ -1301,6 +1351,7 @@ export function DiagnosticsSettingsPanel() {
           <EmptyRows label={isInitialLoading ? "Loading span names..." : "No spans found."} />
         )}
       </SettingsSection>
+      {exportFormEnvironmentId === environmentId && <TelemetryExportSettings />}
     </SettingsPageContainer>
   );
 }

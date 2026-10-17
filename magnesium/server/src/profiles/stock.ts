@@ -1,5 +1,6 @@
 import { isManagedInstanceId, nativeTwinInstanceId } from "@magnesium/contracts";
 import {
+  isUnconfiguredDefaultInstanceEnabled,
   ProviderDriverKind,
   type ProviderInstanceConfig,
   type ProviderInstanceEnvironmentVariable,
@@ -26,6 +27,17 @@ const FENCED_DRIVERS: Record<string, { readonly binary: string; readonly label: 
   opencode: { binary: "opencode", label: "OpenCode" },
 };
 const MAGNESIUM_ENV = /^MAGNESIUM_/;
+/** Upstream's built-in drivers, each with a default instance of the same id. */
+const BUILT_IN_DRIVERS = [
+  "claudeAgent",
+  "codex",
+  "opencode",
+  "cursor",
+  "grok",
+  "muse",
+  "pi",
+  "antigravity",
+] as const;
 
 const configOf = (instance: ProviderInstanceConfig): Record<string, unknown> =>
   Predicate.isObject(instance.config) ? (instance.config as Record<string, unknown>) : {};
@@ -51,7 +63,9 @@ const agentsOff = (settings: ServerSettings): Record<string, ProviderInstanceCon
   for (const [id, instance] of Object.entries(settings.providerInstances)) {
     next[id] = { ...instance, enabled: false };
   }
-  for (const driver of Object.keys(settings.providers)) {
+  // Codex and Claude run as their drivers' defaults with no entry at all; the rest stay off.
+  for (const driver of BUILT_IN_DRIVERS) {
+    if (!isUnconfiguredDefaultInstanceEnabled(ProviderInstanceId.make(driver))) continue;
     next[driver] ??= { driver: ProviderDriverKind.make(driver), enabled: false };
   }
   return next;
@@ -76,23 +90,13 @@ export const desiredInstances = (input: {
   for (const [id, instance] of Object.entries(settings.providerInstances)) {
     if (!isManagedInstanceId(id)) next[id] = instance;
   }
-  // A stock driver with no explicit instance runs as its legacy default; make it explicit to fence it.
+  // A stock driver with no explicit instance runs as its default (Codex and Claude do,
+  // when installed); make it explicit to fence it.
   for (const [driver, info] of Object.entries(FENCED_DRIVERS)) {
     if (next[driver] !== undefined) continue;
-    const legacy = (settings.providers as Record<string, unknown>)[driver];
-    if (!Predicate.isObject(legacy)) continue;
-    const { enabled, ...config } = legacy as Record<string, unknown>;
-    if (enabled !== true) continue;
-    if (
-      !input.installed(
-        typeof config.binaryPath === "string" && config.binaryPath
-          ? config.binaryPath
-          : info.binary,
-      )
-    ) {
-      continue;
-    }
-    next[driver] = { driver: ProviderDriverKind.make(driver), enabled: true, config };
+    if (!isUnconfiguredDefaultInstanceEnabled(ProviderInstanceId.make(driver))) continue;
+    if (!input.installed(info.binary)) continue;
+    next[driver] = { driver: ProviderDriverKind.make(driver), enabled: true, config: {} };
   }
 
   const fencedWrapper =

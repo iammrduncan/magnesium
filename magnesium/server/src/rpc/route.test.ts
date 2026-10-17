@@ -11,11 +11,11 @@ import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
-import { Headers } from "effect/unstable/http";
-import * as Rpc from "effect/unstable/rpc/Rpc";
-import * as RpcGroup from "effect/unstable/rpc/RpcGroup";
-import { RequestId } from "effect/unstable/rpc/RpcMessage";
-import type * as RpcMiddleware from "effect/unstable/rpc/RpcMiddleware";
+import { Headers } from "effect/http";
+import * as Rpc from "effect/rpc/Rpc";
+import * as RpcGroup from "effect/rpc/RpcGroup";
+import { RequestId } from "effect/rpc/RpcMessage";
+import type * as RpcMiddleware from "effect/rpc/RpcMiddleware";
 import * as Schema from "effect/Schema";
 
 import { startTestServer } from "../testing.ts";

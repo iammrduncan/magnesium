@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { ExecutionEnvironmentDescriptor } from "./environment.ts";
 import {
+  OtlpEndpointCheckInput,
   resolveEnvironmentMachineKind,
   ServerConfig,
   ServerObservability,
@@ -31,6 +32,21 @@ const baseProviderSnapshot = {
 };
 
 describe("ServerProvider", () => {
+  it.each([undefined, true, false])("decodes workspace command discovery pending=%s", (pending) => {
+    const workspace = {
+      cwd: "/workspace/project",
+      checkedAt: baseProviderSnapshot.checkedAt,
+      slashCommands: [{ name: "compact" }],
+      ...(pending === undefined ? {} : { slashCommandsPending: pending }),
+      skills: [{ name: "project", path: "/workspace/project/SKILL.md", enabled: true }],
+    };
+    const parsed = decodeServerProvider({
+      ...baseProviderSnapshot,
+      workspaceSnapshots: [workspace],
+    });
+    expect(parsed.workspaceSnapshots).toEqual([workspace]);
+  });
+
   it("defaults capability arrays when decoding provider snapshots", () => {
     const parsed = decodeServerProvider({
       instanceId: "codex",
@@ -43,11 +59,13 @@ describe("ServerProvider", () => {
         status: "authenticated",
       },
       checkedAt: "2026-04-10T00:00:00.000Z",
+      supportedRuntimeModes: ["approval-required", "future-mode", "full-access"],
       models: [],
     });
 
     expect(parsed.slashCommands).toEqual([]);
     expect(parsed.skills).toEqual([]);
+    expect(parsed.supportedRuntimeModes).toEqual(["approval-required", "full-access"]);
     expect(parsed.versionAdvisory).toBeUndefined();
     expect(parsed.updateState).toBeUndefined();
   });
@@ -247,5 +265,18 @@ describe("resolveEnvironmentMachineKind", () => {
     expect(
       resolveEnvironmentMachineKind({ environment: parsed, settings: decodeSettings({}) }),
     ).toBe("server");
+  });
+});
+
+describe("OtlpEndpointCheckInput", () => {
+  const decode = Schema.decodeUnknownSync(OtlpEndpointCheckInput);
+
+  it("accepts HTTP receivers only", () => {
+    expect(decode({ signal: "traces", url: "https://collector.example.com/v1/traces" }).url).toBe(
+      "https://collector.example.com/v1/traces",
+    );
+    for (const url of ["data:text/plain,ok", "file:///etc/hosts", "collector:4318/v1/traces"]) {
+      expect(() => decode({ signal: "traces", url })).toThrow();
+    }
   });
 });

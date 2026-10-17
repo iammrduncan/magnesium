@@ -16,7 +16,7 @@ import type * as Effect from "effect/Effect";
 import type * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import type * as Stream from "effect/Stream";
-import type { HttpServerRequest } from "effect/unstable/http";
+import type { HttpServerRequest } from "effect/http";
 
 /** The server's threads, read from its projections. */
 export interface ThreadPorts {

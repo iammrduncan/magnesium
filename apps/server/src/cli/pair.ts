@@ -11,6 +11,7 @@
  */
 import {
   AuthAdministrativeScopes, // magnesium: pair --admin
+  type AuthEnvironmentScope,
   AuthStandardClientScopes,
   ExecutionEnvironmentDescriptor,
   PortSchema,
@@ -33,13 +34,8 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as References from "effect/References";
 import * as Schema from "effect/Schema";
-import { Command, Flag, GlobalFlag } from "effect/unstable/cli";
-import {
-  FetchHttpClient,
-  HttpClient,
-  HttpClientRequest,
-  HttpClientResponse,
-} from "effect/unstable/http";
+import { Command, Flag, GlobalFlag } from "effect/cli";
+import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http";
 
 import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
 import * as ServerConfig from "../config.ts";
@@ -57,6 +53,7 @@ import {
   renderTerminalQrCode,
   resolveHeadlessConnectionString,
 } from "../startupAccess.ts";
+import { authScopesFlag } from "./authScopes.ts";
 import { baseDirFlag, DurationFromString } from "./config.ts";
 
 const WELL_KNOWN_ENVIRONMENT_PATH = "/.well-known/t3/environment";
@@ -341,6 +338,8 @@ const makePairServerConfig = Effect.fn(function* (input: {
     startupPresentation: "headless",
     desktopBootstrapToken: undefined,
     desktopTelemetryFd: undefined,
+    desktopBrowserFd: undefined,
+    desktopBrowserControlFd: undefined,
     desktopTelemetryControlFd: undefined,
     resourceMonitorPath: undefined,
     autoBootstrapProjectFromCwd: false,
@@ -430,21 +429,21 @@ const resolveTailscalePairingBase = Effect.fn("pair.resolveTailscalePairingBase"
 
 const mintPairingLink = Effect.fn("pair.mintPairingLink")(function* (input: {
   readonly config: ServerConfig.ServerConfig["Service"];
+  readonly scopes: ReadonlyArray<AuthEnvironmentScope>;
   readonly ttl: Option.Option<Duration.Duration>;
   readonly label: Option.Option<string>;
-  readonly admin: boolean; // magnesium: pair --admin and --base-url (doc 11)
 }) {
   return yield* Effect.gen(function* () {
     const environmentAuth = yield* EnvironmentAuth.EnvironmentAuth;
     return yield* environmentAuth.createPairingLink({
-      scopes: input.admin ? AuthAdministrativeScopes : AuthStandardClientScopes, // magnesium: pair --admin and --base-url (doc 11)
+      scopes: input.scopes,
       subject: "one-time-token",
       label: Option.getOrElse(input.label, () => "t3 pair"),
       ...(Option.isSome(input.ttl) ? { ttl: input.ttl.value } : {}),
     });
   }).pipe(
     Effect.provide(
-      EnvironmentAuth.runtimeLayer.pipe(
+      EnvironmentAuth.layerRuntime.pipe(
         Layer.provide(ServerConfig.layer(input.config)),
         Layer.provide(Layer.succeed(References.MinimumLogLevel, input.config.logLevel)),
       ),
@@ -494,6 +493,7 @@ const tailscaleServePortFlag = Flag.Int("tailscale-serve-port").pipe(
 
 export const pairCommand = Command.make("pair", {
   baseDir: baseDirFlag,
+  scopes: authScopesFlag(AuthStandardClientScopes),
   ttl: ttlFlag,
   label: labelFlag,
   admin: adminFlag, // magnesium: pair --admin and --base-url (doc 11)
@@ -541,9 +541,9 @@ export const pairCommand = Command.make("pair", {
       const config = yield* makePairServerConfig({ target, logLevel });
       const issued = yield* mintPairingLink({
         config,
+        scopes: flags.admin ? AuthAdministrativeScopes : flags.scopes, // magnesium: pair --admin (doc 11)
         ttl: flags.ttl,
         label: flags.label,
-        admin: flags.admin, // magnesium: pair --admin and --base-url (doc 11)
       });
       const pairingUrl = buildPairingUrl(pairingBaseUrl, issued.credential);
 

@@ -3,16 +3,23 @@ import * as AcpError from "./errors.ts";
 import * as Effect from "effect/Effect";
 import * as Deferred from "effect/Deferred";
 import * as Fiber from "effect/Fiber";
+import * as Exit from "effect/Exit";
+import * as Logger from "effect/Logger";
 import * as Queue from "effect/Queue";
+import * as References from "effect/References";
 import * as Schema from "effect/Schema";
+import * as Scope from "effect/Scope";
+import * as Sink from "effect/Sink";
+import * as Stdio from "effect/Stdio";
 import * as Stream from "effect/Stream";
 import * as Ref from "effect/Ref";
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
+import * as TestClock from "effect/testing/TestClock";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
 import { it, assert } from "@effect/vitest";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 
-import * as AcpSchema from "./_generated/schema.gen.ts";
+import * as AcpSchema from "./schema.ts";
 import * as AcpProtocol from "./protocol.ts";
 import {
   encodeJsonl,
@@ -31,8 +38,8 @@ const SessionUpdateNotification = jsonRpcNotification(
   AcpSchema.SessionNotification,
 );
 const ElicitationCompleteNotification = jsonRpcNotification(
-  "session/elicitation/complete",
-  AcpSchema.ElicitationCompleteNotification,
+  "elicitation/complete",
+  AcpSchema.CompleteElicitationNotification,
 );
 const RequestPermissionRequest = jsonRpcRequest(
   "session/request_permission",
@@ -49,6 +56,14 @@ const decodeExtResponse = Schema.decodeEffect(Schema.fromJsonString(ExtResponse)
 const decodeRequestPermissionResponse = Schema.decodeEffect(
   Schema.fromJsonString(RequestPermissionResponse),
 );
+const decodeJsonRpcRequestId = Schema.decodeEffect(
+  Schema.fromJsonString(Schema.Struct({ id: Schema.Number })),
+);
+const JsonRpcErrorResponse = Schema.Struct({
+  jsonrpc: Schema.Literal("2.0"),
+  id: Schema.Number,
+  error: Schema.Struct({ code: Schema.Number, message: Schema.String }),
+});
 const encodeUnknownJsonString = Schema.encodeUnknownSync(Schema.fromJsonString(Schema.Unknown));
 const encoder = new TextEncoder();
 const mockPeerPath = Effect.map(Effect.service(Path.Path), (path) =>
@@ -122,7 +137,7 @@ it.layer(NodeServices.layer)("effect-acp protocol", (it) => {
           input,
           yield* encodeJsonl(ElicitationCompleteNotification, {
             jsonrpc: "2.0",
-            method: "session/elicitation/complete",
+            method: "elicitation/complete",
             params: {
               elicitationId: "elicitation-1",
             },
@@ -170,18 +185,156 @@ it.layer(NodeServices.layer)("effect-acp protocol", (it) => {
     }),
   );
 
-  it.effect("keeps invalid core notification values only in the schema cause", () =>
+  it.effect("decodes standard JSON-RPC errors into typed ACP request failures", () =>
+    Effect.gen(function* () {
+      const { stdio, input, output } = yield* makeInMemoryStdio();
+      const transport = yield* AcpProtocol.makeAcpPatchedProtocol({
+        stdio,
+        serverRequestMethods: new Set(),
+      });
+
+      const request = yield* transport.request("x/auth", {}).pipe(Effect.forkScoped);
+      const outbound = yield* decodeJsonRpcRequestId(yield* Queue.take(output));
+      yield* Queue.offer(
+        input,
+        yield* encodeJsonl(JsonRpcErrorResponse, {
+          jsonrpc: "2.0",
+          id: outbound.id,
+          error: { code: -32000, message: "Authentication required" },
+        }),
+      );
+
+      const error = yield* Fiber.join(request).pipe(Effect.flip, Effect.orDie);
+      assert.instanceOf(error, AcpError.AcpRequestError);
+      assert.equal(error.code, -32000);
+      assert.equal(error.message, "Authentication required");
+    }),
+  );
+
+  // clanka once sent a usage_update without `used` and `size`. One bad update
+  // must not end a session whose later updates are fine.
+  it.effect("drops a session/update that fails to decode and keeps reading", () =>
     Effect.gen(function* () {
       const secret = "acp-core-notification-secret-sentinel";
       const { stdio, input } = yield* makeInMemoryStdio();
-      const termination = yield* Deferred.make<AcpError.AcpError>();
+      const events: Array<AcpProtocol.AcpProtocolLogEvent> = [];
+      const warnings: Array<unknown> = [];
+      let terminated = false;
       let transformCalls = 0;
-      yield* AcpProtocol.makeAcpPatchedProtocol({
+      const transport = yield* AcpProtocol.makeAcpPatchedProtocol({
         stdio,
         serverRequestMethods: new Set(),
+        logIncoming: true,
+        logger: (event) =>
+          Effect.sync(() => {
+            events.push(event);
+          }),
         transformSessionUpdate: (notification) => {
           transformCalls += 1;
           return notification;
+        },
+        onTermination: () =>
+          Effect.sync(() => {
+            terminated = true;
+          }),
+      }).pipe(
+        Effect.provide(
+          Logger.layer([
+            Logger.make(({ logLevel, fiber }) => {
+              if (logLevel === "Warn")
+                warnings.push(fiber.getRef(References.CurrentLogAnnotations));
+            }),
+          ]),
+        ),
+      );
+      const received = yield* Deferred.make<AcpProtocol.AcpIncomingNotification>();
+      yield* transport.incoming.pipe(
+        Stream.runForEach((notification) => Deferred.succeed(received, notification)),
+        Effect.forkScoped,
+      );
+
+      const send = (params: unknown) =>
+        Queue.offer(
+          input,
+          encoder.encode(
+            `${encodeUnknownJsonString({ jsonrpc: "2.0", method: "session/update", params })}\n`,
+          ),
+        );
+      const malformed = {
+        sessionId: "session-1",
+        update: { sessionUpdate: "usage_update", cost: { amount: 1, currency: secret } },
+      };
+      yield* send(malformed);
+      yield* send(malformed);
+      yield* send({
+        sessionId: "session-1",
+        update: { sessionUpdate: "usage_update", used: 10, size: 100 },
+      });
+
+      const notification = yield* TestClock.withLive(
+        Deferred.await(received).pipe(Effect.timeout("2 seconds")),
+      );
+      assert.equal(notification._tag, "SessionUpdate");
+      assert.deepEqual(notification.params, {
+        sessionId: "session-1",
+        update: { sessionUpdate: "usage_update", used: 10, size: 100 },
+      });
+      assert.isFalse(terminated);
+      assert.equal(transformCalls, 1);
+
+      const decodeFailed = events.find(({ stage }) => stage === "decode_failed");
+      assert.deepInclude(decodeFailed?.payload as object, {
+        operation: "decode-notification-payload",
+        method: "session/update",
+        issueSummary: "update.used missing",
+      });
+      // The repeated bad update is dropped again but warned about once.
+      assert.lengthOf(
+        events.filter(({ stage }) => stage === "decode_failed"),
+        2,
+      );
+      assert.lengthOf(warnings, 1);
+      assert.deepInclude(warnings[0] as object, {
+        issueSummary: "update.used missing",
+      });
+      assert.notInclude(encodeUnknownJsonString({ decodeFailed, warnings }), secret);
+    }),
+  );
+
+  it.effect("keeps invalid core notification values only in the schema cause", () =>
+    Effect.gen(function* () {
+      const secret = "acp-core-notification-secret-sentinel";
+      const cause = yield* Schema.decodeUnknownEffect(AcpSchema.SessionNotification)({
+        sessionId: { secret },
+        update: { sessionUpdate: "plan", entries: [] },
+      }).pipe(Effect.flip);
+      const parseError = AcpError.AcpProtocolParseError.fromSchemaError(
+        "decode-notification-payload",
+        "session/update",
+        cause,
+      );
+      const { cause: directCause, ...directDiagnostics } = parseError;
+      assert.equal(parseError.operation, "decode-notification-payload");
+      assert.equal(parseError.method, "session/update");
+      assert.isAbove(parseError.issueCount ?? 0, 0);
+      assert.include(parseError.issueKinds ?? [], "Pointer");
+      assert.isAbove(parseError.maximumPathDepth ?? 0, 0);
+      assert.equal(parseError.issueSummary, "sessionId wrong type");
+      assert.isTrue(Schema.isSchemaError(directCause));
+      assert.notInclude(parseError.message, secret);
+      assert.notInclude(encodeUnknownJsonString(directDiagnostics), secret);
+    }),
+  );
+
+  it.effect("terminates when a callback on the reader dies", () =>
+    Effect.gen(function* () {
+      const { stdio, input } = yield* makeInMemoryStdio();
+      const termination = yield* Deferred.make<AcpError.AcpError>();
+      yield* AcpProtocol.makeAcpPatchedProtocol({
+        stdio,
+        serverRequestMethods: new Set(),
+        transformSessionUpdate: () => {
+          throw new Error("normalizer bug");
         },
         onTermination: (error) => Deferred.succeed(termination, error).pipe(Effect.asVoid),
       });
@@ -193,29 +346,19 @@ it.layer(NodeServices.layer)("effect-acp protocol", (it) => {
             jsonrpc: "2.0",
             method: "session/update",
             params: {
-              sessionId: { secret },
-              update: {
-                sessionUpdate: "plan",
-                entries: [],
-              },
+              sessionId: "session-1",
+              update: { sessionUpdate: "plan", entries: [] },
             },
           })}\n`,
         ),
       );
 
-      const error = yield* Deferred.await(termination);
-      assert.equal(transformCalls, 0);
-      assert.instanceOf(error, AcpError.AcpProtocolParseError);
-      const parseError = error as AcpError.AcpProtocolParseError;
-      const { cause, ...directDiagnostics } = parseError;
-      assert.equal(parseError.operation, "decode-notification-payload");
-      assert.equal(parseError.method, "session/update");
-      assert.isAbove(parseError.issueCount ?? 0, 0);
-      assert.include(parseError.issueKinds ?? [], "Pointer");
-      assert.isAbove(parseError.maximumPathDepth ?? 0, 0);
-      assert.isTrue(Schema.isSchemaError(cause));
-      assert.notInclude(parseError.message, secret);
-      assert.notInclude(encodeUnknownJsonString(directDiagnostics), secret);
+      // Pending requests are failed through termination instead of hanging.
+      const error = yield* TestClock.withLive(
+        Deferred.await(termination).pipe(Effect.timeout("2 seconds")),
+      );
+      assert.instanceOf(error, AcpError.AcpTransportError);
+      assert.equal((error as AcpError.AcpTransportError).operation, "read-input-stream");
     }),
   );
 
@@ -371,6 +514,43 @@ it.layer(NodeServices.layer)("effect-acp protocol", (it) => {
     }),
   );
 
+  it.effect("does not correlate a string response id with a numeric extension request id", () =>
+    Effect.gen(function* () {
+      const { stdio, input, output } = yield* makeInMemoryStdio();
+      const transport = yield* AcpProtocol.makeAcpPatchedProtocol({
+        stdio,
+        serverRequestMethods: new Set(),
+      });
+
+      const response = yield* transport
+        .request("x/test", { hello: "world" })
+        .pipe(Effect.forkScoped);
+      yield* Queue.take(output);
+      yield* Queue.offer(
+        input,
+        encoder.encode(
+          `${encodeUnknownJsonString({
+            jsonrpc: "2.0",
+            id: "1",
+            result: { ok: false },
+          })}\n`,
+        ),
+      );
+      yield* Effect.yieldNow;
+      assert.isUndefined(response.pollUnsafe());
+
+      yield* Queue.offer(
+        input,
+        yield* encodeJsonl(ExtResponse, {
+          jsonrpc: "2.0",
+          id: 1,
+          result: { ok: true },
+        }),
+      );
+      assert.deepEqual(yield* Fiber.join(response), { ok: true });
+    }),
+  );
+
   it.effect("correlates extension response errors with the originating request", () =>
     Effect.gen(function* () {
       const { stdio, input, output } = yield* makeInMemoryStdio();
@@ -425,6 +605,38 @@ it.layer(NodeServices.layer)("effect-acp protocol", (it) => {
     }),
   );
 
+  it.effect("answers an extension request whose handler also dies as an internal error", () =>
+    Effect.gen(function* () {
+      const { stdio, input, output } = yield* makeInMemoryStdio();
+      yield* AcpProtocol.makeAcpPatchedProtocol({
+        stdio,
+        serverRequestMethods: new Set(),
+        // The typed failure must not hide the defect from its cleanup.
+        onExtRequest: () =>
+          Effect.fail(AcpError.AcpRequestError.invalidParams("bad params")).pipe(
+            Effect.ensuring(Effect.die(new Error("cleanup bug"))),
+          ),
+      });
+
+      yield* Queue.offer(
+        input,
+        yield* encodeJsonl(ExtRequest, {
+          jsonrpc: "2.0",
+          id: 9,
+          method: "x/test",
+          params: { hello: "world" },
+          headers: [],
+        }),
+      );
+
+      const response = yield* Schema.decodeUnknownEffect(
+        Schema.fromJsonString(JsonRpcErrorResponse),
+      )(yield* Queue.take(output));
+      assert.equal(response.id, 9);
+      assert.equal(response.error.code, -32603);
+    }),
+  );
+
   it.effect("preserves numeric ids for inbound extension requests", () =>
     Effect.gen(function* () {
       const { stdio, input, output } = yield* makeInMemoryStdio();
@@ -458,6 +670,34 @@ it.layer(NodeServices.layer)("effect-acp protocol", (it) => {
     }),
   );
 
+  it.effect("keeps numeric and string extension request ids distinct in handler context", () =>
+    Effect.gen(function* () {
+      const { stdio, input } = yield* makeInMemoryStdio();
+      const contexts = yield* Queue.unbounded<string>();
+      yield* AcpProtocol.makeAcpPatchedProtocol({
+        stdio,
+        serverRequestMethods: new Set(),
+        onExtRequest: (_method, _params, context) =>
+          Queue.offer(contexts, context.requestId).pipe(Effect.as({ ok: true })),
+      });
+
+      for (const id of [1, "1"] as const) {
+        yield* Queue.offer(
+          input,
+          yield* encodeJsonl(ExtRequest, {
+            jsonrpc: "2.0",
+            id,
+            method: "x/test",
+            params: { hello: "world" },
+            headers: [],
+          }),
+        );
+      }
+
+      assert.deepEqual(yield* Queue.takeAll(contexts), ["$t3:jsonrpc:number:1", "1"]);
+    }),
+  );
+
   it.effect("preserves zero-valued ids for inbound core client requests", () =>
     Effect.gen(function* () {
       const { stdio, input, output } = yield* makeInMemoryStdio();
@@ -479,9 +719,13 @@ it.layer(NodeServices.layer)("effect-acp protocol", (it) => {
           method: "session/request_permission",
           params: {
             sessionId: "session-1",
-            toolCall: {
-              toolCallId: "tool-1",
-              title: "Allow mock action",
+            title: "Allow mock action",
+            subject: {
+              type: "tool_call",
+              toolCall: {
+                toolCallId: "tool-1",
+                title: "Allow mock action",
+              },
             },
             options: [{ optionId: "allow", name: "Allow", kind: "allow_once" }],
           },
@@ -496,9 +740,13 @@ it.layer(NodeServices.layer)("effect-acp protocol", (it) => {
         tag: "session/request_permission",
         payload: {
           sessionId: "session-1",
-          toolCall: {
-            toolCallId: "tool-1",
-            title: "Allow mock action",
+          title: "Allow mock action",
+          subject: {
+            type: "tool_call",
+            toolCall: {
+              toolCallId: "tool-1",
+              title: "Allow mock action",
+            },
           },
           options: [{ optionId: "allow", name: "Allow", kind: "allow_once" }],
         },
@@ -530,6 +778,232 @@ it.layer(NodeServices.layer)("effect-acp protocol", (it) => {
           },
         },
       });
+    }),
+  );
+
+  it.effect("acknowledges outgoing responses and reports encoding failures by request id", () =>
+    Effect.gen(function* () {
+      const { stdio } = yield* makeInMemoryStdio();
+      const acknowledged = yield* Deferred.make<string>();
+      const failed = yield* Deferred.make<readonly [string, AcpError.AcpError]>();
+      const transport = yield* AcpProtocol.makeAcpPatchedProtocol({
+        stdio,
+        serverRequestMethods: new Set(),
+        onOutgoingResponse: (requestId) =>
+          Deferred.succeed(acknowledged, requestId).pipe(Effect.asVoid),
+        onOutgoingResponseFailure: (requestId, error) =>
+          Deferred.succeed(failed, [requestId, error]).pipe(Effect.asVoid),
+      });
+
+      yield* transport.serverProtocol.send(0, {
+        _tag: "Exit",
+        requestId: "success-1",
+        exit: { _tag: "Success", value: { ok: true } },
+      });
+      assert.equal(yield* Deferred.await(acknowledged), "success-1");
+
+      const circular: { self?: unknown } = {};
+      circular.self = circular;
+      yield* transport.serverProtocol
+        .send(0, {
+          _tag: "Exit",
+          requestId: "failure-1",
+          exit: { _tag: "Success", value: circular },
+        })
+        .pipe(Effect.exit);
+      const [requestId, error] = yield* Deferred.await(failed);
+      assert.equal(requestId, "failure-1");
+      assert.instanceOf(error, AcpError.AcpProtocolParseError);
+    }),
+  );
+
+  it.effect("acknowledges a response only after the stdout write completes", () =>
+    Effect.gen(function* () {
+      const writeStarted = yield* Deferred.make<void>();
+      const releaseWrite = yield* Deferred.make<void>();
+      const acknowledged = yield* Deferred.make<string>();
+      const stdio = Stdio.make({
+        args: Effect.succeed([]),
+        stdin: Stream.never,
+        stdout: () =>
+          Sink.forEach(() =>
+            Deferred.succeed(writeStarted, undefined).pipe(
+              Effect.andThen(Deferred.await(releaseWrite)),
+            ),
+          ),
+        stderr: () => Sink.drain,
+      });
+      const transport = yield* AcpProtocol.makeAcpPatchedProtocol({
+        stdio,
+        serverRequestMethods: new Set(),
+        onOutgoingResponse: (requestId) =>
+          Deferred.succeed(acknowledged, requestId).pipe(Effect.asVoid),
+      });
+      const sendFiber = yield* transport.serverProtocol
+        .send(0, {
+          _tag: "Exit",
+          requestId: "held-write",
+          exit: { _tag: "Success", value: { ok: true } },
+        })
+        .pipe(Effect.forkScoped);
+
+      yield* Deferred.await(writeStarted);
+      assert.isUndefined(sendFiber.pollUnsafe());
+      assert.isFalse(yield* Deferred.isDone(acknowledged));
+      yield* Deferred.succeed(releaseWrite, undefined);
+      yield* Fiber.join(sendFiber);
+      assert.equal(yield* Deferred.await(acknowledged), "held-write");
+    }),
+  );
+
+  it.effect("fails current, queued, and future responses when the stdout writer fails", () =>
+    Effect.gen(function* () {
+      const writeStarted = yield* Deferred.make<void>();
+      const releaseFailure = yield* Deferred.make<void>();
+      const failures = yield* Queue.unbounded<string>();
+      const terminated = yield* Deferred.make<AcpError.AcpError>();
+      const stdio = Stdio.make({
+        args: Effect.succeed([]),
+        stdin: Stream.never,
+        stdout: () =>
+          Sink.forEach(() =>
+            Deferred.succeed(writeStarted, undefined).pipe(
+              Effect.andThen(Deferred.await(releaseFailure)),
+              Effect.andThen(Effect.die("stdout failed")),
+            ),
+          ),
+        stderr: () => Sink.drain,
+      });
+      const transport = yield* AcpProtocol.makeAcpPatchedProtocol({
+        stdio,
+        serverRequestMethods: new Set(),
+        onOutgoingResponseFailure: (requestId) => Queue.offer(failures, requestId),
+        onTermination: (error) => Deferred.succeed(terminated, error).pipe(Effect.asVoid),
+      });
+      const send = (requestId: string) =>
+        transport.serverProtocol
+          .send(0, {
+            _tag: "Exit",
+            requestId,
+            exit: { _tag: "Success", value: { ok: true } },
+          })
+          .pipe(Effect.exit);
+      const current = yield* send("current").pipe(Effect.forkScoped);
+      yield* Deferred.await(writeStarted);
+      const queued = yield* send("queued").pipe(Effect.forkScoped);
+      yield* Effect.yieldNow;
+      assert.isUndefined(current.pollUnsafe());
+      assert.isUndefined(queued.pollUnsafe());
+      yield* Deferred.succeed(releaseFailure, undefined);
+      assert.instanceOf(yield* Deferred.await(terminated), AcpError.AcpTransportError);
+      yield* Fiber.join(current);
+      yield* Fiber.join(queued);
+      yield* send("future");
+
+      assert.deepEqual(
+        new Set(yield* Queue.takeN(failures, 3)),
+        new Set(["current", "queued", "future"]),
+      );
+    }),
+  );
+
+  it.effect(
+    "atomically rejects an admitted response when the writer closes before queue offer",
+    () =>
+      Effect.gen(function* () {
+        const admitted = yield* Deferred.make<void>();
+        const releaseAdmission = yield* Deferred.make<void>();
+        const failures = yield* Queue.unbounded<string>();
+        const protocolScope = yield* Scope.make();
+        const stdio = Stdio.make({
+          args: Effect.succeed([]),
+          stdin: Stream.never,
+          stdout: () => Sink.drain,
+          stderr: () => Sink.drain,
+        });
+        const transport = yield* AcpProtocol.makeAcpPatchedProtocol({
+          stdio,
+          serverRequestMethods: new Set(),
+          onOutgoingResponseFailure: (requestId) => Queue.offer(failures, requestId),
+          testHooks: {
+            onOutgoingWriteAdmitted: () =>
+              Deferred.succeed(admitted, undefined).pipe(
+                Effect.andThen(Deferred.await(releaseAdmission)),
+              ),
+          },
+        }).pipe(Effect.provideService(Scope.Scope, protocolScope));
+        const send = (requestId: string) =>
+          transport.serverProtocol
+            .send(0, {
+              _tag: "Exit",
+              requestId,
+              exit: { _tag: "Success", value: { ok: true } },
+            })
+            .pipe(Effect.exit);
+        const admittedSend = yield* send("admitted").pipe(Effect.forkScoped);
+
+        yield* Deferred.await(admitted);
+        yield* Scope.close(protocolScope, Exit.void);
+        yield* Deferred.succeed(releaseAdmission, undefined);
+        yield* Fiber.join(admittedSend);
+        yield* send("future");
+
+        assert.deepEqual(yield* Queue.takeN(failures, 2), ["admitted", "future"]);
+      }),
+  );
+
+  it.effect("drops agent-internal JSON-RPC responses with non-numeric request ids", () =>
+    Effect.gen(function* () {
+      const { stdio, input } = yield* makeInMemoryStdio();
+      const notifications =
+        yield* Deferred.make<ReadonlyArray<AcpProtocol.AcpIncomingNotification>>();
+      const transport = yield* AcpProtocol.makeAcpPatchedProtocol({
+        stdio,
+        serverRequestMethods: new Set(),
+      });
+
+      yield* transport.incoming.pipe(
+        Stream.take(1),
+        Stream.runCollect,
+        Effect.flatMap((notificationChunk) => Deferred.succeed(notifications, notificationChunk)),
+        Effect.forkScoped,
+      );
+
+      yield* Queue.offer(
+        input,
+        encoder.encode(
+          `${encodeUnknownJsonString({
+            jsonrpc: "2.0",
+            id: "skills-reload",
+            result: {
+              reloaded: true,
+            },
+          })}\n`,
+        ),
+      );
+      yield* Queue.offer(
+        input,
+        yield* encodeJsonl(SessionUpdateNotification, {
+          jsonrpc: "2.0",
+          method: "session/update",
+          params: {
+            sessionId: "session-1",
+            update: {
+              sessionUpdate: "plan",
+              entries: [
+                {
+                  content: "Reload skills",
+                  priority: "high",
+                  status: "in_progress",
+                },
+              ],
+            },
+          },
+        }),
+      );
+
+      const [update] = yield* Deferred.await(notifications);
+      assert.equal(update?._tag, "SessionUpdate");
     }),
   );
 
@@ -638,6 +1112,31 @@ it.layer(NodeServices.layer)("effect-acp protocol", (it) => {
     }),
   );
 
+  it.effect("does not treat intentional serverProtocol.end as a transport failure", () =>
+    Effect.gen(function* () {
+      const { stdio, input } = yield* makeInMemoryStdio();
+      const terminations = yield* Ref.make(0);
+      const writerExit = yield* Deferred.make<{ readonly intentionalEnd: boolean }>();
+      const transport = yield* AcpProtocol.makeAcpPatchedProtocol({
+        stdio,
+        serverRequestMethods: new Set(),
+        onTermination: () => Ref.update(terminations, (count) => count + 1),
+        testHooks: {
+          onOutgoingWriterExit: (detail) =>
+            Deferred.succeed(writerExit, detail).pipe(Effect.asVoid),
+        },
+      });
+
+      yield* transport.serverProtocol.end(0);
+      const exitDetail = yield* Deferred.await(writerExit);
+      assert.isTrue(exitDetail.intentionalEnd);
+      assert.equal(yield* Ref.get(terminations), 0);
+
+      // Tear down the forever input reader so the scoped test can finish.
+      yield* Queue.end(input);
+    }),
+  );
+
   it.effect("does not emit a second process-exit error after a decode failure", () =>
     Effect.gen(function* () {
       const handle = yield* makeHandle({
@@ -726,8 +1225,9 @@ it.layer(NodeServices.layer)("effect-acp protocol", (it) => {
     }),
   );
 
-  for (const operation of ["request", "notification"] as const) {
-    it.effect(`rejects a ${operation} if the connection ends while its logger is running`, () =>
+  it.effect.each(["request", "notification"] as const)(
+    "rejects a %s if the connection ends while its logger is running",
+    (operation) =>
       Effect.gen(function* () {
         const { stdio, input, output } = yield* makeInMemoryStdio();
         const writeStarted = yield* Deferred.make<void>();
@@ -765,6 +1265,5 @@ it.layer(NodeServices.layer)("effect-acp protocol", (it) => {
         assert.strictEqual(failure, error);
         assert.equal(yield* Queue.size(output), 0);
       }),
-    );
-  }
+  );
 });

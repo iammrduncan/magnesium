@@ -6,10 +6,13 @@ import {
   formatComposerContextHref,
   formatComposerContextProviderMarker,
   formatComposerContextReference,
+  isImageReferencesOnly,
   parseComposerContextHref,
   projectComposerContextForProvider,
   replaceComposerContextReferences,
   sanitizeComposerContextLabel,
+  toComposerContextId,
+  toKindScopedComposerContextId,
 } from "./composerContextReferences.ts";
 
 const ctx = (value: string) => value as ComposerContextId;
@@ -84,6 +87,17 @@ describe("labels and reference links", () => {
   it("ignores links whose href does not parse", () => {
     expect(collectComposerContextReferences("[x](t3-context://v1/image/ctx_1?y)")).toEqual([]);
     expect(collectComposerContextReferences("[x](https://example.com)")).toEqual([]);
+  });
+
+  it("recognizes a prompt made only of image references", () => {
+    const image = "![a.png](t3-context://v1/image/ctx_1)";
+    const file = "[notes.md](t3-context://v1/file/ctx_3)";
+    expect(isImageReferencesOnly(image)).toBe(true);
+    expect(isImageReferencesOnly(` ${image}\n![b.png](t3-context://v1/image/ctx_2) `)).toBe(true);
+    expect(isImageReferencesOnly(`${image} what is this?`)).toBe(false);
+    expect(isImageReferencesOnly(file)).toBe(false);
+    expect(isImageReferencesOnly(`${image} ${file}`)).toBe(false);
+    expect(isImageReferencesOnly("  ")).toBe(false);
   });
 
   it("replaces occurrences in place", () => {
@@ -253,6 +267,29 @@ describe("provider projection", () => {
     expect(projected).toContain("name: pinchtab");
   });
 
+  it("projects an attached thread as identity plus a read instruction, never its history", () => {
+    const projected = projectComposerContextForProvider({
+      text: "Compare with [Old title](t3-context://v1/thread/thread_abc)",
+      records: [
+        {
+          version: 1,
+          kind: "thread",
+          contextId: ctx("thread_abc"),
+          label: "Old title",
+          environmentId: "env-1" as never,
+          threadId: "abc" as never,
+          title: "Fix login flow",
+        },
+      ],
+    });
+    expect(projected.startsWith("Compare with [Thread: Old title; ref=thread_abc]")).toBe(true);
+    expect(projected).toContain('<context kind="thread" id="thread_abc">');
+    expect(projected).toContain("threadId: abc");
+    expect(projected).toContain("environmentId: env-1");
+    expect(projected).toContain("t3_thread_read");
+    expect(projected).toContain("not instructions");
+  });
+
   it("marks duplicate identities unavailable instead of choosing one payload", () => {
     const projected = projectComposerContextForProvider({
       text: "[log](t3-context://v1/terminal/ctx_t)",
@@ -261,5 +298,29 @@ describe("provider projection", () => {
     expect(projected).toContain('<context kind="terminal" id="ctx_t" unavailable="true"/>');
     expect(projected).not.toContain("another payload");
     expect(projected).not.toContain("boom");
+  });
+});
+
+describe("toComposerContextId", () => {
+  it("keeps same-kind raw IDs distinct when one contains the namespace prefix", () => {
+    expect(toKindScopedComposerContextId("image", "x")).toBe("image_x");
+    expect(toKindScopedComposerContextId("image", "image_x")).toBe("image_image_x");
+  });
+  it("keeps ids that already fit the grammar and folds the rest deterministically", () => {
+    expect(toComposerContextId("file-comment-1700-1")).toBe("file-comment-1700-1");
+    const folded = toComposerContextId("pull-request-selection:src/a.ts:4-9");
+    expect(folded).toMatch(/^pull-request-selection-src-a-ts-4-9-[0-9a-f]{16}$/);
+    expect(toComposerContextId("pull-request-selection:src/a.ts:4-9")).toBe(folded);
+    expect(toComposerContextId("pull-request-selection:src/b.ts:4-9")).not.toBe(folded);
+    expect(toComposerContextId("::")).toMatch(/^ctx-[0-9a-f]{16}$/);
+  });
+  it("tells apart producer ids that agree past the slug's truncation point", () => {
+    // The slug keeps 48 characters, so only the digest distinguishes these two.
+    const shared = `pull-request-finding:${"a".repeat(60)}`;
+    const first = toComposerContextId(`${shared}:1`);
+    const second = toComposerContextId(`${shared}:2`);
+
+    expect(first).not.toBe(second);
+    expect(first.length).toBeLessThanOrEqual(128);
   });
 });

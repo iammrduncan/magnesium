@@ -15,12 +15,7 @@ import type { ProviderInstanceConfigMap } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
-import {
-  FetchHttpClient,
-  HttpRouter,
-  HttpServerRequest,
-  HttpServerResponse,
-} from "effect/unstable/http";
+import { FetchHttpClient, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import { describe, expect, it } from "@effect/vitest";
 
 import * as HubMachines from "../hub/HubMachines.ts";

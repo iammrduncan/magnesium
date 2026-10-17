@@ -14,12 +14,13 @@ import {
   ExternalLauncherEditorSpawnError,
   ExternalLauncherUnknownEditorError,
   ExternalLauncherUnsupportedEditorError,
+  ExternalLauncherUnsupportedTargetError,
   type EditorId,
   type FileManagerRevealKind,
   type LaunchEditorInput,
 } from "@t3tools/contracts";
 import { resolveEditorCommand } from "@t3tools/shared/editor";
-import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import {
   isCommandAvailable,
   resolveSpawnCommand,
@@ -28,16 +29,19 @@ import {
 import * as Clock from "effect/Clock";
 import * as Config from "effect/Config";
 import * as Context from "effect/Context";
+import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
-import * as Encoding from "effect/Encoding";
+import * as Base64 from "effect/encoding/Base64";
+import * as Exit from "effect/Exit";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Ref from "effect/Ref";
+import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
-import * as ChildProcess from "effect/unstable/process/ChildProcess";
-import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
+import * as ChildProcess from "effect/process/ChildProcess";
+import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 
 // ==============================
 // Definitions
@@ -50,6 +54,7 @@ export {
   ExternalLauncherEditorSpawnError,
   ExternalLauncherUnknownEditorError,
   ExternalLauncherUnsupportedEditorError,
+  ExternalLauncherUnsupportedTargetError,
 } from "@t3tools/contracts";
 export type { LaunchEditorInput };
 interface EditorLaunch {
@@ -57,6 +62,8 @@ interface EditorLaunch {
   readonly target: string;
   readonly command: string;
   readonly args: ReadonlyArray<string>;
+  /** Defaults to true. See WINDOWS_POWERSHELL_DETACHED. */
+  readonly detached?: boolean;
 }
 
 interface ProcessLaunch {
@@ -71,6 +78,14 @@ interface TargetPathAndPosition {
   readonly column: Option.Option<string>;
 }
 
+/**
+ * Windows command shims (`code.cmd`) forward arguments through `%*`, which
+ * cmd.exe parses a second time after the first escaping layer is gone: a
+ * line break ends the command there, and a double quote closes the quoting
+ * that keeps `&` or `|` literal. Neither can occur in a Windows path.
+ */
+// oxlint-disable-next-line no-control-regex
+const WINDOWS_SHIM_UNSAFE_ARG_PATTERN = /[\u0000-\u001f\u007f"]/;
 const TARGET_WITH_POSITION_PATTERN = /^(.*?):(\d+)(?::(\d+))?$/;
 const POWERSHELL_ARGUMENTS_PREFIX = [
   "-NoProfile",
@@ -79,6 +94,12 @@ const POWERSHELL_ARGUMENTS_PREFIX = [
   "Bypass",
   "-EncodedCommand",
 ] as const;
+
+// Windows PowerShell started with DETACHED_PROCESS exits 0 without running its
+// command, so native Windows launches through it stay attached. The child is
+// still unref'd with ignored stdio, so nothing waits on it. WSL interop
+// PowerShell starts from a Linux process and keeps the detached launch.
+const WINDOWS_POWERSHELL_DETACHED = false;
 
 const DETACHED_IGNORE_STDIO_OPTIONS = {
   detached: true,
@@ -172,7 +193,7 @@ function encodeUtf16LeBase64(input: string): string {
     bytes[index * 2] = code & 0xff;
     bytes[index * 2 + 1] = code >>> 8;
   }
-  return Encoding.encodeBase64(bytes);
+  return Base64.encode(bytes);
 }
 
 function escapePowerShellStringLiteral(input: string): string {
@@ -206,7 +227,11 @@ function shouldUseWindowsHostFromWsl(
   );
 }
 
-function resolveWindowsBrowserLaunch(target: string, command: string): ProcessLaunch {
+function resolveWindowsBrowserLaunch(
+  target: string,
+  command: string,
+  detached: boolean,
+): ProcessLaunch {
   const encodedCommand = encodeUtf16LeBase64(
     `$ProgressPreference = 'SilentlyContinue'; Start ${escapePowerShellStringLiteral(target)}`,
   );
@@ -214,7 +239,7 @@ function resolveWindowsBrowserLaunch(target: string, command: string): ProcessLa
     command,
     args: [...POWERSHELL_ARGUMENTS_PREFIX, encodedCommand],
     options: {
-      detached: true,
+      detached,
       shell: false,
       stdin: "ignore",
       stdout: "ignore",
@@ -394,11 +419,15 @@ function buildBrowserLaunch(
   }
 
   if (platform === "win32") {
-    return resolveWindowsBrowserLaunch(target, resolvePowerShellPath(env));
+    return resolveWindowsBrowserLaunch(
+      target,
+      resolvePowerShellPath(env),
+      WINDOWS_POWERSHELL_DETACHED,
+    );
   }
 
   if (shouldUseWindowsHostFromWsl(platform, env)) {
-    return resolveWindowsBrowserLaunch(target, resolveWslPowerShellPath());
+    return resolveWindowsBrowserLaunch(target, resolveWslPowerShellPath(), true);
   }
 
   return {
@@ -438,20 +467,20 @@ const buildAvailableEditors = Effect.fn("externalLauncher.buildAvailableEditors"
 const resolveBrowserLaunch = Effect.fn("externalLauncher.resolveBrowserLaunch")(function* (
   target: string,
 ) {
-  const platform = yield* HostProcessPlatform;
+  const platform = yield* HostProcess.Platform;
   const env = yield* readBrowserLaunchEnv;
   return buildBrowserLaunch(target, platform, env);
 });
 
 const resolveAvailableEditors = Effect.fn("externalLauncher.resolveAvailableEditors")(function* () {
-  const platform = yield* HostProcessPlatform;
+  const platform = yield* HostProcess.Platform;
   const env = { ...(yield* readBrowserLaunchEnv), ...(yield* readCommandLookupEnv) };
   return yield* buildAvailableEditors(platform, env).pipe(withPathDirectoryListings);
 });
 
 const resolveFileManagerRevealKind = Effect.fn("externalLauncher.resolveFileManagerRevealKind")(
   function* () {
-    const platform = yield* HostProcessPlatform;
+    const platform = yield* HostProcess.Platform;
     const env = { ...(yield* readBrowserLaunchEnv), ...(yield* readCommandLookupEnv) };
     return yield* fileManagerRevealKindForPlatform(platform, env);
   },
@@ -462,21 +491,21 @@ const resolveFileManagerRevealKind = Effect.fn("externalLauncher.resolveFileMana
 // the discovered set for a bounded window so repeat connects skip even the
 // per-command cache lookups in @t3tools/shared/shell.
 //
-// This deliberately does not use `Effect.cachedWithTTL`: that memoizes the
-// first caller's Exit whatever it is, including an interrupt. Callers run this
-// on the connection fiber under a timeout (`resolveAvailableEditorsForConfig`),
-// so one client disconnecting mid-scan would cache the interrupt and replay it
-// to every later connect for the whole TTL, breaking `server.getConfig`
-// permanently. Storing only on success means an interrupted scan leaves the
-// cache untouched and the next connect simply rescans.
-// Expiry uses the monotonic clock (Clock.currentTimeNanos), matching the
+// The scan runs on its own fiber in the service scope, and every caller awaits
+// that one scan. Callers apply a timeout (`resolveAvailableEditorsForConfig`)
+// and disconnect mid-connect; neither may cancel a scan other connects are
+// waiting on, or throw away work a slow host (a busy server at startup, a
+// long PATH) needs more than one connect to finish. A failed scan clears the
+// entry so the next caller starts over rather than replaying the failure.
+// Expiry uses the monotonic clock (Clock.monotonicTimeNanos), matching the
 // command-resolution cache in @t3tools/shared/shell, so a backward wall-clock
 // adjustment cannot keep an expired entry alive.
 const EDITOR_DISCOVERY_CACHE_TTL_NANOS = 60_000_000_000n;
 
 interface EditorDiscoveryCacheEntry {
-  readonly editors: ReadonlyArray<EditorId>;
-  readonly expiresAtNanos: bigint;
+  readonly scan: Deferred.Deferred<ReadonlyArray<EditorId>>;
+  /** Undefined while the scan is still running. */
+  readonly expiresAtNanos: bigint | undefined;
 }
 
 /**
@@ -516,7 +545,7 @@ const resolveEditorLaunch = Effect.fn("resolveEditorLaunch")(function* (
   ExternalLauncherError,
   FileSystem.FileSystem | Path.Path | ChildProcessSpawner.ChildProcessSpawner
 > {
-  const platform = yield* HostProcessPlatform;
+  const platform = yield* HostProcess.Platform;
   const env = { ...(yield* readBrowserLaunchEnv), ...(yield* readCommandLookupEnv) };
   yield* Effect.annotateCurrentSpan({
     "externalLauncher.editor": input.editor,
@@ -575,14 +604,8 @@ const resolveEditorLaunch = Effect.fn("resolveEditorLaunch")(function* (
  * when the path has spaces and Explorer misparses it, silently opening a
  * fallback folder. A single `-ArgumentList` string in Windows PowerShell 5.1
  * reaches the child's command line verbatim, preserving the raw switch.
- *
- * Exported so the Windows smoke test can drive the identical source through a
- * real PowerShell against a recording stub instead of Explorer.
  */
-export function buildFileExplorerRevealPowerShellSource(
-  explorerCommand: string,
-  target: string,
-): string {
+function buildFileExplorerRevealPowerShellSource(explorerCommand: string, target: string): string {
   return `$ProgressPreference = 'SilentlyContinue'; Start-Process ${escapePowerShellStringLiteral(explorerCommand)} -ArgumentList ('/select,"' + ${escapePowerShellStringLiteral(target)} + '"')`;
 }
 
@@ -623,11 +646,14 @@ const resolveFileManagerRevealLaunch = Effect.fn("resolveFileManagerRevealLaunch
   }
 
   if (platform === "win32") {
-    return fileExplorerRevealLaunch(
-      target,
-      normalizeWindowsFileManagerPath(target),
-      resolvePowerShellPath(env),
-    );
+    return {
+      ...fileExplorerRevealLaunch(
+        target,
+        normalizeWindowsFileManagerPath(target),
+        resolvePowerShellPath(env),
+      ),
+      detached: WINDOWS_POWERSHELL_DETACHED,
+    };
   }
 
   if (
@@ -723,12 +749,15 @@ const launchEditorProcess = Effect.fn("externalLauncher.launchEditorProcess")(fu
   }
 
   const spawnCommand = yield* resolveSpawnCommand(launch.command, launch.args, { env });
+  if (spawnCommand.shell && launch.args.some((arg) => WINDOWS_SHIM_UNSAFE_ARG_PATTERN.test(arg))) {
+    return yield* new ExternalLauncherUnsupportedTargetError({ editor: launch.editor });
+  }
   yield* launchAndUnref(
     {
       command: spawnCommand.command,
       args: spawnCommand.args,
       options: {
-        detached: true,
+        detached: launch.detached ?? true,
         shell: spawnCommand.shell,
         stdin: "ignore",
         stdout: "ignore",
@@ -760,27 +789,58 @@ export const make = Effect.gen(function* () {
       Effect.provideService(Path.Path, path),
     );
 
+  const scope = yield* Scope.Scope;
   const editorDiscoveryCache = yield* Ref.make<Option.Option<EditorDiscoveryCacheEntry>>(
     Option.none(),
   );
-  const cachedAvailableEditors = Effect.gen(function* () {
-    const nowNanos = yield* Clock.currentTimeNanos;
-    const entry = yield* Ref.get(editorDiscoveryCache);
-    if (Option.isSome(entry) && entry.value.expiresAtNanos > nowNanos) {
-      return entry.value.editors;
-    }
-    const editors = yield* provideCommandResolutionServices(resolveAvailableEditors()).pipe(
+  const runEditorDiscovery = (scan: Deferred.Deferred<ReadonlyArray<EditorId>>) =>
+    provideCommandResolutionServices(resolveAvailableEditors()).pipe(
       Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
+      Effect.onExit((exit) =>
+        Effect.gen(function* () {
+          const expiresAtNanos =
+            (yield* Clock.monotonicTimeNanos) + EDITOR_DISCOVERY_CACHE_TTL_NANOS;
+          yield* Ref.update(editorDiscoveryCache, (current) =>
+            Option.isNone(current) || current.value.scan !== scan
+              ? current
+              : Exit.isSuccess(exit)
+                ? Option.some({ scan, expiresAtNanos })
+                : Option.none(),
+          );
+          yield* Deferred.done(scan, exit);
+        }),
+      ),
+      Effect.interruptible,
+      Effect.forkIn(scope),
     );
-    yield* Ref.set(
+  // Claiming the cache entry and starting its scan must not be split by an
+  // interrupt, or the entry would wait on a scan that never runs.
+  const acquireEditorDiscovery = Effect.gen(function* () {
+    const nowNanos = yield* Clock.monotonicTimeNanos;
+    const [scan, isNewScan] = yield* Ref.modify(
       editorDiscoveryCache,
-      Option.some({
-        editors,
-        expiresAtNanos: nowNanos + EDITOR_DISCOVERY_CACHE_TTL_NANOS,
-      }),
+      (
+        current,
+      ): [
+        [EditorDiscoveryCacheEntry["scan"], boolean],
+        Option.Option<EditorDiscoveryCacheEntry>,
+      ] => {
+        if (
+          Option.isSome(current) &&
+          (current.value.expiresAtNanos === undefined || current.value.expiresAtNanos > nowNanos)
+        ) {
+          return [[current.value.scan, false], current];
+        }
+        const scan = Deferred.makeUnsafe<ReadonlyArray<EditorId>>();
+        return [[scan, true], Option.some({ scan, expiresAtNanos: undefined })];
+      },
     );
-    return editors;
-  });
+    if (isNewScan) {
+      yield* runEditorDiscovery(scan);
+    }
+    return scan;
+  }).pipe(Effect.uninterruptible);
+  const cachedAvailableEditors = Effect.flatMap(acquireEditorDiscovery, Deferred.await);
 
   return ExternalLauncher.of({
     resolveAvailableEditors: () => cachedAvailableEditors,

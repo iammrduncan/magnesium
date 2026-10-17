@@ -2,7 +2,7 @@ import { HUB_ENVIRONMENT_ROUTE_PREFIX } from "@magnesium/contracts";
 import { AuthOrchestrationOperateScope, AuthOrchestrationReadScope } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
+import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 
 import {
   forwardedHeaders,

@@ -46,6 +46,19 @@ const ITEMS: ReadonlyArray<SettingsSearchItem> = [
 ];
 
 describe("searchSettings", () => {
+  it.each(["OTel", "OTLP", "telemetry export", "Grafana"])(
+    "finds environment telemetry settings for %s",
+    (query) => {
+      expect(searchSettings(query)).toContainEqual(
+        expect.objectContaining({
+          id: "telemetry-export",
+          to: "/settings/diagnostics",
+          targetId: "telemetry-export",
+          scope: "environment",
+        }),
+      );
+    },
+  );
   it.each(["send shortcut", "multiline", "new line"])("finds Send shortcut for %s", (query) => {
     expect(searchSettings(query).map((item) => item.id)).toContain("send-shortcut");
   });
@@ -129,6 +142,16 @@ describe("searchSettings", () => {
     expect(SETTINGS_SEARCH_ITEMS.some((item) => item.id === "quit-confirmation")).toBe(true);
     expect(searchSettings("hold to quit")).toEqual([]);
     expect(searchSettings("wsl")).toEqual([]);
+    expect(searchSettings("update track")).toEqual([]);
+  });
+
+  it("finds the About update rows", () => {
+    expect(searchSettings("check for updates").map((item) => item.id)).toContain("app-version");
+    expect(SETTINGS_SEARCH_ITEMS.find((item) => item.id === "update-track")).toMatchObject({
+      title: "Update track",
+      to: "/settings/general",
+      releaseChannelOnly: true,
+    });
   });
 
   it("hides macOS-only settings on other platforms", () => {
@@ -168,6 +191,8 @@ describe("searchSettings", () => {
       "provider-health-check-interval",
       "cursor-keychain-usage",
       "source-control-writer-model",
+      "review-guide-model",
+      "review-guide-instructions",
       "source-control-writing-style",
       "tailscale-https",
       "wsl-backend",
@@ -212,6 +237,24 @@ describe("searchSettings", () => {
     expect(remoteOnly).toContain("local-environment");
     // magnesium: T3 Connect and agent-activity publishing items removed (D13)
     expect(remoteOnly).not.toContain("wsl-backend");
+  });
+
+  it("offers webhook holding only while the managed tunnel is on, like its row", () => {
+    const availability = {
+      hasCloudPublicConfig: true,
+      hasEnvironment: true,
+      hasProviderSettingsEnvironment: true,
+      hasMacProviderSettingsEnvironment: false,
+      canManageLocalBackend: true,
+      isWslSettingsRowVisible: false,
+      hasThreadAutoSettlement: false,
+    };
+    const itemIds = (managedTunnelActive: boolean) =>
+      filterAvailableSettingsSearchItems({ ...availability, managedTunnelActive }).map(
+        (item) => item.id,
+      );
+    expect(itemIds(false)).not.toContain("hold-webhooks-while-offline");
+    expect(itemIds(true)).toContain("hold-webhooks-while-offline");
   });
 
   it("shows automatic settlement settings when the server supports them", () => {
@@ -274,6 +317,10 @@ describe("searchSettings", () => {
     });
     expect(searchSettings("word wrap")[0]).toMatchObject({
       id: "word-wrap",
+      to: "/settings/appearance",
+    });
+    expect(searchSettings("composer context")[0]).toMatchObject({
+      id: "composer-context",
       to: "/settings/appearance",
     });
     expect(searchSettings("environment identification")[0]).toMatchObject({
@@ -355,6 +402,15 @@ describe("searchSettings", () => {
 });
 
 describe("settings search targets", () => {
+  it("requires an environment for the resolved telemetry export destination", () => {
+    const result = searchSettings("OpenTelemetry export").find(
+      (item) => item.id === "telemetry-export",
+    )!;
+    const target = getSettingsSearchTargetScope(result.targetId ?? result.id)!;
+    expect(isSettingsSearchScopeAvailable(target.scope, "all")).toBe(false);
+    expect(isSettingsSearchScopeAvailable(target.scope, "project")).toBe(false);
+    expect(isSettingsSearchScopeAvailable(target.scope, "environment")).toBe(true);
+  });
   it.each([
     "auto-settle-inactive-threads",
     "auto-settle-merged-threads",

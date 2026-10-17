@@ -17,7 +17,7 @@ import * as Path from "effect/Path";
 import * as Ref from "effect/Ref";
 import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
-import { HttpClient } from "effect/unstable/http";
+import { HttpClient } from "effect/http";
 
 import { HubMachines } from "../hub/HubMachines.ts";
 import { connectMachine } from "../hub/machineRpc.ts";

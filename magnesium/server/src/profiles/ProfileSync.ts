@@ -8,7 +8,7 @@ import * as Path from "effect/Path";
 import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
 import * as Semaphore from "effect/Semaphore";
-import { ChildProcessSpawner } from "effect/unstable/process";
+import { ChildProcessSpawner } from "effect/process";
 
 import { ServerPorts } from "../ports.ts";
 import { isPushManaged, loadCatalog, ProfilesConfig, runsHere } from "./catalog.ts";

@@ -1,5 +1,5 @@
 import * as Predicate from "effect/Predicate";
-import { HttpClientError } from "effect/unstable/http";
+import { HttpClientError } from "effect/http";
 
 import { isFrontDoorFailure } from "./pwa/policy.ts";
 

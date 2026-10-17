@@ -17,7 +17,7 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
-import { AsyncResult, Atom, AtomRegistry } from "effect/unstable/reactivity";
+import { AsyncResult, Atom, AtomRegistry } from "effect/reactivity";
 
 import * as EnvironmentRegistry from "../connection/registry.ts";
 import * as EnvironmentSupervisor from "../connection/supervisor.ts";
@@ -75,15 +75,55 @@ export const EMPTY_ASSET_URL_ATOM = Atom.make(AsyncResult.initial<never, never>(
 
 export type AssetUrlState =
   | { readonly _tag: "Loading" }
-  | { readonly _tag: "Failure" }
+  | {
+      readonly _tag: "Failure";
+      /** Set when the session lacks `filesystem:read`; the file itself may be fine. */
+      readonly reason?: "missing-file-access";
+    }
   | {
       readonly _tag: "Success";
       readonly url: string;
+      /** When the signed URL stops working, in epoch milliseconds. */
+      readonly expiresAt: number;
       /** The host path the server chose to serve, when it differs from what was asked for. */
       readonly sourcePath?: string;
       /** Pixel size from the image header, when the server could read one. */
       readonly imageDimensions?: AssetImageDimensions;
     };
+
+/** Shown in place of a host file the session lacks `filesystem:read` for. */
+export const MISSING_FILE_ACCESS_MESSAGE =
+  "This connection cannot read host files. Pair again with a new link to view it.";
+
+/**
+ * The state for a host file this session cannot read yet, or null when the client
+ * should ask the host. The host requires `filesystem:read` for these resources, so
+ * clients skip the request. A connected session without the scope gets its own
+ * reason, so the UI can say to pair again instead of implying the file is gone.
+ */
+export function blockedAssetUrlState(
+  resource: AssetResource | null,
+  fileAccess: {
+    readonly canReadFiles: boolean;
+    readonly isPending: boolean;
+    readonly error: string | null;
+  },
+): AssetUrlState | null {
+  if (
+    resource === null ||
+    fileAccess.canReadFiles ||
+    (resource._tag !== "workspace-file" &&
+      resource._tag !== "media-file" &&
+      resource._tag !== "draft-workspace-file")
+  ) {
+    return null;
+  }
+  if (fileAccess.isPending) return { _tag: "Loading" };
+  // An error means the session check itself failed, such as when offline.
+  return fileAccess.error === null
+    ? { _tag: "Failure", reason: "missing-file-access" }
+    : { _tag: "Failure" };
+}
 
 export function assetUrlStateFromResult(
   result: AsyncResult.AsyncResult<AssetCreateUrlResult, unknown>,
@@ -96,6 +136,7 @@ export function assetUrlStateFromResult(
   return {
     _tag: "Success",
     url,
+    expiresAt: result.value.expiresAt,
     ...(result.value.sourcePath !== undefined ? { sourcePath: result.value.sourcePath } : {}),
     ...(result.value.imageDimensions !== undefined
       ? { imageDimensions: result.value.imageDimensions }
