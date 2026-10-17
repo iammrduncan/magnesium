@@ -27,6 +27,15 @@ const RENAME_SCOPE = [
   "apps/server/src",
   "packages/shared/src/codexAuthCallback.ts",
   "packages/client-runtime/src/connection/compatibility.ts",
+  // Provider status and errors moved here from apps/server in v0.1.0.
+  "packages/provider-acp/src",
+  "packages/provider-acp-registry/src",
+  "packages/provider-core/src",
+  "packages/provider-cursor/src",
+  "packages/provider-grok/src",
+  "packages/provider-muse/src",
+  "packages/provider-opencode/src",
+  "packages/provider-pi/src",
 ];
 
 /** Inside the scope, but read by agents, stored as identity, or inert here. */
@@ -34,10 +43,21 @@ const RENAME_EXCLUDED = [
   "apps/server/src/textGeneration",
   "apps/server/src/mcp",
   "apps/server/src/provider/CodexDeveloperInstructions.ts",
-  "apps/server/src/provider/RuntimeInstructions.ts",
   "apps/server/src/vcs/GitVcsDriver.ts",
   "apps/server/src/cli/triagePrompt.ts",
-  "apps/server/src/project/NewProject.ts",
+  "apps/server/src/project/ManagedProjectFolders.ts",
+  "packages/provider-core/src/server/orchestrationInstructions.ts",
+  "packages/provider-core/src/server/orchestrationInstructions.test.ts",
+  "packages/provider-core/src/server/runtimeInstructions.ts",
+  "packages/provider-core/src/server/textGenerationPrompts.ts",
+  "packages/provider-core/src/server/textGenerationPrompts.test.ts",
+  "packages/provider-pi/src/server/mcpExtensionSource.ts",
+  "packages/provider-cursor/src/server/adapter.ts",
+  "packages/provider-cursor/src/server/auth.ts",
+  "packages/provider-muse/src/server/sdk.ts",
+  "packages/provider-muse/src/server/textGeneration.ts",
+  "packages/provider-opencode/src/server/textGeneration.ts",
+  "packages/provider-opencode/src/server/v2/textGeneration.ts",
   "apps/server/src/cloud",
   "apps/server/src/relay",
   "apps/server/src/desktopUpdate",
@@ -47,7 +67,7 @@ const RENAME_EXCLUDED = [
 const EXACT_REPLACEMENTS: ReadonlyArray<{ file: string; from: string; to: string }> = [
   {
     file: "apps/web/index.html",
-    from: "<title>T3 Code (Alpha)</title>",
+    from: "<title>T3 Code (Beta)</title>",
     to: "<title>Magnesium</title>",
   },
 ];

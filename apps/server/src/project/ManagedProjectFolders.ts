@@ -1,5 +1,5 @@
 /**
- * ManagedProjectFolders - the project folders Magnesium makes for the user under
+ * ManagedProjectFolders - the project folders T3 Code makes for the user under
  * its data dir, rather than ones the user picks:
  *
  * - `<baseDir>/scratch`: the Scratch project ("No project"), with a folder of
@@ -208,7 +208,7 @@ function namedProjectReadme(name: string): string {
     "",
     `# ${name}`,
     "",
-    "Created in [Magnesium](https://t3.codes).",
+    "Created in [T3 Code](https://t3.codes).",
     "",
   ].join("\n");
 }

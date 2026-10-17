@@ -2316,7 +2316,7 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
               driver: MUSE_PROVIDER,
               providerThreadId: args.providerThread.id,
               checkpointId: args.target.checkpointId,
-              cause: "Muse Code does not support conversation rollback in T3 Code.",
+              cause: "Muse Code does not support conversation rollback in Magnesium.",
             }),
           ),
         forkThread: (args) =>
@@ -2324,7 +2324,7 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
             new ProviderAdapter.ProviderAdapterForkThreadError({
               driver: MUSE_PROVIDER,
               providerThreadId: args.sourceProviderThread.id,
-              cause: "Muse Code does not support native forks in T3 Code.",
+              cause: "Muse Code does not support native forks in Magnesium.",
             }),
           ),
       };

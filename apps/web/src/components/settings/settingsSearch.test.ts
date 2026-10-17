@@ -253,8 +253,9 @@ describe("searchSettings", () => {
       filterAvailableSettingsSearchItems({ ...availability, managedTunnelActive }).map(
         (item) => item.id,
       );
+    // magnesium: T3 Connect's webhook holding is gone, tunnel or not (D13)
     expect(itemIds(false)).not.toContain("hold-webhooks-while-offline");
-    expect(itemIds(true)).toContain("hold-webhooks-while-offline");
+    expect(itemIds(true)).not.toContain("hold-webhooks-while-offline");
   });
 
   it("shows automatic settlement settings when the server supports them", () => {

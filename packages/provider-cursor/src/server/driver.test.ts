@@ -68,7 +68,7 @@ it.layer(layerTest)("CursorDriver", (it) => {
           return { apiKey: "instance-browser-key", apiKeyExpiresAtMs: 4_000_000_000_000 };
         });
         const me = vi.spyOn(Cursor, "me").mockResolvedValue({
-          apiKeyName: "T3 Code",
+          apiKeyName: "Magnesium",
           createdAt: "2026-01-01T00:00:00.000Z",
           userEmail: "cursor@example.com",
         });

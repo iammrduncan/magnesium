@@ -366,7 +366,7 @@ const runHomebrew = Effect.fn("runHomebrew")(function* (
 /**
  * Derive update capabilities from where the executable actually lives. Every
  * package-manager branch has evidence that the named tool owns that path, so
- * T3 Code never runs a package manager against an install it did not create.
+ * Magnesium never runs a package manager against an install it did not create.
  * An unproven install falls back to the provider's own updater, which detects
  * its installer itself, and stays manual-only without one.
  */
