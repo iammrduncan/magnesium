@@ -37,6 +37,9 @@ const STRIPPED_FILES = [
   "scripts/build-npm-platform-packages.test.ts",
   "scripts/release-smoke.ts",
   "scripts/legend-list-initial-reveal.test.ts",
+  // Upstream's release announcements, read from its deleted release workflow.
+  "scripts/notify-discord-release.ts",
+  "scripts/notify-discord-release.test.ts",
 ];
 
 const WORKFLOWS_DIR = ".github/workflows";
