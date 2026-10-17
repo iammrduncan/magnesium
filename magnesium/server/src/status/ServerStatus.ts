@@ -5,7 +5,7 @@ import type {
   StreamSubscribeInput,
   ThreadCounts,
 } from "@magnesium/contracts";
-import type { OrchestrationThreadShell, ThreadId } from "@t3tools/contracts";
+import type { OrchestrationV2ThreadShell, ThreadId } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
@@ -19,6 +19,7 @@ import * as Stream from "effect/Stream";
 
 import { ServerPorts } from "../ports.ts";
 import * as LiveTable from "../stream/LiveTable.ts";
+import { isBusy, viewOf } from "../threads.ts";
 import { currentRelease, deploymentOf, nodeOf, roleOf, workloadOf } from "./release.ts";
 
 /**
@@ -37,14 +38,11 @@ export interface ThreadState {
 }
 
 /** The same precedence as the sidebar's status pill: what needs you outranks work. */
-export const threadStateOf = (thread: OrchestrationThreadShell): ThreadState => {
-  const approval = thread.hasPendingApprovals;
-  const question = thread.hasPendingUserInput;
-  const busy =
-    thread.session?.status === "running" ||
-    thread.session?.status === "starting" ||
-    thread.backgroundLiveness === "working";
-  return { running: busy && !approval && !question, approval, question };
+export const threadStateOf = (thread: OrchestrationV2ThreadShell): ThreadState => {
+  const view = viewOf(thread);
+  const approval = view.hasPendingApprovals;
+  const question = view.hasPendingUserInput;
+  return { running: isBusy(view) && !approval && !question, approval, question };
 };
 
 export const countThreads = (threads: Iterable<ThreadState>): ThreadCounts => {

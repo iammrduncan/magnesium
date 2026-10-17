@@ -1,11 +1,13 @@
 import type {
   AuthEnvironmentScope,
   ExecutionEnvironmentDescriptor,
-  OrchestrationCommand,
   OrchestrationProjectShell,
-  OrchestrationThread,
-  OrchestrationThreadShell,
+  OrchestrationV2Command,
+  OrchestrationV2ThreadProjection,
+  OrchestrationV2ThreadShell,
+  OrchestrationV2TurnItem,
   ProviderInstanceConfigMap,
+  RunId,
   ServerAuthSessionMethod,
   ServerSettings,
   ThreadId,
@@ -18,28 +20,38 @@ import * as Schema from "effect/Schema";
 import type * as Stream from "effect/Stream";
 import type { HttpServerRequest } from "effect/http";
 
-/** The server's threads, read from its projections. */
+/**
+ * What Home reads of a thread that waits on you: its runtime requests, its
+ * plans, and the turn items that describe them (prompts, questions, plan text).
+ */
+export type ThreadRequestRecords = Pick<
+  OrchestrationV2ThreadProjection,
+  "runtimeRequests" | "plans" | "turnItems"
+>;
+
+/** The server's threads, read from its projections (Orchestrator V2). */
 export interface ThreadPorts {
-  /** Every active (not archived) thread. */
-  readonly active: Effect.Effect<ReadonlyArray<OrchestrationThreadShell>, ServerPortError>;
+  /** Every active (not archived) thread, subagents' included. */
+  readonly active: Effect.Effect<ReadonlyArray<OrchestrationV2ThreadShell>, ServerPortError>;
   /** None once the thread is archived or deleted. */
   readonly byId: (
     threadId: ThreadId,
-  ) => Effect.Effect<Option.Option<OrchestrationThreadShell>, ServerPortError>;
+  ) => Effect.Effect<Option.Option<OrchestrationV2ThreadShell>, ServerPortError>;
   /** The id of each thread as its events commit; ids repeat. Attach before reading `active`. */
   readonly changes: Stream.Stream<ThreadId>;
-  /**
-   * One thread's latest turn, with every request still open and every plan;
-   * None once the thread is archived or deleted. Home reads what a thread
-   * waits on from it.
-   */
-  readonly detail: (
+  /** One thread's requests and plans; None once the thread is archived or deleted. */
+  readonly requests: (
     threadId: ThreadId,
-  ) => Effect.Effect<Option.Option<OrchestrationThread>, ServerPortError>;
+  ) => Effect.Effect<Option.Option<ThreadRequestRecords>, ServerPortError>;
+  /** The finished tool calls and approvals of one run, oldest first, for Detail. */
+  readonly recentWork: (
+    threadId: ThreadId,
+    runId: RunId,
+  ) => Effect.Effect<ReadonlyArray<OrchestrationV2TurnItem>, ServerPortError>;
   /** The server's active projects, for their titles. */
   readonly projects: Effect.Effect<ReadonlyArray<OrchestrationProjectShell>, ServerPortError>;
   /** Runs a command as a client's would run: answers to approvals and questions, plans to implement. */
-  readonly dispatch: (command: OrchestrationCommand) => Effect.Effect<void, ServerPortError>;
+  readonly dispatch: (command: OrchestrationV2Command) => Effect.Effect<void, ServerPortError>;
 }
 
 /** The caller of one of our routes, as the host server authenticated it. */

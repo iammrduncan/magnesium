@@ -2,11 +2,12 @@
 import {
   type CallerSession,
   CallerUnauthenticatedError,
+  RECENT_WORK_ITEM_TYPES,
   routesLayer,
   ServerPortError,
   ServerPorts,
 } from "@magnesium/server";
-import { AuthStandardClientScopes, ThreadId } from "@t3tools/contracts";
+import { AuthStandardClientScopes } from "@t3tools/contracts";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -19,9 +20,10 @@ import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
 import * as ServerSecretStore from "./auth/ServerSecretStore.ts";
 import * as ServerConfig from "./config.ts";
 import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
-import * as OrchestrationEngine from "./orchestration/Services/OrchestrationEngine.ts";
+import * as ProjectStore from "./orchestration-v2/ProjectStore.ts";
+import * as ThreadManagementService from "./orchestration-v2/ThreadManagementService.ts";
+import { userFacingDispatchErrorMessage } from "./orchestration-v2/UserFacingErrors.ts";
 import * as AuthPairingLinks from "./persistence/AuthPairingLinks.ts";
-import * as ProjectionSnapshotQuery from "./orchestration/Services/ProjectionSnapshotQuery.ts";
 import * as ServerSettings from "./serverSettings.ts";
 
 const portError = (detail: string) => (cause: unknown) => new ServerPortError({ detail, cause });
@@ -84,7 +86,7 @@ export const registerPairingCode = (
     const existing = yield* pairingLinks.getByCredential({ credential: input.code });
     if (Option.isSome(existing)) return false;
     yield* pairingLinks.create({
-      id: yield* crypto.randomUUIDv4,
+      id: yield* crypto.randomUUIDv4(),
       credential: input.code,
       method: "one-time-token",
       scopes: AuthStandardClientScopes,
@@ -104,8 +106,8 @@ const serverPortsLayer = Layer.effect(
     const secrets = yield* ServerSecretStore.ServerSecretStore;
     const config = yield* ServerConfig.ServerConfig;
     const environment = yield* ServerEnvironment.ServerEnvironment;
-    const snapshots = yield* ProjectionSnapshotQuery.ProjectionSnapshotQuery;
-    const engine = yield* OrchestrationEngine.OrchestrationEngineService;
+    const threads = yield* ThreadManagementService.ThreadManagementService;
+    const projects = yield* ProjectStore.ProjectStoreV2;
     const callers = callerAuthentication(auth);
     const settings = yield* ServerSettings.ServerSettingsService;
     const pairingLinks = yield* AuthPairingLinks.AuthPairingLinkRepository;
@@ -118,33 +120,62 @@ const serverPortsLayer = Layer.effect(
       authenticateWebSocket: callers.webSocket,
       environment: environment.getDescriptor,
       threads: {
-        active: snapshots.getShellSnapshot().pipe(
+        active: threads.getShellSnapshot({ location: "active" }).pipe(
           Effect.map((snapshot) => snapshot.threads),
           Effect.mapError(portError("Could not read the threads.")),
         ),
         byId: (threadId) =>
-          snapshots
-            .getThreadShellById(threadId)
-            .pipe(Effect.mapError(portError("Could not read a thread."))),
-        changes: engine.streamDomainEvents.pipe(
-          Stream.filter((event) => event.aggregateKind === "thread"),
-          Stream.map((event) => ThreadId.make(event.aggregateId)),
+          threads.getThreadShell(threadId).pipe(
+            Effect.map((shell) =>
+              Option.filter(Option.fromNullishOr(shell), (found) => found.archivedAt === null),
+            ),
+            Effect.mapError(portError("Could not read a thread.")),
+          ),
+        // Live tail only: a reader attaches first, then reads `active`.
+        changes: threads.streamDomainEvents.pipe(
+          Stream.map((event) => event.threadId),
+          Stream.orDie,
         ),
-        // Open requests are pinned into a windowed read, and plans are never windowed.
-        detail: (threadId) =>
-          snapshots
-            .getThreadDetailSnapshot(threadId, { turnLimit: 1 })
+        // Only the turn items that describe requests and plans, filtered in SQL.
+        requests: (threadId) =>
+          threads.getThreadShell(threadId).pipe(
+            Effect.flatMap((shell) =>
+              shell === null || shell.archivedAt !== null
+                ? Effect.succeedNone
+                : threads
+                    .getThreadRecords(threadId, ["runtimeRequests", "plans", "turnItems"], {
+                      turnItemTypes: ["approval_request", "user_input_request", "proposed_plan"],
+                    })
+                    .pipe(Effect.map(Option.some)),
+            ),
+            Effect.mapError(portError("Could not read a thread.")),
+          ),
+        recentWork: (threadId, runId) =>
+          threads
+            .getThreadRecords(threadId, ["turnItems"], {
+              turnItemRunIds: [runId],
+              turnItemTypes: [...RECENT_WORK_ITEM_TYPES],
+              turnItemStatuses: ["completed", "failed"],
+            })
             .pipe(
-              Effect.map(Option.map((snapshot) => snapshot.thread)),
+              Effect.map((records) => records.turnItems),
               Effect.mapError(portError("Could not read a thread.")),
             ),
-        projects: snapshots
-          .getProjectShells()
+        projects: projects
+          .listShells()
           .pipe(Effect.mapError(portError("Could not read the projects."))),
         dispatch: (command) =>
-          engine
-            .dispatch(command)
-            .pipe(Effect.asVoid, Effect.mapError(portError("Could not send that to the thread."))),
+          threads.dispatch(command).pipe(
+            Effect.asVoid,
+            Effect.mapError(
+              (cause) =>
+                new ServerPortError({
+                  detail:
+                    userFacingDispatchErrorMessage(cause) ?? "Could not send that to the thread.",
+                  cause,
+                }),
+            ),
+          ),
       },
       issueBearerSession: (input) =>
         auth.issueSession(input).pipe(

@@ -10,7 +10,8 @@ import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
-import * as Encoding from "effect/Encoding";
+import * as Base64 from "effect/encoding/Base64";
+import * as Hex from "effect/encoding/Hex";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
@@ -66,7 +67,7 @@ export const bundleProfile = Effect.fn("profiles.bundleProfile")(function* (
     const content = yield* fs.readFile(path.join(dir, entry));
     files.push({
       path: segments.join("/"),
-      contentBase64: Encoding.encodeBase64(content),
+      contentBase64: Base64.encode(content),
       ...(segments[0] === FILES.skills && (info.mode & 0o111) !== 0 ? { executable: true } : {}),
     });
   }
@@ -81,7 +82,7 @@ export const revisionOf = Effect.fn("profiles.revisionOf")(function* (
   const crypto = yield* Crypto.Crypto;
   const bytes = new TextEncoder().encode(encodePush({ revision: "", profiles }));
   const digest = yield* crypto.digest("SHA-256", bytes).pipe(Effect.orDie);
-  return Encoding.encodeHex(digest).slice(0, 16);
+  return Hex.encode(digest).slice(0, 16);
 });
 
 export const make = Effect.gen(function* () {

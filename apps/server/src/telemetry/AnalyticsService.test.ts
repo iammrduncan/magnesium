@@ -300,8 +300,8 @@ it.layer(NodeServices.layer)("AnalyticsService test", (it) => {
         Layer.provide(configLayer),
         Layer.provide(
           Layer.mergeAll(
-            Layer.succeed(HostProcessPlatform, "linux"),
-            Layer.succeed(HostProcessArchitecture, "arm64"),
+            Layer.succeed(HostProcess.Platform, "linux"),
+            Layer.succeed(HostProcess.Architecture, "arm64"),
           ),
         ),
         Layer.provideMerge(NodeHttpServer.layerTest),

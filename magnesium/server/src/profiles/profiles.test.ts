@@ -312,9 +312,9 @@ describe("stock instances", () => {
         profiles: [],
         installed: () => true,
       });
-      // Every instance there, and every driver's default, is off; no twin, no profile.
+      // Every instance there, and each default that runs unconfigured, is off; no twin, no profile.
       expect(Object.values(next).every((instance) => instance.enabled === false)).toBe(true);
-      expect(Object.keys(next).toSorted()).toEqual(Object.keys(current.providers).toSorted());
+      expect(Object.keys(next).toSorted()).toEqual(["claudeAgent", "codex"]);
     }).pipe(Effect.provide(NodeServices.layer)),
   );
 

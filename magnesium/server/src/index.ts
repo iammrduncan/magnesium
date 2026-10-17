@@ -34,6 +34,7 @@ import * as ServerStatus from "./status/ServerStatus.ts";
 
 export * from "./ports.ts";
 export { agentsCommand } from "./agents/cli.ts";
+export { RECENT_WORK_ITEM_TYPES } from "./home/items.ts";
 
 const routeLayers = Layer.unwrap(
   Effect.gen(function* () {

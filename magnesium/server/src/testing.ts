@@ -16,15 +16,20 @@ import {
   DEFAULT_SERVER_SETTINGS,
   type ExecutionEnvironmentDescriptor,
   EnvironmentId,
-  type OrchestrationCommand,
   type OrchestrationProjectShell,
-  type OrchestrationProposedPlan,
-  type OrchestrationThread,
-  type OrchestrationThreadActivity,
-  type OrchestrationThreadShell,
+  type OrchestrationV2Command,
+  type OrchestrationV2PlanArtifact,
+  type OrchestrationV2RuntimeRequest,
+  type OrchestrationV2ShellThreadStatus,
+  type OrchestrationV2ThreadShell,
+  type OrchestrationV2TurnItem,
+  ProjectId,
+  RunId,
+  RuntimeRequestId,
   type ServerAuthSessionMethod,
   ThreadId,
 } from "@t3tools/contracts";
+import * as DateTime from "effect/DateTime";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -46,6 +51,7 @@ import {
   type CallerSession,
   ServerPorts,
   type ThreadPorts,
+  type ThreadRequestRecords,
 } from "./ports.ts";
 
 /** Test fixtures for `ServerPorts`: a fake server's sessions, identity and threads. */
@@ -96,93 +102,161 @@ export const authenticateTestSocket = (request: HttpServerRequest.HttpServerRequ
     : Effect.succeed(session);
 };
 
-/** A thread shell with only what Magnesium reads; the rest is never looked at. */
+const TEST_TIME = "2026-10-16T01:00:00.000Z";
+const at = (iso: string) => DateTime.makeUnsafe(iso);
+
+const ACTIVE = new Set(["preparing", "queued", "starting", "running", "waiting"]);
+
+/**
+ * A thread shell (Orchestrator V2) with what Magnesium reads; the rest is
+ * empty. `run` is the latest run's status; a thread with none never ran.
+ * `background` is work left running after the run: a monitor that will wake
+ * the agent ("working"), or a command such as a dev server ("monitoring").
+ */
 export const testThread = (
   id: string,
   state: {
-    readonly session?: "running" | "starting" | "ready" | "idle" | "error";
+    readonly run?: OrchestrationV2ShellThreadStatus;
     readonly approval?: boolean;
     readonly question?: boolean;
     readonly background?: "working" | "monitoring";
+    readonly lastError?: string;
   } = {},
-  overrides: Partial<OrchestrationThreadShell> = {},
-): OrchestrationThreadShell =>
-  ({
+  overrides: Partial<OrchestrationV2ThreadShell> = {},
+): OrchestrationV2ThreadShell => {
+  const runId = state.run === undefined ? null : RunId.make(`${id}-run`);
+  const active = state.run !== undefined && ACTIVE.has(state.run);
+  // A V2 shell names only its newest open request.
+  const pending = state.approval
+    ? { id: RuntimeRequestId.make(`${id}-approval`), kind: "command", createdAt: at(TEST_TIME) }
+    : state.question
+      ? {
+          id: RuntimeRequestId.make(`${id}-question`),
+          kind: "user_input",
+          createdAt: at(TEST_TIME),
+        }
+      : null;
+  return {
+    createdBy: "user",
+    creationSource: "web",
     id: ThreadId.make(id),
-    projectId: "project-1",
+    projectId: ProjectId.make("project-1"),
     title: id,
-    interactionMode: "default",
-    runtimeMode: "approval-required",
+    providerInstanceId: "opencode",
     modelSelection: { instanceId: "opencode", model: "test-model" },
-    session:
-      state.session === undefined
-        ? null
-        : {
-            threadId: ThreadId.make(id),
-            status: state.session,
-            activeTurnId: null,
-            lastError: null,
-            updatedAt: "2026-10-16T01:00:00.000Z",
-          },
-    latestTurn: null,
-    hasPendingApprovals: state.approval ?? false,
-    hasPendingUserInput: state.question ?? false,
+    runtimeMode: "approval-required",
+    interactionMode: "default",
+    branch: null,
+    worktreePath: null,
+    lineage: { parentThreadId: null, relationshipToParent: null, rootThreadId: ThreadId.make(id) },
+    forkedFrom: null,
+    activeProviderThreadId: null,
+    latestRunId: runId,
+    latestRunStartedAt: runId === null ? null : at(TEST_TIME),
+    latestRunCompletedAt: runId === null || active ? null : at(TEST_TIME),
+    activeRunId: active ? runId : null,
+    status: state.run ?? "idle",
+    lastError: state.lastError ?? null,
+    pendingRuntimeRequest: pending,
+    latestVisibleMessage: null,
+    latestUserMessageAt: null,
     hasActionableProposedPlan: false,
-    backgroundLiveness: state.background ?? null,
+    pendingBackgroundTasks:
+      state.background === undefined
+        ? []
+        : [
+            {
+              taskId: "background-1",
+              kind: state.background === "working" ? "monitor" : "command",
+            },
+          ],
+    itemCount: 0,
+    visibleItemCount: 0,
+    createdAt: at(TEST_TIME),
+    updatedAt: at(TEST_TIME),
+    archivedAt: null,
+    settledOverride: null,
     settledAt: null,
-    updatedAt: "2026-10-16T01:00:00.000Z",
+    deletedAt: null,
     ...overrides,
-  }) as unknown as OrchestrationThreadShell;
+  } as unknown as OrchestrationV2ThreadShell;
+};
 
-/** A thread's detail with only what Home reads: its activities and plans. */
-export const testThreadDetail = (
-  id: string,
-  detail: {
-    readonly activities?: ReadonlyArray<OrchestrationThreadActivity>;
-    readonly proposedPlans?: ReadonlyArray<OrchestrationProposedPlan>;
-  } = {},
-): OrchestrationThread =>
+const turnItemBase = (threadId: string, id: string, updatedAt: string, runId: string | null) => ({
+  id,
+  threadId: ThreadId.make(threadId),
+  runId: runId === null ? null : RunId.make(runId),
+  nodeId: null,
+  providerThreadId: null,
+  providerTurnId: null,
+  nativeItemRef: null,
+  parentItemId: null,
+  ordinal: 0,
+  status: "completed",
+  title: null,
+  startedAt: at(updatedAt),
+  completedAt: at(updatedAt),
+  updatedAt: at(updatedAt),
+});
+
+const pendingRequest = (
+  requestId: string,
+  kind: OrchestrationV2RuntimeRequest["kind"],
+  createdAt: string,
+) =>
   ({
-    id: ThreadId.make(id),
-    activities: detail.activities ?? [],
-    proposedPlans: detail.proposedPlans ?? [],
-    latestTurn: null,
-  }) as unknown as OrchestrationThread;
+    id: RuntimeRequestId.make(requestId),
+    nodeId: "node-1",
+    providerTurnId: null,
+    nativeRequestRef: null,
+    kind,
+    status: "pending",
+    responseCapability: { type: "live", providerSessionId: "session-1" },
+    createdAt: at(createdAt),
+    resolvedAt: null,
+  }) as unknown as OrchestrationV2RuntimeRequest;
+
+/** A thread's requests and plans, as `ThreadPorts.requests` reads them. */
+export const testThreadRequests = (
+  ...parts: ReadonlyArray<Partial<ThreadRequestRecords>>
+): ThreadRequestRecords => ({
+  runtimeRequests: parts.flatMap((part) => part.runtimeRequests ?? []),
+  plans: parts.flatMap((part) => part.plans ?? []),
+  turnItems: parts.flatMap((part) => part.turnItems ?? []),
+});
 
 /** The agent asks to run `command`, as a provider's request reaches the thread. */
-export const approvalActivity = (
+export const approvalRequest = (
+  threadId: string,
   requestId: string,
   createdAt: string,
   command = "rm -rf build",
-): OrchestrationThreadActivity =>
-  ({
-    id: `event-${requestId}`,
-    tone: "approval",
-    kind: "approval.requested",
-    summary: "Command approval requested",
-    payload: {
-      requestId,
+): Pick<ThreadRequestRecords, "runtimeRequests" | "turnItems"> => ({
+  runtimeRequests: [pendingRequest(requestId, "command", createdAt)],
+  turnItems: [
+    {
+      ...turnItemBase(threadId, `item-${requestId}`, createdAt, null),
+      type: "approval_request",
+      requestId: RuntimeRequestId.make(requestId),
       requestKind: "command",
-      requestType: "command_execution_approval",
-      detail: command,
-    },
-    turnId: null,
-    createdAt,
-  }) as unknown as OrchestrationThreadActivity;
+      prompt: command,
+    } as unknown as OrchestrationV2TurnItem,
+  ],
+});
 
 /** The agent asks one question with these options. */
-export const questionActivity = (
+export const questionRequest = (
+  threadId: string,
   requestId: string,
   createdAt: string,
   options: ReadonlyArray<string> = ["Suite A", "Needle tests only"],
-): OrchestrationThreadActivity =>
-  ({
-    id: `event-${requestId}`,
-    tone: "info",
-    kind: "user-input.requested",
-    summary: "User input requested",
-    payload: {
-      requestId,
+): Pick<ThreadRequestRecords, "runtimeRequests" | "turnItems"> => ({
+  runtimeRequests: [pendingRequest(requestId, "user_input", createdAt)],
+  turnItems: [
+    {
+      ...turnItemBase(threadId, `item-${requestId}`, createdAt, null),
+      type: "user_input_request",
+      requestId: RuntimeRequestId.make(requestId),
       questions: [
         {
           id: "eval-set",
@@ -192,40 +266,95 @@ export const questionActivity = (
           multiSelect: false,
         },
       ],
-    },
-    turnId: null,
-    createdAt,
-  }) as unknown as OrchestrationThreadActivity;
+    } as unknown as OrchestrationV2TurnItem,
+  ],
+});
+
+/** A proposed plan on `runId`, written at `updatedAt`; `status` "completed" once implemented. */
+export const proposedPlan = (
+  threadId: string,
+  planId: string,
+  runId: string,
+  updatedAt: string,
+  markdown: string,
+  status: OrchestrationV2PlanArtifact["status"] = "active",
+): Pick<ThreadRequestRecords, "plans" | "turnItems"> => ({
+  plans: [
+    {
+      id: planId,
+      threadId: ThreadId.make(threadId),
+      runId: RunId.make(runId),
+      nodeId: "node-1",
+      status,
+      kind: "proposed_plan",
+      markdown,
+    } as unknown as OrchestrationV2PlanArtifact,
+  ],
+  turnItems: [
+    {
+      ...turnItemBase(threadId, `item-${planId}`, updatedAt, runId),
+      type: "proposed_plan",
+      planId,
+      markdown,
+      streaming: false,
+    } as unknown as OrchestrationV2TurnItem,
+  ],
+});
+
+/** A finished command in a run, for Detail. */
+export const commandItem = (
+  threadId: string,
+  id: string,
+  runId: string,
+  completedAt: string,
+  input: string,
+): OrchestrationV2TurnItem =>
+  ({
+    ...turnItemBase(threadId, id, completedAt, runId),
+    type: "command_execution",
+    input,
+  }) as unknown as OrchestrationV2TurnItem;
 
 /**
  * In-memory threads that announce each change, like the server's projections.
- * A thread's detail is set with it; commands are recorded, never run.
+ * A thread's requests and run items are set with it; commands are recorded, never run.
  */
 export const makeTestThreads = Effect.gen(function* () {
-  const threads = new Map<ThreadId, OrchestrationThreadShell>();
-  const details = new Map<ThreadId, OrchestrationThread>();
+  const threads = new Map<ThreadId, OrchestrationV2ThreadShell>();
+  const requests = new Map<ThreadId, ThreadRequestRecords>();
+  const work = new Map<ThreadId, ReadonlyArray<OrchestrationV2TurnItem>>();
   const projects: Array<OrchestrationProjectShell> = [];
-  const dispatched: Array<OrchestrationCommand> = [];
+  const dispatched: Array<OrchestrationV2Command> = [];
   const changes = yield* PubSub.unbounded<ThreadId>();
   const ports: ThreadPorts = {
     active: Effect.sync(() => [...threads.values()]),
     byId: (threadId) => Effect.sync(() => Option.fromNullishOr(threads.get(threadId))),
     changes: Stream.fromPubSub(changes),
-    detail: (threadId) =>
+    requests: (threadId) =>
       Effect.sync(() =>
-        threads.has(threadId) ? Option.fromNullishOr(details.get(threadId)) : Option.none(),
+        threads.has(threadId)
+          ? Option.some(requests.get(threadId) ?? testThreadRequests())
+          : Option.none(),
       ),
+    recentWork: (threadId, runId) =>
+      Effect.sync(() => (work.get(threadId) ?? []).filter((item) => item.runId === runId)),
     projects: Effect.sync(() => [...projects]),
     dispatch: (command) => Effect.sync(() => void dispatched.push(command)),
   };
   return {
     ports,
     dispatched,
-    upsert: (thread: OrchestrationThreadShell, detail?: OrchestrationThread) =>
+    upsert: (
+      thread: OrchestrationV2ThreadShell,
+      threadRequests?: ThreadRequestRecords,
+      runItems?: ReadonlyArray<OrchestrationV2TurnItem>,
+    ) =>
       Effect.sync(() => {
         threads.set(thread.id, thread);
-        if (detail === undefined) details.delete(thread.id);
-        else details.set(thread.id, detail);
+        if (threadRequests === undefined) requests.delete(thread.id);
+        else requests.set(thread.id, threadRequests);
+        if (runItems === undefined) work.delete(thread.id);
+        else work.set(thread.id, runItems);
       }).pipe(Effect.andThen(PubSub.publish(changes, thread.id))),
     remove: (id: string) =>
       Effect.sync(() => threads.delete(ThreadId.make(id))).pipe(
@@ -247,7 +376,8 @@ export const noThreads: ThreadPorts = {
   active: Effect.succeed([]),
   byId: () => Effect.succeedNone,
   changes: Stream.never,
-  detail: () => Effect.succeedNone,
+  requests: () => Effect.succeedNone,
+  recentWork: () => Effect.succeed([]),
   projects: Effect.succeed([]),
   dispatch: () => Effect.void,
 };

@@ -28,15 +28,15 @@ import { HUB_MACHINES_CONFIG_FILE } from "../hub/HubMachines.ts";
 import { connect } from "../rpc/client.ts";
 import * as LiveTable from "../stream/LiveTable.ts";
 import {
-  approvalActivity,
+  approvalRequest,
   makeTestThreads,
-  questionActivity,
+  questionRequest,
   startTestServer,
   testDescriptor,
   testHubConfig,
   testHubSecrets,
   testThread,
-  testThreadDetail,
+  testThreadRequests,
   testTicketRoute,
 } from "../testing.ts";
 import { coreItems, fleetItem, needsYouItem } from "./core.ts";
@@ -303,13 +303,13 @@ describe("magnesium.footer.items on the hub", () => {
     Effect.gen(function* () {
       const threads = yield* makeTestThreads;
       yield* threads.upsert(
-        testThread("a", { session: "running", approval: true }),
-        testThreadDetail("a", { activities: [approvalActivity("r1", "2026-10-16T01:00:00.000Z")] }),
+        testThread("a", { run: "running", approval: true }),
+        testThreadRequests(approvalRequest("a", "r1", "2026-10-16T01:00:00.000Z")),
       );
       const hubThreads = yield* makeTestThreads;
       yield* hubThreads.upsert(
         testThread("b", { question: true }),
-        testThreadDetail("b", { activities: [questionActivity("r2", "2026-10-16T01:00:00.000Z")] }),
+        testThreadRequests(questionRequest("b", "r2", "2026-10-16T01:00:00.000Z")),
       );
 
       const machineRun = yield* Scope.make();

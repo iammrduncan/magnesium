@@ -5,7 +5,7 @@ import type {
   ProfilePushResult,
 } from "@magnesium/contracts";
 import * as Effect from "effect/Effect";
-import * as Encoding from "effect/Encoding";
+import * as Base64 from "effect/encoding/Base64";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
@@ -86,7 +86,7 @@ const stage = Effect.fn("profiles.stage")(function* (incoming: string, bundle: P
   for (const file of bundle.files) {
     const target = path.join(dir, file.path);
     yield* fs.makeDirectory(path.dirname(target), { recursive: true });
-    const bytes = yield* Effect.fromResult(Encoding.decodeBase64(file.contentBase64));
+    const bytes = yield* Effect.fromResult(Base64.decode(file.contentBase64));
     yield* fs.writeFile(target, bytes, { mode: file.executable === true ? 0o755 : 0o644 });
   }
   return { root, dir };

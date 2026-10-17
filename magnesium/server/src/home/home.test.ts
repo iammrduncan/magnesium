@@ -20,15 +20,15 @@ import * as Stream from "effect/Stream";
 import { HUB_MACHINES_CONFIG_FILE } from "../hub/HubMachines.ts";
 import { connect } from "../rpc/client.ts";
 import {
-  approvalActivity,
+  approvalRequest,
   makeTestThreads,
-  questionActivity,
+  questionRequest,
   startTestServer,
   testDescriptor,
   testHubConfig,
   testHubSecrets,
   testThread,
-  testThreadDetail,
+  testThreadRequests,
   testTicketRoute,
 } from "../testing.ts";
 import { buildHome } from "./Home.ts";
@@ -146,17 +146,15 @@ describe("magnesium.home.* on the hub", () => {
       Effect.gen(function* () {
         const machineThreads = yield* makeTestThreads;
         yield* machineThreads.upsert(
-          testThread("deploy", { session: "running", approval: true }),
-          testThreadDetail("deploy", {
-            activities: [approvalActivity("apply", "2026-10-16T01:00:00.000Z", "kubectl apply")],
-          }),
+          testThread("deploy", { run: "running", approval: true }),
+          testThreadRequests(
+            approvalRequest("deploy", "apply", "2026-10-16T01:00:00.000Z", "kubectl apply"),
+          ),
         );
         const hubThreads = yield* makeTestThreads;
         yield* hubThreads.upsert(
           testThread("notes", { question: true }),
-          testThreadDetail("notes", {
-            activities: [questionActivity("which", "2026-10-16T01:10:00.000Z")],
-          }),
+          testThreadRequests(questionRequest("notes", "which", "2026-10-16T01:10:00.000Z")),
         );
 
         const machineRun = yield* Scope.make();
@@ -212,7 +210,7 @@ describe("magnesium.home.* on the hub", () => {
         });
         expect(machineThreads.dispatched).toEqual([
           expect.objectContaining({
-            type: "thread.approval.respond",
+            type: "runtime-request.respond",
             threadId: "deploy",
             requestId: "apply",
             decision: "accept",

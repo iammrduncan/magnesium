@@ -68,7 +68,7 @@ describe("resolveServerEnvironmentLabel", () => {
         cwdBaseName: "t3code",
         podMachineName: " cpu-host-2 ",
       }).pipe(
-        Effect.provide(withHostPlatform(LinuxMachineInfoLayer, "linux", "notebook-7c9f4-x2k4p")),
+        Effect.provide(withHostPlatform(layerLinuxMachineInfo, "linux", "notebook-7c9f4-x2k4p")),
       );
 
       expect(result).toBe("cpu-host-2");

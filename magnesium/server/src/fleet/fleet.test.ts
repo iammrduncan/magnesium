@@ -68,7 +68,7 @@ describe("Fleet on the hub", () => {
   it.live("shows each machine live, offline when it stops, and back when it returns", () =>
     Effect.gen(function* () {
       const threads = yield* makeTestThreads;
-      yield* threads.upsert(testThread("a", { session: "running" }));
+      yield* threads.upsert(testThread("a", { run: "running" }));
       const startMachine = (scope: Scope.Scope) =>
         startTestServer({
           routes: testTicketRoute("machine-token"),
@@ -110,7 +110,7 @@ describe("Fleet on the hub", () => {
 
       // Test it 2: a thread that waits on you shows within two seconds.
       const asked = Date.now();
-      yield* threads.upsert(testThread("b", { session: "running", approval: true }));
+      yield* threads.upsert(testThread("b", { run: "running", approval: true }));
       yield* fleet.until((rows) => rows.get("cpu-host-1")?.threads?.waiting === 1);
       expect(Date.now() - asked).toBeLessThan(2_000);
 
