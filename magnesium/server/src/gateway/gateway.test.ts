@@ -11,7 +11,12 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Queue from "effect/Queue";
 import * as Stream from "effect/Stream";
-import { FetchHttpClient, HttpRouter, HttpServerResponse } from "effect/unstable/http";
+import {
+  FetchHttpClient,
+  HttpRouter,
+  HttpServerRequest,
+  HttpServerResponse,
+} from "effect/unstable/http";
 
 import { urlUnder } from "../forward.ts";
 import { HUB_MACHINES_CONFIG_FILE } from "../hub/HubMachines.ts";
@@ -82,6 +87,19 @@ describe("the hub through a gateway", () => {
             "/.well-known/t3/environment",
             Effect.succeed(HttpServerResponse.jsonUnsafe(descriptorOfSpoke)),
           ),
+          // What a body looks like when it arrives, as pairing's form POST needs it.
+          HttpRouter.add(
+            "POST",
+            "/echo",
+            Effect.gen(function* () {
+              const request = yield* HttpServerRequest.HttpServerRequest;
+              const body = yield* request.text.pipe(Effect.orElseSucceed(() => ""));
+              return HttpServerResponse.jsonUnsafe({
+                contentType: request.headers["content-type"] ?? null,
+                body,
+              });
+            }),
+          ),
         ),
         ports: { environment: Effect.succeed(descriptorOfSpoke) },
       });
@@ -108,6 +126,18 @@ describe("the hub through a gateway", () => {
           }).then((response) => response.status),
         );
       expect(yield* ticket("Bearer machine-token")).toBe(200);
+      // A body keeps its content type through the gateway: pairing posts a form.
+      const echoed = yield* Effect.promise(() =>
+        fetch(`${gateway.origin}/spokes/cpu-host-2/echo`, {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: "grant_type=token-exchange&subject_token=CODE",
+        }).then((response) => response.json()),
+      );
+      expect(echoed).toEqual({
+        contentType: "application/x-www-form-urlencoded",
+        body: "grant_type=token-exchange&subject_token=CODE",
+      });
       expect(yield* ticket("Bearer someone-else")).toBe(401);
       expect(yield* ticket()).toBe(401);
 

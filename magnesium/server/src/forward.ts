@@ -70,7 +70,10 @@ export const forwardHttp = Effect.fn("forwardHttp")(function* (
       HttpClientRequest.setHeaders(headers),
       method === "GET" || method === "HEAD"
         ? (self) => self
-        : HttpClientRequest.bodyStream(request.stream),
+        : // A body sets its own content type; keep the one it came with, not octet-stream.
+          HttpClientRequest.bodyStream(request.stream, {
+            contentType: request.headers["content-type"],
+          }),
     ),
   );
   const responseHeaders: Record<string, string> = {};
