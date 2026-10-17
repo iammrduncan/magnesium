@@ -1,0 +1,59 @@
+# Magnesium server as a systemd user service for the agent user (D15, D35).
+# The unit (magnesium/deploy/systemd/magnesium.service) fixes the layout:
+# releases under ~/.local/share/magnesium, state in ~/.magnesium.
+
+# The Magnesium source to build from, and the ref to build. Pin a tag or commit.
+magnesium_source: https://github.com/iammrduncan/magnesium.git
+magnesium_version: main
+
+# Hosts that don't build (a small hub, say) name a build host from the
+# inventory. The role builds and packs there, and copies the pack in through
+# the admin machine. The pack is the server and its runtime dependencies only.
+magnesium_build_host: ""
+magnesium_pack_cache: "{{ playbook_dir }}/.packs"
+
+# Node 24, installed per user. Checksums from nodejs.org's SHASUMS256.txt.
+magnesium_node_version: "24.21.0"
+magnesium_node_sha256:
+  x64: fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6
+  arm64: 6ad1325edbdb5649c379b75a237147a666c95d4f9ae8d340fef2d1575d289ad2
+
+# Bind address and port. On a machine, the address the hub reaches its server
+# on: a LAN address, a tailnet address, or 0.0.0.0 behind a firewall that admits
+# only the hub (README, "Only the hub reaches a machine"). On the hub, where your
+# devices reach it: 127.0.0.1 behind a reverse proxy or a Tailscale Service, or a
+# LAN address. Empty: the machine's tailnet IPv4 when Tailscale is installed;
+# otherwise the role stops and asks for it.
+magnesium_host: ""
+magnesium_port: 3773
+
+# Linux: keep the user's systemd running when nobody is logged in (needs root once).
+magnesium_enable_linger: false
+
+# The name the hub knows this server by (its machine list); empty uses the inventory
+# name. Set it to `hub` on the hub. Profiles name machines by it.
+magnesium_machine_name: ""
+
+# Agents run fenced by default and need nothing for it (goal 03). The optional
+# container sandbox needs rootless Podman and a base image pinned by digest;
+# empty leaves it off. Profiles' CLIs are mounted from the host, read-only.
+magnesium_sandbox_image: "" # docker.io/library/node@sha256:<index digest>
+
+# Env files holding secrets, loaded by the unit by name (D36).
+# This role never writes or reads them; it stops if one is missing or not private.
+magnesium_secret_env_files: [] # ["{{ ansible_env.HOME }}/.config/magnesium/litellm.env"]
+
+# Settings written once, when the state home has none. Empty: the release's seed
+# (magnesium/deploy/seed/settings.json) is written on first activate instead.
+magnesium_settings: {}
+
+# OpenCode through an LLM gateway (LiteLLM or another OpenAI-compatible one),
+# for machines without Claude Code (D36).
+magnesium_opencode: false
+magnesium_opencode_version: "1.18.34"
+magnesium_opencode_sha256:
+  x64: 0f22479647226d1d2dd99595d20082ee7bda3870b62dc6a90b41efc1a71d7e9a
+  arm64: bbdb3f00c2c51e42e315525233151309724226a8776da8e9145e3b0fa3d5310f
+magnesium_opencode_base_url: https://litellm.example.ts.net/v1
+magnesium_opencode_models: [] # ["opencode-go/<model>"]; the first is the default
+magnesium_opencode_api_key_env: LITELLM_API_KEY

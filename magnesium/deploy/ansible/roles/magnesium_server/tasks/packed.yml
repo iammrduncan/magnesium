@@ -1,0 +1,48 @@
+# For hosts that don't build (a small hub, say): build and pack on the build
+# host, then copy the pack in through the admin machine and unpack it here.
+- name: Build {{ magnesium_version }} on {{ magnesium_build_host }}
+  ansible.builtin.shell: "$HOME/.local/share/magnesium/bin/magnesium-release build {{ magnesium_version }} {{ magnesium_source }}"
+  delegate_to: "{{ magnesium_build_host }}"
+  register: magnesium_remote_build
+  changed_when: "'Built ' in magnesium_remote_build.stdout"
+
+- name: The commit that was built
+  ansible.builtin.set_fact:
+    magnesium_release: "{{ magnesium_remote_build.stdout | regex_search('(?:Built ([0-9a-f]{10})|([0-9a-f]{10}) is already built)', '\\1', '\\2') | select | first }}"
+
+- name: Is that release already here
+  ansible.builtin.stat:
+    path: "{{ magnesium_root }}/releases/{{ magnesium_release }}/apps/server/dist/bin.mjs"
+  register: magnesium_have_release
+
+- name: Copy the pack in
+  when: not magnesium_have_release.stat.exists
+  block:
+    - name: Pack it on {{ magnesium_build_host }}
+      ansible.builtin.shell: "$HOME/.local/share/magnesium/bin/magnesium-release pack {{ magnesium_release }} /tmp/magnesium-{{ magnesium_release }}.tar.gz"
+      delegate_to: "{{ magnesium_build_host }}"
+      changed_when: true
+    - name: Fetch the pack to the admin machine
+      ansible.builtin.fetch:
+        src: "/tmp/magnesium-{{ magnesium_release }}.tar.gz"
+        dest: "{{ magnesium_pack_cache }}/"
+        flat: true
+      delegate_to: "{{ magnesium_build_host }}"
+    - name: Remove the pack from {{ magnesium_build_host }}
+      ansible.builtin.file:
+        path: "/tmp/magnesium-{{ magnesium_release }}.tar.gz"
+        state: absent
+      delegate_to: "{{ magnesium_build_host }}"
+    - name: Send the pack here
+      ansible.builtin.copy:
+        src: "{{ magnesium_pack_cache }}/magnesium-{{ magnesium_release }}.tar.gz"
+        dest: "{{ magnesium_root }}/magnesium-{{ magnesium_release }}.tar.gz"
+        mode: "0600"
+    - name: Unpack it
+      ansible.builtin.command: "{{ magnesium_root }}/bin/magnesium-release unpack {{ magnesium_root }}/magnesium-{{ magnesium_release }}.tar.gz"
+      register: magnesium_unpack
+      changed_when: "'Unpacked ' in magnesium_unpack.stdout"
+    - name: Remove the pack here
+      ansible.builtin.file:
+        path: "{{ magnesium_root }}/magnesium-{{ magnesium_release }}.tar.gz"
+        state: absent

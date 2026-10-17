@@ -1,0 +1,79 @@
+---
+id: mg-apps
+status: PLANNED
+kind: feature
+depends_on: [mg-home, mg-fleet, mg-design-system]
+phase: 6
+boards: ["Apps · desktop", "Selected app · desktop", "App · phone", "Footer · shared component (app items)", "Footer · GPU popover open"]
+decisions: [D24, D54, D55]
+answers: [O19, O25]
+---
+# Apps on the hub: enable, open, pin, footer items, and actions that ask first
+
+This goal covers M5 (app mode: list apps, pin the ones that matter) and the plugin-style mini apps in the requirements. An app's views and tools live on the hub (D24); goal 28 adds parts that run on machines (D55). Every view is built with Magnesium's design system (goal 27, D54). The extension model is [doc 14](../14-apps-and-footer-extension-model.md): Hermes Desktop's registry and footer item, DeepSeek Harness's fail-closed approvals, and app UI in sandboxed frames.
+
+## Owner gates
+
+- **O25: confirm that app UI runs in sandboxed frames** (doc 14's one difference from both models). Record the answer in doc 09.
+
+## Build
+
+1. **A registry on the hub only.**
+   - One folder per app, `apps/<id>/app.json`, with the manifest from doc 14 (`magnesiumApi`).
+   - Versions are git-tracked.
+   - Enable and disable; pins; a data scope per app.
+2. **Contribution points.**
+   - **A page** under Apps, which can be pinned to the sidebar.
+   - **A footer item.** Its label is data, filled by the hub from a read-only tool on a timer or from an app event. Its popover is a small app view; on the phone it becomes a bottom sheet.
+   - **A Home card**, declarative and filled from a read-only tool.
+3. **Isolation.**
+   - Every app view runs in a sandboxed frame on its own origin and speaks the MCP Apps bridge: `tools/call`, `ui/message` and model-context updates.
+   - Views use the design system's kit, bundled into the app; its theme tokens arrive as host-context changes, so apps follow light, dark and the user's theme.
+   - The frame's CSP blocks all network, so data comes only through tool calls the hub proxies.
+   - Reuse T3's MCP-app frame if it works outside a thread (spike S4); otherwise use our own frame.
+4. **Approvals.** Decide O19 (T3's runtime requests or our own queue) and record it in doc 09.
+   - Tools marked `readOnly` run without asking.
+   - Every other call goes to one approval queue on the hub, which shows on Home and sends a push.
+   - The outcomes are a closed set: `allowed-once`, `rejected`, `cancelled`, `unavailable`. Anything but `allowed-once` fails, including a request nobody answers.
+   - Each ask and answer is logged.
+5. **Consent.**
+   - Enabling an app asks once for its tools, data reads and network domains.
+   - A new version that widens any of them asks again, for the difference only.
+6. **App servers** run at the `container` sandbox level or stricter.
+7. **Turning an app off** removes its page, footer item, card and tools together.
+8. **The first app: GPU Board.** It reads `fleet.machines`, and its Reserve action asks first. It is built against the public contract with the design system's kit, so it doubles as the template for goal 17.
+9. **The screens:**
+   - the Apps page, as on the board: pinned apps, every app with filters and search, pinning;
+   - Selected app, with its side panel: tools, data, author, versions and the footer switch;
+   - App · phone.
+
+## Test it
+
+1. **Enable GPU Board.**
+   - A consent sheet lists its tools and data. After OK, its page opens.
+   - The footer shows "GPU `<util>` · `<temp>`", matching Fleet, and its popover lists every GPU.
+2. **An action that asks.** Click Reserve.
+   - An approval card shows on Home and arrives as a push.
+   - Reject: the app shows "rejected" and nothing happens.
+   - Try again and choose Allow once: the action runs. The log has both answers.
+3. **Fail closed.** Leave an approval unanswered past its timeout. It ends as `unavailable`, and nothing runs.
+4. **No network.** From inside the app's frame, `fetch('https://example.com')` is blocked, and the console shows the CSP.
+5. **Off means off.** Disable GPU Board; its page, footer item, card and tools are gone. Enabling it again restores them.
+6. **Consent for the difference.** Publish a new version that adds one data read. Enabling it asks only about the new read.
+7. **Phone.** The app page works, and the footer popover opens as a bottom sheet.
+8. **Against the boards.** Compare side by side with Apps · desktop, Selected app · desktop, App · phone and both Footer boards.
+
+## Not in this goal
+
+- Parts of apps that run on machines (goal 28).
+- Apps built by agents (goal 17).
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+1. Goal 28, machine parts.
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

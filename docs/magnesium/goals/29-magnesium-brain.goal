@@ -1,0 +1,65 @@
+---
+id: mg-magnesium-brain
+status: PLANNED
+kind: feature
+depends_on: [mg-hub-link, mg-profiles]
+phase: 5
+boards: []
+decisions: [D22, D23, D50, D56, D57, D58]
+---
+# The Magnesium Brain: Magnesium runs its own knowledge base
+
+The Magnesium Brain is Magnesium's own knowledge base and memory (D56). Magnesium runs it, keeps its data, and decides who may read and write what. The engine is GBrain, the open-source knowledge engine on Postgres with pgvector, pinned and run by Magnesium rather than forked. Agents never hold a Brain token of their own; they reach the Brain through Magnesium with what their profile and project allow. An existing GBrain knowledge base can be imported once, and retired when its owner says so.
+
+The Brain is part of the hub application and runs on the hub's own system (D58), so every install has one, a single box included. An existing GBrain can be connected read-only, but nothing depends on one.
+
+## Owner gates
+
+- **Before the Brain imports an existing knowledge base,** agree how the hub's system is recovered, the Brain included: its backups are the hub's, not a cluster's. An empty Brain can start before that.
+
+## Build
+
+1. **The engine, deployed and upgraded by Magnesium** like its own servers:
+   - a pinned GBrain release with Postgres and pgvector, self-update off, with upgrades taken on purpose with a rollback;
+   - on the hub's own system, beside the hub's server, with the Ansible roles;
+   - consistent backups (database dumps) beside Magnesium's own, and a restore.
+2. **Magnesium owns access.**
+   - The engine's admin credential lives in the hub's secret store and nowhere else.
+   - Magnesium lays out the Brain's sections: team memory, one per profile, one per project (`projects/<name>`, D50), Magnesium's own sessions, and an inbox.
+   - Agents reach the Brain through an MCP endpoint Magnesium serves. For each session it forwards with a short-lived token scoped to the sections that session's profile and project may read and write. No token goes in a profile, a spoke's environment or a log.
+   - Settings → Brain shows the engine, its storage and size, its sections, and which profiles may read and write each.
+3. **Models through Magnesium's model access:** embeddings, the reranker and the dream cycle's model, each a choice in Settings → Brain. A local OpenAI-compatible server works.
+4. **Intake Magnesium owns:**
+   - its own threads, from every machine through the hub, redacted, with provenance back to the thread;
+   - Markdown folders and documents (goal 23 adds dropping them on a project);
+   - the dream cycle, run on a schedule by Magnesium.
+5. **Importing an existing knowledge base.**
+   - A one-time import of an existing GBrain, section by section, with provenance, through a read-only grant its owner gives the hub as a whole.
+   - Magnesium's agents then use only the Magnesium Brain.
+   - A list of what the old knowledge base still does that the Magnesium Brain doesn't (its collectors and importers), each with where it moves.
+   - Retiring the old knowledge base is the owner's decision, taken after this goal.
+
+## Test it
+
+1. **A fresh install has a Brain.** On a scratch single box, the Brain starts empty and healthy, and Settings → Brain shows it.
+2. **Scoped access.** A thread on a profile that may read team memory answers from it through Magnesium. A thread on a profile that may not is refused, and says why.
+3. **No tokens outside Magnesium.** No Brain token appears in any profile, spoke environment, manifest or log. A session's token stops working when the session ends.
+4. **The import.** With the owner's OK, an existing GBrain is imported. Page counts match per section, and ten sample questions return the same top pages from both.
+5. **Intake.** A finished Magnesium thread appears in the sessions section, redacted, linked to its thread.
+6. **Backup, restore and upgrade.** A backup restores to a scratch install. An engine upgrade rolls back cleanly.
+7. **With the hub.** The Brain comes back with the hub after the hub's system restarts, and a rollback of the hub leaves it working.
+
+## Not in this goal
+
+- The Brain page and reader (goal 12), memory edits and the dream cycle's controls (goal 13), profiles learning (goal 14) and project knowledge (goal 23).
+- Retiring an imported knowledge base, which the owner decides afterwards.
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+1. Goal 12, the Brain reader, on the Magnesium Brain.
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

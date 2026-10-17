@@ -1,0 +1,69 @@
+---
+id: mg-machine-parts
+status: PLANNED
+kind: feature
+depends_on: [mg-apps, mg-fleet, mg-profiles, mg-spokes-k8s]
+phase: 6
+boards: ["Apps · desktop", "Selected app · desktop", "Fleet · desktop"]
+decisions: [D21, D24, D55]
+---
+# Machine parts: apps that add to a machine server, alone or with a hub part
+
+Apps (goal 16) run on the hub. Some capabilities belong on a machine instead: stats it collects, or tools that agents in later sessions on that machine use. This goal lets an app carry a **machine part** that runs on the machine servers you choose (D55). An app with both a hub part and a machine part is a **dual app**: the two halves work together over the hub's existing link to each machine. "Plugin" means the same thing as app.
+
+## Build
+
+1. **The manifest gains a `machine` section** (doc 14):
+   - how to run it (a command, or an MCP server) and its sandbox level;
+   - which machines (all, chosen ones, or by tag);
+   - what it adds there:
+     - tools offered to agent sessions on that machine;
+     - stats it publishes, which Fleet and its hub part can read;
+     - work it runs in the background;
+   - what it may read on the machine, and its network domains.
+2. **Delivery.**
+   - The hub sends each version to the chosen machines over the Fleet link, as profile sync does.
+   - The machine checks the version's hash, keeps its versions in its state home and runs the enabled one.
+   - Rollback is picking an earlier version on the hub.
+   - Turning the app off on the hub stops its machine part everywhere.
+3. **Running on a machine.**
+   - A machine part is a process the machine server supervises, restarting it with backoff and keeping its log.
+   - It runs fenced or in a container. It never reads the server's state home, and it can't change the install.
+   - On a pod spoke (goal 25) it runs fenced.
+   - On a GPU host it may read GPU metrics but never starts GPU work.
+4. **Its tools reach agents.** The machine server offers a machine part's tools to sessions on that machine through an MCP server of its own, for profiles that opt in. New sessions get them; approvals work as for any tool.
+5. **The two halves talk.**
+   - The hub part calls the machine part's tools through the hub, with the same rules: read-only tools run, the rest ask first on Home.
+   - The machine part sends events and stats to its hub part as bounded, coalesced streams (doc 06).
+   - When a machine drops, the hub part sees it as offline.
+6. **Consent per machine.** Enabling a machine part asks once, for each machine, about its tools, reads and domains. A new version that widens any of them asks again, for the difference only.
+7. **Fleet shows** which machine parts each machine runs, their versions and their health.
+8. **The first dual app, built by hand against the contract** so it can be the template for goal 17: **Disk Watch.**
+   - Its machine part reads disk use and offers a read-only `disk_usage` tool to sessions there.
+   - Its hub part shows every chosen machine's disks, with a footer item for the fullest one.
+
+## Test it
+
+1. **Install Disk Watch on two machines.** Consent asks once per machine. Its page shows both machines' disks, and its footer item the fullest disk.
+2. **Agents get its tool.** A new session on one of them, on a profile that opts in, can call `disk_usage`. A session on a third machine, where it isn't installed, can't.
+3. **Asks first.** A machine-part tool that isn't read-only asks on Home before it runs, from the hub page or from an agent.
+4. **A machine goes away.** Stop one machine's server: the hub part shows it offline, then live again when it returns.
+5. **Versions.** Publish v2; both machines run it, and Fleet shows it. Roll back to v1 from the hub.
+6. **Off means off.** Turn the app off: its machine part stops on both machines, and new sessions no longer get its tool.
+7. **Fenced.** The machine part can't read the machine's state home, and on a pod spoke it runs fenced.
+8. **Against the boards:** the Apps and Selected app boards with a machine part listed, and Fleet · desktop.
+
+## Not in this goal
+
+- Machine parts written by the builder (goal 17).
+- Installing apps built outside this hub.
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+1. Goal 17, the app builder, which writes hub parts, machine parts and dual apps.
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

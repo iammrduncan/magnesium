@@ -1,0 +1,104 @@
+---
+id: mg-spokes-k8s
+status: IN_PROGRESS
+kind: deploy
+depends_on: [mg-home]
+phase: 2
+boards: []
+decisions: [D15, D35, D38, D52, D57, D59]
+---
+# Machine servers run in Kubernetes: attached to workloads, or as pods of their own
+
+Magnesium supports three ways to run a machine server: on bare metal or in a VM (the Ansible roles), or in Kubernetes. In Kubernetes a server is attached inside the workload pods that do the work (D59), so its agents use those workloads' files, tools, GPUs and models. A managed spoke, a pod of its own that the hub creates, suits a machine whose only job is Magnesium. The hub stays where the Ansible roles put it. Upstream's V2 (goal 24) later lands on these servers as a new image (D52).
+
+The split follows [doc 15](../15-magnesium-as-a-product.md) (D57). A cluster's operator gives Magnesium a namespace and an envelope:
+- allowed nodes and a quota;
+- pod security `restricted`;
+- network rules;
+- a deploy identity limited to the namespace;
+- one published entry point;
+- image builds.
+
+The operator bootstraps Magnesium's gateway there once. From then on Magnesium deploys, changes and routes to its own spokes, and reaches the servers attached to the operator's workloads. No capability secret comes from the operator.
+
+## Build
+
+1. **An image** (`magnesium/deploy/container/`), built from a pinned commit, tagged by it, for amd64 and arm64:
+   - a builder stage makes the server pack (the same pack `magnesium-release pack` makes) on the runtime's base, so `node-pty` matches its glibc;
+   - the install is one folder, `/opt/magnesium-portable`: the pack, Node 24, OpenCode pinned by version and checksum, the fence and the agent wrappers, and what a workload can't be counted on to have (git, a Python for the fence, tini), built to run on glibc 2.28 and later;
+   - for a spoke, the basics agents need (git, Python 3, build-essential, curl, jq, ripgrep, bubblewrap, ca-certificates); more only when a project needs it;
+   - a user with uid 10001, no capabilities needed;
+   - an entrypoint that seeds `settings.json` on the first start, as `activate` does, and runs the server.
+2. **The contract** (`magnesium/deploy/kubernetes/`): a README and reference manifests with no site details.
+   - One volume mounted as `HOME`, at the same absolute path as the machine's user home before a move, because projects, worktrees and checkpoints are stored by absolute path.
+   - Port 3773; readiness and liveness on `GET /.well-known/t3/environment`; a slow-start allowance for migrations.
+   - A spoke is a StatefulSet with one replica: its pod has a stable name, and a rollout stops the old pod before it starts the next. Two pods on one SQLite database corrupt it.
+   - Pod security `restricted`: uid and gid 10001, `fsGroup` 10001, no capabilities, no privilege escalation, `RuntimeDefault` seccomp, `/tmp` as an `emptyDir`, no service-account token.
+3. **The gateway:** one Magnesium server per namespace, in a gateway role, on a node the operator picks.
+   - It is the namespace's one entry point: the hub reaches every server behind it through it, with its grant to each passed through.
+   - It holds the namespace's deploy identity, and applies the spoke specs the hub sends: each spoke's StatefulSet, volume, Service and Secret. It reports their state back.
+   - It can do nothing outside the namespace, and specs outside the envelope are refused by the cluster's admission rules; the gateway shows why.
+   - Its own contract, so an operator can bootstrap it: port, health check, image and the environment it needs at start.
+4. **Spokes from the hub.**
+   - In Settings → Connections → Machines in Kubernetes (beside Hub machines; there is no board for it), add a machine through a gateway: its name, one of the allowed nodes, its home folder and volume size, OpenCode's gateway and models, and the model keys it gets. The hub pairs with the new spoke by itself, with a one-time code, once it is up.
+   - Stop and start a spoke, change its build and roll it back, and remove it, keeping its home or not.
+   - A change runs to the end even when the hub stops waiting for it.
+5. **Attached to workloads (D59).**
+   - An init container copies the install into the workload's pod, and `magnesium-attach -- <the workload's command>` runs the server beside the workload's process: the workload stays the main process, with its signals and exit status, and the server starts again when it stops. The workload's tools come first; the install only fills gaps.
+   - In Settings → Connections → Attached machines, attach one through its gateway, by name, with its pairing code, or with none for a machine moved in that the hub already has. The hub never starts, stops or removes it; detaching forgets it and the hub's access.
+6. **Secrets stay Magnesium's.** The gateway writes each spoke's Secret from the hub's secret store (the model key, for now). Later, sessions get their credentials from the hub when they start (goal 29 does it first for the Brain).
+7. **`magnesium-release` in a pod:** `pair`, `backup`, `restore` and `status` work without systemd and without the release folders. On bare metal, `prune` clears old releases after every activate.
+8. **Fleet shows where each server runs:** bare metal, a VM, a pod on its node, or attached in a workload on its node; a gateway has its own badge.
+9. **CI builds the image** on both architectures and checks it: it serves `/.well-known/t3/environment` as uid 10001 with every capability dropped, `magnesium-fence --probe` finds a fence, and it attaches to a bare Debian image as a non-root uid.
+10. **Docs:** the deploy README gains Kubernetes beside a single box and machines on a network.
+
+## Test it
+
+1. **The gateway, bootstrapped by the operator.** It answers through the published entry point, from the hub alone.
+2. **A new spoke and a new attached machine from the hub.**
+   - Adding a spoke on an allowed node needs no change from the operator. It comes up, the hub pairs with it by itself, and Fleet shows it Connected, as a pod. A node outside the list is refused, and Settings says why in the cluster's words.
+   - A workload deployed with Magnesium attached and a pairing code: attach it in Settings with its code, and the hub pairs with it once it answers. Fleet shows it "in <workload> on <node>".
+3. **Move a bare-metal machine into Kubernetes.**
+   - Waiting requests answered, a backup, the user service stopped and disabled.
+   - Its home is copied into the new home volume, at the same path.
+   - The server starts, attached to a workload or as a spoke, keeping the machine's name, and the hub reaches it with its existing grant, no pairing.
+   - Fleet shows it Connected. Its projects and old threads open, and a new thread runs.
+4. **Everything since goal 01 works for it:** Home with an approval answered there, the footer, Fleet → Terminal (a shell beside the server), Settings → Providers → Sign in.
+5. **Security kept.**
+   - New threads start supervised.
+   - A fenced agent can't read the state home (goal 03's tests).
+   - A phone or laptop can't reach the server; only the hub can.
+   - No capability secret is in any manifest.
+6. **Rollback.** With the Kubernetes server stopped and the user service started again, the machine comes back on bare metal.
+7. **More machines,** one at a time, including a workload with GPUs: its agents can use them, and Magnesium starts no GPU work of its own (D59).
+
+## Not in this goal
+
+- The Kubernetes sandbox level, a pod per agent session (goal 19). Until then, no headless or scheduled runs on a server in a pod.
+- GPU metrics (goal 10).
+- Moving the hub.
+- Upstream's V2 (goal 24).
+
+## Goal summary
+
+**2026-10-17: IN_PROGRESS.** Builds 1 to 10 are done, and Test it 1 to 3 passed with a gateway in a Kubernetes namespace, a managed spoke, and a bare-metal machine moved into a pod with its name, threads and projects.
+
+- **What the tests found and fixed:**
+  - the forwarding code passed request bodies on as `application/octet-stream`, so a spoke refused the hub's pairing exchange (also a bug in the hub's proxy to its machines);
+  - a gateway would have run agents beside its namespace's deploy identity; it now turns every provider off;
+  - a pod reads its Secret only at start, so a new pairing code or key never reached a running spoke; its workload now carries a fingerprint of its Secret and rolls when it changes;
+  - a moved machine's settings pointed OpenCode at the fence wrapper in its old home; profile sync now treats any `magnesium-fenced` as its own;
+  - a pod's generated name said nothing about where it ran; spokes are StatefulSets with stable names, and Fleet shows each server's place;
+  - a change cut off when the hub restarted left a spoke with nothing running; a change now runs to the end.
+- **Direction (D59):** servers attach inside the workloads that do the work. The portable install, `magnesium-attach`, attached machines in Settings and Fleet's "in <workload> on <node>" are built, and CI attaches the image to a bare Debian image as a non-root uid on amd64 and arm64.
+
+## Next steps
+
+1. Move a bare-metal machine into a workload with Magnesium attached, keeping its name and state; then a second, testing the rollback (test 6) before its bare metal goes.
+2. Tests 4, 5 and 7 on attached machines.
+3. One build on every server.
+4. `magnesium-release build` waits for a build already running on its host, instead of refusing.
+5. Shrink the image: each build takes about 5 GB on a node.
+6. Then goal 24, upstream V2.
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

@@ -1,0 +1,196 @@
+- name: Runs as the agent user on Linux
+  ansible.builtin.assert:
+    that:
+      - ansible_system == "Linux"
+      - ansible_user_id != "root"
+    fail_msg: "magnesium_server runs as the user the server runs as, on Linux; never as root."
+
+- name: Facts for this host
+  ansible.builtin.set_fact:
+    magnesium_root: "{{ ansible_env.HOME }}/.local/share/magnesium"
+    magnesium_state_home: "{{ ansible_env.HOME }}/.magnesium"
+    magnesium_arch: "{{ {'x86_64': 'x64', 'aarch64': 'arm64'}[ansible_architecture] }}"
+  tags: [always]
+
+- name: Keep the user's systemd running without a login
+  ansible.builtin.command: "loginctl enable-linger {{ ansible_user_id }}"
+  args:
+    creates: "/var/lib/systemd/linger/{{ ansible_user_id }}"
+  become: true
+  when: magnesium_enable_linger | bool
+
+- name: Folders
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ magnesium_root }}", mode: "0755" }
+    - { path: "{{ magnesium_root }}/bin", mode: "0755" }
+    - { path: "{{ magnesium_state_home }}", mode: "0700" }
+    - { path: "{{ magnesium_state_home }}/userdata", mode: "0700" }
+    - { path: "{{ ansible_env.HOME }}/.local/bin", mode: "0755" }
+    - { path: "{{ ansible_env.HOME }}/.config/magnesium", mode: "0700" }
+    - { path: "{{ ansible_env.HOME }}/.config/systemd/user/magnesium.service.d", mode: "0755" }
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: Node {{ magnesium_node_version }}
+  ansible.builtin.import_tasks: node.yml
+  tags: [node]
+
+- name: Secret env files exist and are private (never read or written here)
+  tags: [config]
+  block:
+    - name: Look at each secret env file
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop: "{{ magnesium_secret_env_files }}"
+      register: magnesium_secret_stat
+    - name: Each one exists, belongs to the user and is 0600 or 0400
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+          - item.stat.pw_name == ansible_user_id
+          - item.stat.mode in ["0600", "0400"]
+        fail_msg: "{{ item.item }} must exist, belong to {{ ansible_user_id }} and be 0600 or 0400; this role never writes secrets."
+      loop: "{{ magnesium_secret_stat.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+- name: OpenCode through an LLM gateway
+  ansible.builtin.import_tasks: opencode.yml
+  when: magnesium_opencode | bool
+  tags: [opencode]
+
+- name: Settings, written once when there are none
+  ansible.builtin.copy:
+    content: "{{ magnesium_settings | to_nice_json }}\n"
+    dest: "{{ magnesium_state_home }}/userdata/settings.json"
+    force: false
+    mode: "0600"
+  when: magnesium_settings | length > 0
+  tags: [config]
+
+- name: The address the server binds
+  ansible.builtin.import_tasks: host.yml
+  tags: [always]
+
+- name: Unit and its settings
+  tags: [config]
+  block:
+    - name: Bind address and port (no secrets)
+      ansible.builtin.template:
+        src: magnesium.env.j2
+        dest: "{{ ansible_env.HOME }}/.config/magnesium/magnesium.env"
+        mode: "0600"
+      register: magnesium_env
+    - name: The unit
+      ansible.builtin.copy:
+        src: "{{ role_path }}/../../../systemd/magnesium.service"
+        dest: "{{ ansible_env.HOME }}/.config/systemd/user/magnesium.service"
+        mode: "0644"
+      register: magnesium_unit
+    - name: Drop-in that loads the secret env files by name
+      ansible.builtin.template:
+        src: secret-env.conf.j2
+        dest: "{{ ansible_env.HOME }}/.config/systemd/user/magnesium.service.d/secret-env.conf"
+        mode: "0644"
+      register: magnesium_dropin
+    - name: The daily backup of the state folder
+      ansible.builtin.copy:
+        src: "{{ role_path }}/../../../systemd/{{ item }}"
+        dest: "{{ ansible_env.HOME }}/.config/systemd/user/{{ item }}"
+        mode: "0644"
+      loop: [magnesium-backup.service, magnesium-backup.timer]
+      register: magnesium_backup_units
+    - name: Reload the user's systemd when a unit changed
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+        scope: user
+      when: magnesium_unit.changed or magnesium_dropin.changed or magnesium_backup_units.changed
+
+- name: Release script
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../bin/magnesium-release"
+    dest: "{{ magnesium_root }}/bin/magnesium-release"
+    mode: "0755"
+  tags: [build]
+
+# The agent wrappers and the fence ship in each release; this only puts the
+# profiles CLI on the PATH, through `current`, so it follows every activate.
+- name: magnesium-agents on the PATH
+  ansible.builtin.file:
+    src: "{{ magnesium_root }}/current/magnesium/deploy/bin/magnesium-agents"
+    dest: "{{ ansible_env.HOME }}/.local/bin/magnesium-agents"
+    state: link
+    force: true
+    follow: false
+  tags: [build]
+
+- name: The container sandbox's image, when this machine offers it
+  when: magnesium_sandbox_image | length > 0 and not ansible_check_mode
+  tags: [sandbox]
+  block:
+    - name: Whether the image is here
+      ansible.builtin.command: "podman image exists {{ magnesium_sandbox_image }}"
+      register: magnesium_image_present
+      changed_when: false
+      failed_when: false
+    - name: Pull it
+      ansible.builtin.command: "podman pull --quiet {{ magnesium_sandbox_image }}"
+      when: magnesium_image_present.rc != 0
+
+- name: Build the pinned release here
+  when: not ansible_check_mode and magnesium_build_host | length == 0
+  tags: [build]
+  block:
+    - name: Build {{ magnesium_version }}
+      ansible.builtin.command: "{{ magnesium_root }}/bin/magnesium-release build {{ magnesium_version }} {{ magnesium_source }}"
+      register: magnesium_build
+      changed_when: "'Built ' in magnesium_build.stdout"
+    - name: The commit that was built
+      ansible.builtin.set_fact:
+        magnesium_release: "{{ magnesium_build.stdout | regex_search('(?:Built ([0-9a-f]{10})|([0-9a-f]{10}) is already built)', '\\1', '\\2') | select | first }}"
+
+# Included, not imported: an import would resolve delegate_to on every host,
+# including the ones that build for themselves and set no build host.
+- name: Build on the build host and copy the pack in
+  ansible.builtin.include_tasks:
+    file: packed.yml
+    apply:
+      tags: [build]
+  when: not ansible_check_mode and magnesium_build_host | length > 0
+  tags: [build]
+
+- name: Activate it (the old release stays as previous, for rollback)
+  ansible.builtin.command: "{{ magnesium_root }}/bin/magnesium-release activate {{ magnesium_release }}"
+  environment:
+    MAGNESIUM_RESTART: "0"
+  register: magnesium_activate
+  changed_when: "'current ->' in magnesium_activate.stdout"
+  when: not ansible_check_mode
+  tags: [build]
+
+- name: Remove old releases (current, previous and the newest two stay)
+  ansible.builtin.command: "{{ magnesium_root }}/bin/magnesium-release prune"
+  register: magnesium_prune
+  changed_when: "'Removed 0 ' not in magnesium_prune.stdout"
+  when: not ansible_check_mode
+  tags: [build]
+
+- name: Run the server
+  ansible.builtin.systemd_service:
+    name: magnesium.service
+    scope: user
+    enabled: true
+    state: "{{ 'restarted' if (magnesium_env.changed or magnesium_unit.changed or magnesium_dropin.changed or (magnesium_activate.changed | default(false))) else 'started' }}"
+  when: not ansible_check_mode
+
+- name: Back up the state folder daily
+  ansible.builtin.systemd_service:
+    name: magnesium-backup.timer
+    scope: user
+    enabled: true
+    state: started
+  when: not ansible_check_mode

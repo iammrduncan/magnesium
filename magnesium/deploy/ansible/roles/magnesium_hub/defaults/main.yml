@@ -1,0 +1,23 @@
+# The hub is the one front door (D35, D38). Your devices sign in to the hub
+# only; its server carries each machine at /api/magnesium/env/<name>/ with a
+# token only the hub holds, and keeps a live link to each one. The hub dials
+# out; machines never dial the hub. Nothing here needs Tailscale (README).
+
+# The machines the hub carries, by the URL the hub reaches each one's server at:
+#   - { name: cpu-host-1, url: "http://192.0.2.21:3773" }
+# Or by a TCP relay on the hub's loopback, for networks where the hub reaches a
+# machine only through one: { name: gpu-host-1, relay_port: 10001 }
+# is http://127.0.0.1:10001. Empty on a single box: the hub runs agents itself.
+# The role writes them to ~/.magnesium/hub-machines.json, read on every request.
+magnesium_hub_machines: []
+
+# The URL your devices open the hub at, for the links `magnesium-release pair`
+# prints on the hub: https://hub.example.internal, or a Tailscale Service URL.
+magnesium_hub_public_url: ""
+
+# Optional: give the hub HTTPS as a Tailscale Service with `tailscale serve`.
+# Needs Tailscale, and root or the tailscale operator right. Off by default; a
+# reverse proxy with a certificate in front of the hub works as well.
+magnesium_hub_publish: false
+magnesium_hub_publish_become: false
+magnesium_hub_service_prefix: "svc:magnesium"

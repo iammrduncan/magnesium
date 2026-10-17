@@ -1,0 +1,108 @@
+---
+id: mg-deploy
+status: VERIFIED
+kind: deploy
+depends_on: [mg-fork]
+phase: 0
+boards: []
+decisions: [D10, D13, D14, D15, D35, D36, D38]
+---
+# Magnesium runs on the hub and the agent machines, behind one front door
+
+The topology is D15: a Magnesium server on every machine that runs agents, plus a hub. The owner's devices reach everything through the hub, so there is one front door (D14, D15). From this goal on, every goal is tested on this fleet.
+
+## Owner gates
+
+- **The hub's machine:** decided 2026-10-14 (D35): a small VM of its own. The hub runs as its own user, never a bot's user.
+- **Approve the network policy change.** Allow only these paths, all one-way (D35):
+  - the owner's devices to the hub;
+  - the hub to each machine server's port.
+  - Nothing from the machines to the hub.
+- **Provider logins.** On machines with Claude Code and Codex, the owner logs them in as the server's user; that's interactive. Machines without them run OpenCode through a model gateway (D36).
+
+## Build
+
+1. **Ansible roles in `magnesium/deploy/ansible/`** (D37). Follow dBrain's Ansible as a reference only. They are public, so use placeholders.
+   - `magnesium_server`:
+     - deploys a pinned build and keeps the previous one for rollback (`magnesium_version`);
+     - adds a systemd service for the agent user, with lingering;
+     - sets `T3CODE_HOME` and switches telemetry and updates off;
+     - binds to a private address only;
+     - sets up log rotation and a backup of the state folder.
+   - `magnesium_hub`: everything in `magnesium_server`, plus the HTTPS front door.
+   - An example inventory with placeholder hosts. A real inventory stays out of the repo.
+   - `ansible-playbook --syntax-check` passes.
+2. **The front door.**
+   - The hub serves the web UI over HTTPS, for example as a Tailscale Service or through `tailscale serve`. A PWA needs HTTPS for its service worker and for push.
+   - **Machine servers are reached through the hub.** Choose how the hub carries each machine's connection, and record the choice in doc 11. Two options: a proxied path per machine, or a proxied service per machine. Either way, the browser never connects to a machine directly.
+   - Pair each machine server once, through the hub. Record where the tokens live. Goal 04 moves them onto the hub if they are still in the browser.
+3. **Environments.** The UI lists the hub and every agent machine as environments, each with its name and machine-kind icon. The hub is an environment too, because the bot profiles run there (L1).
+4. **Recovery.**
+   - Servers restart on failure and at boot.
+   - Threads survive a server restart (upstream's recovery).
+5. **A runbook** in the Magnesium repo: roll a new build out to every machine, roll back, and add a machine.
+
+## Test it
+
+1. **Pair.** From your desktop, open the hub's URL and pair. Settings → Connections lists every machine, all Connected.
+2. **A thread on each machine.** Start a thread on each machine, in a scratch folder. Ask each to run `hostname; whoami`. Each answers with the right machine and user.
+3. **The phone.** Open the hub's URL in the phone's browser. The same threads show, and a message you send lands.
+4. **One front door.** From the phone, try a machine server's address directly; it is refused. From the hub, the same address answers.
+5. **A restart.** Restart a machine's server during a turn. The UI shows Reconnecting, then Connected, and the thread is intact.
+6. **Rollback.** Roll a machine back to the previous build with the runbook's command, then forward again.
+7. **A reboot, with your OK.** Reboot a machine. The server comes back without anyone logging in.
+
+## Not in this goal
+
+Profiles and sandboxes (goal 03), and our own route and the hub's gathering (goal 04).
+
+## Goal summary
+
+**2026-10-14: VERIFIED.** Magnesium runs on the hub and every agent machine, and every device reaches them through the hub. Tests 1 to 3 and 5 to 7 passed. Test 4 was waived here by the owner and done in goal 04.
+
+**What's built**
+
+- **Ansible in `magnesium/deploy/ansible`** (D37), with a runbook in its README: roll out, roll back, back up, restore, add a machine.
+  - `magnesium_server`: a pinned build per host with one-command rollback; a systemd user unit with linger; telemetry and update checks off; bound to a private address; OpenCode through a model gateway where there is no Claude Code (D36).
+  - `magnesium_hub`: the hub's server on loopback only, behind its HTTPS front door. A hub that doesn't build gets its build packed on a build host (D35).
+  - A second run changes nothing; a no-op run takes about a minute.
+- **Recovery and backups**
+  - Logs: the server caps its own trace log, and journald rotates the rest.
+  - `magnesium-release backup` copies the state folder, daily from a user timer and before every activate; `restore` puts one back.
+  - The unit restarts the server on failure, and counts a clean stop (exit 130) as success.
+- **The front door** (doc 11, D38): the hub's own server carries each machine at `/api/magnesium/env/<machine>/` and holds the only token for each. Pairing a device with the hub brings every machine.
+  - This came out of test 3. The first design gave each machine its own hostname and kept its token in each browser, so a phone would have had to pair once per machine. The owner wants one QR scan to bring everything, so goal 04's "tokens on the hub" moved here.
+  - A browser that paired machines directly hands their tokens to the hub once, then deletes its own copies.
+  - The hub renews each token in its last week, so nobody pairs a machine again.
+  - The one-time admin sign-in is `magnesium-release pair --admin` on the hub. After it, Settings → Connections → Authorized clients → **Create link** pairs each new device with a QR code.
+  - Checked end to end on scratch servers and in Chrome:
+    - A browser's direct token moved to the hub, and the browser kept no copy.
+    - A fresh device paired once with the hub and saw the machine at once, Connected.
+    - Removing the hub's access, then giving it back with a pairing code, both worked.
+    - RPC over the proxied WebSocket answered.
+  - Unauthenticated requests through the hub's proxy get 401, and pairing routes get 404.
+- **CI:** the fork's test job had failed since goal 01 on a git hint in one deploy test. Fixed: `magnesium-release` sets the default branch when it clones. CI is green: build, the full typecheck, and the full test suite.
+
+**Tests, 2026-10-14, in Chrome on the owner's desktop**
+
+1. **Pair: passed.** The owner paired with the hub and added the machines. Settings → Connections lists them all as Connected, and the hub is "This device".
+2. **A thread on each machine: passed.** One supervised thread per machine in a scratch folder. Each asked to run `hostname; whoami`, waited for approval, and answered with its own host and user. Machines without Claude Code ran OpenCode through a model gateway; the others ran Codex.
+3. **The phone: passed.**
+   - The owner signed the desktop in once with `magnesium-release pair --admin` on the hub, and the machines moved to the hub.
+   - Settings → Connections → Authorized clients → **Create link** made a QR code, and the owner scanned it with the phone.
+   - The owner reported that it worked; the phone is listed under Authorized clients.
+4. **One front door: waived here by the owner,** and done in goal 04.
+5. **A restart: passed.** A machine's server was restarted during a 30-second command. The UI showed "is reconnecting", then reconnected in about 10 seconds. The turn in flight was marked failed ("did not survive a server restart"). The thread was intact, and the next message ran in it.
+6. **Rollback: passed.** On a machine, `magnesium-release rollback` went back to the previous build and a second one came forward. The server answered and the UI reconnected each time.
+7. **A reboot: passed.** A machine was rebooted. Its user manager started from linger 17 seconds after boot, and the server 8 seconds later, before anyone logged in. A Codex turn worked afterwards.
+
+**Noticed, not fixed here**
+
+- Right after a restart, Codex's 10-second status check can time out. Turns still worked.
+- The hub's user has no git identity, so a project created there has no first commit. That's for goal 03's profiles.
+
+## Next steps
+
+1. **Later, in goal 04:** devices reach machines only through the hub (test 4).
+2. **Optional:** revoke the desktop's old "t3 pair" session under Authorized clients. The desktop now uses its admin session.
+3. Goals 03 and 04, which can run in parallel. Goal 04 keeps the live per-machine subscription and the Fleet page.

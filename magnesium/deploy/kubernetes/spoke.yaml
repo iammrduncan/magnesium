@@ -1,0 +1,133 @@
+# A reference Magnesium spoke: one machine server in Kubernetes (goal 25, D52).
+# Copy it per machine and fill in what README.md lists: the machine name, its
+# node, the home path, the image, and the secret's name. Nothing here is a
+# real site.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: magnesium-example-home
+  labels:
+    app.kubernetes.io/name: magnesium-spoke
+    magnesium.machine: example
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 100Gi
+---
+# A StatefulSet: one pod with a stable name (magnesium-example-0), and a
+# rollout removes the old pod before it starts the next, so its SQLite
+# database never has two writers.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: magnesium-example
+  labels:
+    app.kubernetes.io/name: magnesium-spoke
+    magnesium.machine: example
+spec:
+  replicas: 1
+  serviceName: magnesium-example
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: magnesium-spoke
+      magnesium.machine: example
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: magnesium-spoke
+        magnesium.machine: example
+    spec:
+      automountServiceAccountToken: false
+      # Fleet and Home label a server by its host name; a pod's own changes on every start.
+      hostname: example
+      nodeSelector:
+        kubernetes.io/hostname: example-node
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: magnesium
+          image: magnesium:0000000000
+          env:
+            # The same path as the machine user's home before the move.
+            - name: HOME
+              value: /home/agent
+            # The name the hub knows this server by. Keep it when moving a machine.
+            - name: MAGNESIUM_MACHINE
+              value: example
+            # Where it runs, which Fleet shows beside its name.
+            - name: MAGNESIUM_NODE
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            # OpenCode machines only (D36): an OpenAI-compatible gateway and its models.
+            - name: MAGNESIUM_OPENCODE_BASE_URL
+              value: https://llm-gateway.example.com/v1
+            - name: MAGNESIUM_OPENCODE_MODELS
+              value: example-model
+          # Keys by name only, written by Magnesium from the hub's secret store: LITELLM_API_KEY.
+          envFrom:
+            - secretRef:
+                name: magnesium-example-keys
+                optional: true
+          ports:
+            - name: http
+              containerPort: 3773
+          startupProbe:
+            httpGet: { path: /.well-known/t3/environment, port: http }
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: { path: /.well-known/t3/environment, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /.well-known/t3/environment, port: http }
+            periodSeconds: 20
+            failureThreshold: 6
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+          volumeMounts:
+            - name: home
+              mountPath: /home/agent
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: home
+          persistentVolumeClaim:
+            claimName: magnesium-example-home
+        - name: tmp
+          emptyDir: {}
+---
+# Only the hub reaches a spoke (D38). Publish this to the hub alone.
+apiVersion: v1
+kind: Service
+metadata:
+  name: magnesium-example
+  labels:
+    app.kubernetes.io/name: magnesium-spoke
+    magnesium.machine: example
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: magnesium-spoke
+    magnesium.machine: example
+  ports:
+    - name: http
+      port: 3773
+      targetPort: http

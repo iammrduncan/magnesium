@@ -1,0 +1,17 @@
+# Deploys Magnesium: a server on every agent machine, and the hub with its front door.
+# Run from the admin machine, as each host's server user:
+#   ansible-playbook magnesium.yml --check --diff           preview
+#   ansible-playbook magnesium.yml                          roll out
+#   ansible-playbook magnesium.yml -l cpu-host-1 -e magnesium_version=<commit>
+#   ansible-playbook magnesium.yml --tags config            settings and units only
+# Roll back one release on a host:  ~/.local/share/magnesium/bin/magnesium-release rollback
+- name: Magnesium on each agent machine
+  hosts: magnesium_servers
+  roles:
+    - role: magnesium_server
+
+- name: The Magnesium hub
+  hosts: magnesium_hub
+  roles:
+    - role: magnesium_server
+    - role: magnesium_hub

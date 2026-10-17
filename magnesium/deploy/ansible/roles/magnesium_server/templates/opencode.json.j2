@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "enabled_providers": ["litellm"],
+  "provider": {
+    "litellm": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "LLM gateway",
+      "options": {
+        "baseURL": {{ magnesium_opencode_base_url | to_json }},
+        "apiKey": "{env:{{ magnesium_opencode_api_key_env }}}"
+      },
+      "models": {
+{% for model in magnesium_opencode_models %}
+        {{ model | to_json }}: { "name": {{ model | to_json }} }{{ "," if not loop.last else "" }}
+{% endfor %}
+      }
+    }
+  },
+  "model": {{ ("litellm/" ~ magnesium_opencode_models[0]) | to_json }},
+  "small_model": {{ ("litellm/" ~ magnesium_opencode_models[0]) | to_json }},
+  "autoupdate": false,
+  "share": "disabled"
+}

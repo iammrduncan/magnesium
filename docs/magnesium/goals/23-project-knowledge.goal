@@ -1,0 +1,55 @@
+---
+id: mg-project-knowledge
+status: PLANNED
+kind: feature
+depends_on: [mg-projects, mg-brain]
+phase: 5
+boards: ["Project · desktop"]
+decisions: [D23, D50]
+---
+# Project knowledge: a project's docs and context in the Brain, linked to its threads
+
+This goal covers K5 (project-based knowledge) and the Brain half of M2 (project mode): docs dropped on a project are saved to `projects/<name>` in the Magnesium Brain, tied to the project, so the project's threads and docs link together for context and memory retrieval (D23). It also gives the Brain page an "Add to brain" entry into the Brain's intake. It was split from goal 15 on 2026-10-15, so that projects and their pages come first.
+
+## Build
+
+1. **A place in the Brain for every project (D50).** Creating a project on the hub gives it `projects/<name>` in the Magnesium Brain for its context, docs and memories. Projects made before this goal get one too.
+2. **Every session in a project**, wherever it runs, gets the Brain its profile can read plus the project's context and files.
+3. **The project page's knowledge**, as on Project · desktop:
+   - the Threads · N / Docs · N tabs, right above "Needs you in this project";
+   - the Project brain panel beside the threads;
+   - **Docs:** a drop zone, the doc list, and the selected doc's panel: linked threads, memories and Open in Brain.
+4. **Dropping a doc** (PDF, Markdown, text or a link):
+   - saves it to the Magnesium Brain under `projects/<name>` through the Brain's intake;
+   - uses a write client limited to `projects/*`;
+   - tags the doc with the project, and links it to the thread if it was dropped in one;
+   - shows a toast saying where it went.
+5. **Linking.**
+   - Session pages from the project's threads carry the project tag, so retrieval finds threads and docs together.
+   - New threads in the project get a project Brain context chip: its docs and recent decisions.
+6. **"Add to brain"** on the Brain page: the same intake for a link or file without a project.
+
+## Test it
+
+1. **Drop a doc.** In goal 15's `field-notes` project:
+   - Drop a PDF on the Docs tab; it appears in the list.
+   - The Magnesium Brain has a page under `projects/field-notes`, tagged with the project.
+   - Open in Brain opens it in the reader.
+2. **Use it on two machines.** Start a thread in the project on the hub and one on a machine, and ask each about the PDF's content. Both answer from the doc, and the Brain chip shows.
+3. **Links.** Once the session has shipped to the Brain:
+   - the doc's "linked threads" lists that thread;
+   - a Brain search for the project returns both the doc and the thread.
+4. **Add to brain.** Paste a link into "Add to brain"; it shows in Recently added after intake.
+5. **Against the board.** Compare the Docs tab and the Project brain panel side by side with Project · desktop.
+
+## Not in this goal
+
+The Brain's research-and-relevance pipeline behind intake (K4, work in the Brain's intake).
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

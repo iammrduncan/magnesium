@@ -1,0 +1,65 @@
+---
+id: mg-hermes-moves
+status: PLANNED
+kind: migration
+depends_on: [mg-phone, mg-room-routing, mg-memories, mg-agent-control]
+phase: 7
+boards: ["Room · desktop", "Room · phone", "Home · desktop"]
+decisions: [D19, D20, D37]
+---
+# Bots move in from Hermes Agent one at a time, then Hermes can be retired
+
+This goal is D19. Bots that run on Hermes Agent move into Magnesium one at a time, each as a profile on the hub with its rooms, memory and skills. Start with a low-risk bot and end with any bot that has admin rights. Hermes keeps running until the last bot moves; then it can be retired. This covers L1: the main bots and their profiles live on the hub.
+
+## Owner gates
+
+- **Each bot moves only on the owner's go.**
+- **A bot with admin rights moves last.**
+- **Retiring Hermes** needs its own go.
+
+## Build, for each bot
+
+1. **Port the bot to a Magnesium profile on the hub.**
+   - Its soul becomes the profile's instructions.
+   - Its memory and skills move over.
+   - Its MCP servers (GBrain's and others) are configured.
+   - Its sandbox level is set.
+   - Goal 18's grants replace the tools it used to start workers.
+   - Its secrets pass by name.
+2. **Recreate its rooms and DMs as Magnesium rooms.**
+   - Bring recent history in as a room digest, not as replayed messages.
+   - Keep its membership rules: a bot sees only its rooms, and a bot with admin rights is never in a room that carries raw web content.
+3. **A trial window.** Run the bot in Magnesium while its Hermes copy is paused. Roll back by resuming the Hermes copy.
+4. **Cut over.** Disable the bot's Hermes profile.
+5. **A bot with admin rights keeps its rules.**
+   - It is never a room member.
+   - Requests reach it through a path the owner releases, as they did in Hermes.
+
+## Then, once, after the last bot
+
+6. **Retire Hermes.** Stop Hermes, archive its data and remove its services.
+
+## Test it, for each bot
+
+1. **Its memory.** The bot answers in its Magnesium DM using its own memory: ask about something only it would know.
+2. **Its job.** It does one real task it used to do in Hermes, such as launching a worker through goal 18's tools and reporting back.
+3. **The Magnesium Brain.** Its sessions ship to the Brain.
+4. **Its rooms.** Rooms with the bot route correctly: rerun goal 08's tests 1 to 4 and goal 09's test 3.
+5. **Hermes is quiet.** Nothing from that bot reaches Hermes any more.
+
+## Test it, after retirement
+
+6. **Hermes is gone.** No Hermes processes are left.
+7. **Nothing broke.** The Brain, schedules and every moved bot keep working for a week.
+
+## Not in this goal
+
+Changing what the bots do. They move as they are.
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

@@ -1,0 +1,76 @@
+---
+id: mg-app-builder
+status: PLANNED
+kind: feature
+depends_on: [mg-apps, mg-design-system, mg-machine-parts, mg-agent-control]
+phase: 6
+boards: ["Apps · desktop (New app)", "Footer · shared component (app items)"]
+decisions: [D21, D24, D54, D55]
+---
+# App builder: a thread on the hub that builds apps and plugins with you
+
+Apps and plugins are something you ask for, not something you code. Builder mode is a special kind of thread on the hub (D55). It runs on whichever coding harness you pick, as any session does: OpenCode, Claude, Codex or another the hub runs. It knows how Magnesium apps work and builds them in Magnesium's design system (goal 27). You iterate with it on a live preview beside the thread. When an app needs work on other machines, such as a machine part (goal 28), the builder coordinates agents there. The flow follows doc 14's "How an agent builds and ships an app". This goal also builds the apps the Footer board shows, and an autoresearch view for F2 (monitor every agent, autoresearch included).
+
+## Build
+
+1. **Builder mode.**
+   - Apps → **New app**, or New thread → **Build an app**, starts a builder thread on the hub with your description.
+   - You pick the harness and model as for any thread. The thread runs in the `container` sandbox.
+   - It starts with the context it needs, loaded for every harness alike:
+     - the app contract (doc 14's manifest and the MCP Apps bridge);
+     - the `magnesium-design` skill and kit (goal 27);
+     - templates for a hub app (from GPU Board), a machine part, and a dual app (from Disk Watch).
+2. **Iterate on a live preview.**
+   - Drafts live in `apps-drafts/<id>/` on the hub.
+   - A preview pane beside the thread runs the draft in its sandboxed frame and reloads as the agent edits, in light or dark, at desktop or phone width.
+   - A draft machine part runs on a test machine you choose, after asking first.
+3. **The builder's hub tools:**
+   - `apps.validate` checks the manifest and CSP, that the app holds no secrets, and the design system's rules (warnings only);
+   - `apps.inspect` shows the live areas and what is in them;
+   - `apps.preview` takes screenshots through T3's headless browser, in both themes and both widths;
+   - `apps.tryOnMachine` runs a draft machine part on a test machine, and asks first;
+   - `apps.publish` asks first.
+4. **Across the fleet.**
+   - When an app needs work elsewhere, the builder launches and steers workers on those machines through agent control (goal 18), within the grants you set. That covers building or testing a machine part where it will run, or finding out what a machine has.
+   - Their threads show in the sidebar, linked to the builder thread, and their approvals come to Home like any others.
+5. **Publishing.**
+   - The files are staged, then renamed into `apps/<id>/` as a new git-tracked version. A dual app's two parts publish as one version.
+   - The version records its author profile and thread.
+   - A new version starts disabled.
+   - Rollback is picking an earlier version.
+   - An app whose `magnesiumApi` range doesn't match is refused, unless you grant an exemption.
+6. **Apps built with this flow, as its tests:**
+   - **Ingest Queue:** the Magnesium Brain's ingest jobs and failures, with a footer item showing the queue depth.
+   - **Cost and Usage:** tokens and cost per profile per day, with a footer item. If Magnesium lacks the usage data, record what's missing and how to collect it.
+   - **Autoresearch:** running campaigns and their best results, read-only, from the research harness's own records.
+   - **A dual app,** such as Repo Freshness: a machine part that checks each project's git state on its machine, with a tool for sessions there, and a hub page showing which projects are behind, on every machine.
+   - Optional (D21): **Monitoring**, for machines with no Magnesium server (such as storage), read from monitoring you already run.
+
+## Test it
+
+1. **Any harness.** Start a builder thread on OpenCode, then one on Claude. Both have the contract, the design system and the templates without being told.
+2. **Build one.**
+   - Ask for "Ingest Queue: show Brain ingest jobs and failures, with a footer item showing queue depth".
+   - A preview appears, and validate passes.
+   - Ask for a change; the preview updates in place.
+3. **It looks like Magnesium.** The preview's screenshots in light and dark sit naturally beside the shell. A raw color added on purpose gets a warning naming the token to use.
+4. **Publish.** Publish asks you first. After you approve, the app is listed as disabled, with the builder as author and a link to the thread.
+5. **Use it.** Enable it. It works, and its footer item shows the queue depth.
+6. **Versions.** Ask the builder for a change and publish v2. Then roll back to v1 from the app's version list.
+7. **No secrets.** Put a token-like string in a draft. Validate refuses it.
+8. **A dual app across the fleet.**
+   - Build Repo Freshness. The builder starts a worker on a machine to test the machine part there; the worker's thread shows linked to the builder thread.
+   - Publish, enable on two machines: the hub page shows both, and a session on one of them can use its tool.
+9. **The other apps.** Cost and Usage and Autoresearch get built the same way. The footer now matches the Footer board's app items.
+
+## Not in this goal
+
+Installing apps built outside this hub.
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

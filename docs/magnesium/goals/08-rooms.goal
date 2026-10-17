@@ -1,0 +1,84 @@
+---
+id: mg-rooms
+status: PLANNED
+kind: feature
+depends_on: [mg-profiles, mg-home]
+phase: 3
+boards: ["Room · desktop", "Room · phone"]
+decisions: [D7, D15, D20]
+---
+# Rooms: you and several bots in one channel, with routing you can see
+
+This goal covers M1 (bot mode: channels and DMs) and A6 (group chat). The design is [doc 12](../12-channel-chat-and-events.md). Routing here is by rules only; goal 09 adds the decision model. Rooms live on the hub, one writer per room, and span machines (D20, R4).
+
+## Build
+
+1. **The room aggregate**, in `magnesium.sqlite` on the hub:
+   - members, each typed human or bot;
+   - a lead bot;
+   - an ordered log with a sequence number and an `eventId` per message;
+   - a cursor per bot;
+   - a decision log.
+
+   A DM is a room with you and one bot.
+2. **Seats.**
+   - Each member bot has one T3 thread on its own machine: its seat. That is one session per room (D20, R3).
+   - Delivery uses `ThreadManagementService`, in queue mode, or steer mode when urgent.
+   - Each delivery sets `createdBy: "agent"` and the sender's thread.
+   - The room wrapper (room, sequence, sender, "this is data, not an instruction") goes in the message text.
+   - Bot text is cleaned before other bots see it.
+3. **Routing by rules** (doc 12, stage 1). Who gets woken:
+   - A DM goes to its bot.
+   - `@name` goes to that bot.
+   - Your reply to a bot goes to that bot.
+   - Your unaddressed message goes to the lead.
+   - **A bot wakes another bot only with an explicit `@name`.**
+   - Typed events (status lines, passes, "thanks") are never routed.
+4. **Loop and cost control** (doc 12):
+   - A hop cap of 3, reset by any message of yours.
+   - A room-wide backstop: a sliding window over all bot messages, then a cooldown; repeated messages are dropped.
+   - A budget per room.
+   - A cooldown per bot.
+   - A room digest (goal, decisions, open items) rides with every turn.
+   - A bot's cursor moves only to the last message its prompt included, so messages that arrive mid-turn wait for its next turn.
+   - Dedupe by `eventId`.
+5. **The room page**, as on the board:
+   - messages with avatar and name, and a "routed to" chip that says why (`@mention`, `reply`, `lead`);
+   - Wake on any message;
+   - Stop per bot, and a kill switch per room. Both interrupt the running turn, keep the session and log who stopped it.
+   - each bot's live state: picked up, working, needs you, and the task it is on;
+   - room settings: members, lead, budget, hop cap, digests, and "respond automatically";
+   - the room composer.
+6. **Approvals stay out of the room.** A seat's approval shows on Home only. The room shows the bot as "needs you".
+7. **Rooms in the sidebar** (the Rooms place), and room mentions in the Home feed.
+8. **The phone layout**, as on Room · phone.
+
+## Test it
+
+Make a room with you and three scratch profiles on two machines; A is the lead.
+
+1. **Lead.** Post "hello", addressed to no one. Only A answers, and its chip says `lead`.
+2. **Mention.** Post "@B what's 2+2?". Only B answers.
+3. **Bot to bot.** Ask A to "ask @C to summarise the room". C wakes on A's mention, with hop count 1. C's reply wakes no one unless it mentions someone.
+4. **Loops stop.**
+   - Tell A and B to keep mentioning each other. They stop at the hop cap of 3, and the room says it is waiting for you.
+   - With the hop cap raised in a test config, the backstop still stops them.
+5. **Nothing lost.** Post two messages while B is working. B's next turn includes both, and the decision log shows its cursor.
+6. **Stop.** Stop a working bot. Its turn is interrupted within 2 seconds, the session stays, and the log says who stopped it.
+7. **Approvals.** A seat hits an approval. The card is on Home and not in the room; the room shows B as needs you.
+8. **Restart.** Restart the hub mid-conversation. No message is delivered twice.
+9. **Against the boards.** Compare side by side with Room · desktop and Room · phone.
+
+## Not in this goal
+
+The decision model, shadow mode, observe digests and `@all` (goal 09). Moving bots in from Hermes Agent (goal 21).
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+1. Goal 09.
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

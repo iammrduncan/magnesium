@@ -1,0 +1,58 @@
+---
+id: mg-design-system
+status: PLANNED
+kind: feature
+depends_on: [mg-shell, mg-home]
+phase: 6
+boards: ["Home · desktop", "Apps · desktop", "Selected app · desktop", "Footer · shared component (app items)"]
+decisions: [D24, D54]
+---
+# A design system that apps, plugins and agents build with
+
+Apps built by you or by agents should look and feel like Magnesium (D54). Magnesium's look is T3 Code's, plus what Magnesium adds: the status shapes, cards, the footer and the Mg mark. This goal turns it into a design system that ships with Magnesium: tokens, a component kit, rules and a reference. App views use it inside their sandboxed frames, and agents get it as context when they build. It is the default, not a cage: an app can add its own components and styles, and a user can add a theme that Magnesium and every app follow.
+
+## Build
+
+1. **A package, `@magnesium/design`,** built from what `apps/web` already uses, so there is one source:
+   - **Tokens** for color, type, spacing, radius, shadow and density, in light and dark, taken from the web's own theme. A test fails when the two drift apart.
+   - **A CSS layer** (tokens, base element styles and a few component classes), so a plain HTML app looks right with no framework.
+   - **A React kit** with the same look as `apps/web/src/components/ui` and Magnesium's own pieces: button, input, toggle group, card, badge, table, the status shapes, an approval card, a footer item and its popover.
+2. **It works inside a frame with no network.** The kit is bundled into each app when it is published, and the hub serves it from the app's own origin. Theme changes arrive as host-context updates, so an open app follows light, dark and the user's theme without reloading.
+3. **Rules,** written for people and for agents:
+   - Use tokens, never raw colors or fonts; pick a component's variant rather than restyling it (the web's own lint rules, `shadcn/no-raw-colors` and `shadcn/no-restyle`, carried over).
+   - The status shapes and tones mean the same thing everywhere.
+   - Plain language in sentence case.
+   - No continuously repainting animations.
+   - Small payloads: summaries first, detail on demand (doc 06).
+   - Works at phone width with a 16 px gutter, and is readable in both themes.
+4. **A `magnesium-design` skill:** the rules, the tokens, the kit's components with one example each, and templates (a page, a footer popover, a Home card). Builder threads and any agent writing an app load it (goal 17).
+5. **A reference anyone can open:** a Design page under Apps that shows every token and component, in light and dark, comfy and compact. It is built with the kit itself.
+6. **Checks** for apps, which the builder's `apps.validate` runs (goal 17): warnings about raw colors and fonts, and restyled kit components, naming the token or variant to use. They are warnings: an app may go its own way on purpose.
+7. **Extending it.**
+   - **Themes:** a theme is a set of token values. Upstream's appearance themes become Magnesium themes, and a user can add one; the shell and every app follow it.
+   - **An app's own pieces:** an app can add components and styles of its own on top of the kit.
+
+## Test it
+
+1. **The reference matches the shell.** The Design page beside Home, in light and dark, comfy and compact: same colors, type, spacing and shapes.
+2. **A plain HTML app and a React app,** each built only from the kit, look native in a frame, and follow a switch to dark mode and to another theme without reloading.
+3. **No drift.** Changing a color in the web's theme without the package fails CI.
+4. **An agent builds with it.** Given only the skill, an agent builds a small card app that looks native, compared side by side with the shell.
+5. **Checks.** A raw color in a draft gets a warning naming the token to use. An app that keeps it on purpose still publishes.
+6. **A user theme.** Add a theme; the shell and an open app both take it.
+7. **Against the boards:** the kit's card, footer item and popover match Home · desktop, Apps · desktop, Selected app · desktop and the Footer board.
+
+## Not in this goal
+
+- The app host itself (goal 16) and the builder (goal 17).
+- A theme editor; themes are files for now.
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+1. Goal 16, apps on the hub, built on this kit.
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

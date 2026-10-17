@@ -1,0 +1,45 @@
+---
+id: mg-projects
+status: PLANNED
+kind: feature
+depends_on: [mg-shell, mg-home, mg-upstream-v2]
+phase: 2
+boards: ["Project · desktop"]
+decisions: [D23, D50]
+---
+# Projects: one project across machines, with its own page
+
+This goal covers the session half of M2 (project mode): a project lives on the hub, spans machines (D50), and has a page showing what needs you in it and its threads on every machine. On 2026-10-15 the owner moved it to run right after goal 06; on 2026-10-16 the upstream V2 merge ([goal 24](24-upstream-v2.goal)) went between them, so projects are built on V2. The project's knowledge (its place in the Brain, its docs and intake) is [goal 23](23-project-knowledge.goal), after the Brain reader.
+
+## Build
+
+1. **Projects live on the hub and span machines (D50).**
+   - The hub holds each project in `magnesium.sqlite`; upstream's per-machine projects become its folders.
+   - A new session in a project starts on the hub by default. Starting one on another machine creates the project's folder there first.
+   - A repo is not the project. A machine clones one into the project's folder when a session asks for it or needs it, with the same git auth across the fleet.
+   - The sidebar shows one folder per project, with threads from every machine. Until this goal, goal 05's folders follow upstream's grouping (one per repo, or per local folder).
+2. **The project page**, the Threads view of Project · desktop:
+   - Needs you in this project, from goal 06's feed, answered there;
+   - the project's threads on every machine, each with its machine and status;
+   - the machines the project has folders on, and the repos cloned into them;
+   - New thread, on the hub by default or on a machine you pick.
+3. **A folder's name in the sidebar opens the project page.** Its chevron expands to active threads, and its right-click menu gains Open project (goal 05).
+
+## Test it
+
+1. **A project across machines.** Create project `field-notes` on the hub, and start a thread in it there. Start a second one on a machine: the project's folder is created there, and both threads sit in one sidebar folder.
+2. **A repo on demand.** Ask a thread in the project on another machine to work on a public repo. The machine clones it into the project's folder there, with the fleet's git auth.
+3. **The page.** Click `field-notes` in the sidebar. The page lists all three threads with their machines, and the repo. Have one ask to run a command: it shows under Needs you in this project, and approving it there settles it in the thread on its machine.
+4. **Against the board.** Compare the Threads view side by side with Project · desktop.
+
+## Not in this goal
+
+The project's place in the Brain, the Docs tab, the Project brain panel, dropping docs, the Brain context chip and "Add to brain" ([goal 23](23-project-knowledge.goal)).
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

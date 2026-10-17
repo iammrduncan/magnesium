@@ -1,0 +1,66 @@
+---
+id: mg-fleet
+status: PLANNED
+kind: feature
+depends_on: [mg-profiles, mg-hub-link]
+phase: 4
+boards: ["Fleet · desktop", "Fleet · phone", "Home · desktop (fleet tiles)"]
+decisions: [D21, D25, D37]
+---
+# Fleet: every machine's load and GPUs, what runs where, and launch anywhere
+
+This goal covers M4 (every active session and job across the cluster), F1 (launch a workload anywhere, with context staged) and F2 (monitor every machine and agent). Each Magnesium server collects its own metrics (D21). Only sessions started from Magnesium are shown (D25).
+
+## Build
+
+1. **A metrics collector in each server (D21).**
+   - CPU, memory, disk, load and network.
+   - GPUs: utilisation, memory, temperature and power, for NVIDIA, Intel and AMD, through the vendor tools or sysfs.
+   - A GPU that can't be read shows "no GPU data", never zero.
+   - It samples every 5 seconds and keeps an hour of history in memory.
+   - The hub gathers it into a `fleet.machines` stream.
+2. **The Fleet page**, as on the board. It replaces goal 04's plain list:
+   - machines with load and GPUs;
+   - what runs on each machine: threads and jobs started from Magnesium;
+   - routes and load balancing, from upstream's settings;
+   - Launch.
+3. **Jobs.**
+   - New Magnesium agents-API operations `list_jobs` and `job_history`, covering the profiles' schedules and the Magnesium Brain's jobs, such as the dream cycle and the session collector.
+   - Each is written once, served by the `magnesium-agents` CLI, REST and MCP, with tests.
+   - Each job shows on its machine.
+4. **Launch.** Pick a machine, profile, sandbox level, project or folder, and a first prompt.
+   - **Context staging (F1):** optionally clone a git repo at a branch, or copy files in, before the agent starts.
+   - The result is a thread on that machine. The wrapper takes the sandbox level from the launch (goal 03).
+5. **Home's fleet tiles**, and the footer's Fleet item: online count and the busiest machine.
+6. **The phone layout,** as on Fleet · phone: a machine list, a bottom sheet per machine, and Launch.
+
+## Test it
+
+1. **Live metrics.**
+   - Fleet shows the hub and every machine with live CPU and memory.
+   - A GPU machine shows GPU utilisation, memory and temperature that match its vendor tool to within a few percent.
+   - A machine with GPUs from two vendors, if you have one, shows both, each read through its own vendor's tool or sysfs. A GPU that can't be read says "no GPU data", not zero.
+   - **Don't put load on a GPU that serves models or runs other work.**
+2. **CPU load.** Run `stress-ng --cpu 4 --timeout 60` on a machine. Its CPU tile rises within 10 seconds and drops afterwards.
+3. **Launch.** From Fleet, launch on a machine with profile `scratch-a`, sandbox `container`, a scratch git repo staged at a branch, and the prompt "print hostname and git branch".
+   - The thread appears in the sidebar and on the machine's card.
+   - The reply has that machine's hostname and the branch.
+4. **Outside sessions stay out.** A terminal session started outside Magnesium on the same machine does not appear (D25).
+5. **Jobs.** A Brain job, such as the dream cycle, shows with its last run and status.
+6. **Tiles and footer.** Home's tiles and the footer item match the Fleet page.
+7. **Phone.** On Fleet · phone, open a machine's sheet and launch from it.
+8. **Tests.** Magnesium's tests pass (`vp test run`), with tests for `list_jobs` and `job_history`.
+
+## Not in this goal
+
+Machines with no Magnesium server, such as storage (an app can read monitoring you already run: goal 17). Kubernetes and microVM launches (goal 19). Agents launching sessions (goal 18).
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+1. Goals 11, 16, 18 and 19 need this one.
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

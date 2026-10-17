@@ -1,0 +1,37 @@
+# Node {{ magnesium_node_version }} per user, from nodejs.org, checked against a pinned sha256.
+- name: Installed Node version
+  ansible.builtin.command: "{{ magnesium_root }}/node/bin/node --version"
+  register: magnesium_node_installed
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Install Node {{ magnesium_node_version }}
+  # In check mode on a fresh host the folders don't exist yet, so only a real run installs.
+  when: magnesium_node_installed.stdout | default('') != 'v' ~ magnesium_node_version and not ansible_check_mode
+  block:
+    - name: Download Node
+      ansible.builtin.get_url:
+        url: "https://nodejs.org/dist/v{{ magnesium_node_version }}/node-v{{ magnesium_node_version }}-linux-{{ magnesium_arch }}.tar.xz"
+        dest: "{{ magnesium_root }}/node-v{{ magnesium_node_version }}.tar.xz"
+        checksum: "sha256:{{ magnesium_node_sha256[magnesium_arch] }}"
+        mode: "0644"
+    - name: Clear the old Node
+      ansible.builtin.file:
+        path: "{{ magnesium_root }}/node"
+        state: absent
+    - name: Folder for Node
+      ansible.builtin.file:
+        path: "{{ magnesium_root }}/node"
+        state: directory
+        mode: "0755"
+    - name: Unpack Node
+      ansible.builtin.unarchive:
+        src: "{{ magnesium_root }}/node-v{{ magnesium_node_version }}.tar.xz"
+        dest: "{{ magnesium_root }}/node"
+        remote_src: true
+        extra_opts: [--strip-components=1]
+    - name: Remove the download
+      ansible.builtin.file:
+        path: "{{ magnesium_root }}/node-v{{ magnesium_node_version }}.tar.xz"
+        state: absent

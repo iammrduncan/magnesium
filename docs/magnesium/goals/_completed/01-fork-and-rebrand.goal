@@ -1,0 +1,179 @@
+---
+id: mg-fork
+status: VERIFIED
+kind: foundation
+depends_on: []
+phase: 0
+boards: []
+decisions: [D5, D8, D10, D11, D13, D17, D27, D28]
+---
+# Magnesium builds and runs: T3 Code forked, stripped and renamed
+
+Magnesium starts as T3 Code at a stable tag, in a GitHub fork of T3 Code named `magnesium` (D27, D28). This goal makes the stock app run as Magnesium with upstream's hosted pieces switched off. It also sets up the merge tooling that every later goal reports through. The plan is in [doc 11](../../11-fork-plan.md): its Strip, Rename policy, Sync policy, and Build and deploy sections.
+
+## Owner gates
+
+- None left. **The owner approved the force push** that moves the fork's `main` to the base below (2026-10-14: "force push is fine"). The owner ran it the same day; `main` on GitHub is now this fork.
+- **Owner sign-off on "Done means" 5 (2026-10-14, D34).** Goal 01 comes before goal 02's Ansible roles, so item 5 cannot be met as written. Asked how goal 01 should meet it, the owner chose **"Minimal rollback now"**: a release and rollback script in `magnesium/deploy`, the build rolled out on a Linux machine with it, and a rollback tested. That is what was done (see the summary), and the owner accepts it as meeting item 5 for this goal. Goal 02's roles wrap the same script. **Confirmed by the owner, 2026-10-14:** asked whether they accept this sign-off as recorded, the owner answered "Yes, accept as recorded".
+
+## Build
+
+1. **The repo.**
+   - **Done 2026-10-14 (D28):** the fork exists on GitHub with only the default branch, and a local clone has an `upstream` remote whose push URL is disabled. Every new clone gets the same remote; the runbook says how.
+   - Base: the newest stable tag that has the MCP-over-stdin fix (PR #17898). On 2026-10-14 no stable tag had it: v0.0.45 (2026-10-02) is the newest stable, and the fix (`f82796a16a`, 2026-10-10) is only in nightlies. So cherry-pick it onto v0.0.45, unless a newer stable tag has it by then.
+   - **Commit our files first.** On 2026-10-14 these were added to the working tree, uncommitted, on top of upstream `main`:
+     - `MAGNESIUM.md`;
+     - the marked block at the top of `AGENTS.md`;
+     - `docs/magnesium/`.
+
+     Commit them, for example as `docs: Magnesium instructions, research and goals`, before touching history. A reset would otherwise drop the `AGENTS.md` edit.
+   - Point the fork's `main` at that base, re-apply our commit on top, and force-push (approved).
+   - Keep upstream's licence, and add a NOTICE saying what the fork is.
+2. **A strip script** that can be re-run.
+   - It deletes `apps/mobile`, `apps/desktop`, `apps/marketing`, `infra/relay` and their CI workflows.
+   - It keeps one trimmed CI workflow.
+3. **Hazards off.**
+   - Telemetry defaults to off and its key is removed, with a test that proves the default.
+   - `T3CODE_TELEMETRY_ENABLED=false` goes in every service unit.
+   - Self-update no longer points at upstream: set `T3CODE_RELEASE_BASE_URL` or patch the constant, and hide the update UI.
+   - Never run `t3 service install`.
+4. **Rename only what a person sees**, as doc 11's rename policy says.
+   - The display name, wordmark, page title and CLI help text become Magnesium. The mark is a plain "Mg" square (D17).
+   - Keep the rest: `@t3tools/*`, `T3CODE_*`, `~/.t3`, the `t3` binary, the HTTP and WebSocket paths, and `t3-context://`.
+5. **Hosted sign-in and the relay (D13).**
+   - Remove the Clerk and T3 Connect UI from `apps/web`.
+   - The server side stays inert, with empty settings, until goal 22 removes it. List what is left.
+   - Pairing is the only sign-in.
+6. **Merge tooling.**
+   - `scripts/merge-upstream`:
+     - takes upstream's lockfile and generated route tree, and regenerates them;
+     - re-runs the strip and rename scripts;
+     - runs typecheck and the tests.
+   - `scripts/upstream-edits` lists every `magnesium:` marker in upstream files.
+   - A weekly CI rehearsal runs a read-only `git merge --no-commit` against upstream `main` and writes a per-file conflict report.
+7. **Our packages:** `magnesium/contracts`, `magnesium/server`, `magnesium/web` and `magnesium/deploy`. Add them to `pnpm-workspace.yaml`. For now they are empty, but they build.
+8. **Build** server and web as one artifact (`vp run --filter t3 build`, then `node apps/server/dist/bin.mjs serve`), on Node 24. Build it on a desktop and on a Linux machine.
+
+## Test it
+
+1. **On your desktop:** install, build and `serve`, then open the pairing URL.
+   - The page title, wordmark and mark read Magnesium and "Mg".
+   - The UI has no T3 sign-in and no T3 Connect.
+2. **Start a Claude thread and a Codex thread** in a scratch folder.
+   - Both answer.
+   - In supervised mode, a command asks for approval, and approving it works.
+3. **Repeat on a Linux machine**, running as the user that will run the server, and open it from your desktop over the network.
+4. **No calls home.** Leave the server running for 10 minutes with one thread run. A capture of outbound connections (`lsof -i`, `ss -tp` or a DNS log) shows no analytics host and no release check against upstream.
+5. **The scripts.**
+   - Run the strip script twice; the second run changes nothing.
+   - `scripts/upstream-edits` lists every marked edit.
+6. **The merge rehearsal.** Run it against upstream `main`; it writes a conflict report per file.
+7. **The tests.** Typecheck and the tests pass, and the telemetry test fails if the default flips back to on.
+8. **Billing check (O11; not a gate, D6).** Run one small task through a Magnesium Claude thread and the same task in the Claude Code CLI. Record which usage meter each one moved. Close O11 in doc 09.
+
+## Not in this goal
+
+Profiles, our own routes and pages, and deployment as a service.
+
+## Goal summary
+
+**2026-10-14: VERIFIED** on a macOS desktop and a Linux machine. The owner ran the force push, and the fork's `main` on GitHub is now v0.0.45, the hand-ported fix and our commits, with Magnesium's README.
+
+**The repo.**
+- No stable tag had the MCP-over-stdin fix yet. So `main` is v0.0.45 plus a hand port of #17898 (`ece6e9d41e`): v0.0.45's Claude sessions still run through `provider/Layers/ClaudeAdapter.ts`, not the V2 adapter the upstream commit patches.
+- Our commits follow the port: docs, NOTICE and `magnesium/*`, hazards, the web sign-in removal, scripts, strip, rename, then fixes.
+- A local branch `backup/pre-rebase-main` keeps the old upstream `main`.
+
+**Build.**
+1. **Strip:** `scripts/strip-upstream.ts` deletes the four apps, all 20 upstream workflows, `.github/scripts`, the release scripts built on the desktop app, one server test that imports mobile code, and 21 unused patches. It patches three files by content. A second run changes nothing.
+2. **CI:** our one workflow is `magnesium-ci.yml`: typecheck, test and build, and a check that strip and rename are applied. The weekly `merge-rehearsal.yml` uploads a conflict report.
+3. **Hazards:**
+   - Telemetry is off unless `T3CODE_TELEMETRY_ENABLED=true` and a key are set. Upstream's key is gone, and with telemetry off no identity files are read. The new test fails when the default flips back on; checked by flipping it.
+   - Release lookups and downloads point at this fork, which publishes no archives, so nothing reaches upstream. The UI no longer offers server updates.
+   - `magnesium/deploy` has a user unit with `T3CODE_TELEMETRY_ENABLED=false` and its own `T3CODE_HOME`. Its seed settings start threads supervised and turn off provider update checks. A test holds every unit and the seed to that.
+   - `t3 service install` was never run.
+4. **Rename:**
+   - `scripts/rename-upstream.ts` changes "T3 Code" to "Magnesium" in the web app, the page title, the manifest, CLI help and server messages. It copies the Mg icon set (`scripts/magnesium-icons.ts`) over upstream's icons. A second run changes nothing.
+   - Agent-facing prompts, MCP tool descriptions and the checkpoint author keep upstream's name.
+   - Marked hand edits: the Mg square mark, the sidebar and welcome brand, and a production title without "(Alpha)".
+5. **Sign-in:** Clerk and T3 Connect are gone from `apps/web` (D13). Pairing links always use the server's own origin.
+   - **What is left on the server side, inert with empty settings, for goal 22:**
+     - `apps/server/src/cloud/` config and env (`T3CODE_RELAY_URL`, `T3CODE_CLERK_*`, `T3CODE_HOSTED_APP_URL`);
+     - the `t3 connect` command, stubbed when unconfigured;
+     - the relay, managed-endpoint, CLI-token and link-recovery layers in `server.ts`;
+     - `/api/connect/*` and `/api/t3-connect/*`, and the `cloud.*` RPCs;
+     - `cloud-*` secret keys;
+     - the relay modules in `packages/shared`, `packages/client-runtime` and `packages/contracts`, and the `relay:*` scopes;
+     - the web relay layer and `VITE_CLERK_*` declarations;
+     - `https://app.t3.codes` on the provider-auth return allowlist.
+6. **Merge tooling:**
+   - `scripts/merge-upstream.ts` takes upstream's lockfile and route tree and regenerates them, re-runs strip and rename, and runs typecheck and tests.
+   - `scripts/upstream-edits.ts` lists every marker. With `--check`, it fails on an unmarked upstream edit.
+   - `scripts/merge-rehearsal.ts` writes the per-file report.
+7. **Our packages:** `@magnesium/contracts`, `server`, `web` and `deploy` are in the workspace, and they typecheck and test.
+8. **Builds:** `vp run --filter t3 build` takes 23 s on the desktop and 1 min 36 s on the Linux machine. The output runs with `node apps/server/dist/bin.mjs serve` on Node 24.
+
+**Tests, 2026-10-14.**
+1. **Desktop:**
+   - The build was served from a scratch `T3CODE_HOME` on loopback.
+   - The page title, sidebar, welcome mark, favicon and manifest read Magnesium / "Mg"; the icons are checked byte for byte.
+   - There is no T3 sign-in or T3 Connect anywhere in Settings.
+   - The startup pairing token lasts 5 minutes; `t3 pair` mints a fresh one.
+2. **Threads on the desktop:**
+   - A Codex thread (GPT-6-Astra) and a Claude thread (Sonnet 5.5) both answered.
+   - New threads started Supervised, and each asked to approve its shell command; approving worked.
+   - Neither provider process had `--mcp-config` or a bearer token on its command line. The `t3-code` MCP server reported `source: dynamic, connected`, so the port works.
+3. **The Linux machine:**
+   - It ran as its own user, bound to a private network address, and was opened from the desktop over that network.
+   - Both threads answered after their approvals.
+   - Codex needed "Use existing CLI" once, for its standalone install.
+   - The Linux processes' command lines carry no credential.
+4. **No calls home:**
+   - **Desktop:** `lsof` every 5 s for 12 minutes, across both thread runs, showed only loopback sockets. A preload logged every outbound connect: loopback, plus `api.bitbucket.org` once, when the Add-project dialog opened.
+   - **The Linux machine:** `ss` for 11 minutes, with a thread run, showed only the browser's connection. The connect log showed `api.anthropic.com` (provider status), loopback and `api.bitbucket.org`.
+   - **Nowhere** did anything reach an analytics host, GitHub or a T3 host.
+5. **Scripts:** strip and rename each changed nothing on a second run. `upstream-edits --check` lists:
+   - 82 markers in 31 files;
+   - 141 files the scripts edit;
+   - one JSON edit (`apps/web/package.json`);
+   - two regenerated files;
+   - 0 unmarked.
+6. **Rehearsal:**
+   - **Against upstream `main`** (913 commits ahead): 15 real conflicts with 22 hunks, 617 in stripped paths, 31 that the scripts resolve, and 2 regenerated files.
+   - **Against v0.0.45:** nothing to merge.
+7. **Typecheck and tests:**
+   - **Typecheck:** passes for all 15 packages.
+   - **Desktop tests:** web 5,448/5,448, and scripts, packages and `magnesium/*` all pass. The server has 45 failures, which fail the same way on a clean v0.0.45 checkout on this Mac: symlinked temp paths, and this machine's npm/brew and Antigravity installs.
+   - **Linux tests (`vp run -r test`):** pass for all 15 packages; the server has 5,611 passed, 10 skipped and 0 failed. So the 45 failures on the Mac are environmental.
+8. **Billing (O11, closed as D30):** both paths report `apiKeySource: "none"` and the claude.ai `five_hour` window, so both use the subscription meter.
+
+**Added on the owner's request:**
+- The root README is now Magnesium's own; merges keep it on a conflict.
+- The GitHub description is set, and the inherited t3.codes homepage is cleared.
+- The "forked from" link stays (D31).
+- Our packages moved from `dbrain/` to `magnesium/`, scoped `@magnesium/*` (D33).
+- Agents messaging each other by `@` session name went into goal 18 (D32).
+
+**Not checked against boards:** this goal has none.
+
+**Deployed and reversible ("Done means" 5, met with the owner's minimal option, since goal 02's roles don't exist yet).**
+- `magnesium/deploy/bin/magnesium-release` builds a commit into `releases/<sha>` and points `current` at it for the user unit. `rollback` goes back to the previous release in one command.
+- On the Linux machine, the user unit first ran an older build, and then `main` was rolled out. `magnesium-release rollback` brought the older build back: the unit restarted, and the page served the older web bundle again. Rolling forward again leaves `main` running there. The unit is active, not enabled at boot.
+- Running as a service showed that each start wrote a fresh startup pairing token to the journal. The unit now drops stdout, and pairing is done on demand with `pair`; a test holds every unit to this. The tokens already in the journal were one-time and had expired.
+- Goal 02's Ansible roles should call `magnesium-release` rather than repeat it.
+
+**Found along the way:**
+- Upstream's `DEFAULT_RUNTIME_MODE` is `full-access`; for now it is seeded supervised.
+- Two outside fetches stay on by default: Google's favicon service for links in chat, and the LiteLLM price table.
+- Upstream has moved provider code into `packages/provider-*`, which the rename scope will need at the next merge.
+
+## Next steps
+
+1. **Owner:** delete the local `backup/pre-rebase-main` branch when happy. `main` is pushed.
+2. **Goal 02:** wrap `magnesium-release`, the unit and the seed in the Ansible roles. Decide whether units are enabled at boot. Set the Codex binary path in the seed, so a standalone Codex install is ready without "Use existing CLI".
+3. **Goal 03:** make supervised the code default, not just a seed, with a test.
+4. **At the first merge** (a stable tag with #17898):
+   - drop the hand port;
+   - add `packages/provider-*` to the rename scope;
+   - decide on the favicon and price-table fetches.
+5. **Goal 22:** remove the inert server-side relay and Clerk code listed above.

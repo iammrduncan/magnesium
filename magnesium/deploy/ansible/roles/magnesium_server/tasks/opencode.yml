@@ -1,0 +1,60 @@
+# OpenCode {{ magnesium_opencode_version }} per user, pointed at an LLM gateway (D36).
+# The API key reaches OpenCode by name: the unit loads it from a secret env file,
+# and opencode.json reads {env:NAME}. It never appears in settings, argv or logs.
+- name: The LiteLLM key's env file is among the secret env files
+  ansible.builtin.assert:
+    that:
+      - magnesium_secret_env_files | length > 0
+      - magnesium_opencode_models | length > 0
+    fail_msg: "Set magnesium_secret_env_files (holding {{ magnesium_opencode_api_key_env }}) and magnesium_opencode_models."
+
+- name: Installed OpenCode version
+  ansible.builtin.command: "{{ magnesium_root }}/opencode/opencode --version"
+  register: magnesium_opencode_installed
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Install OpenCode {{ magnesium_opencode_version }}
+  when: magnesium_opencode_installed.stdout | default('') | trim != magnesium_opencode_version and not ansible_check_mode
+  block:
+    - name: Folder for OpenCode
+      ansible.builtin.file:
+        path: "{{ magnesium_root }}/opencode"
+        state: directory
+        mode: "0755"
+    - name: Download OpenCode
+      ansible.builtin.get_url:
+        url: "https://github.com/anomalyco/opencode/releases/download/v{{ magnesium_opencode_version }}/opencode-linux-{{ magnesium_arch }}.tar.gz"
+        dest: "{{ magnesium_root }}/opencode-{{ magnesium_opencode_version }}.tar.gz"
+        checksum: "sha256:{{ magnesium_opencode_sha256[magnesium_arch] }}"
+        mode: "0644"
+    - name: Unpack OpenCode
+      ansible.builtin.unarchive:
+        src: "{{ magnesium_root }}/opencode-{{ magnesium_opencode_version }}.tar.gz"
+        dest: "{{ magnesium_root }}/opencode"
+        remote_src: true
+    - name: Remove the download
+      ansible.builtin.file:
+        path: "{{ magnesium_root }}/opencode-{{ magnesium_opencode_version }}.tar.gz"
+        state: absent
+
+- name: OpenCode on the unit's PATH
+  ansible.builtin.file:
+    src: "{{ magnesium_root }}/opencode/opencode"
+    dest: "{{ ansible_env.HOME }}/.local/bin/opencode"
+    state: link
+    force: true
+
+- name: Folder for OpenCode's config
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.config/opencode"
+    state: directory
+    mode: "0700"
+
+- name: OpenCode's config (the LiteLLM provider; the key by name)
+  ansible.builtin.template:
+    src: opencode.json.j2
+    dest: "{{ ansible_env.HOME }}/.config/opencode/opencode.json"
+    mode: "0600"
+    backup: true

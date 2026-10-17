@@ -1,0 +1,58 @@
+---
+id: mg-room-routing
+status: PLANNED
+kind: feature
+depends_on: [mg-rooms]
+phase: 3
+boards: ["Room · desktop (decision log, shadow or live)"]
+decisions: [D7, D20]
+---
+# Clef decides who an unaddressed room message is for: shadow mode first, then live
+
+This goal is D7 and D20 (R1, R2): a small decision model gates a room message before an expensive agent turn. Clef routes. A small local instruct model sits behind the same interface as the fallback. Room content never goes to a hosted model ([doc 12](../12-channel-chat-and-events.md), "The decision model").
+
+## Build
+
+1. **Confirm Clef can do it.** Test whether Clef takes a custom question set: "is this addressed to `<role>`?" and "is this relevant to `<role>`?". If it can't, put a small local instruct model behind the same interface. Record the result in doc 12.
+2. **The decision stage** (stage 2):
+   - It runs only for messages the rules leave unclear.
+   - The input is the message, the last few messages and a one-line description of each bot's role.
+   - The output is `{action: respond | observe | ignore, reason, score}`, per bot.
+   - Every decision is logged.
+3. **Shadow mode, per room.**
+   - The model's decision is logged next to what the rules and you actually did, and shown in the decision log at the Detail zoom.
+   - Each room has a switch between Shadow and Live.
+4. **Observe digests, on by default (R2).** Observed messages ride along with the bot's next turn.
+5. **`@all` goes through the gate** for each bot, never straight to everyone.
+6. **When the gate fails,** routing falls back to rules only, and a notice shows in the room. It never falls back to waking everyone.
+7. **A shadow report** per room: agreement, false wakes and misses. Tune the thresholds from it.
+8. **Screening stays separate.** Checking outside content for safety (stage 0) is its own job, not the router.
+
+## Test it
+
+1. **Shadow.**
+   - Put a room in Shadow mode. A script posts a fixed set of 20 unaddressed messages on mixed topics.
+   - For each message and bot, the decision log shows the action, score and reason.
+   - No extra turns happen.
+2. **The report.** The shadow report shows agreement with your expected labels for the fixed set.
+3. **Live.** Switch the room to Live.
+   - A message clearly meant for one bot wakes only that bot, with a chip like `model 0.84`.
+   - "thanks all" wakes no one.
+4. **Digests.** The next delivered turn's text includes the observed messages.
+5. **`@all`.** Ask "@all" a question that concerns only two bots. Only those two answer.
+6. **Fallback.** Stop Clef. Routing falls back to rules (the chip says `lead`), the room shows a notice, and no one else wakes.
+7. **Speed.** A gate decision takes under 1 second at p95.
+
+## Not in this goal
+
+Screening rooms that face the public (Jev or Clef safety): only if such a room is ever made.
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+1. Goal 21 needs this one.
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

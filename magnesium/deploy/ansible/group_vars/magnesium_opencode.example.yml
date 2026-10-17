@@ -1,0 +1,16 @@
+# Copy to group_vars/magnesium_opencode.yml (git-ignored).
+# OpenCode through an OpenAI-compatible gateway, such as LiteLLM (D36). The key file is put on each machine
+# out of band (mode 0600, one line: LITELLM_API_KEY=...); this role only checks it.
+magnesium_opencode: true
+magnesium_opencode_base_url: https://llm-gateway.example.com/v1
+magnesium_opencode_models: ["opencode-go/<model>"]
+magnesium_secret_env_files: ["{{ ansible_env.HOME }}/.config/magnesium/litellm.env"]
+magnesium_settings:
+  defaultRuntimeMode: approval-required
+  enableProviderUpdateChecks: false
+  providers:
+    claudeAgent: { enabled: false }
+    codex: { enabled: false }
+    opencode: { enabled: true, binaryPath: opencode }
+  defaultModelSelection: { instanceId: opencode, model: "litellm/opencode-go/<model>" }
+  textGenerationModelSelection: { instanceId: opencode, model: "litellm/opencode-go/<model>" }

@@ -1,0 +1,63 @@
+---
+id: mg-memories
+status: PLANNED
+kind: feature
+depends_on: [mg-brain]
+phase: 5
+boards: ["Brain · desktop (memories, dream cycle)", "Footer · shared component (dream cycle item)"]
+decisions: [D22, D37]
+---
+# Memories you can edit or ask to change, and a dream cycle you can retry
+
+Memory stays automatic, as it works today, with no review gate (D22). This goal adds the two controls D22 asked for, Edit and Request a change, and makes the dream cycle visible and retryable. It covers K6 (individual and team memory) in the UI.
+
+## Build
+
+1. **New Magnesium agents-API operations `memory_edit` and `memory_request_change`.**
+   - Each writes to the Magnesium Brain (goal 29) and records who changed what, when and why.
+   - Each is written once and served by the `magnesium-agents` CLI, REST and MCP, with tests.
+2. **A change request goes to the memory's owner,** the profile or job that wrote it, found from its provenance.
+   - The request shows up in that profile's next session or inbox.
+   - The outcome links back to the request.
+3. **Recent memories on the Brain page:** personal, team and profile memories, each with its source and owner.
+   - Edit inline.
+   - Request a change, with a note.
+   - Each memory's history.
+4. **The dream cycle:**
+   - the last run's status and a link to its log;
+   - **Retry**, through a new agents-API operation `run_job`, written once and served by the CLI, REST and MCP. The dream cycle is the Magnesium Brain's, which Magnesium runs (goal 29);
+   - a failed run becomes a Home failure card;
+   - the footer's Dream cycle item, as on the Footer board: running, done or failed, with Retry in its popover.
+5. **A separate write client** for memory edits only. The goal 12 reader stays read-only.
+
+## Test it
+
+1. **Recent memories.** The list shows today's facts with their owners.
+2. **Edit.**
+   - Make a test memory ("Magnesium test fact v1") and edit it to v2 in the UI.
+   - `recall` from a Magnesium thread returns v2.
+   - The memory's history shows v1.
+3. **Request a change.** Request a change on a test profile's memory.
+   - The profile sees the request in its next session.
+   - Once the profile acts, the memory shows the change with the request linked.
+4. **Retry the dream cycle.**
+   - Use a failed dream run if one exists. If not, use a test job, with your OK.
+   - Home shows a failure card, and the footer's Dream cycle item turns red.
+   - Retry from the footer's popover runs `run_job` and shows the result.
+5. **The reader stays read-only.** A test shows that goal 12's client cannot write.
+6. **Tests.** Magnesium's tests pass (`vp test run`), with tests for `memory_edit`, `memory_request_change` and `run_job`.
+7. **Against the board.** Compare side by side with Brain · desktop's memories and dream cycle.
+
+## Not in this goal
+
+Profiles learning from their own sessions (goal 14).
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+1. Goals 14 and 21 need this one.
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

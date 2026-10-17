@@ -1,0 +1,127 @@
+---
+id: mg-profiles
+status: BLOCKED
+kind: feature
+depends_on: [mg-deploy]
+phase: 1
+boards: ["Session · desktop"]
+decisions: [D6, D11, D37, D39, D40, D41, D42, D43, D44, D45, D46, D47]
+answers: [O10, O22]
+---
+# Pick a Magnesium profile and a sandbox for any thread, on any machine
+
+This goal runs spike S1, then phase 1 (doc 11: "Profiles are provider instances"). It answers O10 (the sandbox model) and O22 (whether Magnesium threads still reach the Magnesium Brain). It covers M3a: pick the profile and harness per session, with a default.
+
+## Build
+
+1. **Spike S1 first** (doc 11).
+   - Set up two Claude instances with different homes and a logging wrapper, and the same for Codex.
+   - Add a container variant: rootless Podman on the agent machines, and the hub's container runtime on the hub.
+   - Record:
+     - each wrapper's config dir, args and cwd;
+     - whether each agent obeys its own `CLAUDE.md`;
+     - whether an interrupt leaves an orphan process;
+     - whether settings hot-reload;
+     - how many times a wrapper starts during a provider refresh;
+     - how long a container takes to start per turn;
+     - how a sandboxed agent reaches the MCP endpoint T3 injects.
+   - Decide O10 and write the decision into doc 09.
+2. **The wrapper binaries `magnesium-claude` and `magnesium-codex`**, in `magnesium/deploy`.
+   - Each is an executable with a shebang.
+   - Each `exec`s the real CLI inside the sandbox level the profile or launch asks for: `native` or `container`, plus `microvm` where the machine has it.
+   - stdio runs with no TTY.
+   - Secrets are read by name from the server's environment.
+3. **A profile sync service** in `magnesium/server`, on every server.
+   - It reads the profiles assigned to that machine from the private profiles folder (`MAGNESIUM_PROFILES`), which is never in this repo.
+   - Existing dBrain profiles can be imported into that folder once, keeping their layout. Magnesium never reads dBrain at runtime.
+   - It writes one provider instance per profile into `settings.json`: the driver, display name, accent colour, avatar, environment variables by name, the wrapper as the binary, and the profile folder as home.
+   - Each profile brings its own MCP servers, and the Brain (the Magnesium Brain, goal 29, D56), so one-off sessions are backed by memory and the Brain (M3).
+   - It **refuses** `--permission-mode` and `--dangerously-skip-permissions` in launch args. `magnesium-agents check`, the profile checks (modeled on dBrain's `dbrain check`), refuses them too, with a test.
+4. **A new Magnesium agents-API operation, `list_profiles`** (avatar, accent, sandbox), modeled on dBrain's `list_agents`. It is written once and served by the `magnesium-agents` CLI, REST and MCP.
+5. **The Session UI** (the web zone we own), as on the Session board:
+   - a profile picker with avatar, accent colour and a sandbox chip next to the model;
+   - a default profile per project.
+6. **Supervised by default.** Every new thread starts supervised, whatever its profile. Full access is an explicit per-thread choice, never a profile setting.
+7. **Brain check (O22).** Confirm the Brain's session collector ships Magnesium threads from every profile home, for Claude and Codex. If it misses them, fix the collector's paths through `magnesium/deploy`.
+
+## Test it
+
+1. **A new profile appears without a restart** (D39).
+   - On the hub, run `magnesium-agents new scratch-a`. Give it a `CLAUDE.md` rule, "End every reply with the word `ok-a`.", `harnesses: [claude, codex]` and `machines:` naming three of the machines.
+   - Within a minute it shows in the picker on every machine it names.
+2. **A container sandbox.** Start a thread on a machine with `scratch-a` and sandbox `container`.
+   - Replies end with `ok-a`.
+   - `podman ps` on the machine shows the container while the turn runs.
+   - The wrapper's log shows the profile's home and the cwd.
+3. **A native sandbox** (D42). Run `scratch-a` on Claude with sandbox `native` on one machine, and on Codex with sandbox `native` on another. No container starts, and the rule still holds.
+4. **No orphans.** Interrupt a long turn. No `claude` process is left behind (`pgrep -a claude`).
+5. **Permission flags are refused.** Put `--dangerously-skip-permissions` in a profile's launch args.
+   - Sync refuses it with a clear message.
+   - `magnesium-agents check` fails.
+   - Other profiles keep working.
+6. **MCP from a sandbox.** An agent in a container calls one of T3's own MCP tools, and the call succeeds.
+7. **Against the board.** Compare with Session · desktop: the picker, avatar, accent and sandbox chip.
+8. **Sessions reach the Brain.** The thread from step 2 shows up in the Brain within the collector's interval. Search for a phrase only that thread used.
+9. **Threads use the Brain.** In a `scratch-a` thread, ask something only the Brain knows. The agent calls the Brain's tools through Magnesium and answers from them.
+10. **A fenced agent can't read the state home** (D40). On a machine, put a canary file in `~/.magnesium/userdata/` (never the real secrets). In a fenced `scratch-a` thread, approve `cat` of it: it fails. The same in a `native` thread reads it. Remove the canary.
+11. **The stock instances are fenced, and keep working.** On the hub, an existing OpenCode thread answers its next message, now fenced; the sandbox chip says `fenced`, and **Settings → Connections → Sandboxes** lists every machine's levels.
+
+## Not in this goal
+
+Harnesses beyond Claude Code and Codex, and the Kubernetes and microVM levels (goal 19). Launching from Fleet (goal 10).
+
+## Goal summary
+
+**2026-10-15: BLOCKED only on test 8's last step, the Brain indexing the profile sessions; everything else is done and verified.** Every server runs the goal's build, rolled out with the Ansible roles; the previous release is one `magnesium-release rollback` away. CI is green.
+
+- **Tests on the real fleet:** 1 to 6, 10 and 11 passed, and so did switching a thread between levels. Test 7 lists three differences from the board for the owner. Test 8: the collector ships the profile sessions (21 files, none of them links or login files); the Brain indexes sessions on its own schedule, hours behind, so the search is still to run. Test 9 moved to goal 12 by the owner's decision.
+- **Test 5:** a profile with `launch_args: "--dangerously-skip-permissions"` failed `magnesium-agents check` with "full access is a per-thread choice, never a profile setting"; it never reached a machine, and `scratch-a` kept working. The list form now hits the same rule.
+- **Workspaces only:** a fenced agent whose folder is in `~/.magnesium/backups/` won't start ("agents work only in projects/, worktrees/ and scratch/", exit 78) and never reads the key beside it; in `projects/` it works and `userdata/secrets` doesn't exist for it. `magnesium-agents list` says "claude, codex · fenced, container, native".
+- **Merge cost:** goal 03 changed 9 track-zone files (+505 −11; upstream edits in `ProviderService.ts`, `CodexSessionRuntime.ts`, `CodexProvider.ts`, `orchestration.ts` and `bin.ts`, all marked), 6 own-zone files (+358), 49 files in our packages (+5,684 −297) and 6 docs. A rehearsal against upstream `main` (1,045 commits ahead) has 25 files with real conflicts and 38 hunks, against 21 before this goal; goal 03's are `bin.ts`, `ConnectionsSettings.tsx`, and three files upstream has moved or replaced (`ProviderService.ts`, `CodexSessionRuntime.ts`, `orchestration.ts`), which will need porting by hand at the next merge.
+
+**What is built** (the owner's answers are D39 to D43, and spike S1 decided O10, D44):
+
+- **Every agent runs fenced by default** (D40), on the hub, the machines and a single box, with nothing to install.
+  - The agent can't read or write the state home (settings, secrets, the hub's machine tokens, other profiles), and can't change the install, its unit or its env file.
+  - The fence is `magnesium-fence`: bubblewrap where it runs, else a user namespace of its own (`userns`), else Landlock alone (both through Python 3), else macOS Seatbelt. A Debian host without bubblewrap gets the full fence through `userns`. Landlock alone can't create new entries directly in the state home's parent folders; that limit is documented (user guide, `FENCE_NOTES`, D44).
+  - The stock Claude, Codex and OpenCode instances are fenced in place, keeping their ids and homes, so existing threads carry on. Each gets a `native` twin for the per-thread choice.
+  - Every fence lets T3's workspaces in the state home back in read-write (`projects/`, `worktrees/`, `scratch/`) and the attachments read-only; `userdata/` stays hidden (D46). A fenced or container agent starts only in those workspaces; elsewhere in the state home the fence, the container wrapper and the server all refuse, and the thread says why. Native still runs anywhere, as chosen.
+  - Every fence is tested: `MAGNESIUM_FENCE` forces a mechanism and `magnesium-fence --probe NAME` says whether one runs here; the wrapper tests run the same contract under each mechanism the host has, and name the reason for each they skip.
+- **Profiles** in dBrain's layout live on the hub (`~/.magnesium/profiles/<name>/`).
+  - The hub pushes each to the machines it names over `/api/magnesium/ws`, every 20 s if anything changed. Each machine checks what it takes, as sync does, and keeps the last good copy of a profile it refuses.
+  - Profile sync runs on every server. It writes one provider instance per profile, harness and level (`fenced`, `native`, and `container` where Podman and an image are ready), all sharing the profile's home. Each home links to the machine's login (D41) and never reads it.
+  - Sync and `magnesium-agents check` refuse permission flags, `native` as a default, secrets in files and unpinned images; the other profiles keep working. `launch_args` may be a string or a YAML list; the permission-flag refusal applies to both.
+- **The scope a push needs is `orchestration:operate`:** the scope that already edits provider instances through `server.updateSettings`, which is what a profile becomes. The receiving side then narrows what a push can do: the binary is always our wrapper, homes stay under the profile's folder, permission flags are refused, and secrets are names only. The hub holds no admin token.
+- **How the owner adds a profile:** on the hub (or a single box), `magnesium-agents new <name>`, edit its two files, then `magnesium-agents check`.
+- **The agents API:** `list_profiles`, `check_profiles` and `list_sandboxes` are written once, and served by RPC, REST, MCP and the CLI. `magnesium-agents list` reads the instances the server actually runs.
+- **The Session UI:** the profile's avatar, accent and name in the model picker; a sandbox chip that switches the thread's level and says why a level is off and how to enable it; **Settings → Connections → Sandboxes**, the levels of every machine. A default profile per project is upstream's project default model.
+- **New threads start supervised:** the code default is now `approval-required`.
+- **Codex asks once** when fenced or in a container (D45): Magnesium tells Codex its sandbox is off and leaves its approval policy alone. It is an upstream edit, in `CodexSessionRuntime.ts`, because T3 sends the sandbox on every `thread/start` and `turn/start`.
+- **Switching levels:** Codex opens a thread in one process at a time, so the server stops the previous level's session before the next resumes the thread; a switch with no session left resumes the thread too. Two app-servers can't set up a fresh `CODEX_HOME` at once, so until one has answered `initialize` in a home, that home's app-servers start one at a time (D47). Separate homes per level were rejected: the thread's history lives in its home.
+- **Deploy:** the wrappers ship in every release and pack. The role sets `MAGNESIUM_MACHINE`, links `magnesium-agents`, and pulls `magnesium_sandbox_image` when one is set. Nothing assumes Tailscale (D43).
+
+**Spike S1,** on a Linux machine in scratch (Claude Code 2.1.291, Codex 0.157.1, Podman 5.7):
+
+- **Fence and rules:** a fenced agent can't read the state home's canary, and a fenced Claude obeyed its profile's `CLAUDE.md`. Fenced Codex obeyed it through `AGENTS.md`.
+- **Containers:** a container turn ran over stream-json with no TTY. It started in 1.3 s; the first container on the machine took about a minute.
+- **Stops:** after SIGTERM or SIGKILL, fenced or in a container, no process or container was left.
+- **Hot reload:** a new profile appeared in settings in 15 s, with no restart.
+- **Refresh cost:** a refresh starts each Claude instance twice and each Codex instance once. A Codex container instance's refresh starts a short container.
+- **MCP:** a container reaches the server's MCP port whether the server binds loopback or the LAN address.
+
+**Test 7 found three differences from the Session board,** for the owner to accept or reject:
+
+1. the profile and the model share one picker ("scratch-a · Claude Haiku 5.5");
+2. the sandbox chip is in the composer, not the board's "machine · sandbox" chip in the header and footer, and the footer shows the machine only;
+3. the approval card doesn't say which sandbox the command runs in.
+
+## Next steps
+
+1. **Next session, then VERIFIED** (the owner accepted closing this run as BLOCKED, 2026-10-15): once the Brain's session indexing catches up, find a profile thread's own session in it by a phrase only that session holds. When it's found, test 8 passes: mark this goal `VERIFIED` and move it to `_completed/`.
+2. **Owner: accept or reject test 7's three differences from the Session board** (above). A rejected one becomes a web change, here or in goal 05's shell work.
+3. **Owner, optional:** sign Codex in on any machine whose profiles should offer Codex; its picker says "not authenticated" until then.
+4. **Cleanup:** the hub's `scratch-a` test profile can go once the owner is done looking at it.
+5. **Next merge from upstream:** port this goal's edits to the three files upstream moved (above).
+6. Goals 08, 10 and 18 can start on this; goal 12 now carries test 9.
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

@@ -1,0 +1,7 @@
+{
+  "machines": [
+{% for machine in magnesium_hub_machines %}
+    {{ {"name": machine.name, "url": machine.url if machine.url is defined else "http://127.0.0.1:" ~ machine.relay_port} | to_json }}{{ "," if not loop.last else "" }}
+{% endfor %}
+  ]
+}

@@ -1,0 +1,50 @@
+---
+id: mg-upstream-v2
+status: PLANNED
+kind: maintenance
+depends_on: [mg-home, mg-spokes-k8s]
+phase: 2
+boards: []
+decisions: [D11, D51, D52]
+---
+# Take upstream's v0.1.0: Orchestrator V2
+
+Upstream's T3 Code v0.1.0 is the first stable release of Orchestrator V2: a rebuild of how turns start, stop, queue and resume, how background work is tracked, and how history is saved. Magnesium is on v0.0.45. On 2026-10-16 the owner chose to finish goal 06 on V1 first and take V2 right after it, as its own goal (D51). Upstream's scheduler (scheduled tasks, their failures and next runs) only exists with V2, so Home's scheduled-run cards and Next runs come with this goal. By then the four machines run as pods (goal 25, D52), so their part of the upgrade is a new image.
+
+## What upstream says before you update
+
+- The first V2 start copies each server's database into a new one and imports its threads. The old file is left as it was; work done under V2 doesn't show under V1.
+- A V2 server and a V1 client refuse each other: the hub and all four machines upgrade in one window.
+- OpenCode: V2 is built for OpenCode 2.0.18 and newer. 1.x keeps working, but an approval or question still waiting when the server restarts is not shown again. OpenCode 2 is a separate package; never run 1.x and 2.x side by side on one machine.
+- Migrated threads keep their messages; live provider sessions, old checkpoints and diffs, tool activity, approval history and proposed plans don't carry over.
+
+## Build
+
+1. **Merge v0.1.0** with `scripts/merge-upstream.ts`, in a branch. A rehearsal on 2026-10-16 found 28 files with real conflicts (48 hunks). Upstream deleted files that hold goal 03's sandbox fence and the supervised default, and V2's default runtime mode is full access again. Re-port both by hand first, with tests, so neither is lost silently.
+2. **Mechanical changes:** Effect 4.0.4 (`effect/unstable/*` imports move), the strip and rename scripts (the "(Beta)" title, stale exclusions), and the lockfile.
+3. **Magnesium's server ports onto V2:** the thread ports (`ports.ts`, `apps/server/src/magnesiumRoutes.ts`), `ServerStatus`, profile sync (`ServerSettings.providers` is gone) and Home's `home/items.ts` (V2's `pendingRuntimeRequest`, `runtime-request.respond`, plans by `sourcePlanRef`).
+4. **Hub scopes:** stored grants are never widened, so the hub's machine tokens stay on V1 scopes. The renew route issues V2's standard scopes, or the owner re-pairs.
+5. **Scheduled runs on Home:** failures as cards with Retry (upstream's run now) and Open; Next runs from each machine's scheduler.
+
+## Test it
+
+1. **Rehearsal on real data.** Each server's `state.sqlite`, copied with `VACUUM INTO`, migrates under the merged build; threads, projects and settings are all there.
+2. **Security kept.** New threads start supervised; a fenced thread can't read the Magnesium state home (goal 03's tests).
+3. **Lockstep upgrade.** Pending OpenCode approvals and questions are answered or stopped first, every server is backed up, then the hub and all four machines move in one window. Fleet shows five servers on the new build.
+4. **Everything since goal 01 still works** on the hub: pairing once, Fleet, the sidebar and footer, Home with an approval, a question and a plan, the Fleet terminal.
+5. **Scheduled runs.** A scheduled task that fails shows on Home; Retry runs it; Next runs lists the next three.
+6. **Rollback.** `magnesium-release rollback` brings back the previous build with its V1 threads.
+
+## Not in this goal
+
+Moving the fleet to OpenCode 2 (after the merge, one machine at a time).
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+1. Goal 15, Projects.
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

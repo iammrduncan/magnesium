@@ -1,0 +1,159 @@
+---
+id: mg-hub-link
+status: VERIFIED
+kind: foundation
+depends_on: [mg-deploy]
+phase: 0
+boards: []
+decisions: [D11, D14, D15, D35, D38, D48, D49]
+---
+# The hub sees every Magnesium server live, over our own route
+
+This goal runs spike S2 (doc 11), then builds the gathering layer that every later page uses. The hub keeps a live link to each machine server (D15), and machine tokens stay on the hub (D14: tokens kept server-side).
+
+## Owner gates
+
+- **Closing the direct paths (build 6):** the owner approves any change to who can reach the machines before it is applied.
+
+## Build
+
+1. **Our route, `/api/magnesium/ws`.**
+   - It uses upstream's auth and scopes.
+   - An `RpcGroup` lives in `magnesium/contracts`.
+   - `magnesium.sqlite` has its own migrations table.
+   - `magnesium.ping` and one sample stream prove it works.
+   - Measure it: `git diff --stat` against the tag, split by zone, and a merge rehearsal from an older stable tag to the latest, with conflicts per file.
+2. **A stream kit**, in `magnesium/server` and `magnesium/web`, that every later stream uses (doc 06):
+   - a bounded snapshot with a sequence number;
+   - `subscribe(afterSequence)`;
+   - `history(cursor)`;
+   - about 50 ms of coalescing;
+   - byte-budget tests.
+3. **The hub link.**
+   - **Done early, in goal 02 (D38):**
+     - The hub holds one bearer session per machine server, with standard scopes (never admin), and renews it in its last week.
+     - It carries each machine at `/api/magnesium/env/<machine>/`.
+     - Machine tokens live only on the hub (`magnesium/server/src/hub/`).
+   - **Still to build:** one live subscription per machine on the hub: server version, uptime, a summary of threads, and pending approvals and questions.
+4. **A first Fleet page**, a plain list that goal 10 replaces with the board's design. Each server gets a row:
+   - name and kind;
+   - version;
+   - Connected or Offline, and when it was last seen;
+   - threads running, and how many are waiting on you.
+
+   It also needs a sidebar item and a palette action: one marked edit each.
+5. **Failure handling.**
+   - A machine that goes offline shows as Offline within 10 seconds.
+   - The hub reconnects with backoff.
+   - A flapping machine never floods the browser.
+6. **One front door** (goal 02's test 4, which the owner waived there). Reshaped by the owner on 2026-10-15: it must be repeatable for someone with a different network setup.
+   - **The product works on any network**, and on a single box: a LAN with no Tailscale, a tailnet, or one server alone.
+     - `magnesium_server` binds `magnesium_host`. When that is empty, it uses the tailnet address only if Tailscale is installed, and otherwise stops and asks for the address.
+     - `magnesium_hub` takes machines as `{name, url}`, or `{name, relay_port}` for a machine reached through a loopback relay on the hub. It binds wherever the owner's devices reach it. Tailscale publishing is optional.
+     - The runbook shows three ways to let only the hub reach a machine: bind to an interface only the hub reaches, a host firewall rule, or Tailscale ACLs.
+
+## Test it
+
+1. **Every server.** Open Fleet on your desktop. Every server shows as Connected, with versions and running and waiting counts that match the threads you have.
+2. **A wait shows up fast.** Start a thread on a machine that hits an approval. Its waiting count goes to 1 within 2 seconds.
+3. **Offline and back.**
+   - Stop the server on a machine; it shows Offline within 10 seconds.
+   - Start it again; it shows Connected, with correct counts.
+4. **No machine tokens in the browser.** The browser's storage holds only the hub session.
+5. **Scopes hold.** A test shows that a read-only token cannot call an operate RPC.
+6. **One front door.**
+   - From the phone, a machine server's own address is refused, and any old per-machine hostname no longer answers.
+   - From the hub, the machine's server still answers.
+   - On the phone and the desktop, every machine still works through the hub.
+7. **The measurements.** The report has the diff stat by zone, the conflicts per file from the rehearsal, and the stream byte-budget results.
+
+## Not in this goal
+
+The Fleet board's design: metrics, GPUs, jobs and launch (goal 10).
+
+## Goal summary
+
+**2026-10-15: VERIFIED.** Builds 1 to 6 are done. Test it 1, 2, 3 and 6 passed on the real machines, 4 was checked in goal 02, and 5 passes in tests. Every server runs goal 04's code, rolled out with the Ansible roles; the previous release is one `magnesium-release rollback` away. CI is green.
+
+**Test it, 2026-10-15, in the owner's Chrome, every server on the same build:**
+
+1. **Every server: passed.** A row for each, all Connected, with counts that match the threads.
+2. **A wait shows up fast: passed.** An approval on a machine showed "1 waiting on you". It was already there when the tab came into view, and it went back to 0 when the approval was allowed.
+3. **Offline and back: passed.**
+   - After `systemctl --user stop` on a machine, Fleet showed Offline within seconds, last seen 12:59 AM, "It did not answer". Recent showed "went offline: The connection dropped".
+   - After a start, it came back Connected on its own in about 30 seconds, boot included, and Recent showed "connected".
+4. **No machine tokens in the browser:** checked in goal 02; nothing in this goal stores one.
+5. **Scopes hold: passed in tests.** A read-only session is refused `magnesium.fleet.reconnect`, both over the route and in `fleet.test.ts`. CLI-minted sessions are refused the hub's machine routes against upstream's real auth.
+6. **One front door: passed** (2026-10-15). From the owner's desktop, a machine's server can't be reached directly and the old per-machine hostnames no longer resolve; the hub answers. In the owner's Chrome, Fleet shows every server Connected, and a thread on each machine ran a new turn through the hub.
+
+**Follow-ups from the rollout:**
+
+- `magnesium.sqlite` is now created 0600, and an older 0644 file and its WAL files are tightened when opened, with a test. It was found 0644 inside a 0700 folder.
+- Every server's status now carries its release (the `releases/<name>` it runs from, null in development), next to the package version, which is the same across commits.
+  - Fleet shows both, and marks a machine on a different build than the hub "(not the hub's build)".
+  - A server that predates the field reads as unknown.
+
+**Decisions** (doc 09): D48, our RPC route is `/api/magnesium/ws` (D33 now says so); D49, only paired devices reach the hub's machines.
+
+**What's built:**
+
+- **Our route, `/api/magnesium/ws`.** It sits under `/api` so every front door and the dev proxy carry it with no upstream edit.
+  - `MagnesiumRpcGroup` is in `magnesium/contracts`. Each RPC names the upstream scope it needs, and one middleware enforces it, refusing RPCs that name none.
+  - The upgrade uses upstream's auth: a `wsTicket`, the session cookie, or a bearer token.
+  - `magnesium.ping`, and `magnesium.server.status`: version, start time, and thread counts (total, running, waiting, approvals, questions). The counts come from the server's projections, only while someone subscribes.
+- **`magnesium.sqlite`** sits next to `state.sqlite`, with its own `magnesium_migrations` table. Migration 1 holds Fleet's tables.
+- **The stream kit (doc 06):**
+  - A live table: a snapshot with a sequence, resume after a sequence, and 50 ms coalescing with the newest row per key. Sequences start at the clock, so a restarted server never repeats one.
+  - A live log: a bounded snapshot, `history(cursor)` paging, and resume.
+  - Client state in `magnesium/web` that keeps unchanged objects.
+- **The hub link (build 3).** The hub keeps one link per machine in `hub-machines.json`, using goal 02's tokens and ticket minting.
+  - A link is the machine's `magnesium.server.status` plus a ping every 2 seconds. A silent machine shows offline within about 5 seconds, and a stopped one at once.
+  - `magnesium.fleet.machines` gathers every machine, with the hub as one more row.
+  - `magnesium.fleet.events` keeps each link's ups and downs in `magnesium.sqlite`, with a last-seen time that survives a hub restart.
+- **The Fleet page (build 4).** Each server shows its name and kind, version, Connected or Offline with when it was last seen, and threads running and waiting on you.
+  - **Reconnect** retries a machine now (operate scope); **Recent** lists link events, with Load earlier.
+  - One marked edit each adds the sidebar item and the palette action ("Open fleet"). The hub user guide has a Fleet section.
+- **Failure handling (build 5).**
+  - Backoff runs 1, 2, 4, 8, then 15 seconds at most, and starts over after a link holds for 30 seconds.
+  - A machine whose access changes, or one the owner asks for, is retried at once.
+  - A flapping machine costs at most about 20 row changes a minute, coalesced, at under 640 bytes each.
+- **Only paired devices reach the machines.** The hub's proxy, its machine routes and our route refuse sessions that did not come from pairing: those the `t3` CLI mints, and the dev token agents inherit in web dev mode. An agent's `/mcp` token is not a session at all.
+- **One front door, on any network (build 6).**
+  - `magnesium_server` no longer needs Tailscale. It binds `magnesium_host`, or the tailnet address when Tailscale is installed, and otherwise stops with a clear message.
+  - `magnesium_hub` dropped its loopback-only assert and takes `{name, url}` entries (or `{name, relay_port}` for a loopback relay). Its Tailscale Service is optional; when published, the role clears the per-machine Services goal 02's role published.
+  - The runbook leads with the generic setups: a single box, a hub and machines on any network, and three ways to let only the hub reach a machine.
+  - `tests/network.yml` checks the host choice (an explicit address, a tailnet, no Tailscale) and both entry forms. `magnesium/deploy`'s tests run it when Ansible is installed.
+
+**Tests:**
+
+- Our packages: 56 server tests and 10 web tests. They cover:
+  - the route over a real socket, and the scope guard;
+  - byte budgets: Fleet opens for five servers in under 4 KiB, and each change is under 640 bytes;
+  - links under the test clock: backoff, wake, a silent machine, flapping;
+  - a hub and a machine as real servers: Connected, a wait shown within 2 seconds, Offline on stop within 10, a read-only session refused on Reconnect, back after a restart.
+- `apps/server/src/magnesiumRoutes.test.ts` checks every kind of credential against upstream's real auth.
+- Upstream's `server.test.ts` (210 tests) and the palette and sidebar web tests (307) pass. The web app builds.
+- **End to end on scratch servers with real auth:**
+  - A CLI session got 403 on the hub's machine list.
+  - The hub took a pairing code minted on the machine, and the link came up at once.
+  - The machine showed Offline 61 ms after SIGTERM, and Connected again as soon as its server answered.
+  - The events were `no-access`, `connected`, `offline`, `connected`.
+
+**Measurements:**
+
+- Goal 04's diff:
+  - 45 files in `magnesium/*` (+3,817 −37), and 3 lockfile lines.
+  - 5 files in `apps/web` (+285 −1): two new files, the two marked edits, and the regenerated route tree.
+  - No track-zone file.
+- The fork against v0.0.45: track 80 files, own 121, ours 89.
+- Merge rehearsals:
+  - v0.0.45, the latest stable tag and our base, has 0 conflicts.
+  - Upstream `main` (1,021 commits ahead) has 21 files with real conflicts and 37 hunks, the same as before this goal. Its web edits add no hunk.
+
+## Next steps
+
+1. **Goal 03 and later goals build on this:** annotate each RPC with `RequiredScope` and register its handler layer in `magnesium/server/src/index.ts`; migrations go in `magnesium/server/src/db/migrations.ts` (next id 2); `connectMachine(name)` dials a machine as the hub.
+2. **Goal 05** needs this goal. **Goal 10** replaces the Fleet page with the Fleet board.
+3. **Later:** the hub's own link to a machine reports "unknown" for a server that predates the release field; nothing to do once every server runs this build.
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](../README.md#done-means-for-every-goal)).

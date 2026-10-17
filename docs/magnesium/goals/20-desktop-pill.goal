@@ -1,0 +1,57 @@
+---
+id: mg-pill
+status: PLANNED
+kind: feature
+depends_on: [mg-home]
+phase: 7
+boards: ["Pill (mocked in this goal)"]
+decisions: [D26]
+---
+# A desktop pill: who needs you and what's running, with quick actions
+
+This goal covers I3: a desktop pill for notifications, quick actions, and a quick view of active and waiting agents. The Magnesium server provides hooks, and the pill is a separate small client built on them (D26). The pill isn't mocked yet, so this goal mocks it first.
+
+## Owner gates
+
+- **Approve the Pill boards** before any client code.
+- **Pick the client's form.** The default is a small native menu-bar app with a floating pill, for the owner's desktop.
+
+## Build
+
+1. **Mock first.** Add Pill boards to the mock canvas:
+   - the collapsed pill;
+   - the pill expanded, with waiting and active agents;
+   - a quick action with its undo.
+2. **Hooks on the hub (D26).**
+   - An event stream: needs-you changes, running counts, finished and failed.
+   - Actions: approve or deny (with the 5-second undo), answer, stop, and open in Magnesium.
+   - A narrow token per device, read by name.
+   - Documented in the API docs.
+3. **The pill client.** It talks only to the hub's hooks.
+   - It shows the needs-you count and the active agents.
+   - A click expands it.
+   - Approve and deny right from the pill.
+   - System notifications.
+   - Any item opens in the installed PWA.
+
+## Test it
+
+1. **The boards.** You approve the Pill boards.
+2. **Counts match.** The pill shows "2 need you · 3 running", matching Home.
+3. **Act from the pill.** Approve from the pill. The thread carries on, and Home updates.
+4. **Notifications.** A new approval raises a system notification.
+5. **Open.** Clicking an item opens it in the PWA.
+6. **Revoke.** Revoke the pill's token. It stops getting events at once.
+7. **Against the boards.** Compare with the boards you approved in step 1.
+
+## Not in this goal
+
+Live status on the phone's home screen (D16; needs a native phone shell).
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

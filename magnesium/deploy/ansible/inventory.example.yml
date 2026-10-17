@@ -1,0 +1,33 @@
+# Copy to inventory.yml (git-ignored). Placeholders only: ansible_host is any
+# address the admin machine reaches over SSH (a LAN name or IP, or a tailnet name).
+# On a single box, list it under magnesium_hub alone and leave magnesium_servers empty.
+magnesium_hub:
+  hosts:
+    hub:
+      ansible_host: hub.example.internal
+      ansible_user: magnesium
+
+magnesium_servers:
+  hosts:
+    gpu-a:
+      ansible_host: gpu-a.example.internal
+      ansible_user: agent
+      magnesium_host: 192.0.2.11 # the address the hub reaches this server on
+    gpu-b:
+      ansible_host: gpu-b.example.internal
+      ansible_user: agent
+      magnesium_host: 192.0.2.12
+    cpu-a:
+      ansible_host: cpu-a.example.internal
+      ansible_user: agent
+      magnesium_host: 192.0.2.21
+    cpu-b:
+      ansible_host: cpu-b.example.internal
+      ansible_user: agent
+      magnesium_host: 192.0.2.22
+
+# Machines without Claude Code run OpenCode through an OpenAI-compatible gateway,
+# such as LiteLLM (D36).
+magnesium_opencode:
+  hosts:
+    cpu-b:

@@ -1,0 +1,69 @@
+Below I am outlining my highlevel requirements of a harness.
+
+
+To me the harness has multiple parts:
+
+- KB / Brain / Memories
+- Agent Loops
+- Persistent Profiles and Context + Self Learning
+- Infrastructure / fleet management
+- Custom mini apps able to serve dashboards, add new features etc. Plugin style.
+
+
+The KB: (dbrain captures most of it today but)
+
+- persistent organized knowledge base wiki with vector/hybrid search
+- many types of sync modules that collect data and sync into system
+- Dreaming nightly for memory creation, curation, etc.
+- Pipelines for ingestion of data (link/hf/pdf/etc... -> research -> stored raw data/stored raw research/synthesized answer/why it matters to me in what areas and relevant projects)
+- project based knowledge and organization.
+- individual and team based memory/facts
+- auto learning from sessions etc.
+
+
+The Agent Interface:
+
+- Clean t3 code style interface
+- Bot Mode (Channels + DM with long running sessions)
+- Project Mode (Folders with individual sessions. Additional context/docs dropped into project space, etc saved to /projects/<project-name> in KB)
+- Session Mode (One off chats backed by general memory and kb)
+    - Sessions in both Project/Session mode can pick the Profile/Harness to use on that session with a default selected fo rmost questions.
+- Fleet Mode (Able to see all active sessions, jobs, etc across entire cluster)
+- App Mode (View and interact with list of apps. Pin ones that matter)
+- Scheduler Mode (View, intearct, create, modify schedule jobs and agent runs)
+
+
+The Agents:
+
+- Works with any harness (claude code, codex, open code, pi, oh-my-pi, etc...)
+- Uses native claude / codex / omp TUI. --- Does not use claude -p or agent sdk.
+- Uses built in harness tooling etc, that those models and harnesses are trained on.
+- Can create persistant profiles that build their own memory / kb areas.
+- Can message between the harnesses easily (profile x can send a message to profile y).
+- Can do a group chat where all responses and threads are in a single session and replayed between the profiles.
+- Learns with reflection over chats => skills and memory creation.
+
+The Fleet:
+
+- Able to launch workload on the cluster either natively or in kubernetes container or docker/podman sandbox or msb/microvm etc with agent running and tools attached and context staged (git, files, etc...)
+- Able to monitor all machines and agents running on them including autoresearch agents etc
+- Specific agents are able to control, message, steer, modify agents sessions running in the fleet.
+
+
+Agent Locations:
+
+- Main bots/profiles on the hub
+- Worker workloads/sessions/subagents able to be executed across the fleet by me manually or by bot/profiles on the hub
+
+
+Interaction Points:
+- Web App for daily use or TUI interface like herdr. t3code style and simplicity.
+- Mobile app for all the same features, chatgpt style (t3code shrunk to mobile works pretty well actually).
+- Desktop pill for notifications, quick actions, quick view of active/waiting agents etc.
+
+
+-----
+
+I should at a glance be able to see what is going on, whats priority, where needs my direction. So I can spend time ideating while agents handle the execution.
+
+I should be able to be as high level or low level as I want easily.

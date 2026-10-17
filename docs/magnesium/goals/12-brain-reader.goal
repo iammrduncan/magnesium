@@ -1,0 +1,65 @@
+---
+id: mg-brain
+status: PLANNED
+kind: feature
+depends_on: [mg-shell, mg-magnesium-brain]
+phase: 5
+boards: ["Brain · desktop", "Brain · document open", "Home · desktop (Brain stats)"]
+decisions: [D9, D22, D56]
+---
+# Brain: ask the Magnesium Brain, browse it as a file tree and read any page
+
+This goal runs spike S5 (doc 11), then the read half of phase 5. The Brain is the Magnesium Brain (goal 29, D56): Magnesium's own GBrain, which the hub reads with a read-only client of its own. Brain content stays local.
+
+## Build
+
+1. **Spike S5 first.**
+   - A server-side MCP client on the hub for the Magnesium Brain, with a read-only token Magnesium issues to itself.
+   - Calls: `query`, `search`, `get_page`, `get_backlinks`, `list_pages`, `get_ingest_log`.
+   - Measure the latency of each call.
+   - Build a tree from the slugs of 1,000+ pages.
+   - Prove the client writes nothing.
+2. **The Brain bridge module:** a short cache, and `brain.summary` and `brain.recent` streams.
+3. **The Brain page**, as on Brain · desktop:
+   - Ask the brain: an answer with its sources, each opening in the reader;
+   - Recently added, with a collection filter;
+   - this week's stats;
+   - sources with sync status, read from the Magnesium Brain by the Brain bridge;
+   - the dream cycle's status (read-only here; goal 13 adds Retry);
+   - growing topics;
+   - the Overview / Memories / Pages switch. Memories stays empty until goal 13.
+4. **The file tree and reader**, as on Brain · document open.
+   - The tree sits in the sidebar under the Brain place, built from slugs and collections.
+   - The reader shows a path breadcrumb, summary, properties, topics, "Linked from" and the memories drawn from the page.
+   - Clicking another file or a backlink opens it.
+5. **"Ask about this"** starts a new thread with a Brain context chip (`t3-context` kind `kb-page`, doc 07), on the profile and machine you choose.
+6. **Home's Brain stats.**
+
+## Test it
+
+1. **Ask.** Ask the brain a question you know the answer to. The answer cites pages; open one in the reader.
+2. **Browse.** In the tree, expand Papers and a month, and open a page made from a PDF.
+   - The summary, properties and backlinks show.
+   - Clicking a backlink opens that page.
+3. **Speed.** Time how long the tree takes to load for the whole Brain, and record it with the page count.
+4. **Ask about this.** It opens a thread with the Brain chip, and the agent's first reply uses the page.
+5. **Read-only.** The Brain's logs show no writes from the bridge's client.
+6. **Sources.** Each source shows its last sync, and a failed source shows red.
+7. **Against the boards.** Compare side by side with Brain · desktop, Brain · document open, and Home's Brain stats.
+8. **Profile threads use the Brain** (moved here from goal 03's test 9 by the owner, 2026-10-15).
+   - Give the test profile read access to a Brain section in Settings → Brain. No token goes in a profile or on a machine (goal 29).
+   - In a `scratch-a` thread, ask something only the Brain knows. The agent calls the Brain's tools through Magnesium and answers from them.
+
+## Not in this goal
+
+Memory edits and the dream cycle's Retry (goal 13), and dropping docs into the Brain (goal 23).
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+1. Goals 13 and 15.
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

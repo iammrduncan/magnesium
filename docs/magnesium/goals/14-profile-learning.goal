@@ -1,0 +1,49 @@
+---
+id: mg-learning
+status: PLANNED
+kind: feature
+depends_on: [mg-profiles, mg-memories]
+phase: 5
+boards: ["Brain · desktop (skills, profile memory)"]
+decisions: [D22, D37]
+---
+# Profiles learn from their own sessions: memory notes and skill proposals
+
+This goal covers A4 (profiles build their own memory) and A7 (reflection over chats creates skills and memory). It builds `magnesium-agents reflect` for Magnesium threads. Memory notes apply automatically (D22). Skills change how a profile works, so they arrive as proposals, as the design says.
+
+## Build
+
+1. **`magnesium-agents reflect`**, as designed.
+   - It runs at session end over a digest of the session (your turns, final answers, the tool calls that changed things, errors), on the harness's cheap tier.
+   - It writes profile memory notes (`MEMORIES.md`, `memory/*.md`) and skill proposals (`inbox/skill-*.md`).
+   - **First check** that the `SessionEnd` and `PreCompact` hooks fire for threads Magnesium starts through the Agent SDK and Codex's app server. If they don't, trigger reflect from the thread's end event in `magnesium/server`.
+2. **The provenance rules** from the design decide what reaches a prompt. Text from web pages and outside repos never becomes a memory.
+3. **On the Brain page, per profile:**
+   - its memory notes, with Edit and Request a change, as in goal 13;
+   - its skill proposals, with Accept, Edit and Reject. An accepted skill lands in the profile's skills folder and syncs (goal 03).
+4. **Home** shows "N skill proposals" as a low-rank item, never as a push.
+
+## Test it
+
+1. **A memory note.**
+   - In a `scratch-a` thread, state a preference: "always answer with the date first".
+   - End the session. A memory note with that preference appears for `scratch-a`.
+   - A new `scratch-a` thread follows it without being told.
+2. **A skill proposal.**
+   - Run the same three-step procedure in three `scratch-a` sessions.
+   - A skill proposal appears. Accept it, and the next session lists the skill.
+3. **Reject.** Reject a proposal. It doesn't come back for the same procedure.
+4. **Web text stays out.** A session that only read a web page creates no memory from that page.
+5. **Tests.** Magnesium's tests (`vp test run`) cover `reflect`'s outputs and provenance rules.
+
+## Not in this goal
+
+The Magnesium Brain's own nightly dream cycle, which stays GBrain's job (K3).
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

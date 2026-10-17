@@ -1,0 +1,168 @@
+# Checks the roles' network choices on the admin machine, touching no host:
+# the server's bind address with and without Tailscale, and the hub's machine
+# list in both entry forms. Run from magnesium/deploy/ansible:
+#   ansible-playbook -i localhost, -c local tests/network.yml
+# magnesium/deploy/src/deploy.test.ts runs it when Ansible is installed.
+- name: Magnesium on any network
+  hosts: localhost
+  gather_facts: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  tasks:
+    - name: A scratch folder
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: magnesium-network
+      register: scratch
+
+    - name: Folders for a PATH with Tailscale, and one without
+      ansible.builtin.file:
+        path: "{{ scratch.path }}/{{ item }}"
+        state: directory
+        mode: "0755"
+      loop: [tailnet, empty]
+
+    - name: A fake tailscale that reports a tailnet address
+      ansible.builtin.copy:
+        dest: "{{ scratch.path }}/tailnet/tailscale"
+        content: "#!/bin/sh\necho 100.64.0.7\n"
+        mode: "0755"
+
+    - name: An explicit host wins, and Tailscale is never asked
+      ansible.builtin.include_tasks:
+        file: ../roles/magnesium_server/tasks/host.yml
+        apply:
+          environment:
+            PATH: "{{ scratch.path }}/tailnet:/usr/bin:/bin"
+      vars:
+        magnesium_host: 192.0.2.21
+    - name: It binds the LAN address
+      ansible.builtin.assert:
+        that:
+          - magnesium_bind_host == "192.0.2.21"
+          - magnesium_tailnet_ip is skipped
+
+    - name: No host and Tailscale installed binds the tailnet address
+      ansible.builtin.include_tasks:
+        file: ../roles/magnesium_server/tasks/host.yml
+        apply:
+          environment:
+            PATH: "{{ scratch.path }}/tailnet:/usr/bin:/bin"
+      vars:
+        magnesium_host: ""
+    - name: It binds the tailnet address
+      ansible.builtin.assert:
+        that:
+          - magnesium_bind_host == "100.64.0.7"
+
+    - name: No host and no Tailscale stops with a clear message
+      block:
+        - name: Choose the address without Tailscale on the PATH
+          ansible.builtin.include_tasks:
+            file: ../roles/magnesium_server/tasks/host.yml
+            apply:
+              environment:
+                PATH: "{{ scratch.path }}/empty:/usr/bin:/bin"
+          vars:
+            magnesium_host: ""
+        - name: This is not reached
+          ansible.builtin.fail:
+            msg: "An empty magnesium_host without Tailscale should have stopped the role."
+      rescue:
+        - name: It asked for magnesium_host
+          ansible.builtin.assert:
+            that:
+              - "'Set magnesium_host' in ansible_failed_result.msg"
+
+    # The cases above set the bind address as a fact, which outranks task vars.
+    - name: Bind a LAN address
+      ansible.builtin.set_fact:
+        magnesium_bind_host: 192.0.2.21
+    - name: The server's env file
+      ansible.builtin.template:
+        src: ../roles/magnesium_server/templates/magnesium.env.j2
+        dest: "{{ scratch.path }}/magnesium.env"
+        mode: "0600"
+      vars:
+        magnesium_port: 3773
+    - name: Read the env file
+      ansible.builtin.slurp:
+        src: "{{ scratch.path }}/magnesium.env"
+      register: env_file
+    - name: It binds the chosen address and port
+      ansible.builtin.assert:
+        that:
+          - "'T3CODE_HOST=192.0.2.21\n' in (env_file.content | b64decode)"
+          - "'T3CODE_PORT=3773\n' in (env_file.content | b64decode)"
+
+    - name: The hub writes machines by URL, and by loopback relay
+      ansible.builtin.include_role:
+        name: magnesium_hub
+      vars:
+        magnesium_state_home: "{{ scratch.path }}"
+        magnesium_bind_host: 127.0.0.1
+        magnesium_port: 3773
+        magnesium_hub_public_url: ""
+        magnesium_hub_publish: false
+        magnesium_hub_machines:
+          - { name: cpu-host-1, url: "http://192.0.2.21:3773" }
+          - { name: gpu-host-1, relay_port: 10001 }
+    - name: Read the hub's machine list
+      ansible.builtin.slurp:
+        src: "{{ scratch.path }}/hub-machines.json"
+      register: hub_machines
+    - name: Each machine has the URL the hub reaches it at
+      ansible.builtin.assert:
+        that:
+          - (hub_machines.content | b64decode | from_json) == expected
+      vars:
+        expected:
+          machines:
+            - { name: cpu-host-1, url: "http://192.0.2.21:3773" }
+            - { name: gpu-host-1, url: "http://127.0.0.1:10001" }
+
+    - name: A single box carries no machines
+      ansible.builtin.include_role:
+        name: magnesium_hub
+      vars:
+        magnesium_state_home: "{{ scratch.path }}"
+        magnesium_bind_host: 192.0.2.5
+        magnesium_port: 3773
+        magnesium_hub_public_url: ""
+        magnesium_hub_publish: false
+        magnesium_hub_machines: []
+    - name: Read the single box's machine list
+      ansible.builtin.slurp:
+        src: "{{ scratch.path }}/hub-machines.json"
+      register: single_box
+    - name: It is empty
+      ansible.builtin.assert:
+        that:
+          - (single_box.content | b64decode | from_json).machines == []
+
+    - name: An entry with both a URL and a relay port is refused
+      block:
+        - name: Write a hub with a bad entry
+          ansible.builtin.include_role:
+            name: magnesium_hub
+          vars:
+            magnesium_state_home: "{{ scratch.path }}"
+            magnesium_bind_host: 127.0.0.1
+            magnesium_port: 3773
+            magnesium_hub_public_url: ""
+            magnesium_hub_publish: false
+            magnesium_hub_machines:
+              - { name: cpu-host-1, url: "http://192.0.2.21:3773", relay_port: 10001 }
+        - name: This is not reached
+          ansible.builtin.fail:
+            msg: "A bad machine entry should have stopped the role."
+      rescue:
+        - name: It named the bad entry
+          ansible.builtin.assert:
+            that:
+              - "'Bad entry' in (ansible_failed_result.results | default([ansible_failed_result]) | map(attribute='msg') | select('defined') | join(' '))"
+
+    - name: Clean up
+      ansible.builtin.file:
+        path: "{{ scratch.path }}"
+        state: absent

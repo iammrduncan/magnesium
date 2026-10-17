@@ -1,0 +1,7 @@
+# Real hosts and values live in the private lab repo; only examples are public.
+inventory.yml
+group_vars/*.yml
+!group_vars/*.example.yml
+host_vars/
+# Packed releases fetched from the build host on their way to the hub.
+.packs/

@@ -1,0 +1,99 @@
+---
+id: mg-home
+status: VERIFIED
+kind: feature
+depends_on: [mg-shell]
+phase: 2
+boards: ["Home · desktop"]
+decisions: [D15, D18]
+---
+# Home shows what needs you on every machine, and you answer it there
+
+This goal is P1: at a glance, see what is going on, what is priority and where your direction is needed. Ranking starts simple (D18). Upstream's approval and question cards are bound to the composer, so Home gets standalone ones (doc 13).
+
+## Build
+
+1. **A Home feed module on the hub.**
+   - It merges every pending item from every server:
+     - approvals;
+     - questions;
+     - plans ready;
+     - failed runs: upstream's scheduled-task failures for now; goal 11 adds run history;
+     - room mentions, once goal 08 adds them.
+   - **Ranking (D18):** kind first (approval, question, plan, failure, mention), then the longest wait. A pin overrides the order.
+   - Two streams: `home.needs` and `home.summary`.
+2. **Standalone cards.**
+   - An approval card shows the request's details, with Approve and Deny.
+   - A question card shows its options or a text field.
+   - A plan card opens the plan and approves it.
+   - A failed-run card offers Retry and Open.
+   - **Undo:** an answer is held for 5 seconds before it is sent.
+   - An answer given on Home settles the request in the thread on its own machine.
+3. **Zoom: Glance, Cards and Detail.** Detail fetches tool output only when it is opened.
+4. **Running now and Next runs**, the next runs coming from upstream's scheduler. Fleet tiles and Brain stats stay hidden until goals 10 and 12.
+5. **The footer's Needs you item** reads the same feed.
+
+## Test it
+
+1. **Ranking.** Start three threads on three machines:
+   - one that asks to run a command (an approval);
+   - one that asks you a question;
+   - one in plan mode that finishes a plan.
+
+   Home shows three cards, ranked approval, then question, then plan. Within one kind, the longest wait comes first.
+2. **Approve from Home.** The card holds for 5 seconds with Undo, then the command runs in the thread on its machine.
+3. **Undo.** Press Undo within 5 seconds. Nothing is sent, and the card comes back.
+4. **Answer a question.** Answer it from Home; the thread carries on with your answer.
+5. **Pin.** Pin the plan card; it moves to the top.
+6. **Zoom.** Switch Glance, Cards and Detail. Detail shows a card's tool output.
+7. **A machine goes away.** Stop the server holding a pending approval.
+   - The card shows that its machine is offline, and it can't be answered.
+   - When the server returns, the card is live again.
+8. **Speed.** A new approval appears on Home within 2 seconds.
+9. **Against the board.** Compare side by side with Home · desktop.
+
+## Not in this goal
+
+Phone layouts and push (goal 07), fleet tiles (goal 10) and Brain stats (goal 12).
+
+## Goal summary
+
+**2026-10-16: VERIFIED.** Builds 1 to 5 are done, and Test it 1 to 9 passed on the hub and the machines, with every server on the same build; each one's previous build is one `magnesium-release rollback` away. CI is green on the full typecheck, tests and build.
+
+**Test it, 2026-10-16 (18:55 to 19:10 UTC), in the owner's Chrome on the hub.** New threads used OpenCode on two machines, each in its own project; the plan was a Codex thread on a third.
+
+1. **Ranking: passed.** Glance read: an approval (2m), another approval (now), a question, a plan (13h), then an older failed run (20h). Kind first, then the longest wait.
+2. **Approve from Home: passed.** "Approving in 4s" with Undo; after the hold the card left Home, and `uname -r` ran in the thread on its machine, which replied with the kernel version.
+3. **Undo: passed.** Undo at 1.5 s brought the buttons back; 8 s later the approval was still waiting, on Home and in the sidebar.
+4. **Answer a question: passed.** "Answering in 4s", then the thread recorded "Thanks for reading" as the answer and replied with it.
+5. **Pin: passed.** The plan card moved to the top and stayed there after a reload; Unpin put it back between the question and the failures.
+6. **Zoom: passed.** Glance is one line per need; Detail added "Recent work" to a card, with `ls -la` and its output, fetched when Detail opened.
+7. **A machine goes away: passed.** A machine's server stopped at 18:58:58 UTC. Within 20 s its three cards stayed on Home with "… is offline. Answer it when it's back." and their buttons disabled; the header read "2 need you · not counted: …" and the footer added "· 1 offline". It started again at 18:59:43; within 30 s the cards were live again. A request that waited through the restart can't be completed, though: OpenCode 1.x's session dies with the server, so approving it from Home failed in the thread ("ProviderAdapterRequestError … permission.reply"), exactly as the thread's own buttons do, and the approval stays waiting there. Requests made after the restart were answered from Home normally. Goal 24 takes this up (V2 with OpenCode 2).
+8. **Speed: passed.** A new approval reached Home's count 83 ms after the sidebar's own status for that thread, which comes straight from its machine.
+9. **Against the board: passed, with differences,** in light and dark. They are listed under Home · desktop in [mockups](../../mockups.md). The comparison found two problems, fixed before the hub's deploy: plan cards showed raw markdown, and Home's count in the sidebar vanished in dark mode.
+
+**Merge cost:** 215 markers in 69 files. A rehearsal against upstream's newest stable tag, v0.1.0, finds 28 files with real conflicts (48 hunks), the same as before this goal: Home adds none.
+
+**What's built:**
+
+- **Each server's Home items** (`magnesium.needs.local`, `home/LocalHome.ts`): from its own threads, every open approval (what the agent asked to run, and the provider's choices), question (its options, and whether a typed answer is allowed), plan ready to implement, failed run, and what is working. Upstream's V1 specifics are confined to `home/items.ts` and three new thread ports (detail, projects, dispatch), so goal 24 moves them to V2.
+- **The hub's Home** (`home/Home.ts`): each machine's items ride Fleet's existing link to it, with no new connection; `magnesium.home.needs` adds the machine and your pins, and `magnesium.home.summary` counts them. A machine that drops keeps its cards, unreachable and uncounted, and the summary names it. Home follows only while someone watches it. Pins live in `magnesium.sqlite`.
+- **Answers** go to the thread on its own machine as the command the web's own controls send: approve or decline, answer, implement (Build mode, then a turn that names the plan), settle a failure. Each is checked against the thread first, so a stale card is refused, not sent.
+- **The page** (`/home`, the Home · desktop board): Home is the first place in the sidebar, with a count, and the installed app opens on it. Cards in D18's order (pins, then kind, then the longest wait); a 5-second hold with Undo before an answer is sent; Glance, Cards and Detail, remembered per device, with Detail fetching a card's recent tool output only when it opens; plans as formatted markdown; Running now.
+- **The footer's Needs you** reads Home's summary, plans and failed runs included, and its popover lists the same items by machine.
+- **Tests:** item rules, answer commands, a hub and a machine server end to end (an answer reaches the machine's thread; a stale answer is refused; a stopped machine's card stays and can't be answered; read and operate scopes), the 5-second hold, the order, and byte budgets.
+
+**Found along the way:**
+
+- OpenCode (1.18 here) has no plan mode, and upstream marks plan mode "legacy" (off by default, Settings → General → Legacy features). Plan cards appear only for Codex or Claude threads in plan mode.
+- Upstream's scheduler isn't in Magnesium's base; scheduled-run cards and Next runs come with goal 24 (D51).
+- When projects on several machines share a name, the new-thread picker offers only one of them, the current thread's machine first. Goal 15 makes projects span machines.
+- Two test threads hold requests that died in the restart, so their cards stay on Home until the threads are settled or removed.
+
+## Next steps
+
+1. Goal 24, upstream V2: scheduled-run cards and Next runs, and requests that survive a restart with OpenCode 2.
+2. Goal 15, Projects, including the new-thread picker for projects that share a name across machines.
+3. The owner: accept or reject the board differences; settle or remove the two test threads with dead requests.
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](../README.md#done-means-for-every-goal)).

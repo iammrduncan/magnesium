@@ -1,0 +1,33 @@
+# The address the server binds: magnesium_host when set; otherwise the
+# machine's tailnet IPv4 when Tailscale is installed. With neither, stop and
+# ask, rather than guess an address on a network we know nothing about.
+- name: Is Tailscale installed?
+  ansible.builtin.shell: command -v tailscale
+  register: magnesium_tailscale_cli
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: magnesium_host | length == 0
+
+- name: The machine's tailnet address
+  ansible.builtin.command: tailscale ip -4
+  register: magnesium_tailnet_ip
+  changed_when: false
+  check_mode: false
+  when: magnesium_host | length == 0 and magnesium_tailscale_cli.rc == 0
+
+- name: The address the server binds
+  ansible.builtin.set_fact:
+    magnesium_bind_host: >-
+      {{ magnesium_host if magnesium_host | length > 0
+         else ((magnesium_tailnet_ip.stdout | default('')).splitlines() + ['']) | first | trim }}
+
+- name: A bind address is known
+  ansible.builtin.assert:
+    that:
+      - magnesium_bind_host | length > 0
+    fail_msg: >-
+      Set magnesium_host for {{ inventory_hostname }} to the address the hub reaches this
+      machine's server on: a LAN address, or 0.0.0.0 behind a firewall that admits only the
+      hub (README, "Only the hub reaches a machine"). An empty magnesium_host means the
+      machine's tailnet address, and this machine has no Tailscale.

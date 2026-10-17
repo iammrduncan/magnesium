@@ -1,0 +1,108 @@
+---
+id: mg-shell
+status: VERIFIED
+kind: feature
+depends_on: [mg-hub-link]
+phase: 2
+boards: ["Home · desktop (sidebar)", "Session · desktop (sidebar, compact)", "Footer · shared component", "Footer · GPU popover open"]
+decisions: [D9, D10, D11, D24]
+---
+# The Magnesium shell: places, project folders, density and the footer
+
+This goal does the shell half of spike S4, then the shell part of phase 2. We own `apps/web` (D11), so the sidebar and layout change wherever the boards need them.
+
+## Build
+
+1. **Places in the sidebar:** Home, Rooms, Fleet, Schedule, Apps and Brain, under the search row, each with its status on the right, as on the Home board. Each place appears when its goal lands; until then it is hidden. Fleet's place already exists (goal 04), with the board's red dot when a server is offline.
+2. **Our sidebar body**, in `Sidebar.tsx` and its logic file (marked edits). As on the Home and Session boards:
+   - Project folders are collapsed by default.
+   - A collapsed folder shows its most urgent status: Approval, Input, Plan ready, Failed or Working.
+   - The chevron expands a folder to its active threads, each with a status shape and label, then an "All N threads" link. Clicking the folder's name opens the project's home (goal 15 builds that page; until then, the first thread).
+   - Standalone threads sit below the projects.
+   - Comfy and compact density, remembered per device.
+   - Threads from every machine merge into one list, and hovering one shows its machine.
+   - Upstream's search, drag to reorder, and undo keep working.
+3. **The footer**, in the shell layout.
+   - A registry with namespaced ids, an error boundary per item, and a hide toggle per item (doc 14).
+   - Two core items:
+     - **Fleet:** machines and how many are offline, as on the Footer board ("6 machines · 1 offline").
+     - **Needs you:** a count.
+   - Each item opens a popover, as on the Footer · GPU popover open board.
+   - The Footer settings popover lists every item with a switch.
+   - Items are fed by a `footer.items` stream, built on goal 04's stream kit.
+4. **A desktop PWA.**
+   - A web manifest and icons with the Mg mark.
+   - A service worker that caches the shell only, never API data.
+   - It installs from Chrome and Safari on the desktop.
+5. **Merge cost of `apps/web`.** Rehearse a merge across two upstream stable tags and report conflicts per file (S4).
+
+## Test it
+
+1. **Against the boards.** Compare side by side with Home · desktop and Session · desktop: places, folders, roll-up, the density switch, standalone threads.
+2. **The roll-up.**
+   - Create threads in two projects on two machines, and put one into an approval.
+   - Its collapsed folder shows "Approval" in the approval colour.
+   - Expand the folder; the thread shows with its shape and label.
+3. **Density sticks.** Switch between compact and comfy, then reload. Your choice stays.
+4. **Stock behaviour survives.** Search, drag a thread and undo all behave as in stock T3.
+5. **The footer.**
+   - The Needs you count matches; clicking it opens its popover.
+   - Fleet shows "5 machines". Stop a server, and it shows "1 offline" within 10 seconds.
+   - Footer settings hides an item, and it stays hidden after a reload.
+6. **The desktop PWA.**
+   - Install it on your desktop; it opens in its own window.
+   - Stop the hub: the shell still loads and shows Offline, not stale data.
+7. **Merge cost.** The report lists conflicts per file for `apps/web`.
+
+## Not in this goal
+
+The Home feed (goal 06), app footer items (goal 16) and phone layouts (goal 07).
+
+## Goal summary
+
+**2026-10-15: VERIFIED.** Builds 1 to 5 are done, and Test it 1 to 7 passed, on the hub and the machines where they name them. Every server runs goal 05's code, rolled out with the Ansible roles; the previous release is one `magnesium-release rollback` away. CI is green.
+
+**Test it, 2026-10-15, in the owner's Chrome, every server on the same build:**
+
+1. **Against the boards: passed, with differences.** The sidebar (comfy and compact) and the footer were compared with Home · desktop, Session · desktop and Footer, in light and dark. The differences are listed under each board in [mockups](../../mockups.md). The comparison found identical `mg-scratch` folders, one per machine: a fix makes same-named folders show their machines, and the test data was replaced (below). With that fix on every server, the hub's sidebar shows each `mg-scratch` folder as "mg-scratch" followed by its machine, while the projects with distinct names stay plain.
+2. **The roll-up: passed.**
+   - A thread on a machine waiting on a command showed "▲ Approval" on its row and on its collapsed folder, which outranked an earlier failure there. Approving it cleared the approval.
+   - Threads on two machines whose Claude login had expired showed "■ Failed" on their folders.
+   - A running thread showed "◑ 1 working". Hovering a row shows its machine.
+   - Hello-World, one repository cloned on the hub and two machines, is one folder holding threads from two machines.
+3. **Density sticks: passed.** Compact, then a reload: still compact. Open folders are remembered too.
+4. **Stock behaviour: passed, on the hub.** Search finds threads on every machine. Dragging a thread above Projects pins it ("Pin" on the lifted row, folder rows in place during the drag) and dragging it back unpins it into its folder. Settling shows "Settled 1 thread, ⌘Z to undo", and ⌘Z puts it back.
+5. **The footer: passed.**
+   - "Needs you" read 1 and then 2 for one and then two waiting approvals, and 0 when they were answered; its popover named the machine and linked each waiting thread.
+   - Fleet read the machine count. When a machine's server stopped (22:14:59.309 UTC), the footer added "· 1 offline" 46 ms later, its popover said "Offline, last seen 5:14 PM", and Fleet's place showed its red dot. After the start (22:15:37) the offline count cleared at 22:15:48.
+   - Hiding an item in "+ Footer" kept it hidden after a reload; switching it back on restored it.
+6. **The desktop PWA: passed.** The owner installed it from Chrome; it opens in its own window. With the hub's server stopped (22:17:59 to 22:18:42 UTC), the installed app and a browser tab both opened the cached shell and showed Offline with Retry, not old threads or the pairing page; Retry brought the app back once the hub answered. The cache held 272 shell files and nothing under `/api`, `/ws`, `/oauth`, `/.well-known`, `/mcp` or `/pair`.
+7. **Merge cost: recorded** in [doc 11](../../11-fork-plan.md) (S4). From `v0.0.44` to `v0.0.45`: 2 real conflicts, 1 in `apps/web`. Against upstream's newest tag: 26 files with real conflicts (45 hunks), 11 in `apps/web`; goal 05 adds one, `Sidebar.tsx` (7 hunks), where upstream's nightly reworks the row's statuses and the shelf header.
+
+**What's built:**
+
+- **Places:** Fleet under the search row, with its red dot when a server is offline; the others stay hidden until their goals.
+- **Project folders** as rows in upstream's flat sortable list, so its search, drag, undo and keyboard order keep working. Folders start collapsed and roll up their most urgent status; the chevron opens the active threads and "All N threads" (which scopes the list to the project until goal 15); the folder's name opens its first thread, and right-clicking it offers Filter by the project and Project settings (where a project is removed). Threads with no project sit under Threads. Comfy and compact, and open folders, are remembered per device. The boards' status shapes replace the row icons, and the Working, Snoozed and Settled shelves read "› Settled 137".
+- **The footer:** `magnesium.footer.items`, a live table on the hub derived from Fleet (only while watched); a registry with namespaced ids, an error boundary per item and a per-device hide toggle; Machines and Needs you with popovers; "+ Footer"; Offline when the hub can't be reached. Byte-budget and stream tests.
+- **The desktop PWA:** a maskable Mg icon; a service worker that caches the shell only, never API data, network first for pages; an Offline screen with Retry at boot.
+- **Upstream edits** (marked): `Sidebar.tsx`, `Sidebar.logic.ts`, `Sidebar.drag.ts` and its test, `AppSidebarLayout.tsx`, and marked lines in `main.tsx`, `routes/__root.tsx` and `vite.config.ts`. 203 markers in 66 files in all.
+
+**Decisions** (doc 09): D50, projects are hub and Brain things that span machines; goal 15 builds them, and the goals README now asks for test data that looks like real use.
+
+**Test data:** the hub now has varied projects with distinct names, one of them across three machines. The hub's old scratch project is renamed "hub tests". The machines' old `mg-scratch` projects remain; removing one deletes its threads for good, so that is the owner's call.
+
+**Found, outside this goal:**
+
+- Claude logins on two machines had expired (`claude auth login` on each).
+- After a machine's server stops, its idle OpenCode threads show Failed ("OpenCode server exited unexpectedly (0)"), so their folders roll up to Failed.
+- Safari's Add to Dock wasn't tried; Safari isn't paired with the hub.
+
+## Next steps
+
+1. Goal 06, Home: needs you.
+2. A clean server stop should not mark idle provider sessions failed (the OpenCode adapter), or the roll-up should not count them.
+3. Fix how the merge classifier treats files we add inside a directory upstream renames (doc 11).
+4. Rehearse the merge again when upstream tags `v0.0.46`; expect to re-fit the sidebar row's statuses and the shelf header by hand.
+5. The owner: remove the old `mg-scratch` projects if their test threads aren't needed, and sign Claude in again where its login expired.
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](../README.md#done-means-for-every-goal)).

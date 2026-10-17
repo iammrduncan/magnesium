@@ -1,0 +1,72 @@
+---
+id: mg-agent-control
+status: PLANNED
+kind: feature
+depends_on: [mg-profiles, mg-fleet]
+phase: 4
+boards: ["Fleet · desktop (started by)"]
+decisions: [D15, D25, D32, D37]
+---
+# Agents launch, message and steer sessions in the fleet, within grants you set
+
+This goal covers A5 (profile X messages profile Y), F3 (chosen agents control, message and steer sessions in the fleet) and L2 (workers started by you or by the bots). Bots moving in from Hermes Agent (goal 21) start workers with tools of their own today. This goal replaces those tools, so it lands before the bots move.
+
+## Build
+
+1. **A Magnesium MCP entry for profiles.** It is our own, not upstream's `/mcp`, whose OAuth flow needs re-approval every 30 days. Its tools:
+   - `fleet_machines` and `sessions_list`;
+   - `session_launch` (machine, profile, sandbox, folder, staged context, prompt);
+   - `session_message` (queue or steer);
+   - `session_read` and `session_wait`;
+   - `session_stop`.
+
+   Each profile gets a short-lived token, passed by name.
+2. **Grants, set per profile:**
+   - which machines it may launch on;
+   - which profiles it may launch;
+   - the weakest sandbox it may use (never weaker than `container` for headless work);
+   - how many sessions it may run at once;
+   - whose sessions it may message or steer.
+
+   **By default a profile has no grants.**
+3. **Parentage.**
+   - Every session an agent starts records its parent session.
+   - Fleet and the thread show "started by `<profile>`".
+   - You can take over any of these sessions.
+   - Every steer is logged with its source.
+4. **Approvals stay yours.** An agent never answers an approval for another session.
+5. **The Magnesium agents-API operation `prompt_agent`** maps onto `session_message`, so there is one implementation. It is served by the `magnesium-agents` CLI, REST and MCP.
+6. **`@` session names (D32).**
+   - Every session has a fully qualified session name, `machine.harness.id`. A thread shows its name and copies it in one click.
+   - Bots get stable named sessions for long-running work.
+   - In a prompt, `@<name>` (completed from known sessions) tells the agent who to coordinate with. The agent then messages that session through `session_message` over the message events of [doc 12](../12-channel-chat-and-events.md), and reads the replies.
+   - Messaging another session needs a grant, the same as steering, except between threads you started yourself.
+
+## Test it
+
+1. **Grant.** Give `scratch-a` the right to launch `scratch-b` on machine B, container only.
+2. **Launch and report back.**
+   - In a `scratch-a` thread, ask it to launch a worker on machine B that counts the files in `/tmp` and reports back.
+   - A thread appears there, marked "started by scratch-a", and `scratch-a` reads the result.
+3. **Refusals.** Each of these is refused and logged:
+   - launching on another machine, which isn't granted;
+   - launching with sandbox `native`.
+4. **Approvals.** The worker hits an approval. It shows on Home for you, and `scratch-a` cannot answer it.
+5. **Steer.** `scratch-a` steers the worker. The steer is in the worker's log, with its source.
+6. **Revoke.** Revoke the grant. The next call is refused at once.
+7. **Coordinate by name.** In one thread, say "work with `@<name of a second thread>` to coordinate your job here". The two threads exchange messages, each shown in the other with its sender, and both finish the coordinated change.
+8. **Tests.** Magnesium's tests (`vp test run`) cover `prompt_agent` on a Magnesium thread.
+
+## Not in this goal
+
+Agents changing other profiles' settings.
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+1. Goal 21 needs this one.
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

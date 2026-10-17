@@ -1,0 +1,61 @@
+---
+id: mg-release
+status: PLANNED
+kind: milestone
+depends_on: [mg-fork, mg-deploy, mg-profiles, mg-hub-link, mg-shell, mg-home, mg-phone, mg-rooms, mg-room-routing, mg-fleet, mg-schedule, mg-brain, mg-memories, mg-learning, mg-projects, mg-apps, mg-app-builder, mg-agent-control, mg-harnesses, mg-pill, mg-hermes-moves]
+phase: 7
+boards: [all]
+decisions: [D1, D9, D10, D13]
+---
+# Magnesium in daily use: every board real, upgradeable and recoverable
+
+This is the finish line. Every mocked screen works with real data on the hub and the four agent machines, on desktop and phone. Upgrades from upstream are routine, and a broken hub can be restored. Both overriding goals hold:
+- **P1:** at a glance, what is going on, what is priority, and where you are needed;
+- **P2:** move between high level and low level easily.
+
+## Build
+
+1. **A full acceptance pass.** Compare every board (the 16 on the canvas, plus Schedule and Pill) side by side with the app, on desktop and phone, with real data. Fix each difference, or get the owner to accept it.
+2. **An upgrade drill.**
+   - Take upstream's latest stable tag through `scripts/merge-upstream`, and run every test.
+   - Deploy it to all five machines with the Ansible roles.
+   - Roll back, then forward again.
+   - Record the conflicts per file and the time it took.
+3. **Backups and a restore drill.**
+   - Back up the hub's `magnesium.sqlite`, each server's state folder and the app registry, nightly.
+   - Restore into a scratch folder on the hub, start a server on it, and check that it works.
+4. **Finish D13.** Remove the server side of Clerk and the relay, or list what is left and why.
+5. **Performance budgets (doc 06)**, enforced in tests:
+   - the Home snapshot's size;
+   - time to interactive on the phone;
+   - stream latency from machine to hub to browser.
+6. **A security pass.**
+   - Scan for secrets and site details.
+   - Check that tokens pass by name, that the hub is the only front door, that app CSPs hold, that push payloads carry no content, and that token scopes are narrow.
+   - Check that new threads start supervised.
+7. **Docs.**
+   - A runbook in the Magnesium repo: install, update, roll back, back up and restore, add a machine.
+   - A status per screen in doc 13.
+   - A README for the Magnesium repo.
+8. **Add a machine.** Add one more machine with one inventory line and the runbook. This proves Magnesium works beyond these five.
+
+## Test it
+
+1. **A day of daily use.** You use Magnesium for a full working day, desktop and phone. Every problem is logged and triaged.
+2. **The upgrade drill's evidence:** versions, the conflicts per file, the rollback and roll forward.
+3. **The restore drill's evidence:** the restored hub served Home with your threads.
+4. **Every board's comparison** is recorded, with the differences you accepted.
+5. **Budgets.** The performance tests pass in CI.
+6. **A new machine.** The added machine shows in Fleet, and a thread runs on it.
+
+## Not in this goal
+
+New features. Anything found here that isn't a bug becomes a new goal.
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

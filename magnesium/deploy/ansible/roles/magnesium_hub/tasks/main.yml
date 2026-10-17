@@ -1,0 +1,54 @@
+- name: Each machine has a name and one way to reach it
+  ansible.builtin.assert:
+    that:
+      - item.name is defined and item.name is match('^[a-z0-9][a-z0-9-]{0,62}$')
+      - (item.url is defined) != (item.relay_port is defined)
+      - item.url is not defined or item.url is match('^https?://')
+    fail_msg: >-
+      Each entry in magnesium_hub_machines is {name, url}, such as
+      {name: cpu-host-1, url: "http://192.0.2.21:3773"}, or {name, relay_port} for a relay
+      on the hub's loopback. Names are lowercase letters, digits and dashes. Bad entry: {{ item }}
+  loop: "{{ magnesium_hub_machines }}"
+  loop_control:
+    label: "{{ item.name | default('?') }}"
+  tags: [config]
+
+- name: The machines the hub carries (read on every request; no restart)
+  ansible.builtin.template:
+    src: hub-machines.json.j2
+    dest: "{{ magnesium_state_home }}/hub-machines.json"
+    mode: "0600"
+  tags: [config]
+
+- name: The hub's front door, for pairing links
+  ansible.builtin.copy:
+    content: "{{ magnesium_hub_public_url }}\n"
+    dest: "{{ magnesium_state_home }}/public-url"
+    mode: "0600"
+  when: magnesium_hub_public_url | length > 0
+  tags: [config]
+
+# One way to give the hub HTTPS: a Tailscale Service. Off by default; a reverse
+# proxy with a certificate works as well (README, "The hub's front door").
+- name: Publish the hub as a Tailscale Service
+  when: magnesium_hub_publish | bool and not ansible_check_mode
+  tags: [publish]
+  block:
+    - name: The hub's own UI
+      ansible.builtin.command: >-
+        tailscale serve --service={{ magnesium_hub_service_prefix }} --https=443 --bg
+        http://{{ '127.0.0.1' if magnesium_bind_host in ['0.0.0.0', '::'] else magnesium_bind_host }}:{{ magnesium_port }}
+      become: "{{ magnesium_hub_publish_become | bool }}"
+      changed_when: false
+    # Goal 02's role also published one Service per machine. Browsers reach
+    # machines only through the hub now (D38), so clear them. A Service that was
+    # never configured here has nothing to clear.
+    - name: Retire each machine's old Service
+      ansible.builtin.command: "tailscale serve clear {{ magnesium_hub_service_prefix }}-{{ item.name }}"
+      loop: "{{ magnesium_hub_machines }}"
+      loop_control:
+        label: "{{ item.name }}"
+      become: "{{ magnesium_hub_publish_become | bool }}"
+      register: magnesium_hub_retired
+      changed_when: magnesium_hub_retired.rc == 0
+      failed_when: false

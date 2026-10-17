@@ -1,0 +1,52 @@
+---
+id: mg-harnesses
+status: PLANNED
+kind: feature
+depends_on: [mg-profiles, mg-fleet]
+phase: 1
+boards: ["Session · desktop (picker shows the harness)"]
+decisions: [D6, D37]
+answers: [O12]
+---
+# Profiles on OpenCode, Pi and oh-my-pi, and Kubernetes and microVM sandboxes
+
+This goal covers A1 (works with any harness: Claude Code, Codex, OpenCode, Pi, oh-my-pi) and the rest of F1 (launch natively, in a Kubernetes or Docker/Podman container, or in a microVM). T3 already has OpenCode and Pi drivers, but none for oh-my-pi (O12).
+
+## Build
+
+1. **Profiles can name the harness** `opencode`, `pi` or `omp`.
+   - Profile sync writes instances for T3's OpenCode and Pi drivers.
+   - Each gets a wrapper and sandbox, as in goal 03.
+2. **O12.** Check whether oh-my-pi speaks Pi's RPC mode (`--mode rpc`).
+   - If it does, run omp as a Pi-driver instance with omp's binary.
+   - If not, record what is missing and propose a path, such as ACP. Close O12 in doc 09 either way.
+3. **Sandbox levels.**
+   - **`kubernetes`:** the wrapper runs the CLI in a pod in a Kubernetes cluster, with stdio attached. It needs a namespace and service account the cluster's operator grants.
+   - **`microvm`:** on machines that support it, through microsandbox (`msb`).
+4. **The picker** shows each profile's harness. List per harness what works (approvals, interrupt, steer, resume) and what doesn't.
+5. **`magnesium-agents check`** covers the new harnesses and levels.
+
+## Owner gates
+
+- **Approve the Kubernetes namespace and service account** before the `kubernetes` level is used.
+
+## Test it
+
+1. **Each harness.** A profile on each harness runs a thread on a machine in a container. It replies, and interrupt works.
+2. **oh-my-pi.** O12's answer is recorded with its evidence. If omp is supported, it runs a thread.
+3. **Approvals.** For each harness that has approvals, they show on Home.
+4. **Kubernetes.** A `kubernetes` launch runs a Claude thread in a pod, and the pod is gone after the session ends.
+5. **MicroVM.** A `microvm` launch runs on a machine that supports it.
+6. **Tests.** Magnesium's tests (`vp test run`) cover the new `magnesium-agents check` rules.
+
+## Not in this goal
+
+Writing new T3 drivers beyond what O12 needs.
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).

@@ -1,0 +1,17 @@
+# Copy to group_vars/magnesium_hub.yml (git-ignored).
+# Where the hub's server listens: 127.0.0.1 behind a reverse proxy (or a
+# Tailscale Service) that gives it HTTPS, or a LAN address your devices reach.
+magnesium_host: 127.0.0.1
+# The URL your devices open the hub at, for pairing links.
+magnesium_hub_public_url: https://hub.example.internal
+# Profiles name machines by this name; the hub runs the profiles that name `hub`.
+magnesium_machine_name: hub
+# The machines the hub carries, by the URL the hub reaches each one's server at.
+# Leave empty on a single box.
+magnesium_hub_machines:
+  - { name: gpu-a, url: "http://192.0.2.11:3773" }
+  - { name: gpu-b, url: "http://192.0.2.12:3773" }
+  - { name: cpu-a, url: "http://192.0.2.21:3773" }
+  - { name: cpu-b, url: "http://192.0.2.22:3773" }
+# Or through a TCP relay on the hub's loopback (http://127.0.0.1:<relay_port>):
+#  - { name: cpu-b, relay_port: 10001 }

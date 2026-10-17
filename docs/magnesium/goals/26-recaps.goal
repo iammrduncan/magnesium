@@ -1,0 +1,65 @@
+---
+id: mg-recaps
+status: PLANNED
+kind: feature
+depends_on: [mg-home, mg-upstream-v2]
+phase: 2
+boards: []
+decisions: [D15, D53]
+---
+# Recaps: catch up on a session that has run for hours
+
+A recap reads a session and tells you, in a few lines, what the agent last did, what is open for you, and what it is working on now. You check in on a run that has gone for hours and understand it without reading the transcript. Recaps are a setting: off until you turn them on, and written by the model you pick (D53). This serves P1 and P2 in [doc 01](../01-requirements.md): see what is going on at a glance, and move between a summary and the detail.
+
+Recaps read a thread's history, so this goal comes after upstream's V2 (goal 24), which changes how history is saved. Building it once, on V2, avoids porting it.
+
+## Build
+
+1. **The setting.** Settings → General → Recaps: a switch (off by default) and the provider and model that write recaps, picked like upstream's model for generated text. It is one setting for the fleet, kept on the hub.
+2. **What a recap says,** typed in `magnesium/contracts`:
+   - **Last done:** the last few things the agent finished, each linked to its turn.
+   - **Open for you:** waiting approvals, questions and plans, and anything the agent asked you in its messages that you haven't answered.
+   - **Working on now:** the current step, how long it has run, and its latest tool call.
+   - **Next and trouble:** what the agent said it would do next, and signs of trouble, such as the same command failing again and again, or no progress for a long time.
+   - When it was written, and up to which point in the thread.
+3. **How a recap is made.**
+   - The hub reads a bounded digest of the thread through its link to the thread's machine, as Home's Detail does: the turns since the last recap, the agent's messages, the tool calls by name and result, and the waiting requests. It never reads the whole transcript.
+   - The chosen model writes the recap from that digest, as a text-only call. It has no tools and never changes the thread.
+   - A recap is kept on the hub per thread, with the point in the thread it covers. It is rewritten only when the thread has moved on.
+4. **When.**
+   - **On demand:** a Recap button on a thread, and on each of Home's Running now rows.
+   - **When you come back:** opening a thread, or Home, after it has done work since you last looked shows the recap first ("Since you were here").
+   - **Cost guard:** at most one recap at a time per thread; none for threads that haven't changed; a cap per hour, shown with the setting.
+5. **Where it shows:**
+   - at the top of a thread you return to, with a way to close it;
+   - on Home, where a Running now row opens to its recap, and Detail adds the recap to a card;
+   - the footer's Needs you popover links to it.
+   Placement follows Home · desktop and Session · desktop.
+6. **Agents and bots.** Recapping a thread is a service method, so it is also an MCP tool: an agent, a scheduled task or a room bot can ask what a thread has been doing.
+
+## Test it
+
+1. **Off by default.** With recaps off, nothing is generated and no model is called; the Recap buttons say how to turn recaps on.
+2. **Turn it on and pick a model.** OpenCode on the hub, say. A thread that has run for an hour or more, on a machine, gets a recap when you open it. Its last-done items, open items and current step match the transcript; check each by hand.
+3. **Open for you.** A thread waiting on an approval lists it under Open for you, with a way to answer it there.
+4. **Home.** A Running now row opens to its recap. Opening it again with nothing new in the thread makes no new model call.
+5. **Cost guard.** An idle thread gets no recap. Opening a thread on two devices at once makes one call. The hourly cap stops calls and says so.
+6. **Change the model, then turn it off.** The next recap uses the new model. Turned off, no more calls are made and recaps disappear from the threads and Home.
+7. **Speed and size.** A recap of a three-hour thread arrives within 20 seconds, and the digest sent to the model stays within a byte budget.
+8. **Against the boards.** There is no recap board: check placement against Home · desktop and Session · desktop, in light and dark, and list the differences.
+
+## Not in this goal
+
+- Recaps on the phone and in push notifications (goal 07 can use them).
+- Recaps of rooms (goal 08).
+- A daily digest across all threads.
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+1. Start after goal 24.
+
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).
