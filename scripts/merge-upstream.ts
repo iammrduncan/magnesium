@@ -83,8 +83,9 @@ function startMerge(ref: string) {
       continue;
     }
     // A side that deleted the file has no version to check out: take the deletion.
+    // Our own deletion always stands, even of a file the scripts otherwise own.
     const side = kind === "ours" ? "ours" : "theirs";
-    const deleted = side === "ours" ? status.startsWith("D") : status.endsWith("D");
+    const deleted = status.startsWith("D") || (side === "theirs" && status.endsWith("D"));
     if (kind === "stripped" || deleted) {
       run("git", ["rm", "-r", "-f", "--quiet", "--", file], { allowFailure: true });
     } else if (status === "AU" || status === "UA") {
@@ -99,7 +100,14 @@ function startMerge(ref: string) {
   renameUpstream(repo);
   // Stage what the scripts changed, by name: staging a real conflict would mark
   // it resolved, markers and all, and `git add -A` with an exclude still does.
-  const changed = git(["ls-files", "-z", "--modified", "--deleted", "--others", "--exclude-standard"])
+  const changed = git([
+    "ls-files",
+    "-z",
+    "--modified",
+    "--deleted",
+    "--others",
+    "--exclude-standard",
+  ])
     .split("\0")
     .filter((file) => file !== "" && !real.includes(file));
   // An empty list would mean `git add -A` on the whole tree.
