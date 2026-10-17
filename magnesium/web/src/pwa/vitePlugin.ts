@@ -17,13 +17,19 @@ const WORKER_ENTRY = NodePath.join(import.meta.dirname, "sw.ts");
  */
 export function shellServiceWorkerPlugin(): Plugin {
   let outDir = "";
+  let failed = false;
   return {
     name: "magnesium:shell-service-worker",
     apply: "build",
     configResolved(config) {
       outDir = NodePath.resolve(config.root, config.build.outDir);
     },
+    buildEnd(error) {
+      failed = error !== undefined;
+    },
     async closeBundle() {
+      // A failed build wrote no manifest; leave its own error to be reported.
+      if (failed) return;
       const manifestText = NodeFS.readFileSync(
         NodePath.join(outDir, ".vite", "manifest.json"),
         "utf8",

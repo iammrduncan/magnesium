@@ -283,7 +283,6 @@ import { SidebarContent, SidebarGroup, useSidebar } from "./ui/sidebar";
 import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrome";
 import { SidebarPlaces } from "./sidebar/SidebarPlaces"; // magnesium: places (Home and Session boards)
 // magnesium: project folders, density and status shapes (goal 05)
-import { isScratchProject } from "@t3tools/client-runtime/state/projects";
 import {
   SidebarFolderMoreRow,
   SidebarFolderRow,

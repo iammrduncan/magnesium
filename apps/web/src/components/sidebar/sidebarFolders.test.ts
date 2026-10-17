@@ -2,7 +2,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
 
-import { DEFAULT_RUNTIME_MODE } from "../../types";
 import {
   folderByProjectMember,
   folderOfThread,
@@ -10,13 +9,11 @@ import {
   resolveFolderRollup,
 } from "./sidebarFolders";
 
-const session = (status: "running" | "ready" | "error") => ({
-  threadId: ThreadId.make("thread-1"),
+const runtime = (status: "running" | "failed") => ({
   status,
-  providerName: "Codex",
+  activeRunId: status === "running" ? ("run-1" as never) : null,
   providerInstanceId: ProviderInstanceId.make("codex"),
-  runtimeMode: DEFAULT_RUNTIME_MODE,
-  activeTurnId: status === "running" ? ("turn-1" as never) : null,
+  providerName: "Codex",
   lastError: null,
   updatedAt: "2026-10-15T10:00:00.000Z",
 });
@@ -25,21 +22,22 @@ const idle = {
   hasActionableProposedPlan: false,
   hasPendingApprovals: false,
   hasPendingUserInput: false,
+  pendingSubagentRequest: null,
   interactionMode: "default" as const,
-  latestTurn: null,
-  session: session("ready"),
+  latestRun: null,
+  runtime: null,
 };
-const working = { ...idle, session: session("running") };
-const failed = { ...idle, session: session("error") };
+const working = { ...idle, runtime: runtime("running") };
+const failed = { ...idle, runtime: runtime("failed") };
 const approval = { ...working, hasPendingApprovals: true };
 const input = { ...idle, hasPendingUserInput: true };
 const planReady = {
   ...idle,
   interactionMode: "plan" as const,
   hasActionableProposedPlan: true,
-  latestTurn: {
-    turnId: "turn-1" as never,
-    state: "completed" as const,
+  latestRun: {
+    runId: "run-1" as never,
+    status: "completed" as const,
     assistantMessageId: null,
     requestedAt: "2026-10-15T10:00:00.000Z",
     startedAt: "2026-10-15T10:00:00.000Z",

@@ -5494,7 +5494,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         activeInstanceId={selectedInstanceId}
         instanceEntries={providerInstanceEntries}
         model={selectedModelForPickerWithCustomFallback}
-        size={composerControlsInStrip ? "xs" : "sm"}
+        size={composerControlsCollapsed ? "xs" : "sm"}
         isComposerOwned
         disabled={providerCatalogPending || isSendBusy}
         onInstanceModelChange={(instanceId, model) => {
