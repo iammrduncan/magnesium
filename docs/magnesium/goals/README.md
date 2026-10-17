@@ -41,12 +41,13 @@ Goals are tested by hand on a real fleet: a hub and at least two machines, one o
 | 27  | [Design system](27-design-system.goal)                                    | Apps built only from Magnesium's kit look native and follow your theme; agents build with it                                       | 05, 06         | Home, Apps and Footer (the kit's pieces)                                |
 | 28  | [Machine parts](28-machine-parts.goal)                                    | An app with a part on chosen machines: stats for its hub page, tools for sessions there                                            | 03, 10, 16, 25 | Apps, Selected app, Fleet                                               |
 | 29  | [Magnesium Brain](29-magnesium-brain.goal)                                | Magnesium runs its own Brain: agents reach it only through Magnesium, and an existing knowledge base can be imported once          | 03, 04         | none                                                                    |
+| 30  | [Accounts](30-provider-accounts.goal)                                     | Several Claude Code and Codex subscriptions per machine or pod; see what is left on each and swap the active one from the hub      | 03, 24, 25     | none                                                                    |
 
 ```text
 01 ─► 02 ─┬─► 03 ──────────────────────────────────────┐
           └─► 04 ─► 05 ─► 06 ─► 25 k8s ─► 24 V2 ─► 15 projects ─► 07
                      │     │                           │
-     after 24, beside 15:  26 recaps                   │
+     after 24, beside 15:  26 recaps, 30 accounts      │
      after 07, in parallel:                            │
        rooms   08 ─► 09                (needs 03)
        fleet   10 ─► 11 schedule       (needs 03)

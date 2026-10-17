@@ -1,0 +1,71 @@
+---
+id: mg-provider-accounts
+status: PLANNED
+kind: feature
+depends_on: [mg-profiles, mg-upstream-v2, mg-spokes-k8s]
+phase: 2
+boards: []
+decisions: [D39, D41, D59]
+---
+# Accounts: several Claude Code and Codex subscriptions, one active per machine
+
+You may hold several Claude Code subscriptions and several Codex subscriptions. This goal lets each machine, on bare metal or in a pod, hold any of them, shows which is active and how much of each is left, and swaps the active one from the hub, from any device, in one action. The agents on that machine use the active account from their next turn.
+
+## What exists already
+
+From reading upstream T3 Code (v0.0.45 and its `main`) and Magnesium (2026-10-17):
+
+- **Provider instances.** Settings can hold several instances of one harness side by side (`packages/contracts/src/providerInstance.ts`), each with its own login folder: `homePath` is `CLAUDE_CONFIG_DIR` for Claude and `CODEX_HOME` for Codex (`settings.ts`). A thread picks an instance in the model picker.
+- **Codex accounts can share threads.** A Codex instance can keep its `auth.json` in a shadow home and share everything else with the main home (`CodexHomeLayout.ts`), so a thread can continue on another Codex account. Managed Codex instances do the ChatGPT sign-in themselves and can hold several ChatGPT logins, with a "Use a different ChatGPT account" switch (`CodexChatGptAuth.ts`, `ProviderCredentialStore.ts`).
+- **Claude accounts don't.** Each `CLAUDE_CONFIG_DIR` keeps its own threads, so a thread can't move to another Claude account's folder. On Linux, swapping the credential file inside one folder keeps the threads; on macOS the login is in the keychain.
+- **Usage per account.** Codex reports its rate-limit windows, account email and plan; Claude reports usage and rate-limit events (`apps/server/src/usage/`). Settings shows them, and pools accounts with the same email across machines for display only. Nothing picks or switches an account.
+- **Sign in signs into the machine's default login only.** Settings → Providers → Sign in opens a terminal with `claude auth login` or `codex login` but doesn't pass the instance, so an instance with its own folder is never signed in there (`MachineTerminal.tsx` vs. `WelcomeWizard.tsx`). A bug to fix here.
+- **Profiles use the machine's default account** (D41): each profile's home links to the machine's `~/.claude/.credentials.json` and `~/.codex/auth.json`, and a profile has no account setting.
+
+So the pieces for several accounts exist, but there is no account you can name, see across the fleet, or make active.
+
+## Build
+
+1. **An account** is a named login for one harness on one machine, such as "work" or "personal" for Claude Code. Its files live under the machine's Magnesium home (`accounts/<harness>/<name>/`), so in a pod they're on its home volume and survive restarts. Typed in `magnesium/contracts`: harness, name, the email and plan it reports, whether it is signed in, and its usage windows.
+2. **One active account per harness per machine.** The machine's default login, which every profile links to (D41), points at the active account's credentials. Making another account active re-points it in one atomic step:
+   - **Codex:** through a shadow home, so running threads carry on, on the new account, from their next turn.
+   - **Claude Code:** by swapping the credential file inside the one config folder, so threads carry on too. That works on Linux, where every Magnesium machine runs; on a Mac, each account keeps its own folder and the swap applies to new threads.
+   - Stock and profile instances need no change: they follow the default login.
+3. **Sign in to an account.** Signing in names the account and logs into its own folder (`CLAUDE_CONFIG_DIR=… claude auth login`, `CODEX_HOME=… codex login`, or managed Codex's own sign-in). This fixes Sign in for any instance with its own folder.
+4. **On the hub:** Settings → Accounts lists every machine's accounts by harness, with email, plan, what's left in each usage window, and which is active. From there:
+   - **Make active** on any machine;
+   - **Sign in another** on a machine, which opens that machine's terminal as today;
+   - **Sign out** and **Remove**, which deletes an account's files on that machine; the active account can't be removed until another is active.
+   - Fleet shows each machine's active accounts beside its name, and the footer's machine popover too.
+5. **Agents and schedules.** Listing accounts and making one active are service methods, so they are also agents-API operations and MCP tools: a scheduled task or a bot can move a machine to another account when one runs low. Switching needs the operate scope.
+6. **Docs:** a user guide section on adding accounts and swapping them, and what happens to running threads.
+
+## Decide first (owner)
+
+- **Do logins stay on the machine where you signed in?** The default here: yes. You sign in to an account on each machine that should be able to use it, and credentials never cross the network. The alternative, where the hub holds an account's login and hands it to whichever machine needs it, saves signing in on each machine but moves subscription credentials around the fleet; the rule that secrets pass by name only argues against it.
+- **Switching on its own** when the active account runs out (below) is left for later, unless you want it in this goal.
+
+## Test it
+
+On a hub and two machines, one on bare metal and one in a pod, with two Claude Code accounts and two Codex accounts:
+
+1. **Sign in two accounts** of each harness on one machine, from Settings on the hub. Each shows its email and plan; one of each is active.
+2. **Swap from the hub.** Make the other Claude account active. A new thread on that machine runs as the new account (its usage moves, and the account shown in the thread says so). A thread that was already running carries on with its history after the swap.
+3. **Codex the same,** with a running thread continuing on the new account.
+4. **Profiles follow.** A profile thread on that machine uses the active account, with no change to the profile.
+5. **In a pod.** The same swap on a machine in a pod; after the pod restarts, its accounts and the active one are still there.
+6. **What's left.** Each account's usage windows show on the hub, and update after a turn.
+7. **Reverse states.** Sign out and remove an inactive account; Remove refuses the active one until another is active.
+8. **From an agent.** An MCP call lists the accounts and makes one active; a read-only session can list but not switch.
+9. **From the phone,** the swap in Settings at phone width.
+
+## Not in this goal
+
+- Switching on its own when the active account hits its limit (a schedule or bot can do it with step 5's tools until then).
+- Several accounts active at once on one machine, or one per profile.
+- Accounts for API keys and model gateways (the hub's model keys cover those).
+- Other harnesses' accounts (OpenCode, Cursor and the rest).
+
+## Goal summary
+
+Not started.
