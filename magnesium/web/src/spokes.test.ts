@@ -10,6 +10,7 @@ const form = {
   volumeSize: "100Gi",
   opencodeUrl: "",
   opencodeModels: "",
+  startNow: true,
 };
 
 describe("adding a spoke", () => {
@@ -24,6 +25,8 @@ describe("adding a spoke", () => {
       opencode: null,
       replicas: 1,
     });
+    // Created stopped, so a machine's home can be copied into its volume before it starts.
+    expect(specFromForm({ ...form, startNow: false })).toMatchObject({ replicas: 0 });
     expect(
       specFromForm({
         ...form,

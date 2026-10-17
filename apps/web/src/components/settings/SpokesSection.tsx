@@ -94,6 +94,7 @@ function AddSpokeDialog({
     volumeSize: "100Gi",
     opencodeUrl: "",
     opencodeModels: "",
+    startNow: true,
   });
   const [chosenKeys, setChosenKeys] = useState<ReadonlyArray<string>>([]);
   const action = useAction(() => setOpen(false));
@@ -189,6 +190,19 @@ function AddSpokeDialog({
                 ))}
               </fieldset>
             ) : null}
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={form.startNow}
+                onCheckedChange={(checked) =>
+                  setForm((current) => ({ ...current, startNow: checked === true }))
+                }
+              />
+              Start it now
+            </label>
+            <p className="text-xs text-muted-foreground">
+              Untick it to copy a machine's home into its volume before it first starts. Adding it
+              again with the same name changes its settings.
+            </p>
             {action.error ? <p className="text-xs text-destructive">{action.error}</p> : null}
           </div>
         </DialogPanel>

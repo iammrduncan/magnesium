@@ -86,6 +86,8 @@ export interface SpokeForm {
   readonly opencodeUrl: string;
   /** Comma-separated. */
   readonly opencodeModels: string;
+  /** Off creates it stopped, as when a machine's home is copied into its volume first. */
+  readonly startNow: boolean;
 }
 
 /** A spec from the form, or the first thing wrong with it. */
@@ -117,6 +119,6 @@ export const specFromForm = (form: SpokeForm): SpokeSpec | { readonly problem: s
     build: null,
     volumeSize,
     opencode: url === "" ? null : { baseUrl: url, models: [models[0]!, ...models.slice(1)] },
-    replicas: 1,
+    replicas: form.startNow ? 1 : 0,
   };
 };
