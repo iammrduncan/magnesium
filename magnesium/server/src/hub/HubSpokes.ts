@@ -1,4 +1,7 @@
 import {
+  type HubAttached,
+  type HubAttachInput,
+  type HubDetachInput,
   type HubSpoke,
   type HubSpokeApplyInput,
   SpokeError,
@@ -20,7 +23,14 @@ import { ServerPorts } from "../ports.ts";
 import { GatewayClient } from "./gatewayClient.ts";
 import { HubMachines } from "./HubMachines.ts";
 import { ModelKeys } from "./ModelKeys.ts";
-import { readSpokeRecords, type SpokeRecord, writeSpokeRecords } from "./spokeRecords.ts";
+import {
+  type AttachedRecord,
+  readAttachedRecords,
+  readSpokeRecords,
+  type SpokeRecord,
+  writeAttachedRecords,
+  writeSpokeRecords,
+} from "./spokeRecords.ts";
 
 /**
  * The spokes the hub runs through gateways (goal 25, D57). Adding one sends
@@ -37,6 +47,10 @@ export class HubSpokes extends Context.Service<
     readonly remove: (input: SpokeRemoveInput) => Effect.Effect<void, SpokeError>;
     /** The hub's machines that answer for their spokes. */
     readonly gateways: Effect.Effect<ReadonlyArray<string>, SpokeError>;
+    /** Machines attached inside workloads' pods (D59): reached, never started or stopped. */
+    readonly attached: Effect.Effect<ReadonlyArray<HubAttached>, SpokeError>;
+    readonly attach: (input: HubAttachInput) => Effect.Effect<HubAttached, SpokeError>;
+    readonly detach: (input: HubDetachInput) => Effect.Effect<void, SpokeError>;
   }
 >()("@magnesium/server/hub/HubSpokes") {}
 
@@ -66,6 +80,13 @@ export const make = Effect.gen(function* () {
     withFiles(writeSpokeRecords(ports.baseDir, next)).pipe(
       Effect.mapError(() => new SpokeError({ detail: "Could not save the hub's spokes." })),
     );
+  const attachedRecords = withFiles(readAttachedRecords(ports.baseDir));
+  const saveAttached = (next: ReadonlyArray<AttachedRecord>) =>
+    withFiles(writeAttachedRecords(ports.baseDir, next)).pipe(
+      Effect.mapError(
+        () => new SpokeError({ detail: "Could not save the hub's attached machines." }),
+      ),
+    );
   const hasAccess = (name: string) =>
     machines.upstream(name).pipe(
       Effect.as(true),
@@ -77,6 +98,18 @@ export const make = Effect.gen(function* () {
     Effect.orDie,
   );
 
+  /** Pairs with a machine using its one-time code, once it answers. */
+  const pairWithCode = (name: string, code: string) =>
+    machines.giveAccess(name, { pairingCode: code }).pipe(
+      Effect.retry({
+        schedule: Schedule.spaced(PAIR_EVERY),
+        times: PAIR_RETRIES,
+        // Not up yet; a refused code won't get better.
+        while: (error) =>
+          error._tag === "HubMachineAccessError" && error.detail.startsWith("Could not reach"),
+      }),
+    );
+
   /** Waits for a new spoke to answer, pairs with it, then takes the code out of its Secret. */
   const pairWhenUp = (
     record: SpokeRecord,
@@ -84,15 +117,7 @@ export const make = Effect.gen(function* () {
     keyValues: Readonly<Record<string, string>>,
   ) =>
     Effect.gen(function* () {
-      yield* machines.giveAccess(record.name, { pairingCode: code }).pipe(
-        Effect.retry({
-          schedule: Schedule.spaced(PAIR_EVERY),
-          times: PAIR_RETRIES,
-          // Not up yet; a refused code won't get better.
-          while: (error) =>
-            error._tag === "HubMachineAccessError" && error.detail.startsWith("Could not reach"),
-        }),
-      );
+      yield* pairWithCode(record.name, code);
       yield* gateways.apply(record.gateway, {
         spec: record.spec,
         secrets: { pairingCode: null, keys: keyValues },
@@ -107,10 +132,10 @@ export const make = Effect.gen(function* () {
       ),
     );
 
-  const apply = Effect.fn("HubSpokes.apply")(function* (input: HubSpokeApplyInput) {
-    const { gateway, spec } = input;
-    const known = yield* records;
-    if (spec.name === gateway || known.some((record) => record.name === gateway)) {
+  /** Where the hub reaches a machine behind `gateway`, or why it can't. */
+  const urlThrough = Effect.fn("HubSpokes.urlThrough")(function* (gateway: string, name: string) {
+    const behindGateways = [...(yield* records), ...(yield* attachedRecords)];
+    if (name === gateway || behindGateways.some((record) => record.name === gateway)) {
       return yield* new SpokeError({ detail: `${gateway} isn't a gateway the hub can use.` });
     }
     const gatewayUpstream = yield* machines
@@ -120,6 +145,18 @@ export const make = Effect.gen(function* () {
           () => new SpokeError({ detail: `The hub has no access to the gateway ${gateway}.` }),
         ),
       );
+    return urlUnder(gatewayUpstream.url, `/spokes/${name}`).toString();
+  });
+
+  const apply = Effect.fn("HubSpokes.apply")(function* (input: HubSpokeApplyInput) {
+    const { gateway, spec } = input;
+    const known = yield* records;
+    if ((yield* attachedRecords).some((record) => record.name === spec.name)) {
+      return yield* new SpokeError({
+        detail: `${spec.name} is attached to a workload; detach it first.`,
+      });
+    }
+    const url = yield* urlThrough(gateway, spec.name);
     const paired = yield* hasAccess(spec.name);
     const keyValues = yield* keys.values(input.keys);
     const code = paired ? null : yield* newCode;
@@ -127,13 +164,7 @@ export const make = Effect.gen(function* () {
       spec,
       secrets: { pairingCode: code, keys: keyValues },
     });
-    const record: SpokeRecord = {
-      name: spec.name,
-      gateway,
-      url: urlUnder(gatewayUpstream.url, `/spokes/${spec.name}`).toString(),
-      spec,
-      keys: input.keys,
-    };
+    const record: SpokeRecord = { name: spec.name, gateway, url, spec, keys: input.keys };
     yield* save([...known.filter((other) => other.name !== spec.name), record]);
     yield* machines.refresh(spec.name);
     if (code !== null && spec.replicas === 1) {
@@ -194,7 +225,9 @@ export const make = Effect.gen(function* () {
   });
 
   const gateways_ = Effect.gen(function* () {
-    const spokeNames = new Set((yield* records).map((record) => record.name));
+    const spokeNames = new Set(
+      [...(yield* records), ...(yield* attachedRecords)].map((record) => record.name),
+    );
     const names = (yield* machines.names).filter((name) => !spokeNames.has(name));
     const answered = yield* Effect.forEach(
       names,
@@ -209,7 +242,71 @@ export const make = Effect.gen(function* () {
     return names.filter((_, index) => answered[index]);
   });
 
-  return HubSpokes.of({ list, apply, remove, gateways: gateways_ });
+  const attached = Effect.gen(function* () {
+    return yield* Effect.forEach(yield* attachedRecords, (record) =>
+      hasAccess(record.name).pipe(
+        Effect.map((paired): HubAttached => ({
+          name: record.name,
+          gateway: record.gateway,
+          paired,
+          detail: paired ? null : "Not paired yet: the hub pairs with its code once it answers.",
+        })),
+      ),
+    );
+  });
+
+  const attach = Effect.fn("HubSpokes.attach")(function* (input: HubAttachInput) {
+    const { name, gateway } = input;
+    if ((yield* records).some((record) => record.name === name)) {
+      return yield* new SpokeError({
+        detail: `The hub runs a spoke named ${name}. Remove it first, keeping its home.`,
+      });
+    }
+    const url = yield* urlThrough(gateway, name);
+    const known = yield* attachedRecords;
+    yield* saveAttached([...known.filter((other) => other.name !== name), { name, gateway, url }]);
+    yield* machines.refresh(name);
+    const paired = yield* hasAccess(name);
+    if (!paired && input.pairingCode !== null) {
+      yield* FiberMap.run(
+        pairings,
+        name,
+        pairWithCode(name, input.pairingCode).pipe(
+          Effect.tap(() => Effect.logInfo("The hub paired with an attached machine.", { name })),
+          Effect.catch((error) =>
+            Effect.logWarning("The hub could not pair with an attached machine.", {
+              name,
+              error: error._tag,
+            }),
+          ),
+        ),
+      );
+    }
+    return {
+      name,
+      gateway,
+      paired,
+      detail: paired
+        ? null
+        : input.pairingCode === null
+          ? "The hub has no access to it: attach it again with its pairing code."
+          : "The hub pairs with it once it answers.",
+    } satisfies HubAttached;
+  });
+
+  const detach = Effect.fn("HubSpokes.detach")(function* (input: HubDetachInput) {
+    const known = yield* attachedRecords;
+    if (!known.some((record) => record.name === input.name)) {
+      return yield* new SpokeError({ detail: `No machine named ${input.name} is attached.` });
+    }
+    yield* FiberMap.remove(pairings, input.name);
+    // The way back out of attach: the record and the hub's access both go.
+    yield* machines.removeAccess(input.name).pipe(Effect.ignore);
+    yield* saveAttached(known.filter((record) => record.name !== input.name));
+    yield* machines.refresh(input.name);
+  });
+
+  return HubSpokes.of({ list, apply, remove, gateways: gateways_, attached, attach, detach });
 });
 
 export const layer = Layer.effect(HubSpokes, make);

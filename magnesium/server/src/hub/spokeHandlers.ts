@@ -39,6 +39,30 @@ const gatewaysHandler = MagnesiumRpcGroup.toLayerHandler(
   }),
 );
 
+const attachedHandler = MagnesiumRpcGroup.toLayerHandler(
+  MAGNESIUM_WS_METHODS.hubAttachedList,
+  Effect.gen(function* () {
+    const spokes = yield* HubSpokes;
+    return () => spokes.attached;
+  }),
+);
+
+const attachHandler = MagnesiumRpcGroup.toLayerHandler(
+  MAGNESIUM_WS_METHODS.hubAttach,
+  Effect.gen(function* () {
+    const spokes = yield* HubSpokes;
+    return (input) => spokes.attach(input);
+  }),
+);
+
+const detachHandler = MagnesiumRpcGroup.toLayerHandler(
+  MAGNESIUM_WS_METHODS.hubDetach,
+  Effect.gen(function* () {
+    const spokes = yield* HubSpokes;
+    return (input) => spokes.detach(input);
+  }),
+);
+
 const keysListHandler = MagnesiumRpcGroup.toLayerHandler(
   MAGNESIUM_WS_METHODS.modelKeysList,
   Effect.gen(function* () {
@@ -68,6 +92,9 @@ export const hubSpokeHandlersLayer = Layer.mergeAll(
   applyHandler,
   removeHandler,
   gatewaysHandler,
+  attachedHandler,
+  attachHandler,
+  detachHandler,
   keysListHandler,
   keysSetHandler,
   keysRemoveHandler,

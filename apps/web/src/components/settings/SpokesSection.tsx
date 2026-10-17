@@ -1,9 +1,14 @@
 // magnesium: the hub's machines in Kubernetes, run through a namespace's gateway (goal 25)
-import type { HubMachine, HubSpoke, SpokeSpec } from "@magnesium/contracts";
+import type { HubAttached, HubMachine, HubSpoke, SpokeSpec } from "@magnesium/contracts";
 import {
   applyHubSpoke,
+  attachFromForm,
+  attachMachine,
+  describeAttached,
   describeSpoke,
+  detachMachine,
   fetchHubMachines,
+  listAttached,
   listGateways,
   listHubSpokes,
   listModelKeys,
@@ -319,12 +324,153 @@ function RemoveDialog({
   );
 }
 
+function GatewaySelect({
+  gateways,
+  value,
+  onChange,
+}: {
+  readonly gateways: ReadonlyArray<HubMachine>;
+  readonly value: string;
+  readonly onChange: (value: string) => void;
+}) {
+  return (
+    <Select value={value} onValueChange={(next) => onChange(next ?? "")}>
+      <SelectTrigger size="sm" aria-label="Gateway">
+        <SelectValue>{gateways.find((g) => g.name === value)?.label ?? value}</SelectValue>
+      </SelectTrigger>
+      <SelectPopup>
+        {gateways.map((candidate) => (
+          <SelectItem key={candidate.name} hideIndicator value={candidate.name}>
+            {candidate.label}
+          </SelectItem>
+        ))}
+      </SelectPopup>
+    </Select>
+  );
+}
+
+function AttachDialog({
+  gateways,
+  onAttached,
+}: {
+  readonly gateways: ReadonlyArray<HubMachine>;
+  readonly onAttached: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ gateway: gateways[0]?.name ?? "", name: "", pairingCode: "" });
+  const action = useAction(() => setOpen(false));
+  const submit = () => {
+    const input = attachFromForm(form);
+    if ("problem" in input) return action.setError(input.problem);
+    void action
+      .run(() => attachMachine(hubUrl(), input))
+      .then((done) => (done ? onAttached() : undefined));
+  };
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button size="xs" variant="outline" />}>
+        Attach a machine
+      </DialogTrigger>
+      <DialogPopup className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Attach a machine</DialogTitle>
+          <DialogDescription>
+            A Magnesium server inside a workload's pod, which the workload's own deploy runs. The
+            hub reaches it through its namespace's gateway.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogPanel>
+          <div className="flex flex-col gap-3">
+            <Field label="Gateway">
+              <GatewaySelect
+                gateways={gateways}
+                value={form.gateway}
+                onChange={(gateway) => setForm((current) => ({ ...current, gateway }))}
+              />
+            </Field>
+            <Field label="Name" hint="Its MAGNESIUM_MACHINE, as the workload's deploy set it.">
+              <Input
+                value={form.name}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, name: event.target.value }))
+                }
+                spellCheck={false}
+              />
+            </Field>
+            <Field
+              label="Pairing code"
+              hint="From its pairing Secret. Leave it empty for a machine the hub already has, such as one moved in from a spoke."
+            >
+              <Input
+                type="password"
+                value={form.pairingCode}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, pairingCode: event.target.value }))
+                }
+                autoComplete="off"
+              />
+            </Field>
+            {action.error ? <p className="text-xs text-destructive">{action.error}</p> : null}
+          </div>
+        </DialogPanel>
+        <DialogFooter>
+          <Button disabled={action.busy || form.gateway === ""} onClick={submit}>
+            {action.busy ? "Attaching…" : "Attach"}
+          </Button>
+        </DialogFooter>
+      </DialogPopup>
+    </Dialog>
+  );
+}
+
+function DetachDialog({
+  machine,
+  onDetached,
+}: {
+  readonly machine: HubAttached;
+  readonly onDetached: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const action = useAction(() => setOpen(false));
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button size="xs" variant="ghost" />}>Detach</DialogTrigger>
+      <DialogPopup className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Detach {machine.name}</DialogTitle>
+          <DialogDescription>
+            The hub forgets it and gives up its access. The workload keeps running; its own deploy
+            takes Magnesium out of it. Attaching it again needs a new pairing code.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogPanel>
+          {action.error ? <p className="text-xs text-destructive">{action.error}</p> : null}
+        </DialogPanel>
+        <DialogFooter>
+          <Button
+            variant="destructive"
+            disabled={action.busy}
+            onClick={() =>
+              void action
+                .run(() => detachMachine(hubUrl(), machine.name))
+                .then((done) => (done ? onDetached() : undefined))
+            }
+          >
+            {action.busy ? "Detaching…" : "Detach"}
+          </Button>
+        </DialogFooter>
+      </DialogPopup>
+    </Dialog>
+  );
+}
+
 /**
  * Machines the hub runs in Kubernetes through a gateway. Shown on a hub that
  * has a gateway or runs a spoke; changing anything needs an admin session.
  */
 export function SpokesSection({ canManage }: { readonly canManage: boolean }) {
   const [spokes, setSpokes] = useState<ReadonlyArray<HubSpoke>>([]);
+  const [attached, setAttached] = useState<ReadonlyArray<HubAttached>>([]);
   const [machines, setMachines] = useState<ReadonlyArray<HubMachine>>([]);
   const [gatewayNames, setGatewayNames] = useState<ReadonlyArray<string>>([]);
   const [keys, setKeys] = useState<ReadonlyArray<string>>([]);
@@ -339,6 +485,7 @@ export function SpokesSection({ canManage }: { readonly canManage: boolean }) {
     }
     try {
       setSpokes(await listHubSpokes(hub));
+      setAttached(await listAttached(hub));
       setGatewayNames(await listGateways(hub));
       setError(null);
     } catch (cause) {
@@ -354,7 +501,7 @@ export function SpokesSection({ canManage }: { readonly canManage: boolean }) {
   }, [refresh]);
 
   const gateways = machines.filter((machine) => gatewayNames.includes(machine.name));
-  if (spokes.length === 0 && gateways.length === 0) return null;
+  if (spokes.length === 0 && attached.length === 0 && gateways.length === 0) return null;
 
   const toggle = (spoke: HubSpoke) =>
     applyHubSpoke(hubUrl(), {
@@ -366,43 +513,66 @@ export function SpokesSection({ canManage }: { readonly canManage: boolean }) {
       .catch((cause: unknown) => setError(errorMessage(cause)));
 
   return (
-    <SettingsSection title="Machines in Kubernetes">
-      {spokes.map((spoke) => (
-        <EnvironmentRow
-          key={spoke.name}
-          kind="server"
-          label={spoke.name}
-          subtitle={<span className="block truncate">{describeSpoke(spoke)}</span>}
-          dimmed={spoke.spec.replicas === 0}
-        >
-          {canManage ? (
-            <>
-              <Button size="xs" variant="ghost" onClick={() => void toggle(spoke)}>
-                {spoke.spec.replicas === 1 ? "Stop" : "Start"}
-              </Button>
-              <ChangeBuildDialog spoke={spoke} onChanged={() => void refresh()} />
-              <RemoveDialog spoke={spoke} onRemoved={() => void refresh()} />
-            </>
-          ) : null}
-        </EnvironmentRow>
-      ))}
-      {error ? <SettingsRow title="Couldn't load them" description={error} /> : null}
-      {canManage ? (
-        gateways.length > 0 ? (
+    <>
+      <SettingsSection title="Attached machines">
+        {attached.map((machine) => (
+          <EnvironmentRow
+            key={machine.name}
+            kind="server"
+            label={machine.name}
+            subtitle={<span className="block truncate">{describeAttached(machine)}</span>}
+          >
+            {canManage ? (
+              <DetachDialog machine={machine} onDetached={() => void refresh()} />
+            ) : null}
+          </EnvironmentRow>
+        ))}
+        {canManage && gateways.length > 0 ? (
           <SettingsRow
-            title={spokes.length === 0 ? "No machines in Kubernetes yet" : "Another machine"}
-            description="Run a machine server as a pod, through a namespace's gateway."
-            control={
-              <AddSpokeDialog gateways={gateways} keys={keys} onAdded={() => void refresh()} />
-            }
+            title={attached.length === 0 ? "None attached yet" : "Another machine"}
+            description="A Magnesium server inside a workload's own pod, so agents work where the workload does."
+            control={<AttachDialog gateways={gateways} onAttached={() => void refresh()} />}
           />
-        ) : null
-      ) : (
-        <SettingsRow
-          title="Admin access needed"
-          description="Sign in to the hub with an admin link to add, change or remove these."
-        />
-      )}
-    </SettingsSection>
+        ) : null}
+      </SettingsSection>
+      <SettingsSection title="Machines in Kubernetes">
+        {spokes.map((spoke) => (
+          <EnvironmentRow
+            key={spoke.name}
+            kind="server"
+            label={spoke.name}
+            subtitle={<span className="block truncate">{describeSpoke(spoke)}</span>}
+            dimmed={spoke.spec.replicas === 0}
+          >
+            {canManage ? (
+              <>
+                <Button size="xs" variant="ghost" onClick={() => void toggle(spoke)}>
+                  {spoke.spec.replicas === 1 ? "Stop" : "Start"}
+                </Button>
+                <ChangeBuildDialog spoke={spoke} onChanged={() => void refresh()} />
+                <RemoveDialog spoke={spoke} onRemoved={() => void refresh()} />
+              </>
+            ) : null}
+          </EnvironmentRow>
+        ))}
+        {error ? <SettingsRow title="Couldn't load them" description={error} /> : null}
+        {canManage ? (
+          gateways.length > 0 ? (
+            <SettingsRow
+              title={spokes.length === 0 ? "No machines in Kubernetes yet" : "Another machine"}
+              description="Run a machine server as a pod, through a namespace's gateway."
+              control={
+                <AddSpokeDialog gateways={gateways} keys={keys} onAdded={() => void refresh()} />
+              }
+            />
+          ) : null
+        ) : (
+          <SettingsRow
+            title="Admin access needed"
+            description="Sign in to the hub with an admin link to add, change or remove these."
+          />
+        )}
+      </SettingsSection>
+    </>
   );
 }

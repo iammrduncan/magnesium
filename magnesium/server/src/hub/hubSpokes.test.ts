@@ -292,3 +292,59 @@ describe("the hub's spokes", () => {
       }).pipe(Effect.scoped),
   );
 });
+
+describe("machines attached to workloads", () => {
+  it.effect("a moved machine keeps the hub's access, and detaching is the way back out", () =>
+    Effect.gen(function* () {
+      const hub = yield* makeHub({ access: ["cpu-host-2"] });
+      const attached = yield* hub.spokes.attach({
+        name: "cpu-host-2",
+        gateway: "gateway",
+        pairingCode: null,
+      });
+      expect(attached).toMatchObject({ paired: true, detail: null });
+      expect(yield* hub.spokes.attached).toEqual([
+        { name: "cpu-host-2", gateway: "gateway", paired: true, detail: null },
+      ]);
+      expect(hub.refreshed).toEqual(["cpu-host-2"]);
+      // The workload's deploy runs it: the hub won't start a spoke in its name.
+      const taken = yield* hub.spokes
+        .apply({ gateway: "gateway", spec, keys: [] })
+        .pipe(Effect.flip);
+      expect(taken.detail).toContain("attached to a workload");
+
+      yield* hub.spokes.detach({ name: "cpu-host-2" });
+      expect(hub.removedAccess).toEqual(["cpu-host-2"]);
+      expect(yield* hub.spokes.attached).toEqual([]);
+    }).pipe(Effect.scoped),
+  );
+
+  it.effect("a new one pairs with the code from its Secret once it answers", () =>
+    Effect.gen(function* () {
+      const hub = yield* makeHub({ upAfter: 2 });
+      const attached = yield* hub.spokes.attach({
+        name: "notebook",
+        gateway: "gateway",
+        pairingCode: "0123456789ABCDEF0123456789ABCDEF",
+      });
+      expect(attached).toMatchObject({ paired: false });
+      while (!hub.access.has("notebook")) yield* TestClock.adjust("5 seconds");
+      expect(yield* hub.spokes.attached).toMatchObject([{ name: "notebook", paired: true }]);
+    }).pipe(Effect.scoped),
+  );
+
+  it.effect("won't attach over a spoke the hub runs, or through a machine it can't use", () =>
+    Effect.gen(function* () {
+      const hub = yield* makeHub({});
+      yield* hub.spokes.apply({ gateway: "gateway", spec, keys: [] });
+      const over = yield* hub.spokes
+        .attach({ name: "cpu-host-2", gateway: "gateway", pairingCode: null })
+        .pipe(Effect.flip);
+      expect(over.detail).toContain("Remove it first");
+      const noGateway = yield* hub.spokes
+        .attach({ name: "notebook", gateway: "elsewhere", pairingCode: null })
+        .pipe(Effect.flip);
+      expect(noGateway.detail).toContain("no access to the gateway elsewhere");
+    }).pipe(Effect.scoped),
+  );
+});

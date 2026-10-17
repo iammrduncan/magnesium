@@ -35,6 +35,9 @@ import {
   SandboxList,
 } from "./profiles.ts";
 import {
+  HubAttached,
+  HubAttachInput,
+  HubDetachInput,
   HubSpoke,
   HubSpokeApplyInput,
   ModelKeyName,
@@ -91,6 +94,9 @@ export const MAGNESIUM_WS_METHODS = {
   hubSpokesApply: "magnesium.hubSpokes.apply",
   hubSpokesRemove: "magnesium.hubSpokes.remove",
   hubSpokesGateways: "magnesium.hubSpokes.gateways",
+  hubAttachedList: "magnesium.hubAttached.list",
+  hubAttach: "magnesium.hubAttached.attach",
+  hubDetach: "magnesium.hubAttached.detach",
   modelKeysList: "magnesium.modelKeys.list",
   modelKeysSet: "magnesium.modelKeys.set",
   modelKeysRemove: "magnesium.modelKeys.remove",
@@ -292,6 +298,25 @@ const HubSpokesGatewaysRpc = Rpc.make(MAGNESIUM_WS_METHODS.hubSpokesGateways, {
   error: SpokeError,
 }).annotate(RequiredScope, AuthOrchestrationReadScope);
 
+/** The machines attached inside workloads' pods, reached through gateways (D59). */
+const HubAttachedListRpc = Rpc.make(MAGNESIUM_WS_METHODS.hubAttachedList, {
+  success: Schema.Array(HubAttached),
+  error: SpokeError,
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
+
+/** Adds an attached machine, pairing with its code once it answers. Admins only. */
+const HubAttachRpc = Rpc.make(MAGNESIUM_WS_METHODS.hubAttach, {
+  payload: HubAttachInput,
+  success: HubAttached,
+  error: SpokeError,
+}).annotate(RequiredScope, AuthAccessWriteScope);
+
+/** Forgets an attached machine and the hub's access to it; the workload runs on. */
+const HubDetachRpc = Rpc.make(MAGNESIUM_WS_METHODS.hubDetach, {
+  payload: HubDetachInput,
+  error: SpokeError,
+}).annotate(RequiredScope, AuthAccessWriteScope);
+
 /** The names of the model keys the hub holds; their values never leave it except to a spoke. */
 const ModelKeysListRpc = Rpc.make(MAGNESIUM_WS_METHODS.modelKeysList, {
   success: Schema.Array(ModelKeyName),
@@ -336,6 +361,9 @@ export const MagnesiumRpcGroup = RpcGroup.make(
   HubSpokesApplyRpc,
   HubSpokesRemoveRpc,
   HubSpokesGatewaysRpc,
+  HubAttachedListRpc,
+  HubAttachRpc,
+  HubDetachRpc,
   ModelKeysListRpc,
   ModelKeysSetRpc,
   ModelKeysRemoveRpc,

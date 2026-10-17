@@ -24,37 +24,70 @@ export const SpokeRecord = Schema.Struct({
 });
 export type SpokeRecord = typeof SpokeRecord.Type;
 
-const SpokesFile = Schema.fromJsonString(Schema.Struct({ spokes: Schema.Array(SpokeRecord) }));
-const decodeFile = Schema.decodeUnknownEffect(SpokesFile);
-const encodeFile = Schema.encodeEffect(SpokesFile);
+/**
+ * Machines attached inside workloads' pods (D59), in `<T3CODE_HOME>/hub-attached.json`:
+ * reached through a gateway like a spoke, run by the workload's own deploy.
+ * One here also replaces a deploy-config machine of the same name.
+ */
+export const HUB_ATTACHED_FILE = "hub-attached.json";
+
+export const AttachedRecord = Schema.Struct({
+  name: HubMachineName,
+  gateway: HubMachineName,
+  /** Where the hub reaches it: `<gateway>/spokes/<name>`. */
+  url: Schema.String,
+});
+export type AttachedRecord = typeof AttachedRecord.Type;
+
+/** One of the hub's own record files: a JSON object with one array, written whole. */
+const recordFile = <S extends Schema.Top>(fileName: string, key: string, record: S) => {
+  const File = Schema.fromJsonString(Schema.Struct({ [key]: Schema.Array(record) }));
+  const decode = Schema.decodeUnknownEffect(File);
+  const encode = Schema.encodeEffect(File);
+  type Records = ReadonlyArray<S["Type"]>;
+
+  /** The records; none when the file is missing or unreadable (which is logged). */
+  const read = (baseDir: string) =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const file = path.join(baseDir, fileName);
+      return yield* fs.readFileString(file).pipe(
+        Effect.flatMap(decode),
+        Effect.map((content) => (content as Record<string, Records>)[key] ?? []),
+        Effect.catch((error) =>
+          error._tag === "PlatformError" && error.reason._tag === "NotFound"
+            ? Effect.succeed([] as Records)
+            : Effect.logWarning("Could not read the hub's records.", { file, error }).pipe(
+                Effect.as([] as Records),
+              ),
+        ),
+      );
+    });
+
+  /** Replaces the records, all at once: a crash leaves the old file or the new one. */
+  const write = (baseDir: string, records: Records) =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const file = path.join(baseDir, fileName);
+      const json = yield* encode({ [key]: records } as never).pipe(Effect.orDie);
+      const partial = `${file}.partial`;
+      yield* fs.writeFileString(partial, `${json}\n`, { mode: 0o600 });
+      yield* fs.rename(partial, file);
+    });
+
+  return { read, write };
+};
+
+const spokeFile = recordFile(HUB_SPOKES_FILE, "spokes", SpokeRecord);
+const attachedFile = recordFile(HUB_ATTACHED_FILE, "attached", AttachedRecord);
 
 /** The hub's spokes; none when the file is missing or unreadable (which is logged). */
-export const readSpokeRecords = (baseDir: string) =>
-  Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem;
-    const path = yield* Path.Path;
-    const file = path.join(baseDir, HUB_SPOKES_FILE);
-    return yield* fs.readFileString(file).pipe(
-      Effect.flatMap(decodeFile),
-      Effect.map((content) => content.spokes),
-      Effect.catch((error) =>
-        error._tag === "PlatformError" && error.reason._tag === "NotFound"
-          ? Effect.succeed([] as ReadonlyArray<SpokeRecord>)
-          : Effect.logWarning("Could not read the hub's spokes.", { file, error }).pipe(
-              Effect.as([] as ReadonlyArray<SpokeRecord>),
-            ),
-      ),
-    );
-  });
-
-/** Replaces the hub's spokes, all at once: a crash leaves the old file or the new one. */
-export const writeSpokeRecords = (baseDir: string, records: ReadonlyArray<SpokeRecord>) =>
-  Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem;
-    const path = yield* Path.Path;
-    const file = path.join(baseDir, HUB_SPOKES_FILE);
-    const json = yield* encodeFile({ spokes: records }).pipe(Effect.orDie);
-    const partial = `${file}.partial`;
-    yield* fs.writeFileString(partial, `${json}\n`, { mode: 0o600 });
-    yield* fs.rename(partial, file);
-  });
+export const readSpokeRecords = spokeFile.read;
+/** Replaces the hub's spokes, all at once. */
+export const writeSpokeRecords = spokeFile.write;
+/** The hub's attached machines; none when the file is missing or unreadable. */
+export const readAttachedRecords = attachedFile.read;
+/** Replaces the hub's attached machines, all at once. */
+export const writeAttachedRecords = attachedFile.write;

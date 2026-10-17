@@ -1,7 +1,7 @@
 import type { HubSpoke } from "@magnesium/contracts";
 import { describe, expect, it } from "@effect/vitest";
 
-import { describeSpoke, specFromForm } from "./spokes.ts";
+import { attachFromForm, describeAttached, describeSpoke, specFromForm } from "./spokes.ts";
 
 const form = {
   name: "cpu-host-2",
@@ -95,5 +95,44 @@ describe("a spoke's row", () => {
     expect(
       describeSpoke(spoke({ status: null, detail: "Could not reach the gateway gateway." })),
     ).toBe("Could not reach the gateway gateway. · on node-b");
+  });
+});
+
+describe("attaching a machine", () => {
+  it("takes a moved machine without a code, and a new one with its code", () => {
+    expect(attachFromForm({ name: "cpu-host-2", gateway: "gateway", pairingCode: "" })).toEqual({
+      name: "cpu-host-2",
+      gateway: "gateway",
+      pairingCode: null,
+    });
+    expect(
+      attachFromForm({ name: " notebook ", gateway: "gateway", pairingCode: "0123456789ABCDEF" }),
+    ).toEqual({ name: "notebook", gateway: "gateway", pairingCode: "0123456789ABCDEF" });
+  });
+
+  it("refuses a name its Service couldn't have, a missing gateway, and a short code", () => {
+    expect(
+      attachFromForm({ name: "Notebook", gateway: "gateway", pairingCode: "" }),
+    ).toHaveProperty("problem");
+    expect(attachFromForm({ name: "notebook", gateway: "", pairingCode: "" })).toHaveProperty(
+      "problem",
+    );
+    expect(
+      attachFromForm({ name: "notebook", gateway: "gateway", pairingCode: "short" }),
+    ).toHaveProperty("problem");
+  });
+
+  it("says when the hub can't use it yet", () => {
+    expect(
+      describeAttached({ name: "notebook", gateway: "gateway", paired: true, detail: null }),
+    ).toBe("Through gateway");
+    expect(
+      describeAttached({
+        name: "notebook",
+        gateway: "gateway",
+        paired: false,
+        detail: "The hub pairs with it once it answers.",
+      }),
+    ).toBe("The hub pairs with it once it answers. · through gateway");
   });
 });

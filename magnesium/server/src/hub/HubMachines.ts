@@ -23,7 +23,7 @@ import { HttpClient } from "effect/unstable/http";
 
 import { ServerPorts, type ServerPortError } from "../ports.ts";
 import * as MachineApi from "./machineApi.ts";
-import { readSpokeRecords } from "./spokeRecords.ts";
+import { readAttachedRecords, readSpokeRecords } from "./spokeRecords.ts";
 
 /**
  * The machines this hub carries, and the token it holds for each (D14: tokens
@@ -146,19 +146,21 @@ export const make = Effect.gen(function* () {
     ),
   );
 
-  // The hub's own spokes (goal 25) join the deploy config's machines, replacing one of the same name.
+  // The hub's own spokes (goal 25) and attached machines (D59) join the deploy
+  // config's machines, replacing one of the same name.
   const readConfig = Effect.all([
     readDeployConfig,
-    readSpokeRecords(ports.baseDir).pipe(
+    Effect.all([readSpokeRecords(ports.baseDir), readAttachedRecords(ports.baseDir)]).pipe(
       Effect.provideService(FileSystem.FileSystem, fileSystem),
       Effect.provideService(Path.Path, path),
     ),
   ]).pipe(
-    Effect.map(([machines, spokes]): ReadonlyArray<HubMachineConfig> => {
-      const spokeNames = new Set(spokes.map((spoke) => spoke.name));
+    Effect.map(([machines, [spokes, attached]]): ReadonlyArray<HubMachineConfig> => {
+      const behindGateways = [...spokes, ...attached];
+      const names = new Set(behindGateways.map((record) => record.name));
       return [
-        ...machines.filter((machine) => !spokeNames.has(machine.name)),
-        ...spokes.map((spoke) => ({ name: spoke.name, url: spoke.url })),
+        ...machines.filter((machine) => !names.has(machine.name)),
+        ...behindGateways.map((record) => ({ name: record.name, url: record.url })),
       ];
     }),
   );

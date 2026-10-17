@@ -1,4 +1,6 @@
 import {
+  type HubAttached,
+  type HubAttachInput,
   type HubSpoke,
   type HubSpokeApplyInput,
   MAGNESIUM_WS_METHODS,
@@ -54,6 +56,43 @@ export const removeHubSpoke = (pageUrl: string, input: SpokeRemoveInput) =>
 /** The hub's machines that are gateways. */
 export const listGateways = (pageUrl: string) =>
   callHub(pageUrl, (client) => client[MAGNESIUM_WS_METHODS.hubSpokesGateways]());
+
+/** Machines attached inside workloads' pods (D59). */
+export const listAttached = (pageUrl: string) =>
+  callHub(pageUrl, (client) => client[MAGNESIUM_WS_METHODS.hubAttachedList]());
+
+export const attachMachine = (pageUrl: string, input: HubAttachInput) =>
+  callHub(pageUrl, (client) => client[MAGNESIUM_WS_METHODS.hubAttach](input));
+
+export const detachMachine = (pageUrl: string, name: string) =>
+  callHub(pageUrl, (client) => client[MAGNESIUM_WS_METHODS.hubDetach]({ name }));
+
+/** An attached machine's row: how the hub reaches it, and whether it can yet. */
+export const describeAttached = (machine: HubAttached): string =>
+  machine.paired
+    ? `Through ${machine.gateway}`
+    : `${machine.detail ?? "Not paired yet."} · through ${machine.gateway}`;
+
+/**
+ * What the Attach form sends, or what's wrong with it. The code is optional:
+ * a machine moved in from a spoke keeps the hub's access.
+ */
+export const attachFromForm = (form: {
+  readonly name: string;
+  readonly gateway: string;
+  readonly pairingCode: string;
+}): HubAttachInput | { readonly problem: string } => {
+  const name = form.name.trim();
+  if (!/^[a-z0-9]([a-z0-9-]{0,51}[a-z0-9])?$/.test(name)) {
+    return { problem: "A name is lowercase letters, digits and dashes, as its Service has." };
+  }
+  if (form.gateway === "") return { problem: "Pick its gateway." };
+  const code = form.pairingCode.trim();
+  if (code !== "" && code.length < 16) {
+    return { problem: "A pairing code is at least 16 characters." };
+  }
+  return { name, gateway: form.gateway, pairingCode: code === "" ? null : code };
+};
 
 export const listModelKeys = (pageUrl: string) =>
   callHub(pageUrl, (client) => client[MAGNESIUM_WS_METHODS.modelKeysList]());

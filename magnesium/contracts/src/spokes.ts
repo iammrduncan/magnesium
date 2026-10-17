@@ -108,6 +108,33 @@ export const HubSpokeApplyInput = Schema.Struct({
 });
 export type HubSpokeApplyInput = typeof HubSpokeApplyInput.Type;
 
+/**
+ * A machine attached inside a workload's pod (D59). The hub reaches it through
+ * a gateway, as a spoke, but the workload's own deploy starts, stops and
+ * removes it.
+ */
+export const HubAttached = Schema.Struct({
+  name: HubMachineName,
+  /** The hub machine that is its namespace's gateway. */
+  gateway: HubMachineName,
+  /** Whether the hub has access to it; a new one pairs with its code once it answers. */
+  paired: Schema.Boolean,
+  /** What's in the way, in a sentence. */
+  detail: Schema.NullOr(Schema.String),
+});
+export type HubAttached = typeof HubAttached.Type;
+
+export const HubAttachInput = Schema.Struct({
+  name: HubMachineName,
+  gateway: HubMachineName,
+  /** The one-time code in its pairing Secret; null for a moved machine the hub already has. */
+  pairingCode: Schema.NullOr(Schema.String.check(Schema.isMinLength(16))),
+});
+export type HubAttachInput = typeof HubAttachInput.Type;
+
+export const HubDetachInput = Schema.Struct({ name: HubMachineName });
+export type HubDetachInput = typeof HubDetachInput.Type;
+
 /** A model key's environment name, such as `LITELLM_API_KEY`. Its value is never sent back. */
 export const ModelKeyName = Schema.String.check(Schema.isPattern(/^[A-Z][A-Z0-9_]*$/));
 
