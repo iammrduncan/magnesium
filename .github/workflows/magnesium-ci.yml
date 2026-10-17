@@ -164,8 +164,12 @@ jobs:
           docker exec -e MAGNESIUM_PYTHON=/opt/magnesium-portable/python/bin/python3 workload \
             /opt/magnesium-portable/bin/magnesium-fence --probe
           # The server starts again when it stops, and the workload never notices.
+          # Only the server's Node, by how its command starts: this shell's own
+          # command line holds the pattern too.
           docker exec workload sh -c 'for p in /proc/[0-9]*; do
-            grep -q "dist/bin.mjs" "$p/cmdline" 2>/dev/null && kill "${p#/proc/}"; done'
+            case "$(tr "\0" " " < "$p/cmdline" 2>/dev/null)" in
+              /opt/magnesium-portable/node/bin/node*) kill "${p#/proc/}" ;;
+            esac; done'
           sleep 3
           up
           [ "$(docker inspect -f '{{.State.Running}}' workload)" = true ]
