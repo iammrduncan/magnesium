@@ -1,3 +1,4 @@
+import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
 import { HubMachineName } from "./hub.ts";
@@ -117,12 +118,31 @@ export const HubAttached = Schema.Struct({
   name: HubMachineName,
   /** The hub machine that is its namespace's gateway. */
   gateway: HubMachineName,
+  /** The workload it runs in, when its gateway says. */
+  workload: Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
   /** Whether the hub has access to it; a new one pairs with its code once it answers. */
   paired: Schema.Boolean,
   /** What's in the way, in a sentence. */
   detail: Schema.NullOr(Schema.String),
 });
 export type HubAttached = typeof HubAttached.Type;
+
+/**
+ * A machine a gateway routes to inside a workload's pod (D59), as the
+ * operator's deploy labelled the route. A new one comes with a one-time
+ * pairing code until the hub has paired, so it joins with no one typing it.
+ */
+export const GatewayAttached = Schema.Struct({
+  name: HubMachineName,
+  workload: Schema.NullOr(Schema.String),
+  /** The hub paired with it already: its route is marked, and its code is spent. */
+  paired: Schema.Boolean,
+  pairingCode: Schema.NullOr(Schema.String),
+});
+export type GatewayAttached = typeof GatewayAttached.Type;
+
+export const GatewayAttachedPairedInput = Schema.Struct({ name: HubMachineName });
+export type GatewayAttachedPairedInput = typeof GatewayAttachedPairedInput.Type;
 
 export const HubAttachInput = Schema.Struct({
   name: HubMachineName,

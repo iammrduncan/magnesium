@@ -122,17 +122,22 @@ describe("attaching a machine", () => {
     ).toHaveProperty("problem");
   });
 
-  it("says when the hub can't use it yet", () => {
-    expect(
-      describeAttached({ name: "notebook", gateway: "gateway", paired: true, detail: null }),
-    ).toBe("Through gateway");
+  it("says where it runs, and what's in the way", () => {
+    const machine = {
+      name: "notebook",
+      gateway: "gateway",
+      workload: "notebook-ws",
+      paired: true,
+      detail: null,
+    };
+    expect(describeAttached(machine)).toBe("In notebook-ws · through gateway");
+    expect(describeAttached({ ...machine, workload: null })).toBe("Through gateway");
     expect(
       describeAttached({
-        name: "notebook",
-        gateway: "gateway",
+        ...machine,
         paired: false,
         detail: "The hub pairs with it once it answers.",
       }),
-    ).toBe("The hub pairs with it once it answers. · through gateway");
+    ).toBe("The hub pairs with it once it answers. · in notebook-ws · through gateway");
   });
 });

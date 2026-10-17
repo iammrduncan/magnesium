@@ -28,4 +28,26 @@ const removeHandler = MagnesiumRpcGroup.toLayerHandler(
   }),
 );
 
-export const spokeHandlersLayer = Layer.mergeAll(listHandler, applyHandler, removeHandler);
+const attachedHandler = MagnesiumRpcGroup.toLayerHandler(
+  MAGNESIUM_WS_METHODS.spokesAttached,
+  Effect.gen(function* () {
+    const spokes = yield* Spokes;
+    return () => spokes.attached;
+  }),
+);
+
+const attachedPairedHandler = MagnesiumRpcGroup.toLayerHandler(
+  MAGNESIUM_WS_METHODS.spokesAttachedPaired,
+  Effect.gen(function* () {
+    const spokes = yield* Spokes;
+    return (input) => spokes.attachedPaired(input.name);
+  }),
+);
+
+export const spokeHandlersLayer = Layer.mergeAll(
+  listHandler,
+  applyHandler,
+  removeHandler,
+  attachedHandler,
+  attachedPairedHandler,
+);

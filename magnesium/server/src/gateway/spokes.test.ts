@@ -218,6 +218,9 @@ const fakeCluster = (allowed: ReadonlyArray<string>, options: { podsLinger?: boo
           if (label?.startsWith("magnesium.machine=")) {
             return item.metadata?.labels?.["magnesium.machine"] === label.split("=")[1];
           }
+          if (label !== null && label !== undefined && !label.includes("=")) {
+            return item.metadata?.labels?.[label] !== undefined;
+          }
           if (field?.startsWith("involvedObject.name=")) {
             return item.involvedObject?.name === field.split("=")[1];
           }
@@ -398,6 +401,61 @@ describe("a gateway's spokes", () => {
       expect(refused.detail).toContain("node gpu-node is not allowed");
     }).pipe(Effect.provide(cluster.spokes));
   });
+
+  it.effect(
+    "lists the machines an operator routes to in workloads, and spends a code once paired",
+    () => {
+      const cluster = fakeCluster(["node-b"]);
+      const core = "/api/v1/namespaces/magnesium";
+      const route = (name: string, labels: Record<string, string>) =>
+        cluster.objects.set(`${core}/services/${name}`, {
+          metadata: { name, labels },
+          spec: { type: "ExternalName" },
+        });
+      route("magnesium-notebook", {
+        "magnesium.dev/attached": "notebook",
+        "magnesium.dev/workload": "notebook-ws",
+      });
+      route("magnesium-display", {
+        "magnesium.dev/attached": "display",
+        "magnesium.dev/paired": "true",
+      });
+      // A route whose name doesn't match its label isn't one Magnesium's naming made.
+      route("someone-else", { "magnesium.dev/attached": "elsewhere" });
+      cluster.objects.set(`${core}/secrets/magnesium-notebook-pairing`, {
+        data: {
+          MAGNESIUM_HUB_PAIRING_CODE: Buffer.from("0123456789ABCDEF0123456789ABCDEF").toString(
+            "base64",
+          ),
+        },
+      });
+      return Effect.gen(function* () {
+        const spokes = yield* Spokes.Spokes;
+        expect(yield* spokes.attached).toEqual([
+          {
+            name: "notebook",
+            workload: "notebook-ws",
+            paired: false,
+            pairingCode: "0123456789ABCDEF0123456789ABCDEF",
+          },
+          { name: "display", workload: null, paired: true, pairingCode: null },
+        ]);
+        yield* spokes.attachedPaired("notebook");
+        const writes = cluster.calls
+          .filter((call) => call.method !== "GET")
+          .map((call) => `${call.method} ${call.path.replace(core, "")}`);
+        // The label first, so the operator's deploy never writes the spent code again.
+        expect(writes).toEqual([
+          "PATCH /services/magnesium-notebook",
+          "DELETE /secrets/magnesium-notebook-pairing",
+        ]);
+        const patch = cluster.calls.find((call) => call.method === "PATCH")!;
+        expect(patch.body).toMatchObject({
+          metadata: { labels: { "magnesium.dev/paired": "true" } },
+        });
+      }).pipe(Effect.provide(cluster.spokes));
+    },
+  );
 
   it.effect("on a server that isn't a gateway, says so", () =>
     Effect.gen(function* () {

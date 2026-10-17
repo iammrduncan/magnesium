@@ -1,4 +1,5 @@
 import {
+  type GatewayAttached,
   MAGNESIUM_WS_METHODS,
   type SpokeApplyInput,
   SpokeError,
@@ -24,6 +25,10 @@ export class GatewayClient extends Context.Service<
       input: SpokeApplyInput,
     ) => Effect.Effect<SpokeStatus, SpokeError>;
     readonly remove: (gateway: string, input: SpokeRemoveInput) => Effect.Effect<void, SpokeError>;
+    readonly attached: (
+      gateway: string,
+    ) => Effect.Effect<ReadonlyArray<GatewayAttached>, SpokeError>;
+    readonly attachedPaired: (gateway: string, name: string) => Effect.Effect<void, SpokeError>;
   }
 >()("@magnesium/server/hub/gatewayClient") {}
 
@@ -57,6 +62,9 @@ export const layer = Layer.effect(
         call(gateway, (rpc) => rpc[MAGNESIUM_WS_METHODS.spokesApply](input)),
       remove: (gateway, input) =>
         call(gateway, (rpc) => rpc[MAGNESIUM_WS_METHODS.spokesRemove](input)),
+      attached: (gateway) => call(gateway, (rpc) => rpc[MAGNESIUM_WS_METHODS.spokesAttached]()),
+      attachedPaired: (gateway, name) =>
+        call(gateway, (rpc) => rpc[MAGNESIUM_WS_METHODS.spokesAttachedPaired]({ name })),
     });
   }),
 );

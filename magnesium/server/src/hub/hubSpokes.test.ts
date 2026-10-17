@@ -5,6 +5,7 @@ import * as NodePath from "node:path";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
+  type GatewayAttached,
   type HubMachine,
   type SpokeApplyInput,
   SpokeError,
@@ -39,7 +40,12 @@ const spec: SpokeSpec = {
 };
 
 /** A hub with access to `gateway`, whose new spokes answer after `upAfter` tries. */
-const makeHub = (options: { readonly access?: ReadonlyArray<string>; readonly upAfter?: number }) =>
+const makeHub = (options: {
+  readonly access?: ReadonlyArray<string>;
+  readonly upAfter?: number;
+  /** The hub's machine names, which it probes for gateways. */
+  readonly names?: ReadonlyArray<string>;
+}) =>
   Effect.gen(function* () {
     const baseDir = yield* Effect.acquireRelease(
       Effect.promise(() => NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "mg-hub-spokes-"))),
@@ -53,6 +59,9 @@ const makeHub = (options: { readonly access?: ReadonlyArray<string>; readonly up
     const applied: Array<{ readonly gateway: string; readonly input: SpokeApplyInput }> = [];
     const removals: Array<{ readonly gateway: string; readonly input: SpokeRemoveInput }> = [];
     const gatewayState = { down: false, empty: false };
+    /** What the gateway routes to inside workloads' pods, and which routes it marked paired. */
+    const routed: GatewayAttached[] = [];
+    const markedPaired: string[] = [];
 
     const ports = ServerPorts.of({
       baseDir,
@@ -117,7 +126,7 @@ const makeHub = (options: { readonly access?: ReadonlyArray<string>; readonly up
         }),
       markRejected: () => Effect.void,
       renewDue: Effect.void,
-      names: Effect.succeed([]),
+      names: Effect.succeed(options.names ?? []),
       accessChanged: Stream.empty,
       refresh: (name) => Effect.sync(() => void refreshed.push(name)),
     });
@@ -150,6 +159,13 @@ const makeHub = (options: { readonly access?: ReadonlyArray<string>; readonly up
           };
         }),
       remove: (gateway, input) => Effect.sync(() => void removals.push({ gateway, input })),
+      attached: () => Effect.sync(() => routed.map((entry) => ({ ...entry }))),
+      attachedPaired: (_gateway, name) =>
+        Effect.sync(() => {
+          markedPaired.push(name);
+          const index = routed.findIndex((entry) => entry.name === name);
+          if (index >= 0) routed[index] = { ...routed[index]!, paired: true, pairingCode: null };
+        }),
     });
     const context = yield* Layer.build(
       HubSpokes.layer.pipe(
@@ -182,6 +198,8 @@ const makeHub = (options: { readonly access?: ReadonlyArray<string>; readonly up
       refreshed,
       records,
       gatewayState,
+      routed,
+      markedPaired,
     };
   });
 
@@ -304,7 +322,7 @@ describe("machines attached to workloads", () => {
       });
       expect(attached).toMatchObject({ paired: true, detail: null });
       expect(yield* hub.spokes.attached).toEqual([
-        { name: "cpu-host-2", gateway: "gateway", paired: true, detail: null },
+        { name: "cpu-host-2", gateway: "gateway", workload: null, paired: true, detail: null },
       ]);
       expect(hub.refreshed).toEqual(["cpu-host-2"]);
       // The workload's deploy runs it: the hub won't start a spoke in its name.
@@ -345,6 +363,67 @@ describe("machines attached to workloads", () => {
         .attach({ name: "notebook", gateway: "elsewhere", pairingCode: null })
         .pipe(Effect.flip);
       expect(noGateway.detail).toContain("no access to the gateway elsewhere");
+    }).pipe(Effect.scoped),
+  );
+});
+
+describe("machines found through their gateway", () => {
+  const code = "0123456789ABCDEF0123456789ABCDEF";
+
+  it.effect("a new one joins by itself and pairs with the code its workload's deploy left", () =>
+    Effect.gen(function* () {
+      const hub = yield* makeHub({ upAfter: 2, names: ["gateway"] });
+      hub.routed.push({
+        name: "notebook",
+        workload: "notebook-ws",
+        paired: false,
+        pairingCode: code,
+      });
+      yield* hub.spokes.discover;
+      expect(yield* hub.spokes.attached).toMatchObject([
+        { name: "notebook", gateway: "gateway", workload: "notebook-ws", paired: false },
+      ]);
+      expect(hub.refreshed).toContain("notebook");
+      while (!hub.access.has("notebook")) yield* TestClock.adjust("5 seconds");
+      // Paired: the gateway marks its route, so the spent code isn't written again.
+      while (hub.markedPaired.length === 0) yield* TestClock.adjust("1 second");
+      expect(hub.markedPaired).toEqual(["notebook"]);
+      expect(yield* hub.spokes.attached).toMatchObject([{ name: "notebook", paired: true }]);
+    }).pipe(Effect.scoped),
+  );
+
+  it.effect("a moved machine the hub already has needs no code", () =>
+    Effect.gen(function* () {
+      const hub = yield* makeHub({ access: ["cpu-host-2"], names: ["gateway"] });
+      hub.routed.push({
+        name: "cpu-host-2",
+        workload: "display",
+        paired: false,
+        pairingCode: null,
+      });
+      yield* hub.spokes.discover;
+      expect(yield* hub.spokes.attached).toEqual([
+        { name: "cpu-host-2", gateway: "gateway", workload: "display", paired: true, detail: null },
+      ]);
+      expect(hub.markedPaired).toEqual(["cpu-host-2"]);
+    }).pipe(Effect.scoped),
+  );
+
+  it.effect("one whose route goes is said to be gone, never removed, and only then detaches", () =>
+    Effect.gen(function* () {
+      const hub = yield* makeHub({ access: ["cpu-host-2"], names: ["gateway"] });
+      hub.routed.push({ name: "cpu-host-2", workload: "display", paired: true, pairingCode: null });
+      yield* hub.spokes.discover;
+      // Still routed: its workload's deploy is the way out.
+      const refused = yield* hub.spokes.detach({ name: "cpu-host-2" }).pipe(Effect.flip);
+      expect(refused.detail).toContain("still runs Magnesium");
+
+      hub.routed.splice(0);
+      yield* hub.spokes.discover;
+      const [gone] = yield* hub.spokes.attached;
+      expect(gone?.detail).toContain("no longer routes to it");
+      yield* hub.spokes.detach({ name: "cpu-host-2" });
+      expect(yield* hub.spokes.attached).toEqual([]);
     }).pipe(Effect.scoped),
   );
 });

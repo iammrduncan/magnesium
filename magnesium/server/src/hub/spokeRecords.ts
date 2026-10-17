@@ -36,6 +36,10 @@ export const AttachedRecord = Schema.Struct({
   gateway: HubMachineName,
   /** Where the hub reaches it: `<gateway>/spokes/<name>`. */
   url: Schema.String,
+  /** The workload it runs in, as its gateway says. */
+  workload: Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  /** Found through its gateway (its route is labelled), rather than attached by hand. */
+  discovered: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
 });
 export type AttachedRecord = typeof AttachedRecord.Type;
 

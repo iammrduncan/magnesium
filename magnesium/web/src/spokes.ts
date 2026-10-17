@@ -68,10 +68,15 @@ export const detachMachine = (pageUrl: string, name: string) =>
   callHub(pageUrl, (client) => client[MAGNESIUM_WS_METHODS.hubDetach]({ name }));
 
 /** An attached machine's row: how the hub reaches it, and whether it can yet. */
-export const describeAttached = (machine: HubAttached): string =>
-  machine.paired
-    ? `Through ${machine.gateway}`
-    : `${machine.detail ?? "Not paired yet."} · through ${machine.gateway}`;
+export const describeAttached = (machine: HubAttached): string => {
+  const where =
+    machine.workload === null
+      ? `through ${machine.gateway}`
+      : `in ${machine.workload} · through ${machine.gateway}`;
+  const place = where.charAt(0).toUpperCase() + where.slice(1);
+  if (machine.detail !== null) return `${machine.detail} · ${where}`;
+  return machine.paired ? place : `Not paired yet · ${where}`;
+};
 
 /**
  * What the Attach form sends, or what's wrong with it. The code is optional:

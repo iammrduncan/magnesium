@@ -1,4 +1,6 @@
 import {
+  type GatewayAttached,
+  HubMachineName,
   type SpokeApplyInput,
   SpokeError,
   type SpokeRemoveInput,
@@ -8,7 +10,9 @@ import * as Context from "effect/Context";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as Schedule from "effect/Schedule";
+import * as Schema from "effect/Schema";
 
 import { KubeApi } from "./kube.ts";
 import {
@@ -36,8 +40,32 @@ export class Spokes extends Context.Service<
     readonly list: Effect.Effect<ReadonlyArray<SpokeStatus>, SpokeError>;
     readonly apply: (input: SpokeApplyInput) => Effect.Effect<SpokeStatus, SpokeError>;
     readonly remove: (input: SpokeRemoveInput) => Effect.Effect<void, SpokeError>;
+    /** Machines attached inside workloads' pods that this gateway routes to (D59). */
+    readonly attached: Effect.Effect<ReadonlyArray<GatewayAttached>, SpokeError>;
+    /** The hub has paired with one: mark its route, then drop its spent code. */
+    readonly attachedPaired: (name: string) => Effect.Effect<void, SpokeError>;
   }
 >()("@magnesium/server/gateway/Spokes") {}
+
+/**
+ * How an operator's deploy marks a route to an attached machine, in the
+ * gateway's namespace: an ExternalName `magnesium-<machine>` labelled with the
+ * machine's name (and its workload's), plus, for a new machine, a Secret
+ * `magnesium-<machine>-pairing` holding its one-time code. Once the hub has
+ * paired, the route carries ATTACHED_PAIRED and the Secret is gone, so a
+ * redeploy knows not to write a spent code again.
+ */
+export const ATTACHED_LABEL = "magnesium.dev/attached";
+export const ATTACHED_WORKLOAD_LABEL = "magnesium.dev/workload";
+export const ATTACHED_PAIRED_LABEL = "magnesium.dev/paired";
+export const PAIRING_CODE_KEY = "MAGNESIUM_HUB_PAIRING_CODE";
+const pairingSecretName = (machine: string) => `magnesium-${machine}-pairing`;
+const isMachineName = Schema.is(HubMachineName);
+
+/** The parts of a route Service the gateway reads. */
+interface RouteView {
+  readonly metadata?: { readonly name?: string; readonly labels?: Record<string, string> };
+}
 
 const CORE = "/api/v1";
 const APPS = "/apis/apps/v1";
@@ -201,7 +229,54 @@ export const make = (context: Omit<RenderContext, "namespace">) =>
       }
     });
 
-    return Spokes.of({ list, apply, remove });
+    const attached = Effect.gen(function* () {
+      const routes = (yield* kube.list(
+        { group: CORE, resource: "services" },
+        { labelSelector: ATTACHED_LABEL },
+      )) as ReadonlyArray<RouteView>;
+      const found: GatewayAttached[] = [];
+      for (const route of routes) {
+        const labels = route.metadata?.labels ?? {};
+        const name = labels[ATTACHED_LABEL] ?? "";
+        // Only the route Magnesium's own naming gives it, for a name the hub can use.
+        if (!isMachineName(name) || route.metadata?.name !== `magnesium-${name}`) continue;
+        const paired = labels[ATTACHED_PAIRED_LABEL] === "true";
+        const secret = paired
+          ? Option.none()
+          : yield* kube.get({ group: CORE, resource: "secrets", name: pairingSecretName(name) });
+        const encoded =
+          secret._tag === "Some"
+            ? (secret.value as { readonly data?: Record<string, string> }).data?.[PAIRING_CODE_KEY]
+            : undefined;
+        const code = encoded ? Buffer.from(encoded, "base64").toString("utf8").trim() : "";
+        found.push({
+          name,
+          workload: labels[ATTACHED_WORKLOAD_LABEL] ?? null,
+          paired,
+          pairingCode: code === "" ? null : code,
+        });
+      }
+      return found;
+    });
+
+    const attachedPaired = Effect.fn("Spokes.attachedPaired")(function* (name: string) {
+      // The label first: the operator's deploy writes a code only while it's absent.
+      yield* kube.apply(
+        { group: CORE, resource: "services", name: `magnesium-${name}` },
+        {
+          apiVersion: "v1",
+          kind: "Service",
+          metadata: {
+            name: `magnesium-${name}`,
+            namespace: kube.namespace,
+            labels: { [ATTACHED_PAIRED_LABEL]: "true" },
+          },
+        },
+      );
+      yield* kube.remove({ group: CORE, resource: "secrets", name: pairingSecretName(name) });
+    });
+
+    return Spokes.of({ list, apply, remove, attached, attachedPaired });
   });
 
 /** Every server answers the spoke RPCs; only a gateway can do anything. */
@@ -211,5 +286,7 @@ export const notAGatewayLayer = Layer.succeed(
     list: Effect.fail(new SpokeError({ detail: "This server isn't a gateway." })),
     apply: () => Effect.fail(new SpokeError({ detail: "This server isn't a gateway." })),
     remove: () => Effect.fail(new SpokeError({ detail: "This server isn't a gateway." })),
+    attached: Effect.fail(new SpokeError({ detail: "This server isn't a gateway." })),
+    attachedPaired: () => Effect.fail(new SpokeError({ detail: "This server isn't a gateway." })),
   }),
 );

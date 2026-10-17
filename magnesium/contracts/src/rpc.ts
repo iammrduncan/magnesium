@@ -35,6 +35,8 @@ import {
   SandboxList,
 } from "./profiles.ts";
 import {
+  GatewayAttached,
+  GatewayAttachedPairedInput,
   HubAttached,
   HubAttachInput,
   HubDetachInput,
@@ -94,6 +96,8 @@ export const MAGNESIUM_WS_METHODS = {
   hubSpokesApply: "magnesium.hubSpokes.apply",
   hubSpokesRemove: "magnesium.hubSpokes.remove",
   hubSpokesGateways: "magnesium.hubSpokes.gateways",
+  spokesAttached: "magnesium.spokes.attached",
+  spokesAttachedPaired: "magnesium.spokes.attachedPaired",
   hubAttachedList: "magnesium.hubAttached.list",
   hubAttach: "magnesium.hubAttached.attach",
   hubDetach: "magnesium.hubAttached.detach",
@@ -298,6 +302,21 @@ const HubSpokesGatewaysRpc = Rpc.make(MAGNESIUM_WS_METHODS.hubSpokesGateways, {
   error: SpokeError,
 }).annotate(RequiredScope, AuthOrchestrationReadScope);
 
+/**
+ * The machines a gateway routes to inside workloads' pods (D59), with the
+ * one-time codes of new ones: for the hub, which holds full access.
+ */
+const SpokesAttachedRpc = Rpc.make(MAGNESIUM_WS_METHODS.spokesAttached, {
+  success: Schema.Array(GatewayAttached),
+  error: SpokeError,
+}).annotate(RequiredScope, AuthAccessWriteScope);
+
+/** The hub has paired with an attached machine: mark its route and drop its spent code. */
+const SpokesAttachedPairedRpc = Rpc.make(MAGNESIUM_WS_METHODS.spokesAttachedPaired, {
+  payload: GatewayAttachedPairedInput,
+  error: SpokeError,
+}).annotate(RequiredScope, AuthAccessWriteScope);
+
 /** The machines attached inside workloads' pods, reached through gateways (D59). */
 const HubAttachedListRpc = Rpc.make(MAGNESIUM_WS_METHODS.hubAttachedList, {
   success: Schema.Array(HubAttached),
@@ -357,6 +376,8 @@ export const MagnesiumRpcGroup = RpcGroup.make(
   SpokesListRpc,
   SpokesApplyRpc,
   SpokesRemoveRpc,
+  SpokesAttachedRpc,
+  SpokesAttachedPairedRpc,
   HubSpokesListRpc,
   HubSpokesApplyRpc,
   HubSpokesRemoveRpc,
