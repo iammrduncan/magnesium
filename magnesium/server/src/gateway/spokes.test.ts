@@ -2,8 +2,10 @@
 import type { SpokeSpec } from "@magnesium/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
+import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import { HttpClient, HttpClientResponse } from "effect/unstable/http";
+import * as TestClock from "effect/testing/TestClock";
 
 import { KubeApi, make as makeKube } from "./kube.ts";
 import {
@@ -154,7 +156,7 @@ interface Call {
 }
 
 /** A Kubernetes API that keeps what is applied, and refuses nodes outside `allowed`. */
-const fakeCluster = (allowed: ReadonlyArray<string>) => {
+const fakeCluster = (allowed: ReadonlyArray<string>, options: { podsLinger?: boolean } = {}) => {
   const calls: Call[] = [];
   const objects = new Map<string, unknown>();
   const client = HttpClient.make((request) =>
@@ -196,9 +198,10 @@ const fakeCluster = (allowed: ReadonlyArray<string>) => {
       }
       if (request.method === "DELETE") {
         objects.delete(url.pathname);
-        // As the garbage collector does: a workload's pods go with it.
+        // As the garbage collector does: a workload's pods go with it (unless
+        // the test stops them itself, as a pod that takes a while to end).
         const owner = url.pathname.split("/").at(-1)!;
-        for (const path of Array.from(objects.keys())) {
+        for (const path of options.podsLinger ? [] : Array.from(objects.keys())) {
           if (path.includes("/pods/") && path.split("/").at(-1)!.startsWith(`${owner}-`)) {
             objects.delete(path);
           }
@@ -334,6 +337,31 @@ describe("a gateway's spokes", () => {
         order.indexOf("PATCH /statefulsets/magnesium-cpu-host-2"),
       );
       expect(cluster.objects.has(`${base}/deployments/magnesium-cpu-host-2`)).toBe(false);
+      expect(cluster.objects.has(`${base}/statefulsets/magnesium-cpu-host-2`)).toBe(true);
+    }).pipe(Effect.provide(cluster.spokes));
+  });
+
+  it.effect("finishes a change even when the hub stops waiting for it", () => {
+    const cluster = fakeCluster(["node-b"], { podsLinger: true });
+    const base = "/apis/apps/v1/namespaces/magnesium";
+    const oldPod = "/api/v1/namespaces/magnesium/pods/magnesium-cpu-host-2-7c9f-x2k4p";
+    cluster.objects.set(`${base}/deployments/magnesium-cpu-host-2`, {
+      metadata: { labels: { "magnesium.machine": "cpu-host-2" } },
+      spec: { replicas: 1 },
+      status: { readyReplicas: 1 },
+    });
+    cluster.objects.set(oldPod, { metadata: { labels: { "magnesium.machine": "cpu-host-2" } } });
+    return Effect.gen(function* () {
+      const spokes = yield* Spokes.Spokes;
+      const applying = yield* Effect.forkChild(spokes.apply({ spec, secrets: null }));
+      yield* TestClock.adjust("1 second");
+      // The old Deployment is gone, and the change waits for its pod to stop.
+      expect(cluster.objects.has(`${base}/deployments/magnesium-cpu-host-2`)).toBe(false);
+      // The hub hangs up, as when it restarts mid-change.
+      const hangingUp = yield* Effect.forkChild(Fiber.interrupt(applying));
+      cluster.objects.delete(oldPod);
+      yield* TestClock.adjust("5 seconds");
+      yield* Fiber.join(hangingUp);
       expect(cluster.objects.has(`${base}/statefulsets/magnesium-cpu-host-2`)).toBe(true);
     }).pipe(Effect.provide(cluster.spokes));
   });

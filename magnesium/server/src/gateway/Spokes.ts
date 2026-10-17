@@ -59,7 +59,7 @@ export const make = (context: Omit<RenderContext, "namespace">) =>
     const kube = yield* KubeApi;
     const render: RenderContext = { ...context, namespace: kube.namespace };
 
-    const apply = Effect.fn("Spokes.apply")(function* (input: SpokeApplyInput) {
+    const applyNow = Effect.fn("Spokes.apply")(function* (input: SpokeApplyInput) {
       const { spec, secrets } = input;
       const names = spokeObjectNames(spec.name);
       // The Secret as it will be: the one sent, or the one already there.
@@ -110,6 +110,11 @@ export const make = (context: Omit<RenderContext, "namespace">) =>
         }
       );
     });
+
+    // A change runs to the end even when the hub stops waiting for it (it
+    // restarted, say). Stopping between retiring a spoke's old Deployment and
+    // applying its StatefulSet would leave the machine with nothing running.
+    const apply = (input: SpokeApplyInput) => applyNow(input).pipe(Effect.uninterruptible);
 
     /**
      * A spoke made before StatefulSets ran as a Deployment. Remove it, and wait

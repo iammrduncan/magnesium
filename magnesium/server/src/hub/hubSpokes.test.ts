@@ -52,7 +52,7 @@ const makeHub = (options: { readonly access?: ReadonlyArray<string>; readonly up
     const refreshed: string[] = [];
     const applied: Array<{ readonly gateway: string; readonly input: SpokeApplyInput }> = [];
     const removals: Array<{ readonly gateway: string; readonly input: SpokeRemoveInput }> = [];
-    const gatewayState = { down: false };
+    const gatewayState = { down: false, empty: false };
 
     const ports = ServerPorts.of({
       baseDir,
@@ -125,16 +125,18 @@ const makeHub = (options: { readonly access?: ReadonlyArray<string>; readonly up
       list: (gateway) =>
         gatewayState.down
           ? Effect.fail(new SpokeError({ detail: `Could not reach the gateway ${gateway}.` }))
-          : Effect.succeed([
-              {
-                name: "cpu-host-2",
-                node: "node-b",
-                build: "f2fbc55f42",
-                replicas: 1,
-                ready: true,
-                detail: null,
-              },
-            ]),
+          : gatewayState.empty
+            ? Effect.succeed([])
+            : Effect.succeed([
+                {
+                  name: "cpu-host-2",
+                  node: "node-b",
+                  build: "f2fbc55f42",
+                  replicas: 1,
+                  ready: true,
+                  detail: null,
+                },
+              ]),
       apply: (gateway, input) =>
         Effect.sync(() => {
           applied.push({ gateway, input });
@@ -268,6 +270,10 @@ describe("the hub's spokes", () => {
           { name: "cpu-host-2", status: null, detail: "Could not reach the gateway gateway." },
         ]);
         hub.gatewayState.down = false;
+        // The gateway answers, with nothing running for it: say that, not that it's away.
+        hub.gatewayState.empty = true;
+        expect((yield* hub.spokes.list)[0]?.detail).toContain("Nothing runs for it in the cluster");
+        hub.gatewayState.empty = false;
 
         yield* hub.spokes.remove({ name: "cpu-host-2", keepVolume: true });
         expect(hub.removals).toEqual([

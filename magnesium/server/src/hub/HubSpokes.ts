@@ -174,17 +174,20 @@ export const make = Effect.gen(function* () {
     return yield* Effect.forEach(known, (record) =>
       Effect.gen(function* () {
         const statuses = byGateway.get(record.gateway);
+        const status = typeof statuses === "string" ? null : (statuses?.get(record.name) ?? null);
         const paired = yield* hasAccess(record.name);
         return {
           ...record,
-          status: typeof statuses === "string" ? null : (statuses?.get(record.name) ?? null),
+          status,
           paired,
           detail:
             typeof statuses === "string"
               ? statuses
-              : paired
-                ? null
-                : "The hub pairs with it once it is up.",
+              : status === null
+                ? "Nothing runs for it in the cluster. Start it or change its build to apply it again."
+                : paired
+                  ? null
+                  : "The hub pairs with it once it is up.",
         } satisfies HubSpoke;
       }),
     );
