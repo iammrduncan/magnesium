@@ -1,17 +1,17 @@
 ---
 id: mg-spokes-k8s
-status: IN_PROGRESS
+status: VERIFIED
 kind: deploy
 depends_on: [mg-home]
 phase: 2
 boards: []
-decisions: [D15, D35, D38, D52, D57, D59]
+decisions: [D15, D35, D38, D52, D57, D59, D60]
 ---
 # Machine servers run in Kubernetes: attached to workloads, or as pods of their own
 
 Magnesium supports three ways to run a machine server: on bare metal or in a VM (the Ansible roles), or in Kubernetes. In Kubernetes a server is attached inside the workload pods that do the work (D59), so its agents use those workloads' files, tools, GPUs and models. A managed spoke, a pod of its own that the hub creates, suits a machine whose only job is Magnesium. The hub stays where the Ansible roles put it. Upstream's V2 (goal 24) later lands on these servers as a new image (D52).
 
-The split follows [doc 15](../15-magnesium-as-a-product.md) (D57). A cluster's operator gives Magnesium a namespace and an envelope:
+The split follows [doc 15](../../15-magnesium-as-a-product.md) (D57). A cluster's operator gives Magnesium a namespace and an envelope:
 - allowed nodes and a quota;
 - pod security `restricted`;
 - network rules;
@@ -81,30 +81,24 @@ The operator bootstraps Magnesium's gateway there once. From then on Magnesium d
 
 ## Goal summary
 
-**2026-10-17: IN_PROGRESS.** Builds 1 to 10 are done, and Test it 1 to 3 passed with a gateway in a Kubernetes namespace, a managed spoke, and a bare-metal machine moved into a pod with its name, threads and projects.
+**2026-10-17: VERIFIED.** Builds 1 to 10 are done and every Test it step passed on the real fleet, which ended the day on one build across a hub, a gateway, two machines attached to workloads and two on bare metal.
 
-- **What the tests found and fixed:**
-  - the forwarding code passed request bodies on as `application/octet-stream`, so a spoke refused the hub's pairing exchange (also a bug in the hub's proxy to its machines);
-  - a gateway would have run agents beside its namespace's deploy identity; it now turns every provider off;
-  - a pod reads its Secret only at start, so a new pairing code or key never reached a running spoke; its workload now carries a fingerprint of its Secret and rolls when it changes;
-  - a moved machine's settings pointed OpenCode at the fence wrapper in its old home; profile sync now treats any `magnesium-fenced` as its own;
-  - a pod's generated name said nothing about where it ran; spokes are StatefulSets with stable names, and Fleet shows each server's place;
-  - a change cut off when the hub restarted left a spoke with nothing running; a change now runs to the end.
-- **Direction (D59):** servers attach inside the workloads that do the work. The portable install, `magnesium-attach`, attached machines in Settings and Fleet's "in <workload> on <node>" are built, and CI attaches the image to a bare Debian image as a non-root uid on amd64 and arm64.
-- **Attached machines join by themselves:** an operator's deploy labels the route to a machine and, for a new one, leaves its one-time code beside the gateway. The hub asks its gateways every minute, attaches new machines, pairs once each answers, and has the gateway mark the route paired and delete the spent code. A machine whose route goes is shown as gone, never removed on its own.
-- **Two machines moved into workloads (2026-10-17):** a machine in Magnesium's own pod, and one on bare metal, each moved into an existing workload's pod with its name, threads and logins. The hub found each by itself within seconds of the workload starting, with no code (it kept its access), and marked its route paired. An agent there runs in the workload's own container, as its user, with the bundle's git where the image has none. What the moves found and fixed:
-  - the gateway's calls for attached machines needed a scope a paired hub doesn't hold (a test now checks every call the hub makes on a gateway);
-  - `cp -a` into the init container's volume fails as a non-root user; the bundle ships `magnesium-bundle-copy`, and CI copies as one;
-  - a server in a pod went by the pod's generated host name; it now goes by `MAGNESIUM_MACHINE`;
-  - OpenCode instances starting together failed on "database is locked"; a start now tries again;
-  - profile sync only knew the CLIs present when the server started, so one copied in later stayed broken until a restart; it now looks each run.
-- **One build on every server (2026-10-17):** the hub, a gateway, two machines attached to workloads and two on bare metal all run the same build, and Fleet shows none differing from the hub.
-- **Two builds of one commit on a host** (a host building for itself and for a hub that doesn't build) now wait for each other instead of the second refusing.
+- **Tests:**
+  1. The gateway, bootstrapped by the operator, answers from the hub alone: after a policy fix, a laptop gets no connection, and every API through the gateway refuses a caller without a token.
+  2. A Magnesium pod from Settings, and a brand-new machine attached in a workload, which paired by itself with its one-time code; taken out, Settings said its route had gone, and Detach let it go.
+  3. Three bare-metal machines moved in, keeping their names, threads, projects and the hub's access: one into a Magnesium pod and then into a workload, one into a dev workspace, and one into a GPU workspace.
+  4. Home answered an approval from an attached machine; the footer, Fleet → Terminal (a shell in the workload's container) and provider sign-ins work there.
+  5. Threads start supervised; a fenced agent gets "Permission denied" on the state home; no key or code is in any manifest except by Secret reference.
+  6. Rollback: with Magnesium taken out of the workload and the bare-metal service started again, Detach keeping the hub's access brought the machine back on bare metal with its threads from before the move.
+  7. In a GPU workload, a fenced agent saw the workload's GPU (vulkaninfo); Magnesium started no GPU work of its own.
+- **Built along the way:** the portable install and `magnesium-attach` (D59); attached machines that join and pair by themselves through their gateway; Magnesium's own pods kept beside them (D60); one Environments list in Settings that says what each machine is, with its actions in its menu; Fleet's "in <workload> on <node>"; a user guide for both ways.
+- **What the tests found and fixed:** forwarded bodies lost their content type; a gateway could have run agents beside its deploy identity; a pod missed a changed Secret; a moved machine's settings pointed at its old wrapper; a change cut off by a hub restart left nothing running; the gateway asked a scope a paired hub doesn't hold; `cp -a` failed as a non-root init container; a pod went by its generated host name; OpenCode instances collided on their database lock; profile sync missed a CLI installed after start; Detach had no way to keep access for a rollback; a route was marked paired before its machine answered.
+- **Merge cost:** 230 `magnesium:` markers in 75 upstream files; a rehearsal against upstream's v0.1.0 (2026-10-17) finds 29 files with real conflicts (49 hunks), the subject of goal 24.
 
 ## Next steps
 
-1. Tests 4, 5 and 7 on attached machines, and the rollback (test 6) on a machine still on bare metal.
-2. Model keys reach attached and bare-metal machines from the hub (goal 30); until then a workload's deploy gives OpenCode its key.
-3. Then goal 24, upstream V2.
+1. Goal 24, upstream V2 (v0.1.0), on a branch, rolled out to every server in one window.
+2. Goal 33, Waiting on you (D62).
+3. Model keys reach attached and bare-metal machines from the hub (goal 30); until then a workload's deploy gives OpenCode its key.
 
-Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](../README.md#done-means-for-every-goal)).
