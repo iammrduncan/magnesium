@@ -1,0 +1,45 @@
+---
+id: mg-waiting-on-you
+status: PLANNED
+kind: feature
+depends_on: [mg-home, mg-upstream-v2]
+phase: 2
+boards: []
+decisions: [D53, D62]
+---
+# Waiting on you: a turn that ends asking something shows on Home
+
+Agents often end a turn by asking in plain words: "Should I go ahead?", "Approve this and I'll deploy", "Which do you want?". They raise no approval or question through their tools, so Home doesn't show it, and in a thread list a turn that ended waiting on you looks the same as one that finished. This goal reads how each turn ended, with a small, cheap model, and puts the ones that wait on you in Home's Needs you, next to approvals, questions and plans (D62).
+
+## Build
+
+1. **When a turn ends,** on any machine, its last agent message is checked: is it asking you something, waiting for your approval or a decision, blocked on something only you can do, or done? A quick check comes first and costs nothing: a message that ends with a question, or says "let me know", "approve", "waiting for" and the like, goes on to the model; one that plainly reports finished work may not.
+2. **The model** reads only that last message, bounded in size, and answers in a fixed shape: the kind (asking, waiting for approval, blocked, done), and one line saying what it needs from you. It has no tools and never touches the thread. The model and whether this runs are a setting, Settings → General → Waiting on you, on the hub for the whole fleet. It runs on the hub with Magnesium's model keys (D57), like the recaps of goal 26, which can share it.
+3. **On Home,** a waiting turn is a Needs you card: the thread, its machine, the one-line need, the message's last lines, and:
+   - **Reply,** which sends your answer to the thread from the card;
+   - **Open**;
+   - **Not waiting,** which clears it, for a turn that was in fact done.
+   It counts in the sidebar and the footer's Needs you, and clears on its own when you send the thread a message or a new turn starts.
+4. **In the thread list,** a thread whose turn ended waiting on you is marked as waiting, not as idle.
+5. **Cost guard:** one check per turn, never one for a turn that raised its own approval or question, and a cap per hour shown with the setting. A failed or slow check leaves the turn as it is and never blocks the thread.
+6. **Agents and schedules.** Waiting turns are part of Home's list for MCP and the agents API, so a bot or a scheduled check can see what waits on you.
+
+## Test it
+
+1. **Off by default.** With the setting off, no model is called.
+2. **On, with a cheap model.** A thread whose turn ends "I've staged the change; should I deploy it?" shows on Home as waiting, with a one-line need ("Deploy the staged change?"). Reply from the card: the thread gets the answer and runs on; the card goes.
+3. **Done stays done.** A turn that ends "Done: tests pass, pushed as 1a2b3c" shows nothing.
+4. **Blocked.** A turn that ends "I need you to approve this in the other session" shows as blocked, with that need.
+5. **No double cards.** A turn that raised an approval through its tool shows only the approval card.
+6. **Not waiting** clears a card that guessed wrong, and the next turn is checked afresh.
+7. **On every kind of machine:** bare metal, a Magnesium pod, and attached in a workload.
+8. **Cost guard.** An hour of short turns stays under the cap; a check that times out leaves no card and no error in the thread.
+
+## Not in this goal
+
+- Sessions started outside Magnesium (D25): an agent you run in your own terminal isn't seen. As the fleet's agents run as Magnesium threads, they are.
+- Push notifications for waiting turns (goal 07 adds them).
+
+## Goal summary
+
+Not started.

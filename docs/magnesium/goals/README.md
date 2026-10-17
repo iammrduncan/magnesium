@@ -44,10 +44,11 @@ Goals are tested by hand on a real fleet: a hub and at least two machines, one o
 | 30  | [Accounts](30-provider-accounts.goal)                                        | Sign in to your Claude Code and Codex subscriptions once on the hub; every machine gets them, and you swap the active one from the hub | 03, 24, 25     | none                                                                    |
 | 31  | [Add a machine over SSH](31-add-a-machine-over-ssh.goal)                     | Add a machine from the hub with an SSH target: it installs, starts, pairs and gets your accounts, in a pod too                         | 25, 30         | none                                                                    |
 | 32  | [Kubernetes clusters from the hub](32-kubernetes-clusters-from-the-hub.goal) | Give the hub a namespace: it deploys the gateway, runs Magnesium's own pods and attaches to a workload you pick                        | 25, 31         | none                                                                    |
+| 33  | [Waiting on you](33-waiting-on-you.goal)                                     | A turn that ends asking you something, or waiting on your approval, shows on Home's Needs you, checked by a cheap model                | 06, 24         | Home · desktop                                                          |
 
 ```text
 01 ─► 02 ─┬─► 03 ──────────────────────────────────────┐
-          └─► 04 ─► 05 ─► 06 ─► 25 k8s ─► 24 V2 ─► 15 projects ─► 07
+          └─► 04 ─► 05 ─► 06 ─► 25 k8s ─► 24 V2 ─► 33 waiting ─► 15 projects ─► 07
                      │     │                           │
      after 24, beside 15:  26 recaps, 30 accounts      │
                            30 ─► 31 add over SSH ─► 32 clusters
