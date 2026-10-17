@@ -103,4 +103,5 @@ The hub holds your profiles and sends each to the machines it names; see
   `systemctl --user status magnesium` shows why.
 - **Adding a new machine to the hub:** see the deploy runbook,
   [`magnesium/deploy/ansible/README.md`](../../magnesium/deploy/ansible/README.md),
-  "Adding a machine".
+  "Adding a machine". In Kubernetes, in its own pod or inside a workload's
+  pods, see [Machines in Kubernetes](./kubernetes.md).

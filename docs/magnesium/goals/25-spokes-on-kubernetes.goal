@@ -100,7 +100,6 @@ The operator bootstraps Magnesium's gateway there once. From then on Magnesium d
 2. Tests 4, 5 and 7 on attached machines.
 3. One build on every server.
 4. Shrink the image: each build takes about 5 GB on a node.
-5. Decide whether Magnesium's own pods ("Machines in Kubernetes") stay as an option beside attaching (D59), or go.
-6. Then goal 24, upstream V2.
+5. Then goal 24, upstream V2.
 
 Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).
