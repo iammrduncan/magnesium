@@ -1,4 +1,4 @@
-// @effect-diagnostics nodeBuiltinImport:off globalDate:off - the test ages release folders on disk.
+// @effect-diagnostics nodeBuiltinImport:off globalDate:off globalTimers:off - the test ages release folders on disk and waits on a real build process.
 import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
@@ -341,6 +341,83 @@ describe("magnesium-release", () => {
     release.run("activate", "a");
     expect(release.run("activate", "b").stdout).toContain("Backed up the state");
     expect(NodeFS.readdirSync(NodePath.join(release.root, "state", "backups"))).toHaveLength(1);
+  });
+
+  it("waits for another build of the same commit on this host, then uses it", async () => {
+    const release = makeRoot();
+    const repo = NodePath.join(release.root, "repo");
+    const git = (...args: Array<string>) =>
+      NodeChildProcess.execFileSync("git", ["-C", repo, ...args], { encoding: "utf8" });
+    NodeFS.mkdirSync(repo);
+    git("init", "--quiet", "--initial-branch=main");
+    NodeFS.writeFileSync(NodePath.join(repo, "README.md"), "x");
+    git("add", "README.md");
+    git("-c", "user.name=t", "-c", "user.email=t@localhost", "commit", "--quiet", "-m", "x");
+    const sha = git("rev-parse", "--short=10", "HEAD").trim();
+    // Another deploy is building this commit here: its lock names a live process.
+    const dest = NodePath.join(release.root, "releases", sha);
+    const lock = NodePath.join(release.root, "releases", `.lock-${sha}`);
+    NodeFS.mkdirSync(dest, { recursive: true });
+    NodeFS.mkdirSync(lock);
+    NodeFS.writeFileSync(NodePath.join(lock, "pid"), `${process.pid}\n`);
+
+    const waiting = NodeChildProcess.spawn("bash", [script, "build", "main", repo], {
+      env: { ...process.env, MAGNESIUM_ROOT: release.root, MAGNESIUM_BUILD_POLL: "1" },
+    });
+    let stdout = "";
+    waiting.stdout.on("data", (chunk: Buffer) => (stdout += chunk.toString()));
+    const exited = new Promise<number | null>((resolve) => waiting.on("close", resolve));
+    // The other build finishes: its server lands, and it lets go of the lock.
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    NodeFS.mkdirSync(NodePath.join(dest, "apps/server/dist"), { recursive: true });
+    NodeFS.writeFileSync(NodePath.join(dest, "apps/server/dist/bin.mjs"), "");
+    NodeFS.rmSync(lock, { recursive: true });
+
+    expect(await exited).toBe(0);
+    expect(stdout).toContain("waiting for it");
+    expect(stdout).toContain(`${sha} is already built.`);
+  });
+
+  it("builds past a lock whose build is gone", () => {
+    const release = makeRoot();
+    const repo = NodePath.join(release.root, "repo");
+    const git = (...args: Array<string>) =>
+      NodeChildProcess.execFileSync("git", ["-C", repo, ...args], { encoding: "utf8" });
+    NodeFS.mkdirSync(repo);
+    git("init", "--quiet", "--initial-branch=main");
+    NodeFS.writeFileSync(NodePath.join(repo, "README.md"), "x");
+    git("add", "README.md");
+    git("-c", "user.name=t", "-c", "user.email=t@localhost", "commit", "--quiet", "-m", "x");
+    const sha = git("rev-parse", "--short=10", "HEAD").trim();
+    // A lock left by a build whose process has exited.
+    const gone = NodeChildProcess.spawnSync("sh", ["-c", "echo $$"], { encoding: "utf8" });
+    const lock = NodePath.join(release.root, "releases", `.lock-${sha}`);
+    NodeFS.mkdirSync(lock, { recursive: true });
+    NodeFS.writeFileSync(NodePath.join(lock, "pid"), gone.stdout);
+    const fakeVp = NodePath.join(release.root, "fake-vp");
+    NodeFS.writeFileSync(
+      fakeVp,
+      "#!/bin/sh\nmkdir -p apps/server/dist && touch apps/server/dist/bin.mjs\n",
+    );
+    NodeFS.chmodSync(fakeVp, 0o755);
+
+    const result = NodeChildProcess.spawnSync("bash", [script, "build", "main", repo], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        MAGNESIUM_ROOT: release.root,
+        MAGNESIUM_PNPM: "true",
+        MAGNESIUM_VP: fakeVp,
+        MAGNESIUM_BUILD_POLL: "1",
+      },
+    });
+    // It waited on nothing: the stale lock goes, but the dead build left no folder,
+    // so this one takes the lock and builds.
+    expect(result.status).toBe(0);
+    expect(
+      NodeFS.existsSync(NodePath.join(release.root, "releases", sha, "apps/server/dist/bin.mjs")),
+    ).toBe(true);
+    expect(NodeFS.existsSync(lock)).toBe(false);
   });
 
   it("never deletes a release folder that another build is still filling", () => {

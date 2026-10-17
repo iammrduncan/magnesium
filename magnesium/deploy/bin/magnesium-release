@@ -217,6 +217,24 @@ restore() {
   unit_ctl start
 }
 
+# Waits while another process on this host holds a build lock: until it lets
+# go, its process is gone (a stale lock, removed), or MAGNESIUM_BUILD_WAIT
+# seconds (an hour) pass.
+wait_for_build() {
+  local lock="$1" waited=0 limit="${MAGNESIUM_BUILD_WAIT:-3600}" poll="${MAGNESIUM_BUILD_POLL:-5}" pid
+  echo "Another build of this commit is running here; waiting for it."
+  while [ -d "$lock" ]; do
+    pid="$(cat "$lock/pid" 2> /dev/null || true)"
+    if [ -n "$pid" ] && ! kill -0 "$pid" 2> /dev/null; then
+      rm -rf "$lock"
+      break
+    fi
+    [ "$waited" -lt "$limit" ] || die "timed out waiting for another build of this commit"
+    sleep "$poll"
+    waited=$((waited + poll))
+  done
+}
+
 build() {
   local ref="$1" source="$2"
   # A pinned commit that is already built needs no clone.
@@ -245,8 +263,22 @@ build() {
     echo "$sha is already built."
     return
   fi
-  # A folder without a server is another build still running, or one that
-  # failed. Never delete it from under a running build.
+  # Two deploys can share a build host (a hub that doesn't build, and the host
+  # itself). The first to take this lock builds; another waits and uses it.
+  local lock="$ROOT/releases/.lock-$sha"
+  while ! mkdir "$lock" 2> /dev/null; do
+    wait_for_build "$lock"
+    if is_built "$dest"; then
+      rm -rf "$work"
+      echo "$sha is already built."
+      return
+    fi
+  done
+  echo "$$" > "$lock/pid"
+  BUILD_LOCK="$lock"
+  trap 'rm -rf "$BUILD_LOCK"' EXIT
+  # A folder without a server is a build that failed, or one from a release
+  # script without the lock still running. Never delete it from under it.
   if [ -e "$dest" ]; then
     rm -rf "$work"
     die "releases/$sha exists but is not built: another build is running, or one failed (remove it to retry)"
