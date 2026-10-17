@@ -110,9 +110,15 @@ export const desiredInstances = (input: {
         typeof config.binaryPath === "string" && config.binaryPath.trim()
           ? config.binaryPath
           : info.binary;
+      // Any `magnesium-fenced` is ours, also one from another install, such as a
+      // machine's old home before it moved into a pod: run the real CLI through
+      // this install's wrapper, as named, or else as the PATH finds it.
       const real =
-        configured === fencedWrapper
-          ? (envValue(instance, "MAGNESIUM_REAL_BIN") ?? info.binary)
+        path.basename(configured) === "magnesium-fenced"
+          ? ([envValue(instance, "MAGNESIUM_REAL_BIN"), info.binary].find(
+              (candidate): candidate is string =>
+                candidate !== undefined && input.installed(candidate),
+            ) ?? info.binary)
           : configured;
       if (!input.installed(real)) continue;
       next[id] = {

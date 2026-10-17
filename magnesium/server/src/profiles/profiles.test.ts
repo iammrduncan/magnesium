@@ -340,6 +340,44 @@ describe("stock instances", () => {
     }).pipe(Effect.provide(NodeServices.layer)),
   );
 
+  it.effect("follow a machine into a pod: another install's wrapper becomes this one's", () =>
+    Effect.gen(function* () {
+      const root = tempRoot();
+      // As settings.json came over from the machine's bare-metal home.
+      const moved = settings({
+        providerInstances: {
+          [ProviderInstanceId.make("opencode")]: {
+            driver: ProviderDriverKind.make("opencode"),
+            environment: [
+              { name: "MAGNESIUM_SANDBOX", value: "fenced", sensitive: false },
+              {
+                name: "MAGNESIUM_REAL_BIN",
+                value: "/home/agent/.local/bin/opencode",
+                sensitive: false,
+              },
+            ],
+            config: {
+              binaryPath:
+                "/home/agent/.local/share/magnesium/current/magnesium/deploy/bin/magnesium-fenced",
+            },
+          },
+        },
+      });
+      // Only the image's OpenCode, found on the PATH, is here.
+      const next = yield* run(root, moved, (binary) => binary === "opencode");
+      const opencode = next[ProviderInstanceId.make("opencode")];
+      expect(opencode?.config).toMatchObject({ binaryPath: "/opt/magnesium/bin/magnesium-fenced" });
+      expect(
+        Object.fromEntries((opencode?.environment ?? []).map((e) => [e.name, e.value])),
+      ).toMatchObject({ MAGNESIUM_SANDBOX: "fenced", MAGNESIUM_REAL_BIN: "opencode" });
+      expect(next[ProviderInstanceId.make(nativeTwinInstanceId("opencode"))]?.config).toMatchObject(
+        {
+          binaryPath: "opencode",
+        },
+      );
+    }).pipe(Effect.provide(NodeServices.layer)),
+  );
+
   it.effect("settle: a second sync over its own output changes nothing", () =>
     Effect.gen(function* () {
       const root = tempRoot();
