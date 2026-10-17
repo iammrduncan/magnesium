@@ -40,12 +40,12 @@ The operator bootstraps Magnesium's gateway there once. From then on Magnesium d
    - It can do nothing outside the namespace, and specs outside the envelope are refused by the cluster's admission rules; the gateway shows why.
    - Its own contract, so an operator can bootstrap it: port, health check, image and the environment it needs at start.
 4. **Spokes from the hub.**
-   - In Settings → Connections → Machines in Kubernetes (beside Hub machines; there is no board for it), add a machine through a gateway: its name, one of the allowed nodes, its home folder and volume size, OpenCode's gateway and models, and the model keys it gets. The hub pairs with the new spoke by itself, with a one-time code, once it is up.
+   - In Settings → Connections, add one with Add environment → A Magnesium pod, through a gateway (there is no board for it): its name, one of the allowed nodes, its home folder and volume size, OpenCode's gateway and models, and the model keys it gets. The hub pairs with the new spoke by itself, with a one-time code, once it is up.
    - Stop and start a spoke, change its build and roll it back, and remove it, keeping its home or not.
    - A change runs to the end even when the hub stops waiting for it.
 5. **Attached to workloads (D59).**
    - An init container copies the install into the workload's pod, and `magnesium-attach -- <the workload's command>` runs the server beside the workload's process: the workload stays the main process, with its signals and exit status, and the server starts again when it stops. The workload's tools come first; the install only fills gaps.
-   - In Settings → Connections → Attached machines, attach one through its gateway, by name, with its pairing code, or with none for a machine moved in that the hub already has. The hub never starts, stops or removes it; detaching forgets it and the hub's access.
+   - The Environments list says what each machine is (bare metal, a VM, a Magnesium pod, attached in a workload, the gateway), with each one's actions in its menu. Add environment → Attach a workload's machine attaches one by hand, through its gateway, by name, with its pairing code, or with none for a machine moved in that the hub already has. The hub never starts, stops or removes it; detaching forgets it and the hub's access.
 6. **Secrets stay Magnesium's.** The gateway writes each spoke's Secret from the hub's secret store (the model key, for now). Later, sessions get their credentials from the hub when they start (goal 29 does it first for the Brain).
 7. **`magnesium-release` in a pod:** `pair`, `backup`, `restore` and `status` work without systemd and without the release folders. On bare metal, `prune` clears old releases after every activate.
 8. **Fleet shows where each server runs:** bare metal, a VM, a pod on its node, or attached in a workload on its node; a gateway has its own badge.

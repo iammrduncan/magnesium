@@ -79,7 +79,13 @@ import { FoldedSettingsSection } from "./FoldedSettingsSection";
 import { HubMachinesSection, removeHubMachineAccess } from "./HubMachinesSection"; // magnesium: machines the hub carries (doc 11)
 import { ModelKeysSection } from "./ModelKeysSection"; // magnesium: model keys the hub holds (goal 25)
 import { SandboxesSection } from "./SandboxesSection"; // magnesium: sandbox levels per machine (goal 03)
-import { SpokesSection } from "./SpokesSection"; // magnesium: machines in Kubernetes (goal 25)
+// magnesium: Magnesium pods and attached machines live in the Environments list (goal 25, D59, D60)
+import {
+  HubMachineControlsProvider,
+  HubMachineMenuItems,
+  KubernetesAddOptions,
+  useEnvironmentKind,
+} from "./HubMachineControls";
 import { LoadBalancingSettings } from "./LoadBalancingSettings";
 import { GitHubRoutingSettings } from "./GitHubRoutingSettings";
 import { Input } from "../ui/input";
@@ -1483,6 +1489,8 @@ function SavedBackendListRow({
     serverUpdateState.status === "running" && serverUpdateState.stage === "resuming";
   const status = savedBackendStatus(environment);
   const serverVersion = environment.serverConfig?.environment.serverVersion ?? null;
+  // magnesium: what kind of machine this is (bare metal, attached, a Magnesium pod, the gateway)
+  const environmentKind = useEnvironmentKind(environmentId);
   // A saved T3 Connect machine this device has never reached (unsupported,
   // or not yet connected) still has a descriptor from relay discovery, so
   // it can wear its detected glyph instead of the generic server. Discovery
@@ -1503,6 +1511,7 @@ function SavedBackendListRow({
   const subtitleText = [
     environmentTransportLabel(environment),
     resumingServerUpdate ? "Restarting" : status.text,
+    environmentKind.text, // magnesium: the machine's kind (goal 25)
     enabled && versionMismatch ? serverVersion : null,
   ]
     .filter((value): value is string => value !== null)
@@ -1613,6 +1622,8 @@ function SavedBackendListRow({
           {errorTraceId ? (
             <MenuItem onClick={() => copyTraceId(errorTraceId)}>Copy trace ID</MenuItem>
           ) : null}
+          {/* magnesium: a Magnesium pod's or attached machine's own actions (goal 25) */}
+          <HubMachineMenuItems name={environmentKind.name} />
           <MenuSeparator />
           <MenuItem variant="destructive" onClick={() => onRemove(environment)}>
             {isRemoving
@@ -3529,94 +3540,98 @@ export function ConnectionsSettings() {
 
   return (
     <SettingsPageContainer width="wide">
-      {primarySettings}
-      <SettingsSection
-        {...searchableSetting("remote-environments")}
-        title="Environments"
-        headerAction={
-          <div className="flex items-center gap-1">
-            {savedServerUpdateTargets.length > 0 ? (
-              <ServerUpdatesAction targets={savedServerUpdateTargets} variant="ghost-muted" />
-            ) : null}
-            <Dialog
-              open={addBackendDialogOpen}
-              onOpenChange={(open) => {
-                setAddBackendDialogOpen(open);
-                if (!open) {
-                  setSavedBackendError(null);
-                }
-              }}
-            >
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <DialogTrigger
-                      render={
-                        <Button size="xs" variant="ghost-muted" aria-label="Add environment">
-                          <PlusIcon className="size-3" />
-                          <span>Add environment</span>
-                        </Button>
-                      }
-                    />
+      {/* magnesium: Kubernetes machines' kinds and actions for the Environments list (goal 25) */}
+      <HubMachineControlsProvider canManage={canManageLocalBackend}>
+        {primarySettings}
+        <SettingsSection
+          {...searchableSetting("remote-environments")}
+          title="Environments"
+          headerAction={
+            <div className="flex items-center gap-1">
+              {savedServerUpdateTargets.length > 0 ? (
+                <ServerUpdatesAction targets={savedServerUpdateTargets} variant="ghost-muted" />
+              ) : null}
+              <Dialog
+                open={addBackendDialogOpen}
+                onOpenChange={(open) => {
+                  setAddBackendDialogOpen(open);
+                  if (!open) {
+                    setSavedBackendError(null);
                   }
-                />
-                <TooltipPopup side="top">Add environment</TooltipPopup>
-              </Tooltip>
-              <DialogPopup className="max-h-[80dvh] sm:max-w-3xl">
-                <DialogHeader>
-                  <DialogTitle>Add Environment</DialogTitle>
-                  <DialogDescription>Pair another environment to this client.</DialogDescription>
-                </DialogHeader>
-                <DialogPanel>
-                  <div className="space-y-4">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {renderConnectionModeCard({
-                        mode: "remote",
-                        title: "Remote link",
-                        description: "Enter a backend host and pairing code.",
-                        icon: <ChevronsLeftRightEllipsisIcon aria-hidden className="size-4" />,
-                      })}
-                      {desktopBridge
-                        ? renderConnectionModeCard({
-                            mode: "ssh",
-                            title: "SSH",
-                            description:
-                              "Use local SSH config, agent, and tunnels for the backend.",
-                            icon: <TerminalIcon aria-hidden className="size-4" />,
-                          })
-                        : null}
+                }}
+              >
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <DialogTrigger
+                        render={
+                          <Button size="xs" variant="ghost-muted" aria-label="Add environment">
+                            <PlusIcon className="size-3" />
+                            <span>Add environment</span>
+                          </Button>
+                        }
+                      />
+                    }
+                  />
+                  <TooltipPopup side="top">Add environment</TooltipPopup>
+                </Tooltip>
+                <DialogPopup className="max-h-[80dvh] sm:max-w-3xl">
+                  <DialogHeader>
+                    <DialogTitle>Add Environment</DialogTitle>
+                    <DialogDescription>Pair another environment to this client.</DialogDescription>
+                  </DialogHeader>
+                  <DialogPanel>
+                    <div className="space-y-4">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {renderConnectionModeCard({
+                          mode: "remote",
+                          title: "Remote link",
+                          description: "Enter a backend host and pairing code.",
+                          icon: <ChevronsLeftRightEllipsisIcon aria-hidden className="size-4" />,
+                        })}
+                        {desktopBridge
+                          ? renderConnectionModeCard({
+                              mode: "ssh",
+                              title: "SSH",
+                              description:
+                                "Use local SSH config, agent, and tunnels for the backend.",
+                              icon: <TerminalIcon aria-hidden className="size-4" />,
+                            })
+                          : null}
+                      </div>
+                      <AnimatedHeight>
+                        {savedBackendMode === "ssh" ? renderSshFields() : renderRemoteModeBody()}
+                      </AnimatedHeight>
+                      {/* magnesium: or a machine in Kubernetes, through a gateway (goal 25) */}
+                      <KubernetesAddOptions onPick={() => setAddBackendDialogOpen(false)} />
                     </div>
-                    <AnimatedHeight>
-                      {savedBackendMode === "ssh" ? renderSshFields() : renderRemoteModeBody()}
-                    </AnimatedHeight>
-                  </div>
-                </DialogPanel>
-              </DialogPopup>
-            </Dialog>
-          </div>
-        }
-      >
-        {listedEnvironments.map((environment) => (
-          <SavedBackendListRow
-            key={environment.environmentId}
-            environment={environment}
-            removingEnvironmentId={removingSavedEnvironmentId}
-            onSetEnabled={handleSetSavedBackendEnabled}
-            onRemove={handleRemoveSavedBackend}
-          />
-        ))}
-        {/* magnesium: saved environments only; no T3 Connect rows or removal dialog (D13) */}
-        {savedEnvironments.length === 0 ? <EmptyRemoteEnvironments /> : null}
-      </SettingsSection>
-      {/* magnesium: machines the hub carries but cannot reach yet (doc 11) */}
-      <HubMachinesSection canManage={canManageLocalBackend} />
-      {/* magnesium: machines the hub runs in Kubernetes, and the model keys they get (goal 25) */}
-      <SpokesSection canManage={canManageLocalBackend} />
-      <ModelKeysSection canManage={canManageLocalBackend} />
-      {/* magnesium: the sandbox levels each machine runs (goal 03) */}
-      <SandboxesSection />
-      <LoadBalancingSettings environments={loadBalancingEnvironments} />
-      <GitHubRoutingSettings environments={loadBalancingEnvironments} />
+                  </DialogPanel>
+                </DialogPopup>
+              </Dialog>
+            </div>
+          }
+        >
+          {listedEnvironments.map((environment) => (
+            <SavedBackendListRow
+              key={environment.environmentId}
+              environment={environment}
+              removingEnvironmentId={removingSavedEnvironmentId}
+              onSetEnabled={handleSetSavedBackendEnabled}
+              onRemove={handleRemoveSavedBackend}
+            />
+          ))}
+          {/* magnesium: saved environments only; no T3 Connect rows or removal dialog (D13) */}
+          {savedEnvironments.length === 0 ? <EmptyRemoteEnvironments /> : null}
+        </SettingsSection>
+        {/* magnesium: machines the hub carries but cannot reach yet (doc 11) */}
+        <HubMachinesSection canManage={canManageLocalBackend} />
+        {/* magnesium: the model keys the hub holds for its machines (goal 25) */}
+        <ModelKeysSection canManage={canManageLocalBackend} />
+        {/* magnesium: the sandbox levels each machine runs (goal 03) */}
+        <SandboxesSection />
+        <LoadBalancingSettings environments={loadBalancingEnvironments} />
+        <GitHubRoutingSettings environments={loadBalancingEnvironments} />
+      </HubMachineControlsProvider>
     </SettingsPageContainer>
   );
 }

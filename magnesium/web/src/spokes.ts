@@ -1,4 +1,5 @@
 import {
+  type FleetMachine,
   type HubAttached,
   type HubAttachInput,
   type HubSpoke,
@@ -9,6 +10,7 @@ import {
 } from "@magnesium/contracts";
 import * as Effect from "effect/Effect";
 
+import { describePlace } from "./fleet.ts";
 import { HubRequestError } from "./hubMachines.ts";
 import { connectMagnesium, type MagnesiumRpcClient, magnesiumSocketUrl } from "./rpc.ts";
 
@@ -165,4 +167,30 @@ export const specFromForm = (form: SpokeForm): SpokeSpec | { readonly problem: s
     opencode: url === "" ? null : { baseUrl: url, models: [models[0]!, ...models.slice(1)] },
     replicas: form.startNow ? 1 : 0,
   };
+};
+
+/**
+ * What kind of environment a machine is, for its row in Settings: one of
+ * Magnesium's own pods, attached inside a workload, the gateway, or where Fleet
+ * says it runs (bare metal, a VM). Null when nothing is known yet.
+ */
+export const describeEnvironmentKind = (input: {
+  readonly fleet: FleetMachine | undefined;
+  readonly spoke: HubSpoke | undefined;
+  readonly attached: HubAttached | undefined;
+}): string | null => {
+  const { fleet, spoke, attached } = input;
+  if (spoke !== undefined) {
+    const node = spoke.status?.node ?? spoke.spec.node;
+    return `Magnesium pod on ${node}${spoke.spec.replicas === 0 ? " · stopped" : ""}`;
+  }
+  if (attached !== undefined) {
+    const node = fleet?.node ?? null;
+    if (attached.workload === null) return node === null ? "attached" : `attached on ${node}`;
+    return node === null ? `in ${attached.workload}` : `in ${attached.workload} on ${node}`;
+  }
+  if (fleet === undefined) return null;
+  const place = describePlace(fleet);
+  if (fleet.kind === "gateway") return place === null ? "gateway" : `gateway · ${place}`;
+  return place;
 };

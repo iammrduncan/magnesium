@@ -1,7 +1,13 @@
-import type { HubSpoke } from "@magnesium/contracts";
+import type { FleetMachine, HubSpoke } from "@magnesium/contracts";
 import { describe, expect, it } from "@effect/vitest";
 
-import { attachFromForm, describeAttached, describeSpoke, specFromForm } from "./spokes.ts";
+import {
+  attachFromForm,
+  describeAttached,
+  describeEnvironmentKind,
+  describeSpoke,
+  specFromForm,
+} from "./spokes.ts";
 
 const form = {
   name: "cpu-host-2",
@@ -139,5 +145,70 @@ describe("attaching a machine", () => {
         detail: "The hub pairs with it once it answers.",
       }),
     ).toBe("The hub pairs with it once it answers. · in notebook-ws · through gateway");
+  });
+});
+
+describe("an environment's kind", () => {
+  const fleet = (overrides: Partial<FleetMachine>): FleetMachine => ({
+    name: "cpu-host-2",
+    label: "cpu-host-2",
+    kind: "machine",
+    link: "connected",
+    environmentId: null,
+    serverVersion: null,
+    release: null,
+    deployment: null,
+    node: null,
+    workload: null,
+    startedAt: null,
+    lastSeenAt: null,
+    threads: null,
+    detail: null,
+    ...overrides,
+  });
+
+  it("says bare metal, a workload, a Magnesium pod or the gateway", () => {
+    expect(
+      describeEnvironmentKind({
+        fleet: fleet({ deployment: "bare-metal" }),
+        spoke: undefined,
+        attached: undefined,
+      }),
+    ).toBe("bare metal");
+    expect(
+      describeEnvironmentKind({
+        fleet: fleet({ deployment: "attached", node: "node-b" }),
+        spoke: undefined,
+        attached: {
+          name: "cpu-host-2",
+          gateway: "gateway",
+          workload: "notebook",
+          paired: true,
+          detail: null,
+        },
+      }),
+    ).toBe("in notebook on node-b");
+    expect(
+      describeEnvironmentKind({
+        fleet: undefined,
+        spoke: {
+          name: "cpu-host-2",
+          gateway: "gateway",
+          spec: { ...(specFromForm(form) as HubSpoke["spec"]), replicas: 0 },
+          keys: [],
+          status: null,
+          paired: true,
+          detail: null,
+        },
+        attached: undefined,
+      }),
+    ).toBe("Magnesium pod on node-b · stopped");
+    expect(
+      describeEnvironmentKind({
+        fleet: fleet({ kind: "gateway", deployment: "pod", node: "node-a" }),
+        spoke: undefined,
+        attached: undefined,
+      }),
+    ).toBe("gateway · pod on node-a");
   });
 });

@@ -11,9 +11,11 @@ Both reach the hub through a **gateway**: one Magnesium server in a namespace th
 
 ## Magnesium in its own pod
 
-In **Settings → Connections → Machines in Kubernetes**, choose **Add a machine**: its gateway, a name, the node it runs on, its home folder and volume size, and OpenCode's gateway and models if it uses OpenCode. The hub pairs with it by itself once it is up.
+Every machine is in one list, **Settings → Connections → Environments**, which says what each is: bare metal, a VM, a Magnesium pod, attached in a workload, or the gateway.
 
-Each machine there has **Stop** and **Start**, **Change build** (blank runs its gateway's own build), and **Remove**, which keeps its home unless you untick that.
+Choose **Add environment → A Magnesium pod**: its gateway, a name, the node it runs on, its home folder and volume size, and OpenCode's gateway and models if it uses OpenCode. The hub pairs with it by itself once it is up.
+
+A Magnesium pod's menu in that list has **Stop its pod** and **Start its pod**, **Change build** (blank runs its gateway's own build), and **Remove its pod**, which keeps its home unless you untick that.
 
 **Moving a machine in** keeps its threads and the hub's access: add it with **Start it now** unticked and the same name and home folder it had, copy its home into the volume, then **Start** it. The full steps are in [Moving a machine from bare metal](../../magnesium/deploy/kubernetes/README.md#moving-a-machine-from-bare-metal).
 
@@ -106,12 +108,12 @@ Add the home's PersistentVolumeClaim, and network policies that let the gateway'
 
 **A machine moving in** from bare metal or from its own pod needs no code: give it the same `MAGNESIUM_MACHINE` name, copy its home into the new volume, and mount that at the same path it had, since projects are kept by path. The hub keeps its access and its threads.
 
-**Without the labels,** attach it by hand in **Settings → Connections → Attached machines → Attach a machine**, with its gateway, name and code.
+**Without the labels,** attach it by hand with **Add environment → Attach a workload's machine**, giving its gateway, name and code.
 
-The machine shows in **Fleet** as "in notebook on <node>", and under **Attached machines** with its workload.
+The machine shows in **Fleet** and in **Environments** as "in notebook on <node>".
 
 ### Taking it out
 
-Remove the init container, the wrapper, the environment and the route from the manifest, and apply it: the workload runs on as before. **Attached machines** then says its route has gone; choose **Detach** to let it go from the hub. While the workload still runs Magnesium, Detach refuses, since the hub would find it again.
+Remove the init container, the wrapper, the environment and the route from the manifest, and apply it: the workload runs on as before. Its row in **Environments** then says its route has gone; choose **Detach** in its menu to let it go from the hub. While the workload still runs Magnesium, Detach refuses, since the hub would find it again.
 
 **Moving a machine back** to where it ran before, such as its bare metal: take Magnesium out of the workload, start the old server again, and Detach with **Keep the hub's access** ticked. The hub reaches it where it was, with the same access, and its threads up to the move.
