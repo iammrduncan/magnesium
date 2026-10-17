@@ -13,7 +13,7 @@ import { ChildProcessSpawner } from "effect/unstable/process";
 import { ServerPorts } from "../ports.ts";
 import { isPushManaged, loadCatalog, ProfilesConfig, runsHere } from "./catalog.ts";
 import { type PlannedInstance, planProfile, writeHomes } from "./homes.ts";
-import { runCommand } from "./setup.ts";
+import { findBinaries, runCommand } from "./setup.ts";
 import { desiredInstances } from "./stock.ts";
 
 /**
@@ -92,9 +92,9 @@ export const make = Effect.gen(function* () {
     }
 
     const settings = yield* ports.getSettings;
-    const known = new Set(
-      Object.values(config.setup.binaries).filter((binary) => binary !== undefined),
-    );
+    // Looked for again each time, not taken from when the server started.
+    const binaries = yield* findBinaries(config.env ?? process.env, config.setup.wrapperDir);
+    const known = new Set(Object.values(binaries).filter((binary) => binary !== undefined));
     // A bare command is installed when the PATH has it; a path when it exists.
     const absolute = new Set<string>();
     for (const instance of Object.values(settings.providerInstances)) {

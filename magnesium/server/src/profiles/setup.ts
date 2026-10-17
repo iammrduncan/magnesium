@@ -23,6 +23,8 @@ export interface DetectedSetup {
   /** It carries machines (`hub-machines.json`): it pushes profiles and takes none. */
   readonly isHub: boolean;
   readonly setup: MachineSetup;
+  /** The environment it was found from; profile sync looks on its PATH again each run. */
+  readonly env?: Readonly<Record<string, string | undefined>>;
 }
 
 const PROBE_TIMEOUT = Duration.seconds(10);
@@ -59,6 +61,39 @@ export const runCommand = (command: string, args: ReadonlyArray<string>) =>
     Effect.orElseSucceed(() => undefined),
   );
 
+/** The real CLI `name` as `env`'s PATH finds it (so a self-updating CLI is followed), never our wrapper. */
+const lookOnPath = Effect.fn("profiles.lookOnPath")(function* (
+  env: Readonly<Record<string, string | undefined>>,
+  wrapperDir: string | undefined,
+  name: string,
+) {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  for (const dir of (env.PATH ?? "").split(":")) {
+    if (!dir || (wrapperDir !== undefined && path.resolve(dir) === wrapperDir)) continue;
+    const file = path.join(dir, name);
+    const info = yield* fs.stat(file).pipe(Effect.option);
+    if (info._tag === "Some" && info.value.type === "File") return file;
+  }
+  return undefined;
+});
+
+/**
+ * Where each harness's CLI is now. Profile sync asks again on every run, so a
+ * CLI installed after the server started, such as one copied into a pod, counts
+ * without a restart.
+ */
+export const findBinaries = Effect.fn("profiles.findBinaries")(function* (
+  env: Readonly<Record<string, string | undefined>>,
+  wrapperDir: string | undefined,
+) {
+  return {
+    claude: env.MAGNESIUM_CLAUDE_BIN?.trim() || (yield* lookOnPath(env, wrapperDir, "claude")),
+    codex: env.MAGNESIUM_CODEX_BIN?.trim() || (yield* lookOnPath(env, wrapperDir, "codex")),
+    opencode: yield* lookOnPath(env, wrapperDir, "opencode"),
+  };
+});
+
 export const detectSetup = Effect.fn("profiles.detectSetup")(function* (input: {
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly baseDir: string;
@@ -80,16 +115,7 @@ export const detectSetup = Effect.fn("profiles.detectSetup")(function* (input: {
       break;
     }
   }
-  // The real CLI as the PATH names it (so a self-updating CLI is followed), never our wrapper.
-  const onPath = Effect.fn("profiles.onPath")(function* (name: string) {
-    for (const dir of (env.PATH ?? "").split(":")) {
-      if (!dir || (wrapperDir !== undefined && path.resolve(dir) === wrapperDir)) continue;
-      const file = path.join(dir, name);
-      const info = yield* fs.stat(file).pipe(Effect.option);
-      if (info._tag === "Some" && info.value.type === "File") return file;
-    }
-    return undefined;
-  });
+  const onPath = (name: string) => lookOnPath(env, wrapperDir, name);
 
   const fenceProbe =
     wrapperDir === undefined
@@ -144,15 +170,12 @@ export const detectSetup = Effect.fn("profiles.detectSetup")(function* (input: {
   return {
     folder: path.resolve(env.MAGNESIUM_PROFILES?.trim() || path.join(stateHome, "profiles")),
     machine: env.MAGNESIUM_MACHINE?.trim() || "hub",
+    env,
     isHub: yield* exists(path.join(stateHome, "hub-machines.json")),
     setup: {
       stateHome,
       wrapperDir,
-      binaries: {
-        claude: env.MAGNESIUM_CLAUDE_BIN?.trim() || (yield* onPath("claude")),
-        codex: env.MAGNESIUM_CODEX_BIN?.trim() || (yield* onPath("codex")),
-        opencode: yield* onPath("opencode"),
-      },
+      binaries: yield* findBinaries(env, wrapperDir),
       userHome,
       fence,
       container,
