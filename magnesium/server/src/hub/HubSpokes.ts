@@ -96,6 +96,16 @@ export const make = Effect.gen(function* () {
         () => new SpokeError({ detail: "Could not save the hub's attached machines." }),
       ),
     );
+  /** The machine answers, and the hub's token for it hasn't been refused. */
+  const answers = (name: string) =>
+    machines.list.pipe(
+      Effect.map(({ machines: all }) =>
+        all.some(
+          (machine) => machine.name === name && machine.online && machine.access === "ready",
+        ),
+      ),
+      Effect.orElseSucceed(() => false),
+    );
   const hasAccess = (name: string) =>
     machines.upstream(name).pipe(
       Effect.as(true),
@@ -374,7 +384,11 @@ export const make = Effect.gen(function* () {
     }
     if (yield* hasAccess(entry.name)) {
       // Paired, perhaps by hand or before it moved: the code is spent either way.
-      if (!entry.paired) yield* gateways.attachedPaired(gateway, entry.name);
+      // Mark the route only once the machine answers and takes the hub's token,
+      // so a paired route never stands for a path that doesn't work yet.
+      if (!entry.paired && (yield* answers(entry.name))) {
+        yield* gateways.attachedPaired(gateway, entry.name);
+      }
     } else if (entry.pairingCode !== null) {
       yield* pairAttached(
         entry.name,

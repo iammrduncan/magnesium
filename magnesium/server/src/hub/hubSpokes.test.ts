@@ -59,6 +59,8 @@ const makeHub = (options: {
     const applied: Array<{ readonly gateway: string; readonly input: SpokeApplyInput }> = [];
     const removals: Array<{ readonly gateway: string; readonly input: SpokeRemoveInput }> = [];
     const gatewayState = { down: false, empty: false };
+    /** Machines the hub has access to that don't answer yet. */
+    const silent = new Set<string>();
     /** What the gateway routes to inside workloads' pods, and which routes it marked paired. */
     const routed: GatewayAttached[] = [];
     const markedPaired: string[] = [];
@@ -85,7 +87,10 @@ const makeHub = (options: {
       online: true,
     });
     const machines = HubMachines.of({
-      list: Effect.succeed({ machines: [] }),
+      // Every machine the hub has access to answers, unless the test says otherwise.
+      list: Effect.sync(() => ({
+        machines: [...access].filter((name) => !silent.has(name)).map(machine),
+      })),
       upstream: (name) =>
         access.has(name)
           ? Effect.succeed({
@@ -200,6 +205,7 @@ const makeHub = (options: {
       gatewayState,
       routed,
       markedPaired,
+      silent,
     };
   });
 
@@ -405,6 +411,24 @@ describe("machines found through their gateway", () => {
       expect(yield* hub.spokes.attached).toEqual([
         { name: "cpu-host-2", gateway: "gateway", workload: "display", paired: true, detail: null },
       ]);
+      expect(hub.markedPaired).toEqual(["cpu-host-2"]);
+    }).pipe(Effect.scoped),
+  );
+
+  it.effect("marks a moved machine's route paired only once it answers", () =>
+    Effect.gen(function* () {
+      const hub = yield* makeHub({ access: ["cpu-host-2"], names: ["gateway"] });
+      hub.silent.add("cpu-host-2");
+      hub.routed.push({
+        name: "cpu-host-2",
+        workload: "display",
+        paired: false,
+        pairingCode: null,
+      });
+      yield* hub.spokes.discover;
+      expect(hub.markedPaired).toEqual([]);
+      hub.silent.delete("cpu-host-2");
+      yield* hub.spokes.discover;
       expect(hub.markedPaired).toEqual(["cpu-host-2"]);
     }).pipe(Effect.scoped),
   );
