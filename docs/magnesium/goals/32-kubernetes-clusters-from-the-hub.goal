@@ -1,0 +1,44 @@
+---
+id: mg-k8s-clusters
+status: PLANNED
+kind: feature
+depends_on: [mg-spokes-k8s, mg-add-machine-ssh]
+phase: 2
+boards: []
+decisions: [D52, D57, D59, D60]
+---
+# Kubernetes clusters from the hub
+
+Today a Kubernetes cluster needs its operator to bootstrap Magnesium's gateway and to edit a workload's manifest to attach Magnesium (goal 25, `docs/user/kubernetes.md`). This goal lets you give the hub access to a namespace, then do the rest from **Add a machine**: the hub deploys the gateway, runs Magnesium's own pods (D60), and attaches Magnesium to a workload you pick (D59). An operator who prefers their own tooling keeps today's way; the result is the same.
+
+## Build
+
+1. **A cluster on the hub.** Settings → Connections → Clusters → Add a cluster: a kubeconfig for one namespace, with the identity the hub may use there. The hub keeps it in its secret store, by name, and shows what that identity may do (`kubectl auth can-i`-style), so a missing permission shows up before a deploy fails.
+2. **Deploy the gateway** into that namespace from the hub: the image (built from the hub's own build, or a registry you name), the gateway's role, and its route to the hub. It pairs with the hub on its own, as a spoke does today. Updating a cluster's gateway follows the hub's build.
+3. **Add a machine → In Kubernetes:**
+   - **Its own pod:** today's form for a managed spoke (goal 25), now reachable from the same dialog.
+   - **Attach to a workload:** the hub lists the Deployments and StatefulSets the cluster's identity may change, and for the one you pick shows the change it will make: the init container, the wrapped command (the hub reads the image's entrypoint so you don't have to), the home volume, the environment, the Service and the labelled route. Apply it, and the workload restarts once with Magnesium in it, which then pairs by itself (goal 25's labels and code).
+   - **Take it out:** the same view, reversed; the workload restarts without Magnesium.
+4. **Images.** A cluster that can't pull from a registry gets the image another way: the hub's build pushed to a registry you name, or a note that the operator loads it, as nodes that import images do today.
+5. **Agents and schedules.** Deploying a gateway, attaching to a workload and taking Magnesium out are service methods, and so agents-API operations and MCP tools, behind the access scope, each showing its change before applying it.
+6. **Docs:** `docs/user/kubernetes.md` gains the hub's way beside the manifest way.
+
+## Test it
+
+On a cluster where the hub's identity may manage one namespace:
+
+1. **Add the cluster** and see what the hub may do there; a namespace it can't use is refused with the missing permission named.
+2. **Deploy the gateway** from the hub: it pairs on its own and shows in Fleet.
+3. **Magnesium's own pod** from Add a machine, then stop, start, update and remove it.
+4. **Attach to a running workload** you pick: the change shown first matches what is applied; the workload restarts once; Magnesium pairs by itself, and its threads see the workload's files and tools.
+5. **Take it out:** the workload runs on as before, and the hub says the machine has gone.
+6. **No secrets leak:** the kubeconfig never appears in settings, logs or any pod.
+
+## Not in this goal
+
+- Creating namespaces, quotas or network policies: those stay with the cluster's operator.
+- Clusters reached only through a bastion the hub can't use.
+
+## Goal summary
+
+Not started.

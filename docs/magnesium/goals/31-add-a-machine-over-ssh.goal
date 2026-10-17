@@ -1,0 +1,64 @@
+---
+id: mg-add-machine-ssh
+status: PLANNED
+kind: feature
+depends_on: [mg-spokes-k8s, mg-provider-accounts]
+phase: 2
+boards: []
+decisions: [D13, D38, D59, D61]
+---
+# Add a machine over SSH, from the hub
+
+Adding a machine today means Ansible, a deploy config and a pairing code carried by hand. This goal makes it one action on the hub, as `herdr machine add` does for herdr: **Add a machine**, give it an SSH target, and the hub connects, installs Magnesium, starts it, pairs with it and ships it your accounts (goal 30). It works on anything you can SSH into with glibc Linux: a workstation, a VM, a server, or a pod that runs an SSH server. Ansible stays for people who manage their fleet as code.
+
+## How it works
+
+The patterns come from herdr and from Collie's `pack add` (which studied herdr's remote mode): the hub drives plain `ssh` and doesn't reimplement it.
+
+- **The hub's SSH.** The hub has its own SSH key, made on first use; Add a machine shows its public key, to put in the target's `authorized_keys`. The hub uses its user's `~/.ssh/config` and `known_hosts`, so host aliases and jump hosts work; it never turns off host-key checking, and a new host's key is shown for you to accept once. One multiplexed connection per run (`ControlMaster`), `BatchMode`, keepalives.
+- **Every remote step is a script on stdin** (`/bin/sh -s`): no `curl | sh`, no login shell, no assumptions about `PATH`. Secrets (the pairing code) only ever travel on stdin, never in arguments.
+- **Probe first.** The first step reports the OS, architecture, glibc, the user's home, systemd (user units and linger), free space, and any Magnesium already there, with its build. A machine already on the hub's build is left as it is; anything disruptive asks first.
+- **Push the hub's own build.** The hub sends the portable install it runs (goal 25: the server, Node, OpenCode, git, Python, tini, for amd64 or arm64, glibc 2.28 and up) over the connection, so the machine needs no internet access and runs exactly the hub's version. It lands in `~/.local/share/magnesium/releases/<build>` with `current` pointing at it, as the Ansible role lays it out, written to a temporary folder, checked, then renamed.
+- **Start it.** With systemd user units, a user service, with linger if you allow it. Without systemd, as in most pods, the server runs under its own supervisor in the background, and the hub starts it again over SSH whenever it finds the machine up but its server gone, such as after a pod restart.
+- **Reach it.** Two ways, picked in the dialog:
+  - **Through SSH** (the default): the server listens on the machine's loopback only, and the hub reaches it through a forwarded port on its SSH connection. Nothing new listens on the machine's network, and no firewall or tailnet change is needed.
+  - **Over the network:** the server listens on an address the hub reaches, a LAN or a tailnet, as machines deployed with Ansible do today.
+- **Pair and ship.** The hub sends a one-time pairing code on stdin as the server starts, pairs, and then ships the active accounts and model keys (goal 30). The machine's first thread runs with nobody signing in on it.
+- **Check.** The hub re-reads the server's build and health before it says done. Errors come in three kinds, each with its fix: SSH couldn't connect (with ssh's own message, and a hint about the key or agent), a step failed on the machine (with its output), or the answer made no sense.
+
+## Build
+
+1. **The hub's SSH key and known hosts,** in Settings → Connections, with the public key to copy, and each known host's key with a way to forget it.
+2. **Add a machine → Over SSH:** target (`user@host`, or a host alias), a name, how the hub reaches it, and whether to start it at boot. It shows each step's progress live, and its transcript can be copied into an issue.
+3. **The remote steps** above, in `magnesium/server`, each a small script with its own test against a container that runs an SSH server: a bare Debian, an older glibc, no systemd, an existing install on another build, and a machine with no internet.
+4. **The SSH reach:** a forwarded port per machine, kept up by the hub and redialled after a drop; Fleet shows when a machine is reached through SSH.
+5. **Day to day from the hub:**
+   - **Update:** pushes the hub's build to a machine (or all of them) and restarts it, keeping the previous build for **Roll back**.
+   - **Restart** and **Logs** (the server's last lines, over SSH).
+   - **Remove:** stops the server and takes it off the hub; with **Delete its files**, also removes the install, its service and its state, after a backup the hub keeps.
+6. **Agents and schedules.** Adding, updating and removing a machine are service methods, and so agents-API operations and MCP tools, behind the access scope; an agent can see the steps and their transcript.
+7. **Docs:** a user guide section on adding a machine from the hub; the Ansible runbook stays for fleets managed as code.
+
+## Test it
+
+On a hub and fresh targets, each reached only over SSH:
+
+1. **A bare Linux box.** Add it: the hub installs, starts and pairs it, and its first thread runs on your accounts with nobody signing in there. Nothing new listens on the box's network.
+2. **A pod with an SSH server.** Add it the same way. Restart the pod: the hub starts the server again on its own, with its threads still there.
+3. **Over the network instead,** on a LAN or a tailnet: the hub reaches the server's address directly.
+4. **Probe and refuse.** A target with no glibc (Alpine, say) or no space is refused before anything is written, with the reason. A wrong key, an unknown host and a host whose key changed each fail as ssh fails, with the fix.
+5. **Run it twice.** Adding a machine already on the hub's build changes nothing.
+6. **Update, then roll back** one machine from the hub, and then all of them.
+7. **Remove, with and without its files.** Without, adding it again brings back its threads; with, nothing of Magnesium is left on the machine.
+8. **No secrets leak:** no pairing code or login in any process's arguments, the transcript or the logs, on the hub or the machine.
+9. **From the phone,** adding a machine at phone width.
+
+## Not in this goal
+
+- Windows and macOS targets (macOS later, with launchd).
+- Password logins: the hub uses its key.
+- Kubernetes clusters the hub deploys into (goal 32).
+
+## Goal summary
+
+Not started.
