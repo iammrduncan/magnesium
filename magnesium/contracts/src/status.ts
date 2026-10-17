@@ -19,8 +19,11 @@ export const ThreadCounts = Schema.Struct({
 });
 export type ThreadCounts = typeof ThreadCounts.Type;
 
-/** How a server is deployed (goal 25, D52): on a host, in a VM, or as an image in a pod. */
-export const ServerDeployment = Schema.Literals(["bare-metal", "vm", "pod"]);
+/**
+ * How a server is deployed (goal 25, D52, D59): on a host, in a VM, as its own
+ * pod, or attached inside a workload's pod.
+ */
+export const ServerDeployment = Schema.Literals(["bare-metal", "vm", "pod", "attached"]);
 export type ServerDeployment = typeof ServerDeployment.Type;
 
 export const ServerStatus = Schema.Struct({
@@ -39,6 +42,8 @@ export const ServerStatus = Schema.Struct({
   ),
   /** Where it runs, for a pod its node (`MAGNESIUM_NODE`); null when it doesn't say. */
   node: Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  /** The workload it is attached to (`MAGNESIUM_WORKLOAD`); null for any other server. */
+  workload: Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
   /** `gateway` for a namespace's gateway (goal 25); null for a server that runs agents. */
   role: Schema.NullOr(Schema.Literals(["gateway"])).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),

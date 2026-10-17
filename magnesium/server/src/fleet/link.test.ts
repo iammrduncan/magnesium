@@ -28,6 +28,7 @@ const status = (waiting: number): ServerStatus => ({
   release: "f0d9e1703a",
   deployment: "pod",
   node: "node-b",
+  workload: null,
   role: null,
   startedAt: "2026-10-15T00:00:00.000Z",
   threads: { total: 3, running: 1, waiting, approvals: waiting, questions: 0 },

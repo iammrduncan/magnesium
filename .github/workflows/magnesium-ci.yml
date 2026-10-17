@@ -91,8 +91,15 @@ jobs:
         run: vp run --filter t3 build
 
   image:
-    name: Spoke image
-    runs-on: ubuntu-24.04
+    # Both architectures: the Spark pair's workloads are arm64.
+    name: Spoke image (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-24.04 }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
     timeout-minutes: 40
     steps:
       - name: Checkout
@@ -126,6 +133,49 @@ jobs:
           docker exec spoke magnesium-release status
           if docker logs spoke 2>&1 | grep -qi "token"; then echo "the log holds a token" >&2; exit 1; fi
 
+      - name: It attaches inside a workload's own container (D59)
+        run: |
+          # As an init container would: copy the bundle into a volume the workload mounts.
+          docker volume create bundle
+          docker run --rm --user 0 -v bundle:/bundle --entrypoint sh magnesium-spoke:ci \
+            -c 'cp -a /opt/magnesium-portable/. /bundle/'
+          # A workload image with no Node, git or Python, as a non-root uid. Its own
+          # command exits 7 on TERM, which the container must end with.
+          docker run -d --name workload --user 10001:10001 --cap-drop ALL \
+            --security-opt no-new-privileges \
+            -v bundle:/opt/magnesium-portable:ro \
+            --mount type=tmpfs,destination=/home/work,tmpfs-mode=0777 \
+            -e MAGNESIUM_HOME=/home/work -e MAGNESIUM_MACHINE=ci-attached \
+            -e MAGNESIUM_WORKLOAD=ci-workload -p 127.0.0.1:3774:3773 \
+            docker.io/library/debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587 \
+            /opt/magnesium-portable/bin/magnesium-attach -- \
+            sh -c 'trap "exit 7" TERM; echo workload up; while :; do sleep 1; done'
+          up() {
+            for _ in $(seq 1 60); do
+              if curl -fsS http://127.0.0.1:3774/.well-known/t3/environment > /dev/null; then return 0; fi
+              sleep 2
+            done
+            return 1
+          }
+          up
+          docker logs workload 2>&1 | grep -q "workload up"
+          # The bundle fills the gaps: git for agents, and the fence through its own Python.
+          docker exec workload sh -c 'PATH="$PATH:/opt/magnesium-portable/bin" git --version'
+          docker exec -e MAGNESIUM_PYTHON=/opt/magnesium-portable/python/bin/python3 workload \
+            /opt/magnesium-portable/bin/magnesium-fence --probe
+          # The server starts again when it stops, and the workload never notices.
+          docker exec workload sh -c 'for p in /proc/[0-9]*; do
+            grep -q "dist/bin.mjs" "$p/cmdline" 2>/dev/null && kill "${p#/proc/}"; done'
+          sleep 3
+          up
+          [ "$(docker inspect -f '{{.State.Running}}' workload)" = true ]
+          # Stopping the container stops the workload, with its own exit status.
+          docker stop -t 20 workload
+          [ "$(docker inspect -f '{{.State.ExitCode}}' workload)" = 7 ]
+          if docker logs workload 2>&1 | grep -qi "token"; then echo "the log holds a token" >&2; exit 1; fi
+
       - name: Logs on failure
         if: failure()
-        run: docker logs spoke || true
+        run: |
+          docker logs spoke || true
+          docker logs workload || true

@@ -15,7 +15,9 @@ die() {
   exit 1
 }
 
-release="${MAGNESIUM_ROOT:-/opt/magnesium}/current"
+release="${MAGNESIUM_ROOT:-/opt/magnesium-portable}/current"
+# The Node to run on: the image's, or the bundle's when attached to a workload.
+node_bin="${MAGNESIUM_NODE_BIN:-node}"
 [ -n "${HOME:-}" ] && [ -d "$HOME" ] && [ -w "$HOME" ] ||
   die "HOME ($HOME) must be a writable folder: mount the spoke's volume there"
 export T3CODE_HOME="${T3CODE_HOME:-$HOME/.magnesium}"
@@ -40,7 +42,7 @@ if [ -n "${MAGNESIUM_OPENCODE_BASE_URL:-}" ]; then
   chmod 700 "$HOME/.config/opencode"
   (
     umask 077
-    node --no-warnings -e '
+    "$node_bin" --no-warnings -e '
       const [baseURL, models, keyEnv] = process.argv.slice(1);
       const names = models.split(",").map((name) => name.trim()).filter(Boolean);
       const config = {
@@ -69,4 +71,4 @@ fi
 cd "$HOME"
 # `serve` prints a pairing token at every start; keep it out of the pod's log.
 # Pair on demand with `magnesium-release pair`.
-exec node "$release/apps/server/dist/bin.mjs" serve > /dev/null
+exec "$node_bin" "$release/apps/server/dist/bin.mjs" serve > /dev/null

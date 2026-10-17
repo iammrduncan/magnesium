@@ -22,6 +22,7 @@ const machine = (name: string | null, overrides: Partial<FleetMachine> = {}): Fl
   release: "f0d9e1703a",
   deployment: null,
   node: null,
+  workload: null,
   startedAt: "2026-10-15T04:00:00.000Z",
   lastSeenAt: null,
   threads: { total: 4, running: 2, waiting: 1, approvals: 1, questions: 0 },
@@ -90,6 +91,12 @@ describe("Fleet in the browser", () => {
       "pod on node-b",
     );
     expect(describePlace(machine("gpu-host-1", { deployment: null }))).toBeNull();
+    // Attached to a workload's pod: named by the workload it works in.
+    expect(
+      describePlace(
+        machine("cpu-host-2", { deployment: "attached", workload: "notebook", node: "node-b" }),
+      ),
+    ).toBe("in notebook on node-b");
     // The version line keeps to the version and the build.
     expect(
       describeVersion(machine("cpu-host-2", { deployment: "pod", node: "node-b" }), "f0d9e1703a"),

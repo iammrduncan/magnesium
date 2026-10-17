@@ -6,11 +6,21 @@
 # What the image expects at run time (HOME, env, port, health check, security
 # context) is in magnesium/deploy/kubernetes/README.md.
 #
+# The install is one folder, /opt/magnesium-portable: the server's release,
+# Node, OpenCode, and the tools a server attached to someone else's workload
+# can't count on (git, a Python for the fence, tini). The spoke runs from it,
+# and `magnesium-attach` runs it inside a workload's own container once an
+# init container has copied the folder in (D59, kubernetes/README.md).
+#
 # The build reaches the npm registry (pnpm and the dependencies), Debian's
-# mirrors (the toolchain below) and OpenCode's GitHub release, checked against
-# a pinned checksum. Base images are pinned by digest.
+# mirrors (the toolchains below), and the GitHub releases of OpenCode,
+# python-build-standalone and tini, each checked against a pinned checksum.
+# Base images are pinned by digest.
 
 ARG NODE_IMAGE=docker.io/library/node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
+# Older than the workloads it joins, and still maintained: what is built here
+# runs on glibc 2.28 and later, as Node does.
+ARG PORTABLE_IMAGE=docker.io/library/almalinux:8-minimal@sha256:5edccbe0aa69031af6604d963a0d9343241e321c55030be87ede663446a95455
 
 # ── The server, built and packed as `magnesium-release build` and `pack` do ──
 FROM ${NODE_IMAGE} AS build
@@ -29,7 +39,78 @@ RUN corepack pnpm --filter t3 deploy --prod --legacy /pack/apps/server \
   && cp magnesium/deploy/container/entrypoint /pack/entrypoint \
   && test -f /pack/apps/server/dist/bin.mjs
 
-# ── The spoke ──
+# ── What an attached server brings along: git, Python and tini ──
+FROM ${PORTABLE_IMAGE} AS portable
+ARG TARGETARCH
+ARG PYTHON_RELEASE=20261001
+ARG PYTHON_VERSION=3.12.15
+ARG PYTHON_SHA256_AMD64=7bb1659e3235077b7f63d5b6eb6ce653c6fcd6c5041e9d5f73b42ce10421464d
+ARG PYTHON_SHA256_ARM64=0b35f4dc08d58534eb82e024989e2db9873885dccd4f2a316ff55c0cec146123
+ARG TINI_VERSION=0.19.0
+ARG TINI_SHA256_AMD64=c5b0666b4cb676901f90dfcb37106783c5fe2077b04590973b885950611b30ee
+ARG TINI_SHA256_ARM64=eae1d3aa50c48fb23b8cbdf4e369d0910dfc538566bfd09df89a774aa84a48b9
+RUN microdnf install -y epel-release \
+  && microdnf install -y ca-certificates curl file findutils git-core patchelf tar gzip \
+  && microdnf clean all
+# git with the libraries it needs beside it, found through its own rpath, so it
+# never loads (or lends) libraries from the workload. Only the programs that
+# aren't git itself under another name.
+RUN set -eu; \
+  dest=/portable/git; \
+  mkdir -p "$dest/bin" "$dest/libexec/git-core" "$dest/lib" "$dest/share"; \
+  exec_path=$(git --exec-path); \
+  git_inode=$(stat -c %i /usr/bin/git); \
+  cp /usr/bin/git "$dest/libexec/git-core/git"; \
+  for file in "$exec_path"/*; do \
+    [ "$(stat -L -c %i "$file")" = "$git_inode" ] && continue; \
+    case "$(readlink "$file")" in ../*) continue ;; esac; \
+    cp -a "$file" "$dest/libexec/git-core/"; \
+  done; \
+  cp -a /usr/share/git-core/templates "$dest/share/templates"; \
+  cp -L /etc/pki/tls/certs/ca-bundle.crt "$dest/share/ca-bundle.crt"; \
+  # Aligned for 64 KiB pages on arm64, which some arm64 kernels use.
+  page=4096; [ "$TARGETARCH" = arm64 ] && page=65536; \
+  for elf in $(file "$dest"/libexec/git-core/* | grep ELF | cut -d: -f1); do \
+    ldd "$elf" | awk '/=> \// { print $3 }' | while read -r lib; do \
+      case "${lib##*/}" in \
+        libc.so* | libm.so* | libpthread.so* | libdl.so* | librt.so* | libresolv.so* | libutil.so* | ld-linux*) ;; \
+        *) [ -e "$dest/lib/${lib##*/}" ] || cp -L "$lib" "$dest/lib/" ;; \
+      esac; \
+    done; \
+    patchelf --page-size "$page" --set-rpath '$ORIGIN/../../lib' "$elf"; \
+  done; \
+  for lib in "$dest"/lib/*; do patchelf --page-size "$page" --set-rpath '$ORIGIN' "$lib"; done; \
+  printf '%s\n' '#!/bin/sh' \
+    '# git from the Magnesium bundle, for a workload that has none.' \
+    'here=$(dirname "$(readlink -f "$0")")/..' \
+    'export GIT_EXEC_PATH="$here/libexec/git-core" GIT_TEMPLATE_DIR="$here/share/templates"' \
+    '# Its curl looks for certificates where Red Hat keeps them; use the system'"'"'s, or our own.' \
+    'if [ -z "${GIT_SSL_CAINFO:-}" ] && [ ! -r /etc/pki/tls/certs/ca-bundle.crt ]; then' \
+    '  for ca in /etc/ssl/certs/ca-certificates.crt /etc/ssl/cert.pem "$here/share/ca-bundle.crt"; do' \
+    '    if [ -r "$ca" ]; then export GIT_SSL_CAINFO="$ca"; break; fi' \
+    '  done' \
+    'fi' \
+    'exec "$here/libexec/git-core/git" "$@"' > "$dest/bin/git"; \
+  chmod 755 "$dest/bin/git"
+RUN set -eu; \
+  case "$TARGETARCH" in \
+    amd64) py=x86_64; py_sum="$PYTHON_SHA256_AMD64"; tini_sum="$TINI_SHA256_AMD64" ;; \
+    arm64) py=aarch64; py_sum="$PYTHON_SHA256_ARM64"; tini_sum="$TINI_SHA256_ARM64" ;; \
+    *) echo "no portable tools for $TARGETARCH" >&2; exit 1 ;; \
+  esac; \
+  curl -fsSL -o /tmp/python.tar.gz \
+    "https://github.com/astral-sh/python-build-standalone/releases/download/$PYTHON_RELEASE/cpython-$PYTHON_VERSION%2B$PYTHON_RELEASE-$py-unknown-linux-gnu-install_only_stripped.tar.gz"; \
+  echo "$py_sum  /tmp/python.tar.gz" | sha256sum -c -; \
+  tar -xzf /tmp/python.tar.gz -C /portable; \
+  rm /tmp/python.tar.gz; \
+  mkdir -p /portable/bin; \
+  curl -fsSL -o /portable/bin/tini \
+    "https://github.com/krallin/tini/releases/download/v$TINI_VERSION/tini-static-$TARGETARCH"; \
+  echo "$tini_sum  /portable/bin/tini" | sha256sum -c -; \
+  chmod 755 /portable/bin/tini; \
+  /portable/python/bin/python3 -c 'import ctypes' && /portable/git/bin/git --version
+
+# ── The spoke, and the bundle in /opt/magnesium-portable ──
 FROM ${NODE_IMAGE}
 ARG TARGETARCH
 ARG MAGNESIUM_COMMIT
@@ -38,14 +119,18 @@ ARG OPENCODE_VERSION=1.18.34
 ARG OPENCODE_SHA256_AMD64=0f22479647226d1d2dd99595d20082ee7bda3870b62dc6a90b41efc1a71d7e9a
 ARG OPENCODE_SHA256_ARM64=bbdb3f00c2c51e42e315525233151309724226a8776da8e9145e3b0fa3d5310f
 
-# What agents find here: the basics, more only when a project needs it (D52).
-# bubblewrap and python3 also serve the fence.
+# What agents in a spoke find: the basics, more only when a project needs it
+# (D52). bubblewrap and python3 also serve the fence.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
-    build-essential bubblewrap ca-certificates curl git jq less procps python3 ripgrep tini \
+    build-essential bubblewrap ca-certificates curl git jq less procps python3 ripgrep \
   && rm -rf /var/lib/apt/lists/*
 
+ENV MAGNESIUM_ROOT=/opt/magnesium-portable
+COPY --from=portable /portable/ ${MAGNESIUM_ROOT}/
 RUN set -eu; \
+  mkdir -p "$MAGNESIUM_ROOT/node/bin"; \
+  cp /usr/local/bin/node "$MAGNESIUM_ROOT/node/bin/node"; \
   if [ -n "$OPENCODE_VERSION" ]; then \
     case "$TARGETARCH" in \
       amd64) arch=x64; sum="$OPENCODE_SHA256_AMD64" ;; \
@@ -55,37 +140,44 @@ RUN set -eu; \
     curl -fsSL -o /tmp/opencode.tar.gz \
       "https://github.com/anomalyco/opencode/releases/download/v$OPENCODE_VERSION/opencode-linux-$arch.tar.gz"; \
     echo "$sum  /tmp/opencode.tar.gz" | sha256sum -c -; \
-    mkdir -p /opt/opencode; \
-    tar -xzf /tmp/opencode.tar.gz -C /opt/opencode; \
+    mkdir -p "$MAGNESIUM_ROOT/opencode"; \
+    tar -xzf /tmp/opencode.tar.gz -C "$MAGNESIUM_ROOT/opencode"; \
     rm /tmp/opencode.tar.gz; \
-    ln -s /opt/opencode/opencode /usr/local/bin/opencode; \
+    ln -s ../opencode/opencode "$MAGNESIUM_ROOT/bin/opencode"; \
+    ln -s "$MAGNESIUM_ROOT/opencode/opencode" /usr/local/bin/opencode; \
   fi
 
 # The release layout `magnesium-release` keeps, so Fleet shows the commit and
 # the fence protects the install. The image is the release: no build, activate
 # or rollback in a pod; roll back by running the previous image.
-COPY --from=build /pack /opt/magnesium/releases/${MAGNESIUM_COMMIT}
+COPY --from=build /pack ${MAGNESIUM_ROOT}/releases/${MAGNESIUM_COMMIT}
+COPY magnesium/deploy/container/magnesium-attach ${MAGNESIUM_ROOT}/bin/magnesium-attach
 RUN set -eu; \
   case "$MAGNESIUM_COMMIT" in \
     [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*) ;; \
     *) echo "set --build-arg MAGNESIUM_COMMIT to the commit's short sha" >&2; exit 1 ;; \
   esac; \
-  echo "$MAGNESIUM_COMMIT" > "/opt/magnesium/releases/$MAGNESIUM_COMMIT/RELEASE"; \
-  ln -s "releases/$MAGNESIUM_COMMIT" /opt/magnesium/current; \
-  # Shims, not links: the tools find their helpers beside their own path.
+  echo "$MAGNESIUM_COMMIT" > "$MAGNESIUM_ROOT/releases/$MAGNESIUM_COMMIT/RELEASE"; \
+  ln -s "releases/$MAGNESIUM_COMMIT" "$MAGNESIUM_ROOT/current"; \
+  ln -s ../git/bin/git "$MAGNESIUM_ROOT/bin/git"; \
+  # Shims, not links: the tools find their helpers beside their own path, and
+  # the bundle works wherever it is mounted.
   for tool in magnesium-release magnesium-agents magnesium-fence; do \
-    printf '#!/bin/sh\nexec /opt/magnesium/current/magnesium/deploy/bin/%s "$@"\n' "$tool" > "/usr/local/bin/$tool"; \
-    chmod 755 "/usr/local/bin/$tool"; \
+    printf '%s\n' '#!/bin/sh' \
+      "exec \"\$(dirname \"\$(readlink -f \"\$0\")\")/../current/magnesium/deploy/bin/$tool\" \"\$@\"" \
+      > "$MAGNESIUM_ROOT/bin/$tool"; \
+    chmod 755 "$MAGNESIUM_ROOT/bin/$tool"; \
+    ln -s "$MAGNESIUM_ROOT/bin/$tool" "/usr/local/bin/$tool"; \
   done; \
+  chmod 755 "$MAGNESIUM_ROOT/bin/magnesium-attach"; \
   groupadd --gid 10001 magnesium; \
   useradd --uid 10001 --gid 10001 --home-dir /home/magnesium --create-home --shell /bin/bash magnesium
 
-ENV MAGNESIUM_ROOT=/opt/magnesium \
-  MAGNESIUM_DEPLOY=pod \
+ENV MAGNESIUM_DEPLOY=pod \
   T3CODE_HOST=0.0.0.0 \
   T3CODE_PORT=3773 \
   T3CODE_TELEMETRY_ENABLED=false \
   T3CODE_NO_BROWSER=true
 USER 10001:10001
 EXPOSE 3773
-ENTRYPOINT ["/usr/bin/tini", "--", "/opt/magnesium/current/entrypoint"]
+ENTRYPOINT ["/opt/magnesium-portable/bin/tini", "--", "/opt/magnesium-portable/current/entrypoint"]

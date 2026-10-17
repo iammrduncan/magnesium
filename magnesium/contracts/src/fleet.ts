@@ -40,6 +40,8 @@ export const FleetMachine = Schema.Struct({
   ),
   /** Where it runs (`ServerStatus.node`); null when unknown. */
   node: Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  /** The workload it is attached to (`ServerStatus.workload`); null for any other server. */
+  workload: Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
   startedAt: Schema.NullOr(IsoDateTime),
   /** When the hub last heard from it; set when a link drops, kept across hub restarts. */
   lastSeenAt: Schema.NullOr(IsoDateTime),

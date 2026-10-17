@@ -37,6 +37,9 @@ export const deploymentOf = (value: string | undefined): ServerDeployment | null
 /** Where this server runs, from `MAGNESIUM_NODE`: a pod's node, or what its deployer says. */
 export const nodeOf = (value: string | undefined): string | null => value?.trim() || null;
 
+/** The workload an attached server runs inside, from `MAGNESIUM_WORKLOAD` (D59). */
+export const workloadOf = (value: string | undefined): string | null => value?.trim() || null;
+
 /** `gateway` when `MAGNESIUM_ROLE` says so (goal 25). */
 export const roleOf = (value: string | undefined): "gateway" | null =>
   value?.trim() === "gateway" ? "gateway" : null;

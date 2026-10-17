@@ -172,6 +172,7 @@ describe("Fleet's byte budget", () => {
     release: "f0d9e1703a",
     deployment: null,
     node: null,
+    workload: null,
     startedAt: "2026-10-15T04:49:40.967Z",
     lastSeenAt: "2026-10-15T04:49:40.967Z",
     threads: { total: 140, running: 12, waiting: 3, approvals: 2, questions: 1 },

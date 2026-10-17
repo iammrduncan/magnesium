@@ -107,22 +107,22 @@ export const detectSetup = Effect.fn("profiles.detectSetup")(function* (input: {
 
   const deployment = deploymentOf(env.MAGNESIUM_DEPLOY);
   const image = env.MAGNESIUM_SANDBOX_IMAGE?.trim() || undefined;
-  const podman = deployment === "pod" ? undefined : yield* onPath("podman");
+  const inPod = deployment === "pod" || deployment === "attached";
+  const podman = inPod ? undefined : yield* onPath("podman");
   const podmanWorks =
     podman === undefined
       ? false
       : (yield* runCommand(podman, ["info", "--format", "{{.Host.Security.Rootless}}"]))?.code ===
         0;
-  const container: MachineSetup["container"] =
-    deployment === "pod"
-      ? { unavailable: "Agents can't start containers inside a pod." }
-      : podman === undefined
-        ? { unavailable: "Podman is not installed." }
-        : !podmanWorks
-          ? { unavailable: "Podman does not run for this user." }
-          : image === undefined
-            ? { unavailable: "No image is set (MAGNESIUM_SANDBOX_IMAGE)." }
-            : { image };
+  const container: MachineSetup["container"] = inPod
+    ? { unavailable: "Agents can't start containers inside a pod." }
+    : podman === undefined
+      ? { unavailable: "Podman is not installed." }
+      : !podmanWorks
+        ? { unavailable: "Podman does not run for this user." }
+        : image === undefined
+          ? { unavailable: "No image is set (MAGNESIUM_SANDBOX_IMAGE)." }
+          : { image };
 
   // What a fenced agent may read but never change: the installed server (not a
   // checkout, where agents work on the code), its unit and its env file.

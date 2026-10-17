@@ -32,6 +32,8 @@
 set -eu
 
 bin_dir=$(cd "$(dirname "$0")" && pwd -P)
+# The Python for the fence helper: an attached server brings its own (MAGNESIUM_PYTHON).
+python="${MAGNESIUM_PYTHON:-python3}"
 
 fail() {
   echo "magnesium-fence: $*" >&2
@@ -52,8 +54,8 @@ check() {
       ;;
     userns | landlock)
       if [ "$(uname -s)" != Linux ]; then echo "$1 is Linux only"; return 1; fi
-      if ! command -v python3 >/dev/null 2>&1; then echo "python3 is missing"; return 1; fi
-      python3 "$bin_dir/magnesium-fence-helper" --probe "$1"
+      if ! command -v "$python" >/dev/null 2>&1; then echo "python3 is missing"; return 1; fi
+      "$python" "$bin_dir/magnesium-fence-helper" --probe "$1"
       ;;
     seatbelt)
       if [ "$(uname -s)" != Darwin ]; then echo "Seatbelt is macOS only"; return 1; fi
@@ -171,7 +173,7 @@ case $mechanism in
       set -- "--${grant%% *}" "${grant#* }" "$@"
     done
     IFS=$old_ifs
-    exec python3 "$bin_dir/magnesium-fence-helper" "$mechanism" --hide "$state" "$@"
+    exec "$python" "$bin_dir/magnesium-fence-helper" "$mechanism" --hide "$state" "$@"
     ;;
   seatbelt)
     quote() { printf '"%s"' "$(printf '%s' "$1" | sed 's/[\\"]/\\&/g')"; }

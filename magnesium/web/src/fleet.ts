@@ -153,6 +153,7 @@ const DEPLOYMENT_LABEL: Record<NonNullable<FleetMachine["deployment"]>, string> 
   "bare-metal": "bare metal",
   vm: "VM",
   pod: "pod",
+  attached: "attached",
 };
 
 /**
@@ -175,6 +176,12 @@ export const describeVersion = (machine: FleetMachine, hubRelease: string | null
  */
 export const describePlace = (machine: FleetMachine): string | null => {
   if (machine.deployment === null) return machine.node;
+  // Attached to a workload's pod: the workload is what the owner knows it by.
+  if (machine.deployment === "attached" && machine.workload !== null) {
+    return machine.node === null
+      ? `in ${machine.workload}`
+      : `in ${machine.workload} on ${machine.node}`;
+  }
   const how = DEPLOYMENT_LABEL[machine.deployment];
   return machine.node === null ? how : `${how} on ${machine.node}`;
 };

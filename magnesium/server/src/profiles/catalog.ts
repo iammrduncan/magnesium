@@ -169,7 +169,7 @@ export const listSandboxes = Effect.fn("profiles.listSandboxes")(function* () {
   const source = yield* InstanceSource;
   const { fence, container } = config.setup;
   // A pod allows no stronger fence and no containers: say what works there instead.
-  const inPod = config.setup.deployment === "pod";
+  const inPod = config.setup.deployment === "pod" || config.setup.deployment === "attached";
   const levels: SandboxLevelInfo[] = [
     "mechanism" in fence
       ? {

@@ -1,0 +1,78 @@
+#!/bin/sh
+# magnesium-attach -- COMMAND [ARGS...]
+#
+# Runs a Magnesium machine server inside a workload's own container, beside the
+# workload (goal 25, D59), so agents work with that container's files, tools,
+# devices and models. COMMAND stays the container's main process: it gets the
+# signals, and its exit ends the container with its status. The server runs
+# beside it and starts again when it stops; it never takes COMMAND down.
+#
+# The bundle this script lives in (/opt/magnesium-portable) is copied into the
+# pod by an init container from the Magnesium image; the workload's image is
+# unchanged. It needs glibc 2.31 or later (Ubuntu 20.04, Debian 11) and bash.
+#
+#   MAGNESIUM_HOME       a writable volume for Magnesium's state and the agents'
+#                        own config (the server's HOME); required
+#   MAGNESIUM_MACHINE    the name the hub knows this server by
+#   MAGNESIUM_WORKLOAD   the workload's name, which Fleet shows
+#   MAGNESIUM_NODE       where it runs (the downward API's spec.nodeName)
+#   T3CODE_PORT          the server's port (3773); pick another in a host-network
+#                        pod whose host runs Magnesium on 3773
+#   MAGNESIUM_HUB_PAIRING_CODE, MAGNESIUM_OPENCODE_*  as for a spoke
+set -eu
+
+bundle=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+
+if [ "${1:-}" = "--" ]; then shift; fi
+if [ $# -eq 0 ]; then
+  echo "magnesium-attach: name the workload's command after --" >&2
+  exit 64
+fi
+if [ -z "${MAGNESIUM_HOME:-}" ]; then
+  echo "magnesium-attach: set MAGNESIUM_HOME to a writable volume for Magnesium's state" >&2
+  exit 64
+fi
+
+# As PID 1, put tini in front: it reaps the orphans agents leave behind and
+# passes signals on.
+if [ "$$" = 1 ] && [ -z "${MAGNESIUM_ATTACH_INIT:-}" ]; then
+  MAGNESIUM_ATTACH_INIT=1 exec "$bundle/bin/tini" -s -- "$0" -- "$@"
+fi
+
+serve() {
+  # The server and its agents: Magnesium's own home, and the workload's tools
+  # before the bundle's, which only fill gaps (git, say).
+  while :; do
+    (
+      export HOME="$MAGNESIUM_HOME"
+      export PATH="$PATH:$bundle/bin"
+      export MAGNESIUM_ROOT="$bundle"
+      export MAGNESIUM_DEPLOY=attached
+      export MAGNESIUM_NODE_BIN="$bundle/node/bin/node"
+      export MAGNESIUM_PYTHON="$bundle/python/bin/python3"
+      export T3CODE_HOST="${T3CODE_HOST:-0.0.0.0}"
+      export T3CODE_PORT="${T3CODE_PORT:-3773}"
+      export T3CODE_TELEMETRY_ENABLED=false
+      export T3CODE_NO_BROWSER=true
+      exec "$bundle/current/entrypoint"
+    ) || true
+    echo "magnesium-attach: the Magnesium server stopped; starting it again in 5 seconds" >&2
+    sleep 5
+  done
+}
+
+serve &
+server=$!
+
+"$@" &
+work=$!
+trap 'kill -TERM "$work" 2>/dev/null || true' TERM INT HUP
+
+# A trapped signal ends `wait` early; keep waiting until the workload is gone.
+status=0
+while :; do
+  if wait "$work"; then status=0; else status=$?; fi
+  kill -0 "$work" 2>/dev/null || break
+done
+kill "$server" 2>/dev/null || true
+exit "$status"
