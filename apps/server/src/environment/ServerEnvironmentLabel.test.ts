@@ -61,6 +61,20 @@ afterEach(() => {
 });
 
 describe("resolveServerEnvironmentLabel", () => {
+  // magnesium: a server in a pod goes by its machine name, not the pod's host name.
+  it.effect("names a server in a pod by its machine name", () =>
+    Effect.gen(function* () {
+      const result = yield* ServerEnvironmentLabel.resolveServerEnvironmentLabel({
+        cwdBaseName: "t3code",
+        podMachineName: " cpu-host-2 ",
+      }).pipe(
+        Effect.provide(withHostPlatform(LinuxMachineInfoLayer, "linux", "notebook-7c9f4-x2k4p")),
+      );
+
+      expect(result).toBe("cpu-host-2");
+    }),
+  );
+
   it.effect("uses hostname fallback regardless of launch mode", () =>
     Effect.gen(function* () {
       const result = yield* ServerEnvironmentLabel.resolveServerEnvironmentLabel({

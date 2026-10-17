@@ -25,7 +25,7 @@ The image is the release. There is no build, activate or rollback inside a pod: 
 
 An attached server runs inside the workload's own container, beside its process, so agents see what the workload sees. The workload's image doesn't change:
 
-1. **An init container** from the Magnesium image copies the bundle into an `emptyDir`: `cp -a /opt/magnesium-portable/. /bundle/`. Mount that at `/opt/magnesium-portable` in the workload's container, read-only.
+1. **An init container** from the Magnesium image copies the bundle into an `emptyDir`: `/opt/magnesium-portable/bin/magnesium-bundle-copy /bundle`, which works as any uid (`cp -a` doesn't, on the bundle's read-only folders). Mount that at `/opt/magnesium-portable` in the workload's container, read-only.
 2. **Wrap its command:** `/opt/magnesium-portable/bin/magnesium-attach -- <the workload's command>`. A pod's `command` replaces the image's entrypoint, so restate it in full. The workload stays the main process: it gets the signals, and the container ends with its exit status. The server runs beside it and starts again when it stops.
 3. **Give it a home:** a volume for `MAGNESIUM_HOME`, which holds Magnesium's state and the agents' own sign-ins. Moving a machine in, mount it at the machine's old home path, since projects are kept by absolute path.
 4. **Its environment:**

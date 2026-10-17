@@ -151,7 +151,7 @@ RUN set -eu; \
 # the fence protects the install. The image is the release: no build, activate
 # or rollback in a pod; roll back by running the previous image.
 COPY --from=build /pack ${MAGNESIUM_ROOT}/releases/${MAGNESIUM_COMMIT}
-COPY magnesium/deploy/container/magnesium-attach ${MAGNESIUM_ROOT}/bin/magnesium-attach
+COPY magnesium/deploy/container/magnesium-attach magnesium/deploy/container/magnesium-bundle-copy ${MAGNESIUM_ROOT}/bin/
 RUN set -eu; \
   case "$MAGNESIUM_COMMIT" in \
     [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*) ;; \
@@ -169,7 +169,7 @@ RUN set -eu; \
     chmod 755 "$MAGNESIUM_ROOT/bin/$tool"; \
     ln -s "$MAGNESIUM_ROOT/bin/$tool" "/usr/local/bin/$tool"; \
   done; \
-  chmod 755 "$MAGNESIUM_ROOT/bin/magnesium-attach"; \
+  chmod 755 "$MAGNESIUM_ROOT/bin/magnesium-attach" "$MAGNESIUM_ROOT/bin/magnesium-bundle-copy"; \
   groupadd --gid 10001 magnesium; \
   useradd --uid 10001 --gid 10001 --home-dir /home/magnesium --create-home --shell /bin/bash magnesium
 

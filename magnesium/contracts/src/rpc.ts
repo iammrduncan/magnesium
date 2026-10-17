@@ -304,18 +304,18 @@ const HubSpokesGatewaysRpc = Rpc.make(MAGNESIUM_WS_METHODS.hubSpokesGateways, {
 
 /**
  * The machines a gateway routes to inside workloads' pods (D59), with the
- * one-time codes of new ones: for the hub, which holds full access.
+ * one-time codes of new ones: for the hub, with the same access it applies spokes with.
  */
 const SpokesAttachedRpc = Rpc.make(MAGNESIUM_WS_METHODS.spokesAttached, {
   success: Schema.Array(GatewayAttached),
   error: SpokeError,
-}).annotate(RequiredScope, AuthAccessWriteScope);
+}).annotate(RequiredScope, AuthOrchestrationOperateScope);
 
 /** The hub has paired with an attached machine: mark its route and drop its spent code. */
 const SpokesAttachedPairedRpc = Rpc.make(MAGNESIUM_WS_METHODS.spokesAttachedPaired, {
   payload: GatewayAttachedPairedInput,
   error: SpokeError,
-}).annotate(RequiredScope, AuthAccessWriteScope);
+}).annotate(RequiredScope, AuthOrchestrationOperateScope);
 
 /** The machines attached inside workloads' pods, reached through gateways (D59). */
 const HubAttachedListRpc = Rpc.make(MAGNESIUM_WS_METHODS.hubAttachedList, {

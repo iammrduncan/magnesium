@@ -21,7 +21,7 @@ Each machine there has **Stop** and **Start**, **Change build** (blank runs its 
 
 Four additions to the workload's manifest put Magnesium in every pod it starts, whether the workload is new or already running:
 
-1. **An init container** from the Magnesium image that copies its install into a shared volume.
+1. **An init container** from the Magnesium image that copies its install into a shared volume with `magnesium-bundle-copy`, which works as any user.
 2. **The workload's command, wrapped:** `/opt/magnesium-portable/bin/magnesium-attach -- <the command it ran before>`. Write out the whole command: a pod's `command` replaces the image's own entrypoint. The workload stays the main process; Magnesium runs beside it and starts again if it stops.
 3. **A home volume** for Magnesium's state and the agents' own sign-ins, and the environment below.
 4. **A route** the gateway follows: a Service in the workload's namespace, and a labelled `ExternalName` beside the gateway.
@@ -43,7 +43,7 @@ spec:
       initContainers:
         - name: magnesium-bundle
           image: magnesium:<build>
-          command: ["sh", "-c", "cp -a /opt/magnesium-portable/. /bundle/"]
+          command: ["/opt/magnesium-portable/bin/magnesium-bundle-copy", "/bundle"]
           volumeMounts: [{ name: magnesium-bundle, mountPath: /bundle }]
       containers:
         - name: notebook

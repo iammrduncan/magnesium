@@ -135,10 +135,12 @@ jobs:
 
       - name: It attaches inside a workload's own container (D59)
         run: |
-          # As an init container would: copy the bundle into a volume the workload mounts.
+          # As an init container would, as a non-root uid: copy the bundle into a
+          # world-writable volume (like an emptyDir) that the workload mounts.
           docker volume create bundle
-          docker run --rm --user 0 -v bundle:/bundle --entrypoint sh magnesium-spoke:ci \
-            -c 'cp -a /opt/magnesium-portable/. /bundle/'
+          docker run --rm --user 0 -v bundle:/bundle --entrypoint chmod magnesium-spoke:ci 0777 /bundle
+          docker run --rm --user 10001:10001 -v bundle:/bundle \
+            --entrypoint /opt/magnesium-portable/bin/magnesium-bundle-copy magnesium-spoke:ci /bundle
           # A workload image with no Node, git or Python, as a non-root uid. Its own
           # command exits 7 on TERM, which the container must end with.
           docker run -d --name workload --user 10001:10001 --cap-drop ALL \

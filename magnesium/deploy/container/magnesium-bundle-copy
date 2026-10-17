@@ -1,0 +1,14 @@
+#!/bin/sh
+# magnesium-bundle-copy DEST
+#
+# Copies the bundle this script lives in (/opt/magnesium-portable) into DEST,
+# the volume an init container shares with a workload (D59), as any uid. tar
+# sets each folder's mode only after filling it, where `cp -a` stops at the
+# bundle's read-only folders; and DEST itself, which the copying user may not
+# own, is left as it is.
+set -eu
+
+bundle=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+dest="${1:?usage: magnesium-bundle-copy DEST}"
+cd "$bundle"
+find . -mindepth 1 -maxdepth 1 -print0 | tar -cf - --null -T - | tar -xf - -C "$dest"

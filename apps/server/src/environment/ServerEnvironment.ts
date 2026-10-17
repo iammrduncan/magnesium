@@ -189,7 +189,13 @@ export const make = Effect.gen(function* () {
   const hostArchitecture = yield* HostProcessArchitecture;
   const environmentId = yield* identity.getEnvironmentId;
   const cwdBaseName = path.basename(serverConfig.cwd).trim();
-  const label = yield* resolveServerEnvironmentLabel({ cwdBaseName });
+  // magnesium: a pod's server goes by MAGNESIUM_MACHINE (see ServerEnvironmentLabel).
+  const inPod =
+    process.env.MAGNESIUM_DEPLOY === "pod" || process.env.MAGNESIUM_DEPLOY === "attached";
+  const label = yield* resolveServerEnvironmentLabel({
+    cwdBaseName,
+    podMachineName: inPod ? process.env.MAGNESIUM_MACHINE : null,
+  });
   const machine = yield* detectServerEnvironmentMachineKind();
   const launcher = yield* resolveServiceLauncherMode();
   const serverSelfUpdate = resolveServerSelfUpdateCapability({

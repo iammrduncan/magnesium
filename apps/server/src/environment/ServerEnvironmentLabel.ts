@@ -8,6 +8,9 @@ import * as ProcessRunner from "../processRunner.ts";
 
 interface ResolveServerEnvironmentLabelInput {
   readonly cwdBaseName: string;
+  // magnesium: a server in a pod, its own or a workload's, goes by the name the hub
+  // knows it by, never the pod's generated host name, which changes on restart (D59).
+  readonly podMachineName?: string | null | undefined;
 }
 
 const ServerEnvironmentLabelCommandProbe = Schema.Literals([
@@ -182,6 +185,12 @@ const resolveFriendlyHostLabel = Effect.fn("resolveFriendlyHostLabel")(function*
 export const resolveServerEnvironmentLabel = Effect.fn("resolveServerEnvironmentLabel")(function* (
   input: ResolveServerEnvironmentLabelInput,
 ) {
+  // magnesium: see podMachineName.
+  const podMachineName = normalizeLabel(input.podMachineName);
+  if (podMachineName) {
+    return podMachineName;
+  }
+
   const friendlyHostLabel = yield* resolveFriendlyHostLabel();
   if (friendlyHostLabel) {
     return friendlyHostLabel;
