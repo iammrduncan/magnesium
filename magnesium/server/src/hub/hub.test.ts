@@ -30,10 +30,19 @@ import {
 } from "../testing.ts";
 import * as HubMachines from "./HubMachines.ts";
 import { parseProxyPath } from "./proxy.ts";
+import { renewedScopes } from "../session/renew.ts";
 
 const MACHINE_URL = "http://127.0.0.1:10001";
 const ENVIRONMENT_ID = "env-cpu-host-1";
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** A paired client's grant before granular permissions (T3 Code v0.0.45). */
+const LEGACY_STANDARD_SCOPES = [
+  "orchestration:read",
+  "orchestration:operate",
+  "terminal:operate",
+  "review:write",
+  "relay:read",
+] as ReadonlyArray<AuthEnvironmentScope>;
 
 const cleanups: Array<() => Promise<void>> = [];
 afterEach(async () => {
@@ -84,6 +93,9 @@ const makeHub = async (options: { readonly machineToken?: string } = {}) => {
   const seen: SeenRequest[] = [];
   let validToken = options.machineToken ?? "machine-token";
   let renewCalls = 0;
+  // Whether the machine renews the hub's token: in its last week, or a grant from before granular permissions.
+  let machineRenews = false;
+  const issuedScopes: Array<ReadonlyArray<AuthEnvironmentScope>> = [];
 
   const client = HttpClient.make((request) =>
     Effect.sync(() => {
@@ -118,6 +130,8 @@ const makeHub = async (options: { readonly machineToken?: string } = {}) => {
           });
         case "/api/magnesium/session/renew":
           renewCalls++;
+          if (!machineRenews)
+            return json({ error: "This session is not due for renewal yet." }, 409);
           validToken = "renewed-token";
           return json({
             token: "renewed-token",
@@ -158,23 +172,26 @@ const makeHub = async (options: { readonly machineToken?: string } = {}) => {
         });
       }
       const bearer = request.headers.authorization?.replace(/^Bearer /, "");
-      if (bearer === "due" || bearer === "not-due") {
+      if (bearer === "due" || bearer === "not-due" || bearer === "legacy-not-due") {
         const days = bearer === "due" ? 3 : 20;
         return Effect.succeed({
           sessionId: `session-${bearer}`,
           subject: "hub",
           method: "bearer-access-token" as ServerAuthSessionMethod,
-          scopes: AuthStandardClientScopes,
+          scopes: bearer === "legacy-not-due" ? LEGACY_STANDARD_SCOPES : AuthStandardClientScopes,
           expiresAt: DateTime.makeUnsafe(Date.now() + days * DAY_MS),
           paired: true,
         });
       }
       return Effect.fail(new CallerUnauthenticatedError({ detail: "no session" }));
     },
-    issueBearerSession: () =>
-      Effect.succeed({
-        token: "fresh-session",
-        expiresAt: DateTime.makeUnsafe(Date.now() + 30 * DAY_MS),
+    issueBearerSession: (input) =>
+      Effect.sync(() => {
+        issuedScopes.push(input.scopes);
+        return {
+          token: "fresh-session",
+          expiresAt: DateTime.makeUnsafe(Date.now() + 30 * DAY_MS),
+        };
       }),
     getSecret: (name) => Effect.succeed(Option.fromNullishOr(secrets.get(name))),
     setSecret: (name, value) => Effect.sync(() => void secrets.set(name, value)),
@@ -222,6 +239,10 @@ const makeHub = async (options: { readonly machineToken?: string } = {}) => {
     seen,
     secrets,
     renewCalls: () => renewCalls,
+    setMachineRenews: (renews: boolean) => {
+      machineRenews = renews;
+    },
+    issuedScopes,
   };
 };
 
@@ -313,8 +334,17 @@ describe("hub machines", () => {
       const hub = yield* Effect.promise(() => makeHub());
       yield* Effect.promise(() => hub.giveAccess({ bearerToken: "machine-token" }));
       const renewDue = Effect.flatMap(HubMachines.HubMachines, (machines) => machines.renewDue);
-      yield* renewDue.pipe(Effect.provide(hub.machinesLayer));
-      expect(hub.renewCalls()).toBe(0);
+      // A fresh token is offered once, in case the machine renews its grant early; it does not.
+      // (The hub's own renewal loop may offer it too, so only this instance's calls are counted.)
+      yield* Effect.gen(function* () {
+        yield* renewDue;
+        const offered = hub.renewCalls();
+        yield* renewDue;
+        expect(hub.renewCalls()).toBe(offered);
+      }).pipe(Effect.provide(hub.machinesLayer));
+      expect(JSON.parse(new TextDecoder().decode([...hub.secrets.values()][0]!)).token).toBe(
+        "machine-token",
+      );
 
       const [name, bytes] = [...hub.secrets.entries()][0]!;
       const stored = JSON.parse(new TextDecoder().decode(bytes));
@@ -323,8 +353,8 @@ describe("hub machines", () => {
         name,
         new TextEncoder().encode(JSON.stringify({ ...stored, expiresAt: soon })),
       );
+      hub.setMachineRenews(true);
       yield* renewDue.pipe(Effect.provide(hub.machinesLayer));
-      expect(hub.renewCalls()).toBe(1);
       const renewed = JSON.parse(new TextDecoder().decode(hub.secrets.get(name)!));
       expect(renewed.token).toBe("renewed-token");
     }),
@@ -418,6 +448,27 @@ describe("hub proxy", () => {
 });
 
 describe("session renewal", () => {
+  it("renews a grant from before granular permissions as what its broad scopes implied", () => {
+    const renewed = renewedScopes(LEGACY_STANDARD_SCOPES);
+    for (const scope of [
+      "orchestration:read",
+      "orchestration:operate",
+      "settings:write",
+      "providers:manage",
+      "filesystem:read",
+      "terminal:read",
+      "terminal:operate",
+      "relay:read",
+    ] as const) {
+      expect(renewed).toContain(scope);
+    }
+    // Nothing the old grant did not hold, and the retired scope goes.
+    expect(renewed).not.toContain("access:write");
+    expect(renewed).not.toContain("review:write");
+    // A current grant renews as it is.
+    expect(renewedScopes(AuthStandardClientScopes)).toEqual(AuthStandardClientScopes);
+  });
+
   it("swaps a bearer session in its last week for a new one", async () => {
     const hub = await makeHub();
     const due = await hub.request("/api/magnesium/session/renew", {
@@ -431,6 +482,13 @@ describe("session renewal", () => {
       headers: { authorization: "Bearer not-due" },
     });
     expect(early.status).toBe(409);
+    // A grant from before granular permissions renews early, as what it meant then.
+    const legacy = await hub.request("/api/magnesium/session/renew", {
+      method: "POST",
+      headers: { authorization: "Bearer legacy-not-due" },
+    });
+    expect(legacy.status).toBe(200);
+    expect(hub.issuedScopes.at(-1)).toEqual(renewedScopes(LEGACY_STANDARD_SCOPES));
     const cookie = await hub.request("/api/magnesium/session/renew", {
       method: "POST",
       session: "admin",

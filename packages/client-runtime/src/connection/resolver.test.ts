@@ -201,7 +201,7 @@ describe("ConnectionResolver", () => {
       const error = yield* Effect.flip(broker.prepare(catalogEntry(target)));
 
       expect(error).toMatchObject({ reason: "unsupported" });
-      expect(error.message).toContain("Update T3 Code on Compatible environment");
+      expect(error.message).toContain("Update Magnesium on Compatible environment"); // magnesium: renamed
     }),
   );
 
@@ -265,7 +265,7 @@ describe("ConnectionResolver", () => {
         label: "cpu-host-1",
         httpBaseUrl: "https://hub.example.test/api/magnesium/env/cpu-host-1/",
         socketUrl:
-          "wss://hub.example.test/api/magnesium/env/cpu-host-1/ws?clientSurface=web&clientDeviceType=desktop&connectionMethod=direct&orchestrationProtocol=1",
+          "wss://hub.example.test/api/magnesium/env/cpu-host-1/ws?clientSurface=web&clientDeviceType=desktop&connectionMethod=direct&orchestrationProtocol=2",
         httpAuthorization: null,
         target,
       });

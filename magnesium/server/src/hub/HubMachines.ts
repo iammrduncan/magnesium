@@ -362,23 +362,27 @@ export const make = Effect.gen(function* () {
   const markRejected = (name: string) =>
     Ref.update(rejected, (current) => new Set(current).add(name));
 
+  /**
+   * Renews each token in its last stretch. Once per start, it also offers a
+   * token that is not due: a machine renews early only a grant from before
+   * granular permissions, issuing what that grant meant (see the renew route).
+   */
+  const offeredEarly = new Set<string>();
   const renewOne = Effect.fn("HubMachines.renewOne")(function* (machine: HubMachineConfig) {
     const stored = yield* readStored(machine.name);
     if (Option.isNone(stored)) return;
     const expiresAt = DateTime.make(stored.value.expiresAt);
     const now = yield* DateTime.now;
-    if (
-      Option.isNone(expiresAt) ||
-      DateTime.isLessThanOrEqualTo(expiresAt.value, now) ||
-      DateTime.isGreaterThan(expiresAt.value, DateTime.addDuration(now, RENEW_BEFORE))
-    ) {
-      return;
-    }
+    if (Option.isNone(expiresAt) || DateTime.isLessThanOrEqualTo(expiresAt.value, now)) return;
+    const due = !DateTime.isGreaterThan(expiresAt.value, DateTime.addDuration(now, RENEW_BEFORE));
+    if (!due && offeredEarly.has(machine.name)) return;
+    offeredEarly.add(machine.name);
     const renewed = yield* withHttp(MachineApi.renewSession(machine.url, stored.value.token));
+    if (Option.isNone(renewed)) return;
     yield* writeStored(machine.name, {
       ...stored.value,
-      token: renewed.token,
-      expiresAt: renewed.expiresAt,
+      token: renewed.value.token,
+      expiresAt: renewed.value.expiresAt,
     });
     yield* Effect.logInfo("Renewed the hub's token for a machine.", { name: machine.name });
   });
