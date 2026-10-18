@@ -570,12 +570,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["cli terminal shell path install command line"],
     desktopOnly: true,
   },
-  {
-    id: "privacy-policy",
-    title: "Privacy policy",
-    to: "/settings/general",
-    searchTerms: ["telemetry analytics usage data tracking legal opt out"],
-  },
+  // magnesium: no privacy policy row; Magnesium collects no usage data (D13)
   {
     id: "telemetry-export",
     title: "OpenTelemetry export",
