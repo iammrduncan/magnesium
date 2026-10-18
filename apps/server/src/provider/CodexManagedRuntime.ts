@@ -4,8 +4,8 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
-import { ServerConfig } from "../config.ts";
-import { CodexInstallation } from "./CodexInstallation.ts";
+import * as ServerConfig from "../config.ts";
+import * as CodexInstallation from "./CodexInstallation.ts";
 import { makeCodexChatGptAuth } from "./CodexChatGptAuth.ts";
 import { materializeCodexShadowHome } from "./Drivers/CodexHomeLayout.ts";
 
@@ -22,6 +22,8 @@ const managedCodexLaunchArgs = [
   'model_providers.openai_token_sharing.base_url="https://api.openai.com/v1"',
   'model_providers.openai_token_sharing.model_catalog_url="https://api.openai.com/v1/models"',
   "features.api_key_model_discovery=true",
+  "features.multi_agent=false",
+  "features.multi_agent_v2=false",
   'model_providers.openai_token_sharing.env_key="ACCESS_TOKEN"',
   'model_providers.openai_token_sharing.wire_api="responses"',
   "model_providers.openai_token_sharing.requires_openai_auth=false",
@@ -36,8 +38,8 @@ export const makeCodexManagedRuntime = Effect.fn("makeCodexManagedRuntime")(func
   readonly environment: NodeJS.ProcessEnv;
   readonly config: CodexSettings;
 }) {
-  const installation = yield* CodexInstallation;
-  const config = yield* ServerConfig;
+  const installation = yield* CodexInstallation.CodexInstallation;
+  const config = yield* ServerConfig.ServerConfig;
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const auth = yield* makeCodexChatGptAuth({

@@ -64,6 +64,10 @@ jobs:
           cache: true
           run-install: true
 
+      # v0.1.0's server browser tests drive a headless Chromium, as upstream's CI installs it.
+      - name: Install Chromium for server browser tests
+        run: node apps/server/node_modules/playwright-core/cli.js install --with-deps --only-shell chromium
+
       - name: Test
         run: vp run -r test
 

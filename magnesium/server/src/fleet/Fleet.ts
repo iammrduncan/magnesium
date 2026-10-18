@@ -24,7 +24,7 @@ import * as Queue from "effect/Queue";
 import * as RcRef from "effect/RcRef";
 import * as Schedule from "effect/Schedule";
 import * as Stream from "effect/Stream";
-import { HttpClient } from "effect/unstable/http";
+import { HttpClient } from "effect/http";
 
 import { HomeRelay } from "../home/relay.ts";
 import { HubMachines } from "../hub/HubMachines.ts";

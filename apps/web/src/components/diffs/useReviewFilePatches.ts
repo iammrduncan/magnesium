@@ -1,11 +1,24 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { FileDiffMetadata } from "@pierre/diffs";
 import type { EnvironmentId, ReviewDiffPreviewSource } from "@t3tools/contracts";
-import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
-import * as Atom from "effect/unstable/reactivity/Atom";
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import * as AsyncResult from "effect/reactivity/AsyncResult";
+import * as Atom from "effect/reactivity/Atom";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { getRenderablePatch, resolveFileDiffPath, type RenderablePatch } from "~/lib/diffRendering";
 import { reviewEnvironment } from "~/state/review";
+
+const filePathCollator = new Intl.Collator(undefined, {
+  numeric: true,
+  sensitivity: "base",
+});
 
 export function useReviewFilePatches({
   environmentId,
@@ -41,10 +54,7 @@ export function useReviewFilePatches({
     [requested, scope],
   );
   const files = useMemo(
-    () =>
-      source?.files?.toSorted((a, b) =>
-        a.path.localeCompare(b.path, undefined, { numeric: true, sensitivity: "base" }),
-      ) ?? [],
+    () => source?.files?.toSorted((a, b) => filePathCollator.compare(a.path, b.path)) ?? [],
     [source?.files],
   );
   const queries = useMemo(
@@ -146,12 +156,17 @@ export function useReviewFilePatches({
     [requestFiles, settledFileCount],
   );
   const requestFile = useCallback((index: number) => requestFiles([index]), [requestFiles]);
+  const retryInputsRef = useRef({ queries, files });
+  useLayoutEffect(() => {
+    retryInputsRef.current = { queries, files };
+  }, [queries, files]);
   const retry = useCallback(
     (path: string) => {
+      const { queries, files } = retryInputsRef.current;
       const query = queries.find(({ index }) => files[index]?.path === path)?.query;
       if (query) registry.refresh(query);
     },
-    [queries, files, registry],
+    [registry],
   );
   const renderableFiles = useMemo(
     () =>
@@ -178,30 +193,31 @@ export function useReviewFilePatches({
             };
           })
         : (preview?.kind === "files" ? preview.files : []).toSorted((a, b) =>
-            resolveFileDiffPath(a).localeCompare(resolveFileDiffPath(b), undefined, {
-              numeric: true,
-              sensitivity: "base",
-            }),
+            filePathCollator.compare(resolveFileDiffPath(a), resolveFileDiffPath(b)),
           ),
     [source, files, patches, scope, preview],
   );
-  const fileStates = new Map(
-    files.map((file, index) => {
-      const patch = patches.get(index);
-      return [
-        file.path,
-        {
-          error:
-            patch?._tag === "Failure" ||
-            (patch?._tag === "Success" &&
-              (patch.value.patch?.kind !== "files" ||
-                !patch.value.patch.files.some(
-                  (candidate) => resolveFileDiffPath(candidate) === file.path,
-                ))),
-          truncated: patch?._tag === "Success" && patch.value.source.truncated,
-        },
-      ] as const;
-    }),
+  const fileStates = useMemo(
+    () =>
+      new Map(
+        files.map((file, index) => {
+          const patch = patches.get(index);
+          return [
+            file.path,
+            {
+              error:
+                patch?._tag === "Failure" ||
+                (patch?._tag === "Success" &&
+                  (patch.value.patch?.kind !== "files" ||
+                    !patch.value.patch.files.some(
+                      (candidate) => resolveFileDiffPath(candidate) === file.path,
+                    ))),
+              truncated: patch?._tag === "Success" && patch.value.source.truncated,
+            },
+          ] as const;
+        }),
+      ),
+    [files, patches],
   );
   const readyFilePaths = useMemo(
     () =>

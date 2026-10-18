@@ -8,6 +8,7 @@ import * as NodeSqlite from "node:sqlite";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
 const script = NodePath.resolve(import.meta.dirname, "../bin/magnesium-release");
+const toolShim = NodePath.resolve(import.meta.dirname, "../container/tool-shim");
 
 const roots: Array<string> = [];
 
@@ -341,6 +342,44 @@ describe("magnesium-release", () => {
     release.run("activate", "a");
     expect(release.run("activate", "b").stdout).toContain("Backed up the state");
     expect(NodeFS.readdirSync(NodePath.join(release.root, "state", "backups"))).toHaveLength(1);
+  });
+
+  it("backs up an attached workload's state from a plain shell in its pod", () => {
+    // The portable bundle as a workload mounts it: the tool shims in bin/, the
+    // release in current/. A shell in the pod has the workload's own HOME, and
+    // the server's home volume as MAGNESIUM_HOME, but none of the server's
+    // other variables.
+    const bundle = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "magnesium-bundle-"));
+    roots.push(bundle);
+    const deployBin = NodePath.join(bundle, "releases/x/magnesium/deploy/bin");
+    NodeFS.mkdirSync(deployBin, { recursive: true });
+    NodeFS.symlinkSync(script, NodePath.join(deployBin, "magnesium-release"));
+    NodeFS.symlinkSync("releases/x", NodePath.join(bundle, "current"));
+    NodeFS.mkdirSync(NodePath.join(bundle, "bin"));
+    const tool = NodePath.join(bundle, "bin/magnesium-release");
+    NodeFS.copyFileSync(toolShim, tool);
+    NodeFS.chmodSync(tool, 0o755);
+    const volume = NodePath.join(bundle, "volume");
+    const workloadHome = NodePath.join(bundle, "workload");
+    NodeFS.mkdirSync(NodePath.join(volume, ".magnesium/userdata"), { recursive: true });
+    NodeFS.writeFileSync(NodePath.join(volume, ".magnesium/userdata/settings.json"), "{}");
+    NodeFS.mkdirSync(workloadHome);
+    const shellEnv = Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([name]) => !["T3CODE_HOME", "MAGNESIUM_ROOT", "MAGNESIUM_NODE_BIN"].includes(name),
+      ),
+    );
+
+    const result = NodeChildProcess.spawnSync(tool, ["backup"], {
+      encoding: "utf8",
+      env: { ...shellEnv, HOME: workloadHome, MAGNESIUM_HOME: volume },
+    });
+    expect(result.stderr).toBe("");
+    expect(result.status).toBe(0);
+    const backups = NodePath.join(volume, ".magnesium/backups");
+    const [name = ""] = NodeFS.readdirSync(backups);
+    expect(NodeFS.readdirSync(NodePath.join(backups, name))).toEqual(["settings.json"]);
+    expect(NodeFS.readdirSync(workloadHome)).toEqual([]);
   });
 
   it("waits for another build of the same commit on this host, then uses it", async () => {

@@ -11,6 +11,10 @@
       "types": "./src/codexHome.ts",
       "import": "./src/codexHome.ts"
     },
+    "./sandbox": {
+      "types": "./src/sandbox.ts",
+      "import": "./src/sandbox.ts"
+    },
     "./workspaces": {
       "types": "./src/workspaces.ts",
       "import": "./src/workspaces.ts"

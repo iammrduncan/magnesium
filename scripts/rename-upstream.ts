@@ -27,6 +27,15 @@ const RENAME_SCOPE = [
   "apps/server/src",
   "packages/shared/src/codexAuthCallback.ts",
   "packages/client-runtime/src/connection/compatibility.ts",
+  // Provider status and errors moved here from apps/server in v0.1.0.
+  "packages/provider-acp/src",
+  "packages/provider-acp-registry/src",
+  "packages/provider-core/src",
+  "packages/provider-cursor/src",
+  "packages/provider-grok/src",
+  "packages/provider-muse/src",
+  "packages/provider-opencode/src",
+  "packages/provider-pi/src",
 ];
 
 /** Inside the scope, but read by agents, stored as identity, or inert here. */
@@ -34,20 +43,49 @@ const RENAME_EXCLUDED = [
   "apps/server/src/textGeneration",
   "apps/server/src/mcp",
   "apps/server/src/provider/CodexDeveloperInstructions.ts",
-  "apps/server/src/provider/RuntimeInstructions.ts",
+  "apps/server/src/provider/CodexDeveloperInstructions.test.ts",
+  // Asserts the agent-facing instructions above, as upstream wrote them.
+  "apps/server/src/orchestration-v2/Adapters/AcpAdapterV2.test.ts",
   "apps/server/src/vcs/GitVcsDriver.ts",
   "apps/server/src/cli/triagePrompt.ts",
-  "apps/server/src/project/NewProject.ts",
+  "apps/server/src/project/ManagedProjectFolders.ts",
+  "packages/provider-core/src/server/orchestrationInstructions.ts",
+  "packages/provider-core/src/server/orchestrationInstructions.test.ts",
+  "packages/provider-core/src/server/runtimeInstructions.ts",
+  "packages/provider-core/src/server/textGenerationPrompts.ts",
+  "packages/provider-core/src/server/textGenerationPrompts.test.ts",
+  "packages/provider-pi/src/server/mcpExtensionSource.ts",
+  "packages/provider-cursor/src/server/adapter.ts",
+  "packages/provider-cursor/src/server/auth.ts",
+  "packages/provider-muse/src/server/sdk.ts",
+  "packages/provider-muse/src/server/textGeneration.ts",
+  "packages/provider-opencode/src/server/textGeneration.ts",
+  "packages/provider-opencode/src/server/v2/textGeneration.ts",
   "apps/server/src/cloud",
   "apps/server/src/relay",
   "apps/server/src/desktopUpdate",
+];
+
+/**
+ * Upstream's identity inside files the rename otherwise owns: names other
+ * software keys on, such as the originator Codex reports for each request.
+ */
+const KEPT_TEXT: ReadonlyArray<{ file: string; text: string }> = [
+  {
+    file: "apps/server/src/provider/CodexProvider.ts",
+    text: 'const CODEX_CLIENT_NAME = "T3 Code";',
+  },
+  {
+    file: "apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.test.ts",
+    text: 'clientInfo: { name: "T3 Code", title: "T3 Code", version: packageJson.version }',
+  },
 ];
 
 /** Exact replacements applied before the plain rename. */
 const EXACT_REPLACEMENTS: ReadonlyArray<{ file: string; from: string; to: string }> = [
   {
     file: "apps/web/index.html",
-    from: "<title>T3 Code (Alpha)</title>",
+    from: "<title>T3 Code (Beta)</title>",
     to: "<title>Magnesium</title>",
   },
 ];
@@ -134,7 +172,15 @@ export function renameText(file: string, source: string): string {
   for (const replacement of EXACT_REPLACEMENTS) {
     if (replacement.file === file) text = text.replaceAll(replacement.from, replacement.to);
   }
-  return text.replaceAll(FROM, TO);
+  const kept = KEPT_TEXT.filter((entry) => entry.file === file);
+  kept.forEach((entry, index) => {
+    text = text.replaceAll(entry.text, `\u0000kept-${index}\u0000`);
+  });
+  text = text.replaceAll(FROM, TO);
+  kept.forEach((entry, index) => {
+    text = text.replaceAll(`\u0000kept-${index}\u0000`, entry.text);
+  });
+  return text;
 }
 
 /** Applies the rename and returns the files it changed (or would change). */

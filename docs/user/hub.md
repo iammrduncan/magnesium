@@ -79,6 +79,17 @@ its server returns. To try an offline machine now instead of waiting, choose
 Agents and command-line sessions cannot reach the hub's machines, even with an
 admin token: only devices you paired can.
 
+## Home
+
+**Home** gathers what needs you on every machine: approvals, questions, plans
+ready to implement, and failed runs. Answer each where you see it. An answer
+waits five seconds before it is sent, so **Undo** can take it back. A
+scheduled task whose run could not start shows here too, with **Retry now**;
+beside the feed, **Next scheduled runs** lists what runs soon and how each
+task's last run went. Scheduled tasks themselves are set up in **Settings →
+Scheduled tasks**. A machine that goes offline keeps its cards on Home, but
+they can't be answered until it is back.
+
 ## The footer
 
 The bar along the bottom of every page shows how many machines the hub reaches

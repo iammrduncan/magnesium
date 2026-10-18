@@ -1,20 +1,47 @@
 import { SESSION_RENEW_PATH } from "@magnesium/contracts";
+import {
+  type AuthEnvironmentScope,
+  AuthGrantScope,
+  sessionGrantsScope,
+  sessionHasLegacyPermissions,
+} from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
+import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 
 import { ServerPorts } from "../ports.ts";
 
 /**
  * Upstream bearer sessions last 30 days and have no refresh. The hub keeps one
  * per machine, so each machine server lets a bearer session in its last week
- * trade itself for a new one with the same scopes. The old session runs out on
- * its own, so live connections on it are not cut.
+ * trade itself for a new one with the same scopes (see `renewedScopes`). The old
+ * session runs out on its own, so live connections on it are not cut.
  */
 
 const RENEWABLE_WITHIN = Duration.days(8);
+
+/** A grant from before granular permissions: only the old, broad scopes. */
+const isLegacyGrant = (scopes: ReadonlyArray<AuthEnvironmentScope>) =>
+  sessionHasLegacyPermissions({ authenticated: true, permissions: scopes });
+
+/**
+ * The scopes a renewal grants. Upstream never widens a stored grant, so a
+ * session paired before granular permissions keeps only its broad scopes and
+ * loses what they implied: settings, providers, files, terminal reads. A
+ * renewal is a new session, so it issues what the grant meant, each broad
+ * scope with the permissions it implied, by upstream's own rule. Such a grant
+ * may renew early, so the hub's machine sessions regain them at once.
+ */
+export const renewedScopes = (
+  scopes: ReadonlyArray<AuthEnvironmentScope>,
+): ReadonlyArray<AuthEnvironmentScope> =>
+  isLegacyGrant(scopes)
+    ? AuthGrantScope.literals.filter((scope) =>
+        sessionGrantsScope({ authenticated: true, scopes }, scope),
+      )
+    : scopes;
 
 const jsonError = (status: number, error: string) =>
   HttpServerResponse.jsonUnsafe({ error }, { status });
@@ -28,13 +55,16 @@ const handler = Effect.gen(function* () {
     return jsonError(403, "Only bearer sessions can be renewed.");
   }
   const now = yield* DateTime.now;
-  if (DateTime.isGreaterThan(caller.value.expiresAt, DateTime.addDuration(now, RENEWABLE_WITHIN))) {
+  if (
+    DateTime.isGreaterThan(caller.value.expiresAt, DateTime.addDuration(now, RENEWABLE_WITHIN)) &&
+    !isLegacyGrant(caller.value.scopes)
+  ) {
     return jsonError(409, "This session is not due for renewal yet.");
   }
   const issued = yield* ports
     .issueBearerSession({
       subject: caller.value.subject,
-      scopes: caller.value.scopes,
+      scopes: renewedScopes(caller.value.scopes),
       label: "Magnesium hub",
     })
     .pipe(Effect.option);

@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off - an agent's /mcp token is made the way McpSessionRegistry makes it.
 // magnesium: how Magnesium's routes see each kind of credential, through upstream's real auth (goal 04)
 import * as NodeCrypto from "node:crypto";
 
@@ -9,7 +10,7 @@ import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Redacted from "effect/Redacted";
-import type { HttpServerRequest } from "effect/unstable/http";
+import type { HttpServerRequest } from "effect/http";
 
 import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
 import * as ServerSecretStore from "./auth/ServerSecretStore.ts";
@@ -18,14 +19,14 @@ import * as ServerConfig from "./config.ts";
 import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
 import { callerAuthentication, registerPairingCode } from "./magnesiumRoutes.ts";
 import * as AuthPairingLinks from "./persistence/AuthPairingLinks.ts";
-import { SqlitePersistenceMemory } from "./persistence/Layers/Sqlite.ts";
+import * as SqlitePersistence from "./persistence/Sqlite.ts";
 
 const DEV_TOKEN = "reusable-dev-auth-token-that-is-long-enough";
 
 const authLayer = EnvironmentAuth.layer.pipe(
-  Layer.provideMerge(SqlitePersistenceMemory),
+  Layer.provideMerge(SqlitePersistence.layerMemory),
   Layer.provide(ServerSecretStore.layer),
-  Layer.provide(ServerEnvironment.identityLayer),
+  Layer.provide(ServerEnvironment.layerIdentity),
   Layer.provide(
     Layer.effect(
       ServerConfig.ServerConfig,

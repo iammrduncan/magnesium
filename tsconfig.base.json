@@ -23,12 +23,15 @@
         "name": "@effect/language-service",
         "namespaceImportPackages": ["@effect/platform-node", "effect"],
         "diagnosticSeverity": {
-          "importFromBarrel": "error",
           "anyUnknownInErrorContext": "error",
           "unsafeEffectTypeAssertion": "error",
           "instanceOfSchema": "error",
           "deterministicKeys": "error",
           "strictEffectProvide": "off",
+          // We use Effect's unstable modules (http, sql) on purpose. These rules
+          // also make effect-tsgo 0.47+ report false TS2790 errors on `delete`.
+          "unstableApiUsage": "off",
+          "experimentalApiUsage": "off",
           "missingEffectServiceDependency": "error",
           "leakingRequirements": "error",
           "globalErrorInEffectCatch": "error",
@@ -52,7 +55,13 @@
           "globalFetch": "error",
           "globalFetchInEffect": "error",
           "schemaNumber": "off"
-        }
+        },
+        "overrides": [
+          {
+            "include": ["**/*.test.ts", "**/*.test.tsx"],
+            "options": { "diagnosticSeverity": { "preferSchemaOverJson": "off" } }
+          }
+        ]
       }
     ]
   }

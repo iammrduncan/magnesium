@@ -127,3 +127,5 @@ Provider logins work from inside the pod: Settings → Providers → **Sign in**
 | Back up   | Run `magnesium-release backup` on a schedule (a CronJob on the same node, with the same volume, `HOME` and uid). Backups land in `$HOME/.magnesium/backups`.         |
 | Restore   | Stop the spoke, run `magnesium-release restore <name>` in a one-off pod with the volume, then scale it back to one.                                                  |
 | Pair      | `magnesium-release pair` in the pod.                                                                                                                                 |
+
+In an attached workload, run the same commands as `/opt/magnesium-portable/bin/magnesium-release` in the workload's container. The bundle's tools work on the server's home (`MAGNESIUM_HOME`), not the workload's, so backups land in `$MAGNESIUM_HOME/.magnesium/backups`.

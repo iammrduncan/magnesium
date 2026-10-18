@@ -7,15 +7,11 @@ import {
 } from "@t3tools/contracts";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
-import {
-  HttpClient,
-  HttpClientError,
-  HttpClientRequest,
-  HttpClientResponse,
-} from "effect/unstable/http";
-import * as HttpApiClient from "effect/unstable/httpapi/HttpApiClient";
+import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http";
+import * as HttpApiClient from "effect/http-api/HttpApiClient";
 
 import { urlUnder } from "../forward.ts";
 
@@ -105,7 +101,10 @@ export const exchangePairingCode = (baseUrl: string, code: string) =>
     ),
   );
 
-/** Swap the hub's token for a fresh one (`magnesium/server`'s renew route, on the machine). */
+/**
+ * Swap the hub's token for a fresh one (`magnesium/server`'s renew route, on
+ * the machine). None when the machine says the token is not due yet.
+ */
 export const renewSession = (baseUrl: string, token: string) =>
   request(
     "renewal",
@@ -117,8 +116,14 @@ export const renewSession = (baseUrl: string, token: string) =>
           ),
         )
         .pipe(
-          Effect.flatMap(HttpClientResponse.filterStatusOk),
-          Effect.flatMap(HttpClientResponse.schemaBodyJson(SessionRenewResult)),
+          Effect.flatMap((response) =>
+            response.status === 409
+              ? Effect.succeedNone
+              : HttpClientResponse.filterStatusOk(response).pipe(
+                  Effect.flatMap(HttpClientResponse.schemaBodyJson(SessionRenewResult)),
+                  Effect.map(Option.some),
+                ),
+          ),
         ),
     ),
   );

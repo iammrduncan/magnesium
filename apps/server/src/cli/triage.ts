@@ -2,7 +2,7 @@
  * `t3 triage` - hand a misbehaving install to the user's own coding agent.
  *
  * The command is deliberately thin: it writes a `context.md` with machine facts
- * (version, paths, server liveness), then launches claude or codex
+ * (versions, paths, server liveness), then launches claude or codex
  * interactively, seeded with the playbook from `triagePrompt.ts`. The agent
  * asks the user what went wrong, investigates, and files the issue; the
  * harness's own permission prompts gate anything it wants to run. With no
@@ -14,7 +14,7 @@ import * as NodeChildProcess from "node:child_process";
 import * as NodeOS from "node:os";
 import * as NodeReadlinePromises from "node:readline/promises";
 
-import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import { isCommandAvailable, resolveSpawnCommand } from "@t3tools/shared/shell";
 import * as Config from "effect/Config";
 import * as Console from "effect/Console";
@@ -24,7 +24,7 @@ import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
-import { Command, Flag } from "effect/unstable/cli";
+import { Command, Flag } from "effect/cli";
 
 import packageJson from "../../package.json" with { type: "json" };
 import * as BootService from "../cloud/bootService.ts";
@@ -77,8 +77,11 @@ export class TriageAgentSpawnError extends Schema.TaggedError<TriageAgentSpawnEr
   }
 }
 
-/** One human-readable line about the local server, for `context.md`. */
-const describeServerProcess = Effect.fn("triage.describeServerProcess")(function* (
+/**
+ * One human-readable line about the local server, for `context.md`. Includes
+ * the version the server recorded, which can differ from this CLI's version.
+ */
+export const describeServerProcess = Effect.fn("triage.describeServerProcess")(function* (
   serverRuntimeStatePath: string,
 ) {
   // readPersistedServerRuntimeState swallows read/decode failures itself and
@@ -87,10 +90,14 @@ const describeServerProcess = Effect.fn("triage.describeServerProcess")(function
   if (Option.isNone(state)) {
     return "not running (no server-runtime.json; the server may never have started here)";
   }
+  const version =
+    state.value.serverVersion === undefined
+      ? "version not recorded"
+      : `version ${state.value.serverVersion}`;
   if (!isProcessAlive(state.value.pid)) {
-    return `not running (state file is stale: pid ${String(state.value.pid)} is dead; last origin ${state.value.origin})`;
+    return `not running (state file is stale: pid ${String(state.value.pid)} is dead; last origin ${state.value.origin}, ${version})`;
   }
-  return `running (pid ${String(state.value.pid)}, ${state.value.origin})`;
+  return `running (pid ${String(state.value.pid)}, ${state.value.origin}, ${version})`;
 });
 
 const pickAgent = (agents: ReadonlyArray<TriageAgent>) =>
@@ -183,17 +190,13 @@ export const triageCommand = Command.make("triage", {
       );
       yield* fs.makeDirectory(scratchDir, { recursive: true });
 
-      const version = packageJson.version;
       const contextFilePath = path.join(scratchDir, "context.md");
       yield* fs.writeFileString(
         contextFilePath,
         buildTriageContext({
           generatedAt: DateTime.formatIso(now),
-          version,
-          releaseTag: /^[^-+]+-(?:nightly|preview)\./.test(version)
-            ? `v${version} (prerelease build; if this tag does not exist, clone main)`
-            : `v${version}`,
-          os: `${yield* HostProcessPlatform} ${yield* HostProcessArchitecture} (${NodeOS.release()})`,
+          cliVersion: packageJson.version,
+          os: `${yield* HostProcess.Platform} ${yield* HostProcess.Architecture} (${NodeOS.release()})`,
           nodeVersion: process.version,
           launchedAs: yield* resolveCliCommand("triage"),
           server: yield* describeServerProcess(paths.serverRuntimeStatePath),

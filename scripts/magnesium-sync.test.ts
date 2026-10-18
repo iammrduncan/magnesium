@@ -86,14 +86,22 @@ describe("rename", () => {
     expect(renameText("apps/web/src/x.ts", source)).toBe(
       'const title = "Magnesium"; const key = "t3-code"; const env = "T3CODE_HOME";',
     );
-    expect(renameText("apps/web/index.html", "<title>T3 Code (Alpha)</title>")).toBe(
+    expect(renameText("apps/web/index.html", "<title>T3 Code (Beta)</title>")).toBe(
       "<title>Magnesium</title>",
     );
+    // Codex reports this name as each request's originator: an identity, kept.
+    expect(
+      renameText(
+        "apps/server/src/provider/CodexProvider.ts",
+        'const CODEX_CLIENT_NAME = "T3 Code";\nconst label = "T3 Code";',
+      ),
+    ).toBe('const CODEX_CLIENT_NAME = "T3 Code";\nconst label = "Magnesium";');
   });
 
   it("keeps agent-facing and inert server files out of the rename", () => {
     expect(isRenameOwned("apps/server/src/bin.ts")).toBe(true);
-    expect(isRenameOwned("apps/server/src/provider/RuntimeInstructions.ts")).toBe(false);
+    expect(isRenameOwned("packages/provider-core/src/server/runtimeInstructions.ts")).toBe(false);
+    expect(isRenameOwned("packages/provider-pi/src/server/status.ts")).toBe(true);
     expect(isRenameOwned("apps/server/src/mcp/McpHttpServer.ts")).toBe(false);
     expect(isRenameOwned("apps/web/public/favicon.ico")).toBe(true);
     expect(isRenameOwned("packages/contracts/src/settings.ts")).toBe(false);

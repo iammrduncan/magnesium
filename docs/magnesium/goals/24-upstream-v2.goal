@@ -1,6 +1,6 @@
 ---
 id: mg-upstream-v2
-status: PLANNED
+status: IN_PROGRESS
 kind: maintenance
 depends_on: [mg-home, mg-spokes-k8s]
 phase: 2
@@ -9,12 +9,12 @@ decisions: [D11, D51, D52]
 ---
 # Take upstream's v0.1.0: Orchestrator V2
 
-Upstream's T3 Code v0.1.0 is the first stable release of Orchestrator V2: a rebuild of how turns start, stop, queue and resume, how background work is tracked, and how history is saved. Magnesium is on v0.0.45. On 2026-10-16 the owner chose to finish goal 06 on V1 first and take V2 right after it, as its own goal (D51). Upstream's scheduler (scheduled tasks, their failures and next runs) only exists with V2, so Home's scheduled-run cards and Next runs come with this goal. By then the four machines run as pods (goal 25, D52), so their part of the upgrade is a new image.
+Upstream's T3 Code v0.1.0 is the first stable release of Orchestrator V2: a rebuild of how turns start, stop, queue and resume, how background work is tracked, and how history is saved. Magnesium is on v0.0.45. On 2026-10-16 the owner chose to finish goal 06 on V1 first and take V2 right after it, as its own goal (D51). Upstream's scheduler (scheduled tasks, their failures and next runs) only exists with V2, so Home's scheduled-run cards and Next runs come with this goal. Since goal 25, a machine runs on bare metal, as a Magnesium pod, or attached inside a workload (D52, D59); each gets the new build its own way.
 
 ## What upstream says before you update
 
 - The first V2 start copies each server's database into a new one and imports its threads. The old file is left as it was; work done under V2 doesn't show under V1.
-- A V2 server and a V1 client refuse each other: the hub and all four machines upgrade in one window.
+- A V2 server and a V1 client refuse each other: the hub and every machine upgrade in one window.
 - OpenCode: V2 is built for OpenCode 2.0.18 and newer. 1.x keeps working, but an approval or question still waiting when the server restarts is not shown again. OpenCode 2 is a separate package; never run 1.x and 2.x side by side on one machine.
 - Migrated threads keep their messages; live provider sessions, old checkpoints and diffs, tool activity, approval history and proposed plans don't carry over.
 
@@ -30,7 +30,7 @@ Upstream's T3 Code v0.1.0 is the first stable release of Orchestrator V2: a rebu
 
 1. **Rehearsal on real data.** Each server's `state.sqlite`, copied with `VACUUM INTO`, migrates under the merged build; threads, projects and settings are all there.
 2. **Security kept.** New threads start supervised; a fenced thread can't read the Magnesium state home (goal 03's tests).
-3. **Lockstep upgrade.** Pending OpenCode approvals and questions are answered or stopped first, every server is backed up, then the hub and all four machines move in one window. Fleet shows five servers on the new build.
+3. **Lockstep upgrade.** Pending OpenCode approvals and questions are answered or stopped first, every server is backed up, then the hub and every machine move in one window. Fleet shows every server on the new build.
 4. **Everything since goal 01 still works** on the hub: pairing once, Fleet, the sidebar and footer, Home with an approval, a question and a plan, the Fleet terminal.
 5. **Scheduled runs.** A scheduled task that fails shows on Home; Retry runs it; Next runs lists the next three.
 6. **Rollback.** `magnesium-release rollback` brings back the previous build with its V1 threads.

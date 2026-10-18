@@ -1,0 +1,22 @@
+#!/bin/sh
+# bin/magnesium-release, bin/magnesium-agents and bin/magnesium-fence in the
+# portable bundle are copies of this file. Each runs that tool from the current
+# release as the server sees things, from whatever shell it is started in (a
+# `kubectl exec` into an attached workload, say): HOME is the server's (the
+# workload's MAGNESIUM_HOME when attached, see magnesium-attach), the state is
+# $HOME/.magnesium, and the root and Node are this bundle's.
+set -eu
+
+bundle=$(dirname "$(dirname "$(readlink -f "$0")")")
+tool=$(basename "$0")
+
+export HOME="${MAGNESIUM_HOME:-$HOME}"
+export T3CODE_HOME="${T3CODE_HOME:-$HOME/.magnesium}"
+export MAGNESIUM_ROOT="${MAGNESIUM_ROOT:-$bundle}"
+export MAGNESIUM_NODE_BIN="${MAGNESIUM_NODE_BIN:-$bundle/node/bin/node}"
+# magnesium-release names the state folder MAGNESIUM_HOME.
+if [ "$tool" = magnesium-release ]; then
+  export MAGNESIUM_HOME="$T3CODE_HOME"
+fi
+
+exec "$bundle/current/magnesium/deploy/bin/$tool" "$@"

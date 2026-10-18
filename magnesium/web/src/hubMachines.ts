@@ -11,12 +11,7 @@ import { HubConnectionRegistration, HubConnectionTarget } from "@t3tools/client-
 import type { EnvironmentId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
-import {
-  FetchHttpClient,
-  HttpClient,
-  HttpClientRequest,
-  HttpClientResponse,
-} from "effect/unstable/http";
+import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http";
 
 /**
  * The machines the hub carries (doc 11, "The front door"). Every client signed

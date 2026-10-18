@@ -75,21 +75,49 @@ function startMerge(ref: string) {
   }
   const merge = run("git", ["merge", "--no-commit", "--no-ff", ref], { allowFailure: true });
   console.log(merge.stdout);
-  for (const { file } of unmergedFiles()) {
+  const real: Array<string> = [];
+  for (const { status, file } of unmergedFiles()) {
     const kind = classifyConflict(file, hasMarkerAtHead(repo, file));
-    if (kind === "stripped") {
+    if (kind === "real") {
+      real.push(file);
+      continue;
+    }
+    // A side that deleted the file has no version to check out: take the deletion.
+    // Our own deletion always stands, even of a file the scripts otherwise own.
+    const side = kind === "ours" ? "ours" : "theirs";
+    const deleted = status.startsWith("D") || (side === "theirs" && status.endsWith("D"));
+    if (kind === "stripped" || deleted) {
       run("git", ["rm", "-r", "-f", "--quiet", "--", file], { allowFailure: true });
-    } else if (kind === "scripted" || kind === "regenerated") {
-      run("git", ["checkout", "--theirs", "--", file]);
+    } else if (status === "AU" || status === "UA") {
+      // Added on one side only, such as into a folder the other side renamed: keep it.
       run("git", ["add", "--", file]);
-    } else if (kind === "ours") {
-      run("git", ["checkout", "--ours", "--", file]);
+    } else {
+      run("git", ["checkout", `--${side}`, "--", file]);
       run("git", ["add", "--", file]);
     }
   }
   stripUpstream(repo);
   renameUpstream(repo);
-  run("git", ["add", "-A", "--", "."]);
+  // Stage what the scripts changed, by name: staging a real conflict would mark
+  // it resolved, markers and all, and `git add -A` with an exclude still does.
+  const changed = git([
+    "ls-files",
+    "-z",
+    "--modified",
+    "--deleted",
+    "--others",
+    "--exclude-standard",
+  ])
+    .split("\0")
+    .filter((file) => file !== "" && !real.includes(file));
+  // An empty list would mean `git add -A` on the whole tree.
+  if (changed.length === 0) return;
+  const add = NodeChildProcess.spawnSync(
+    "git",
+    ["add", "-A", "--pathspec-from-file=-", "--pathspec-file-nul"],
+    { cwd: repo, input: [...new Set(changed)].join("\0"), encoding: "utf8" },
+  );
+  if (add.status !== 0) throw new Error(`git add failed:\n${add.stderr}`);
 }
 
 function finish(skipChecks: boolean) {

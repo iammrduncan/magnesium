@@ -1,13 +1,109 @@
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
+import { createContext, use, useEffect, useRef, type ComponentProps, type RefObject } from "react";
 
 import { cn } from "~/lib/utils";
+import { useNativeTitlebarHeight } from "~/lib/windowControlsOverlay";
+
+// Base UI's default, restated because a padding object zeroes the sides it omits.
+const COLLISION_PADDING = 5;
 
 const TooltipProvider = TooltipPrimitive.Provider;
 
-const Tooltip = TooltipPrimitive.Root;
+type TooltipActionsRef = RefObject<TooltipPrimitive.Root.Actions | null>;
+const TooltipHoverContext = createContext<TooltipActionsRef | null>(null);
+const TooltipScrollContext = createContext<RefObject<{
+  trigger: HTMLElement;
+  actionsRef: TooltipActionsRef;
+} | null> | null>(null);
+
+/** Dismisses hovered descendants on real scroll events without rerendering the timeline. */
+function TooltipScrollDismissArea({ onScrollCapture, ...props }: ComponentProps<"div">) {
+  const hovered = useRef<{ trigger: HTMLElement; actionsRef: TooltipActionsRef } | null>(null);
+  return (
+    <TooltipScrollContext value={hovered}>
+      <div
+        {...props}
+        onScrollCapture={(event) => {
+          onScrollCapture?.(event);
+          const tooltip = hovered.current;
+          if (!tooltip || tooltip.trigger.contains(tooltip.trigger.ownerDocument.activeElement)) {
+            return;
+          }
+          hovered.current = null;
+          // Base UI also cancels delayed hover opens through this action.
+          tooltip.actionsRef.current?.close();
+        }}
+      />
+    </TooltipScrollContext>
+  );
+}
+
+function Tooltip<Payload>(props: TooltipPrimitive.Root.Props<Payload>) {
+  const hovered = use(TooltipScrollContext);
+  const localActionsRef = useRef<TooltipPrimitive.Root.Actions | null>(null);
+  const actionsRef = props.actionsRef ?? localActionsRef;
+  useEffect(
+    () => () => {
+      if (hovered?.current?.actionsRef === actionsRef) hovered.current = null;
+    },
+    [actionsRef, hovered],
+  );
+
+  if (!hovered) return <TooltipPrimitive.Root {...props} />;
+  return (
+    <TooltipHoverContext value={actionsRef}>
+      <TooltipPrimitive.Root
+        {...props}
+        actionsRef={actionsRef}
+        onOpenChange={(open, details) => {
+          props.onOpenChange?.(open, details);
+          if (!open && !details.isCanceled && hovered.current?.actionsRef === actionsRef) {
+            hovered.current = null;
+          }
+        }}
+      />
+    </TooltipHoverContext>
+  );
+}
 
 function TooltipTrigger(props: TooltipPrimitive.Trigger.Props) {
-  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />;
+  const hovered = use(TooltipScrollContext);
+  const actionsRef = use(TooltipHoverContext);
+  if (!hovered || !actionsRef) {
+    return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />;
+  }
+  return (
+    <TooltipPrimitive.Trigger
+      data-slot="tooltip-trigger"
+      {...props}
+      onMouseEnter={(event) => {
+        props.onMouseEnter?.(event);
+        hovered.current = { trigger: event.currentTarget, actionsRef };
+      }}
+    />
+  );
+}
+
+/**
+ * Treats the native titlebar strip as off-screen, so a tooltip that would open
+ * under the window controls flips to its other side. Rendered inside the
+ * portal so only open tooltips track the titlebar.
+ */
+function TooltipPositioner(props: TooltipPrimitive.Positioner.Props) {
+  const titlebarHeight = useNativeTitlebarHeight();
+  return (
+    <TooltipPrimitive.Positioner
+      className="pointer-events-none z-[140] h-(--positioner-height) w-(--positioner-width) max-w-(--available-width) transition-[top,left,right,bottom,transform] data-instant:transition-none"
+      collisionPadding={{
+        top: COLLISION_PADDING + titlebarHeight,
+        right: COLLISION_PADDING,
+        bottom: COLLISION_PADDING,
+        left: COLLISION_PADDING,
+      }}
+      data-slot="tooltip-positioner"
+      {...props}
+    />
+  );
 }
 
 function TooltipPopup({
@@ -29,14 +125,7 @@ function TooltipPopup({
 }) {
   return (
     <TooltipPrimitive.Portal>
-      <TooltipPrimitive.Positioner
-        align={align}
-        anchor={anchor}
-        className="pointer-events-none z-[140] h-(--positioner-height) w-(--positioner-width) max-w-(--available-width) transition-[top,left,right,bottom,transform] data-instant:transition-none"
-        data-slot="tooltip-positioner"
-        side={side}
-        sideOffset={sideOffset}
-      >
+      <TooltipPositioner align={align} anchor={anchor} side={side} sideOffset={sideOffset}>
         <TooltipPrimitive.Popup
           className={cn(
             "relative flex h-(--popup-height,auto) w-(--popup-width,auto) origin-(--transform-origin) text-balance rounded-md text-popover-foreground text-xs transition-[width,height,scale,opacity] before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-md)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] data-ending-style:scale-98 data-starting-style:scale-98 data-ending-style:opacity-0 data-starting-style:opacity-0 data-instant:duration-0 dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
@@ -59,9 +148,9 @@ function TooltipPopup({
             {children}
           </TooltipPrimitive.Viewport>
         </TooltipPrimitive.Popup>
-      </TooltipPrimitive.Positioner>
+      </TooltipPositioner>
     </TooltipPrimitive.Portal>
   );
 }
 
-export { TooltipProvider, Tooltip, TooltipTrigger, TooltipPopup };
+export { TooltipProvider, Tooltip, TooltipTrigger, TooltipPopup, TooltipScrollDismissArea };

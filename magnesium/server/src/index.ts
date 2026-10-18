@@ -1,7 +1,7 @@
 // Magnesium's server features: routes, workers and its own database (doc 11).
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
-import { HttpRouter } from "effect/unstable/http";
+import { HttpRouter } from "effect/http";
 
 import * as MagnesiumDb from "./db/MagnesiumDb.ts";
 import * as Fleet from "./fleet/Fleet.ts";
@@ -34,6 +34,7 @@ import * as ServerStatus from "./status/ServerStatus.ts";
 
 export * from "./ports.ts";
 export { agentsCommand } from "./agents/cli.ts";
+export { RECENT_WORK_ITEM_TYPES } from "./home/items.ts";
 
 const routeLayers = Layer.unwrap(
   Effect.gen(function* () {

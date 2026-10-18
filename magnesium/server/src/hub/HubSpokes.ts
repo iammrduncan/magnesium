@@ -112,7 +112,7 @@ export const make = Effect.gen(function* () {
       Effect.orElseSucceed(() => false),
     );
   /** A code nobody types: 32 random hex characters. */
-  const newCode = crypto.randomUUIDv4.pipe(
+  const newCode = crypto.randomUUIDv4().pipe(
     Effect.map((uuid) => uuid.replaceAll("-", "").toUpperCase()),
     Effect.orDie,
   );

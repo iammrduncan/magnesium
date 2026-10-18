@@ -7,7 +7,7 @@ import {
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
-import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
+import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 
 import { NOT_PAIRED_DETAIL, ServerPorts } from "../ports.ts";
 import { HubMachines } from "./HubMachines.ts";

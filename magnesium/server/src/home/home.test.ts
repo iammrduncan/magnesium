@@ -20,15 +20,17 @@ import * as Stream from "effect/Stream";
 import { HUB_MACHINES_CONFIG_FILE } from "../hub/HubMachines.ts";
 import { connect } from "../rpc/client.ts";
 import {
-  approvalActivity,
+  approvalRequest,
+  makeTestSchedule,
   makeTestThreads,
-  questionActivity,
+  questionRequest,
   startTestServer,
   testDescriptor,
   testHubConfig,
   testHubSecrets,
+  testScheduledTask,
   testThread,
-  testThreadDetail,
+  testThreadRequests,
   testTicketRoute,
 } from "../testing.ts";
 import { buildHome } from "./Home.ts";
@@ -139,6 +141,47 @@ const watchTable = <Row, E>(
 const APPROVAL_KEY = "cpu-host-1/deploy:approval:apply";
 const QUESTION_KEY = "@self/notes:question:which";
 
+describe("building Home with scheduled runs", () => {
+  it("counts a run that could not start, never next runs, and drops an offline machine's", () => {
+    const scheduled = (taskId: string): LocalHomeItem["body"] => ({
+      _tag: "scheduled",
+      taskId,
+      lastRun: "succeeded",
+    });
+    const built = buildHome({
+      sources: [
+        {
+          name: null,
+          label: "hub",
+          environmentId: null,
+          reachable: true,
+          items: [
+            localItem("schedule:a:next", scheduled("a"), "2026-10-16T14:00:00.000Z"),
+            localItem(
+              "schedule:b:failure",
+              { _tag: "scheduled-failure", taskId: "b", message: null },
+              "2026-10-16T02:00:00.000Z",
+            ),
+          ],
+        },
+        {
+          name: "gpu-host-1" as never,
+          label: "gpu-host-1",
+          environmentId: null,
+          reachable: false,
+          items: [localItem("schedule:c:next", scheduled("c"), "2026-10-16T15:00:00.000Z")],
+        },
+      ],
+      pins: new Map(),
+    });
+    expect(built.items.map((item) => item.key)).toEqual([
+      "@self/schedule:a:next",
+      "@self/schedule:b:failure",
+    ]);
+    expect(built.summary.counts).toMatchObject({ failure: 1, total: 1, running: 0 });
+  });
+});
+
 describe("magnesium.home.* on the hub", () => {
   it.live(
     "gathers every server's needs, answers one on its machine, and holds an offline machine's",
@@ -146,17 +189,15 @@ describe("magnesium.home.* on the hub", () => {
       Effect.gen(function* () {
         const machineThreads = yield* makeTestThreads;
         yield* machineThreads.upsert(
-          testThread("deploy", { session: "running", approval: true }),
-          testThreadDetail("deploy", {
-            activities: [approvalActivity("apply", "2026-10-16T01:00:00.000Z", "kubectl apply")],
-          }),
+          testThread("deploy", { run: "running", approval: true }),
+          testThreadRequests(
+            approvalRequest("deploy", "apply", "2026-10-16T01:00:00.000Z", "kubectl apply"),
+          ),
         );
         const hubThreads = yield* makeTestThreads;
         yield* hubThreads.upsert(
           testThread("notes", { question: true }),
-          testThreadDetail("notes", {
-            activities: [questionActivity("which", "2026-10-16T01:10:00.000Z")],
-          }),
+          testThreadRequests(questionRequest("notes", "which", "2026-10-16T01:10:00.000Z")),
         );
 
         const machineRun = yield* Scope.make();
@@ -212,7 +253,7 @@ describe("magnesium.home.* on the hub", () => {
         });
         expect(machineThreads.dispatched).toEqual([
           expect.objectContaining({
-            type: "thread.approval.respond",
+            type: "runtime-request.respond",
             threadId: "deploy",
             requestId: "apply",
             decision: "accept",
@@ -273,6 +314,79 @@ const boardItem = (key: string, body: HomeItem["body"]): HomeItem =>
     reachable: true,
     pinnedAt: null,
   }) as HomeItem;
+
+describe("scheduled runs on Home (goal 24)", () => {
+  const FAILED_KEY = "@self/schedule:nightly:failure";
+  const NEXT_KEY = "@self/schedule:crawl:next";
+  const nightly = testScheduledTask("nightly", {
+    title: "Nightly dream cycle",
+    nextRunAt: "2026-10-17T02:00:00.000Z" as never,
+    lastRunAt: "2026-10-16T02:00:00.000Z" as never,
+    lastRunStatus: "failed",
+    lastRunError: "The project's folder is gone.",
+  });
+
+  it.live("shows next runs and a run that could not start, and retries it from its card", () =>
+    Effect.gen(function* () {
+      const schedule = yield* makeTestSchedule;
+      yield* schedule.set([
+        nightly,
+        testScheduledTask("crawl", {
+          title: "Repo crawl and mirror",
+          nextRunAt: "2026-10-16T14:00:00.000Z" as never,
+          lastRunStatus: "succeeded",
+        }),
+        testScheduledTask("paused", { enabled: false }),
+      ]);
+      const hub = yield* startTestServer({
+        files: { [HUB_MACHINES_CONFIG_FILE]: testHubConfig({}) },
+        ports: { schedule: schedule.ports },
+      });
+      const browser = yield* connect(hub.wsUrl("operator"));
+      const needs = yield* watchTable(browser[MAGNESIUM_WS_METHODS.homeNeeds]({}), homeItemKey);
+      const summary = yield* watchTable(
+        browser[MAGNESIUM_WS_METHODS.homeSummary]({}),
+        (row: HomeSummary) => row.key,
+      );
+      yield* needs.until(() => needs.rows.has(FAILED_KEY) && needs.rows.has(NEXT_KEY));
+      expect(needs.rows.get(FAILED_KEY)).toMatchObject({
+        threadId: null,
+        title: "Nightly dream cycle",
+        since: "2026-10-16T02:00:00.000Z",
+        body: {
+          _tag: "scheduled-failure",
+          taskId: "nightly",
+          message: "The project's folder is gone.",
+        },
+      });
+      expect(needs.rows.get(NEXT_KEY)).toMatchObject({
+        since: "2026-10-16T14:00:00.000Z",
+        body: { _tag: "scheduled", taskId: "crawl", lastRun: "succeeded" },
+      });
+      // A disabled task has no next run.
+      expect([...needs.rows.keys()].some((key) => key.includes("paused"))).toBe(false);
+      // The failed run needs you; next runs don't count.
+      yield* summary.until(() => summary.rows.get("home")?.counts.failure === 1);
+      expect(summary.rows.get("home")?.counts).toMatchObject({ failure: 1, total: 1, running: 0 });
+
+      yield* browser[MAGNESIUM_WS_METHODS.homeAnswer]({
+        key: FAILED_KEY,
+        answer: { _tag: "retry", taskId: "nightly" },
+      });
+      expect(schedule.ran).toEqual(["nightly"]);
+
+      // The run started, so the card goes, and a second Retry is refused.
+      yield* schedule.set([{ ...nightly, lastRunStatus: "running" }]);
+      yield* needs.until(() => !needs.rows.has(FAILED_KEY));
+      const again = yield* browser[MAGNESIUM_WS_METHODS.homeAnswer]({
+        key: FAILED_KEY,
+        answer: { _tag: "retry", taskId: "nightly" },
+      }).pipe(Effect.exit);
+      expect(Exit.isFailure(again)).toBe(true);
+      expect(schedule.ran).toEqual(["nightly"]);
+    }).pipe(Effect.scoped),
+  );
+});
 
 describe("Home's byte budget", () => {
   it("opens the board's four cards in under 4 KiB, and sends one new approval in under 640 bytes", () => {

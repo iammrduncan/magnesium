@@ -30,12 +30,13 @@ describe("thread counts", () => {
   it("counts what needs you ahead of what is working, like the sidebar", () => {
     const states = [
       testThread("idle"),
-      testThread("working", { session: "running" }),
-      testThread("starting", { session: "starting" }),
-      testThread("background", { session: "ready", background: "working" }),
-      testThread("monitoring", { session: "ready", background: "monitoring" }),
-      testThread("approval", { session: "running", approval: true }),
-      testThread("question", { session: "running", question: true }),
+      testThread("working", { run: "running" }),
+      testThread("starting", { run: "starting" }),
+      testThread("background", { run: "completed", background: "working" }),
+      testThread("monitoring", { run: "completed", background: "monitoring" }),
+      testThread("approval", { run: "running", approval: true }),
+      testThread("question", { run: "running", question: true }),
+      // A V2 thread names only its newest open request: here, the approval.
       testThread("both", { approval: true, question: true }),
     ].map(threadStateOf);
     expect(countThreads(states)).toEqual({
@@ -43,7 +44,7 @@ describe("thread counts", () => {
       running: 3,
       waiting: 3,
       approvals: 2,
-      questions: 2,
+      questions: 1,
     });
   });
 });
@@ -52,7 +53,7 @@ describe("server status", () => {
   it.effect("follows the server's threads, re-reading each changed thread once per burst", () =>
     Effect.gen(function* () {
       const threads = yield* makeTestThreads;
-      yield* threads.upsert(testThread("a", { session: "running" }));
+      yield* threads.upsert(testThread("a", { run: "running" }));
       const ports = ServerPorts.of({
         baseDir: "/unused",
         stateDir: "/unused",
@@ -86,7 +87,7 @@ describe("server status", () => {
         threads: { total: 1, running: 1, waiting: 0 },
       });
 
-      yield* threads.upsert(testThread("b", { session: "running", approval: true }));
+      yield* threads.upsert(testThread("b", { run: "running", approval: true }));
       yield* threads.upsert(testThread("c", { question: true }));
       yield* threads.remove("a");
       yield* TestClock.adjust("100 millis");

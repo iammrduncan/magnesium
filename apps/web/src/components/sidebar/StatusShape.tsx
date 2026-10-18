@@ -9,7 +9,7 @@ export type StatusShapeKind =
   | "working"
   | "failed"
   | "done"
-  | "monitoring"
+  | "waiting"
   | "idle";
 
 /** The colour for each status, shared by shapes and labels. */
@@ -20,7 +20,7 @@ export const STATUS_SHAPE_TONE: Record<StatusShapeKind, string> = {
   working: "text-sky-600 dark:text-sky-400",
   failed: "text-red-700 dark:text-red-300",
   done: "text-emerald-700 dark:text-emerald-300",
-  monitoring: "text-secondary-label",
+  waiting: "text-secondary-label",
   idle: "text-secondary-label/70",
 };
 
@@ -55,7 +55,7 @@ export function StatusShape(props: { kind: StatusShapeKind; className?: string }
           r="4"
           fill="none"
           strokeWidth="1.4"
-          strokeDasharray={props.kind === "monitoring" ? "2 1.6" : undefined}
+          strokeDasharray={props.kind === "waiting" ? "2 1.6" : undefined}
         />
       )}
     </svg>

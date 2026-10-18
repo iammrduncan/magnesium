@@ -3,14 +3,12 @@ import { useAtomValue } from "@effect/atom-react";
 import { useNavigate } from "@tanstack/react-router";
 import { type MouseEvent, useCallback, useMemo } from "react";
 
-import { pullRequestHostOf, type SourceControlProviderKind } from "@t3tools/contracts";
+import { sourceControlClients } from "@t3tools/client-runtime/source-control-clients";
 import { parseChangeRequestUrl, type ChangeRequestLink } from "@t3tools/shared/changeRequestUrl";
-import {
-  canonicalRepositoryKey,
-  sourceControlRepositorySelector,
-} from "@t3tools/shared/sourceControl";
+import { sourceControlRepositorySelector } from "@t3tools/shared/sourceControl";
 
 import { useOpenLink } from "../browser/useOpenLink";
+import { useClientSettings } from "../hooks/useSettings";
 import { stackedThreadToast, toastManager } from "../components/ui/toast";
 import { useRightPanelStore } from "../rightPanelStore";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
@@ -28,34 +26,6 @@ export {
   changeRequestRepositoryUrl,
 } from "@t3tools/shared/changeRequestUrl";
 
-function resolvedForgejoRepository(project: EnvironmentProject): URL | null {
-  const identity = project.repositoryIdentity;
-  if (identity?.provider !== "forgejo" || !identity.webUrl) return null;
-  try {
-    const url = new URL(identity.webUrl);
-    return url.protocol === "http:" || url.protocol === "https:" ? url : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Keep Forgejo servers on different HTTP ports separate when selecting a project. */
-function matchesChangeRequestAuthority(
-  project: EnvironmentProject,
-  link: ChangeRequestLink,
-): boolean {
-  if (link.authority === undefined) return true;
-  try {
-    const remote = new URL(project.repositoryIdentity?.locator.remoteUrl ?? "");
-    if (remote.protocol === "http:" || remote.protocol === "https:") {
-      return remote.host.toLowerCase() === link.authority;
-    }
-  } catch {
-    // SSH remotes do not specify the server's HTTP port; tea resolves the configured login.
-  }
-  return true;
-}
-
 /**
  * The project a link belongs to, or nothing. Matched the way the server matches: the repository
  * identity is the full path below the host where one was recorded — which is what nested GitLab
@@ -68,29 +38,9 @@ export function findProjectForChangeRequest(
 ): EnvironmentProject | undefined {
   return projects.find((project) => {
     const identity = project.repositoryIdentity;
-    if (!identity || !matchesChangeRequestAuthority(project, link)) return false;
-    const kind = identity.provider as SourceControlProviderKind | undefined;
-    if (kind === undefined) return false;
-    const web = resolvedForgejoRepository(project);
-    if (web)
-      return (
-        web.host.toLowerCase() === (link.authority ?? link.host).toLowerCase() &&
-        web.pathname.replace(/^\/+|\/+$/g, "").toLowerCase() === link.repository.toLowerCase()
-      );
-    if (kind === "azure-devops") {
-      return (
-        canonicalRepositoryKey(identity.canonicalKey.toLowerCase()) ===
-        canonicalRepositoryKey(`${link.host}/${link.repository}`.toLowerCase())
-      );
-    }
-    const repository =
-      identity.displayName ??
-      (identity.owner && identity.name ? `${identity.owner}/${identity.name}` : null);
     return (
-      repository !== null &&
-      repository.toLowerCase() === link.repository.toLowerCase() &&
-      (pullRequestHostOf(identity, kind) === link.host.toLowerCase() ||
-        pullRequestHostOf(identity, kind) === link.authority)
+      identity?.provider !== undefined &&
+      sourceControlClients.get(identity.provider).isChangeRequestInRepository(identity, link)
     );
   });
 }
@@ -151,35 +101,11 @@ export function findProjectOnChangeRequestHost(
 ): EnvironmentProject | undefined {
   const own = findProjectForChangeRequest(projects, link);
   if (own !== undefined) return own;
-  // Azure CLI reads use the checkout's organization and project, not host-wide credentials.
-  if (
-    canonicalRepositoryKey(`${link.host}/${link.repository}`.toLowerCase()).startsWith(
-      "dev.azure.com/",
-    )
-  )
-    return undefined;
   return projects.find((project) => {
     const identity = project.repositoryIdentity;
-    const kind = identity?.provider as SourceControlProviderKind | undefined;
-    const web = resolvedForgejoRepository(project);
-    if (web) {
-      const mount = web.pathname
-        .replace(/^\/+|\/+$/g, "")
-        .split("/")
-        .slice(0, -2)
-        .join("/");
-      return (
-        web.host.toLowerCase() === (link.authority ?? link.host).toLowerCase() &&
-        (!mount || link.repository.toLowerCase().startsWith(`${mount.toLowerCase()}/`))
-      );
-    }
     return (
-      identity != null &&
-      kind !== undefined &&
-      kind !== "azure-devops" &&
-      matchesChangeRequestAuthority(project, link) &&
-      (pullRequestHostOf(identity, kind) === link.host.toLowerCase() ||
-        pullRequestHostOf(identity, kind) === link.authority)
+      identity?.provider !== undefined &&
+      sourceControlClients.get(identity.provider).canReadChangeRequestOnHost(identity, link)
     );
   });
 }
@@ -197,11 +123,15 @@ export function findProjectOnChangeRequestHost(
  * the pull requests page: a reader following a link the agent wrote is reading the thread, and
  * should still be reading it afterwards. Any change request opens there, not only the thread's
  * own, since the panel is told which one to show.
+ *
+ * With "Open pull requests in Magnesium" turned off, every link is left alone.
  */
+/** Cmd/Ctrl-click and middle-click send a pull request to the browser instead of the panel. */
 export function shouldOpenPullRequestExternally(
-  event: Pick<MouseEvent<HTMLElement>, "metaKey" | "ctrlKey">,
+  event: Pick<MouseEvent<HTMLElement>, "metaKey" | "ctrlKey"> &
+    Partial<Pick<MouseEvent<HTMLElement>, "button">>,
 ): boolean {
-  return event.metaKey || event.ctrlKey;
+  return event.metaKey || event.ctrlKey || event.button === 1;
 }
 
 export function useOpenChangeRequestLink(
@@ -220,9 +150,10 @@ export function useOpenChangeRequestLink(
   const allProjects = useProjects();
   const serverConfigs = useServerConfigs();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
+  const openInApp = useClientSettings((settings) => settings.pullRequestLinksOpenInApp);
   return useCallback(
     (event, targetUrl, targetThreadRef, targetEnvironmentId) => {
-      if (shouldOpenPullRequestExternally(event)) return false;
+      if (!openInApp || shouldOpenPullRequestExternally(event)) return false;
       const resolvedThreadRef = targetThreadRef ?? threadRef;
       const resolvedPanelRef = panelRef ?? resolvedThreadRef;
       const parsed = parseChangeRequestUrl(targetUrl);
@@ -318,7 +249,7 @@ export function useOpenChangeRequestLink(
       });
       return true;
     },
-    [allProjects, navigate, panelRef, primaryEnvironmentId, serverConfigs, threadRef],
+    [allProjects, navigate, openInApp, panelRef, primaryEnvironmentId, serverConfigs, threadRef],
   );
 }
 
@@ -327,11 +258,13 @@ export function useOpenPrLink(threadRef?: ScopedThreadRef) {
   const openLink = useOpenLink(threadRef);
   return useCallback(
     (event: MouseEvent<HTMLElement>, prUrl: string, targetThreadRef?: ScopedThreadRef) => {
+      // Buttons also pass this to onAuxClick for middle-click; a right-click is not an open.
+      if (event.button > 1) return false;
       event.stopPropagation();
       const openInBrowser = shouldOpenPullRequestExternally(event);
       const isAnchor =
         event.currentTarget instanceof HTMLAnchorElement && event.currentTarget.href.length > 0;
-      // A real link already knows how to cmd/ctrl+click. Leave its default
+      // A real link already knows how to cmd/ctrl/middle-click. Leave its default
       // action alone so the browser (or Electron's window-open handler) opens
       // the host. Buttons have no href, so they still go through openExternal.
       if (openInBrowser && isAnchor) return false;

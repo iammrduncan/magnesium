@@ -10,7 +10,7 @@ import {
 import {
   CommandId,
   MessageId,
-  type OrchestrationThreadShell,
+  type OrchestrationV2ThreadShell,
   type ThreadId,
 } from "@t3tools/contracts";
 import * as Context from "effect/Context";
@@ -28,12 +28,16 @@ import * as Stream from "effect/Stream";
 
 import { ServerPorts } from "../ports.ts";
 import * as LiveTable from "../stream/LiveTable.ts";
+import { viewOf } from "../threads.ts";
 import {
   answeredKey,
   commandsForAnswer,
   homeItemsOf,
-  needsThreadDetail,
+  needsThreadRequests,
+  planMarkdownOf,
   recentWorkOf,
+  scheduleFailureKey,
+  scheduleItemsOf,
 } from "./items.ts";
 
 /**
@@ -75,6 +79,7 @@ export const layer = Layer.effect(
       maxRows: MAX_ITEMS,
     });
     const keysByThread = new Map<ThreadId, ReadonlySet<string>>();
+    let scheduleKeys: ReadonlySet<string> = new Set();
     let projectTitles = new Map<string, string>();
 
     const loadProjectTitles = ports.threads.projects.pipe(
@@ -90,14 +95,15 @@ export const layer = Layer.effect(
         return projectTitles.get(projectId) ?? null;
       });
 
-    const itemsOf = (shell: OrchestrationThreadShell) =>
+    const itemsOf = (shell: OrchestrationV2ThreadShell) =>
       Effect.gen(function* () {
-        const detail = needsThreadDetail(shell)
-          ? Option.getOrNull(yield* ports.threads.detail(shell.id))
+        const view = viewOf(shell);
+        const requests = needsThreadRequests(view)
+          ? Option.getOrNull(yield* ports.threads.requests(shell.id))
           : null;
         return homeItemsOf({
-          shell,
-          detail,
+          view,
+          requests,
           projectTitle: yield* projectTitleOf(shell.projectId),
           now: DateTime.formatIso(yield* DateTime.now),
         });
@@ -114,6 +120,25 @@ export const layer = Layer.effect(
         if (next.size === 0) keysByThread.delete(threadId);
         else keysByThread.set(threadId, next);
       });
+
+    /** Make the table hold exactly `items` for the scheduled tasks. */
+    const placeSchedule = (items: ReadonlyArray<LocalHomeItem>) =>
+      Effect.gen(function* () {
+        const next = new Set(items.map(localHomeItemKey));
+        for (const key of scheduleKeys) if (!next.has(key)) yield* table.remove(key);
+        for (const item of items) yield* table.set(item);
+        scheduleKeys = next;
+      });
+
+    /** Follows the scheduler: every task's next run, and a run that could not start. */
+    const followSchedule = ports.schedule.tasks.pipe(
+      Stream.runForEach((tasks) =>
+        Effect.gen(function* () {
+          for (const task of tasks) yield* projectTitleOf(task.projectId);
+          yield* placeSchedule(scheduleItemsOf(tasks, (id) => projectTitles.get(id) ?? null));
+        }),
+      ),
+    );
 
     const refresh = (threadId: ThreadId) =>
       ports.threads.byId(threadId).pipe(
@@ -152,6 +177,8 @@ export const layer = Layer.effect(
         );
         yield* readAll;
         yield* Deferred.succeed(loaded, undefined);
+        // The scheduler's own stream sends the list now and after each change.
+        yield* Effect.forkScoped(followSchedule);
         yield* readAll.pipe(
           Effect.delay(RESYNC_EVERY),
           Effect.repeat(Schedule.forever),
@@ -184,6 +211,13 @@ export const layer = Layer.effect(
 
     const answer = ({ threadId, answer: given }: LocalAnswerInput) =>
       Effect.gen(function* () {
+        if (given._tag === "retry") {
+          if (!scheduleKeys.has(scheduleFailureKey(given.taskId))) {
+            return yield* answerError("That run already started again, or the task is gone.");
+          }
+          return yield* ports.schedule.runNow(given.taskId);
+        }
+        if (threadId === null) return yield* answerError("That answer needs a thread.");
         const shell = Option.getOrUndefined(yield* ports.threads.byId(threadId));
         if (shell === undefined) return yield* answerError("That thread is gone.");
         // The thread as it is now: an item answered elsewhere, or left behind, is refused.
@@ -193,25 +227,25 @@ export const layer = Layer.effect(
         }
         let planMarkdown: string | undefined;
         if (given._tag === "plan") {
-          const detail = Option.getOrNull(yield* ports.threads.detail(threadId));
-          planMarkdown = detail?.proposedPlans.find(
-            (plan) => plan.id === given.planId,
-          )?.planMarkdown;
-          if (planMarkdown === undefined) {
+          const requests = Option.getOrNull(yield* ports.threads.requests(threadId));
+          const plan = requests?.plans.find(
+            (candidate) => candidate.kind === "proposed_plan" && candidate.id === given.planId,
+          );
+          if (requests === null || plan === undefined || plan.kind !== "proposed_plan") {
             return yield* answerError("That plan is gone.");
           }
+          planMarkdown = planMarkdownOf(requests, plan);
         }
         // An answer is at most two commands and one message.
-        const commandIds = [yield* crypto.randomUUIDv4, yield* crypto.randomUUIDv4];
-        const messageId = MessageId.make(yield* crypto.randomUUIDv4);
+        const commandIds = [yield* crypto.randomUUIDv4(), yield* crypto.randomUUIDv4()];
+        const messageId = MessageId.make(yield* crypto.randomUUIDv4());
         const commands = commandsForAnswer({
-          shell,
+          view: viewOf(shell),
           answer: given,
           ...(planMarkdown === undefined ? {} : { planMarkdown }),
           context: {
             commandId: () => CommandId.make(commandIds.shift() ?? "command"),
             messageId: () => messageId,
-            now: DateTime.formatIso(yield* DateTime.now),
           },
         });
         for (const command of commands) yield* ports.threads.dispatch(command);
@@ -223,14 +257,14 @@ export const layer = Layer.effect(
       );
 
     const detail = (threadId: ThreadId) =>
-      ports.threads.detail(threadId).pipe(
+      Effect.gen(function* () {
+        const shell = Option.getOrUndefined(yield* ports.threads.byId(threadId));
+        if (shell === undefined) return yield* answerError("That thread is gone.");
+        const runId = shell.latestRunId;
+        const items = runId === null ? [] : yield* ports.threads.recentWork(threadId, runId);
+        return { activities: recentWorkOf(items) };
+      }).pipe(
         Effect.catchTag("ServerPortError", (error) => Effect.fail(answerError(error.detail))),
-        Effect.flatMap(
-          Option.match({
-            onNone: () => Effect.fail(answerError("That thread is gone.")),
-            onSome: (thread) => Effect.succeed({ activities: recentWorkOf(thread) }),
-          }),
-        ),
       );
 
     return LocalHome.of({

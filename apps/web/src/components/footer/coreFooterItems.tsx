@@ -138,6 +138,16 @@ function NeedsYouPopover({ close }: FooterPopoverProps) {
                         <span className="min-w-0 flex-1 truncate">{need.title}</span>
                         <span className="shrink-0 text-muted-foreground">{describeNeed(need)}</span>
                       </span>
+                    ) : need.threadId === null ? (
+                      // A scheduled run that could not start has no thread: Home has its card.
+                      <Link
+                        to="/home"
+                        onClick={close}
+                        className="flex items-center gap-2 rounded-sm px-1 py-0.5 text-foreground hover:bg-accent"
+                      >
+                        <span className="min-w-0 flex-1 truncate">{need.title}</span>
+                        <span className="shrink-0 text-muted-foreground">{describeNeed(need)}</span>
+                      </Link>
                     ) : (
                       <Link
                         to="/$environmentId/$threadId"
