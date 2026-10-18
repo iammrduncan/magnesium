@@ -153,6 +153,7 @@ const fakeFleet = Effect.gen(function* () {
     subscribeEvents: () => Stream.empty,
     eventHistory: () => Effect.die("unused"),
     reconnect: () => Effect.void,
+    gateways: Effect.succeed([]),
   });
   return { table, service, watchers: () => watchers };
 });

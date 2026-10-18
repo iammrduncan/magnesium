@@ -20,6 +20,7 @@ import * as Path from "effect/Path";
 import * as Ref from "effect/Ref";
 import * as Schedule from "effect/Schedule";
 
+import { Fleet } from "../fleet/Fleet.ts";
 import { urlUnder } from "../forward.ts";
 import { ServerPorts } from "../ports.ts";
 import { GatewayClient } from "./gatewayClient.ts";
@@ -47,7 +48,7 @@ export class HubSpokes extends Context.Service<
     readonly list: Effect.Effect<ReadonlyArray<HubSpoke>, SpokeError>;
     readonly apply: (input: HubSpokeApplyInput) => Effect.Effect<HubSpoke, SpokeError>;
     readonly remove: (input: SpokeRemoveInput) => Effect.Effect<void, SpokeError>;
-    /** The hub's machines that answer for their spokes. */
+    /** The hub's machines that say they are gateways, connected now. */
     readonly gateways: Effect.Effect<ReadonlyArray<string>, SpokeError>;
     /** Machines attached inside workloads' pods (D59): reached, never started or stopped. */
     readonly attached: Effect.Effect<ReadonlyArray<HubAttached>, SpokeError>;
@@ -64,14 +65,13 @@ export class HubSpokes extends Context.Service<
 /** How long a new spoke may take to come up and pair: an image pull and a first start. */
 const PAIR_RETRIES = 120;
 const PAIR_EVERY = Duration.seconds(5);
-/** A machine that hasn't answered for its spokes by then isn't a gateway the hub can use now. */
-const GATEWAY_PROBE = Duration.seconds(4);
 /** How often the hub asks its gateways for machines attached inside workloads. */
 const DISCOVER_EVERY = Duration.minutes(1);
 
 export const make = Effect.gen(function* () {
   const ports = yield* ServerPorts;
   const machines = yield* HubMachines;
+  const fleet = yield* Fleet;
   const gateways = yield* GatewayClient;
   const keys = yield* ModelKeys;
   const crypto = yield* Crypto.Crypto;
@@ -247,18 +247,8 @@ export const make = Effect.gen(function* () {
     const spokeNames = new Set(
       [...(yield* records), ...(yield* attachedRecords)].map((record) => record.name),
     );
-    const names = (yield* machines.names).filter((name) => !spokeNames.has(name));
-    const answered = yield* Effect.forEach(
-      names,
-      (name) =>
-        gateways.list(name).pipe(
-          Effect.timeout(GATEWAY_PROBE),
-          Effect.as(true),
-          Effect.orElseSucceed(() => false),
-        ),
-      { concurrency: "unbounded" },
-    );
-    return names.filter((_, index) => answered[index]);
+    // Fleet's links already carry each machine's role, so no machine is dialled to ask.
+    return (yield* fleet.gateways).filter((name) => !spokeNames.has(name));
   });
 
   /** What discovery last found in the way of an attached machine, by name. */

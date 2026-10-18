@@ -20,6 +20,7 @@ import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 
+import { Fleet } from "../fleet/Fleet.ts";
 import { ServerPorts } from "../ports.ts";
 import { defaultSettingsPorts, noThreads, testDescriptor } from "../testing.ts";
 import { GatewayClient } from "./gatewayClient.ts";
@@ -43,8 +44,8 @@ const spec: SpokeSpec = {
 const makeHub = (options: {
   readonly access?: ReadonlyArray<string>;
   readonly upAfter?: number;
-  /** The hub's machine names, which it probes for gateways. */
-  readonly names?: ReadonlyArray<string>;
+  /** The machines whose status says they are gateways. */
+  readonly gateways?: ReadonlyArray<string>;
 }) =>
   Effect.gen(function* () {
     const baseDir = yield* Effect.acquireRelease(
@@ -64,6 +65,8 @@ const makeHub = (options: {
     /** What the gateway routes to inside workloads' pods, and which routes it marked paired. */
     const routed: GatewayAttached[] = [];
     const markedPaired: string[] = [];
+    /** Each machine the hub asked for its spokes. */
+    const listed: string[] = [];
 
     const ports = ServerPorts.of({
       baseDir,
@@ -131,26 +134,30 @@ const makeHub = (options: {
         }),
       markRejected: () => Effect.void,
       renewDue: Effect.void,
-      names: Effect.succeed(options.names ?? []),
+      // The hub's machine list: a gateway and a plain machine.
+      names: Effect.succeed(["gateway", "cpu-host-1"]),
       accessChanged: Stream.empty,
       refresh: (name) => Effect.sync(() => void refreshed.push(name)),
     });
     const gateways = GatewayClient.of({
       list: (gateway) =>
-        gatewayState.down
-          ? Effect.fail(new SpokeError({ detail: `Could not reach the gateway ${gateway}.` }))
-          : gatewayState.empty
-            ? Effect.succeed([])
-            : Effect.succeed([
-                {
-                  name: "cpu-host-2",
-                  node: "node-b",
-                  build: "4d5e6f7081",
-                  replicas: 1,
-                  ready: true,
-                  detail: null,
-                },
-              ]),
+        Effect.suspend(() => {
+          listed.push(gateway);
+          return gatewayState.down
+            ? Effect.fail(new SpokeError({ detail: `Could not reach the gateway ${gateway}.` }))
+            : gatewayState.empty
+              ? Effect.succeed([])
+              : Effect.succeed([
+                  {
+                    name: "cpu-host-2",
+                    node: "node-b",
+                    build: "4d5e6f7081",
+                    replicas: 1,
+                    ready: true,
+                    detail: null,
+                  },
+                ]);
+        }),
       apply: (gateway, input) =>
         Effect.sync(() => {
           applied.push({ gateway, input });
@@ -180,6 +187,16 @@ const makeHub = (options: {
             Layer.succeed(ServerPorts, ports),
             Layer.succeed(HubMachines, machines),
             Layer.succeed(GatewayClient, gateways),
+            Layer.succeed(
+              Fleet,
+              Fleet.of({
+                subscribeMachines: () => Stream.empty,
+                subscribeEvents: () => Stream.empty,
+                eventHistory: () => Effect.die("unused"),
+                reconnect: () => Effect.void,
+                gateways: Effect.succeed(options.gateways ?? []),
+              }),
+            ),
             NodeServices.layer,
           ),
         ),
@@ -205,6 +222,7 @@ const makeHub = (options: {
       gatewayState,
       routed,
       markedPaired,
+      listed,
       silent,
     };
   });
@@ -376,9 +394,26 @@ describe("machines attached to workloads", () => {
 describe("machines found through their gateway", () => {
   const code = "0123456789ABCDEF0123456789ABCDEF";
 
+  it.effect("asks only the machines that say they are gateways", () =>
+    Effect.gen(function* () {
+      const hub = yield* makeHub({ gateways: ["gateway"] });
+      hub.routed.push({
+        name: "notebook",
+        workload: "notebook-ws",
+        paired: false,
+        pairingCode: null,
+      });
+      expect(yield* hub.spokes.gateways).toEqual(["gateway"]);
+      yield* hub.spokes.discover;
+      expect(yield* hub.spokes.attached).toMatchObject([{ name: "notebook", gateway: "gateway" }]);
+      // cpu-host-1, a plain machine, is never dialled to ask for its spokes.
+      expect(hub.listed).toEqual([]);
+    }).pipe(Effect.scoped),
+  );
+
   it.effect("a new one joins by itself and pairs with the code its workload's deploy left", () =>
     Effect.gen(function* () {
-      const hub = yield* makeHub({ upAfter: 2, names: ["gateway"] });
+      const hub = yield* makeHub({ upAfter: 2, gateways: ["gateway"] });
       hub.routed.push({
         name: "notebook",
         workload: "notebook-ws",
@@ -400,7 +435,7 @@ describe("machines found through their gateway", () => {
 
   it.effect("a moved machine the hub already has needs no code", () =>
     Effect.gen(function* () {
-      const hub = yield* makeHub({ access: ["cpu-host-2"], names: ["gateway"] });
+      const hub = yield* makeHub({ access: ["cpu-host-2"], gateways: ["gateway"] });
       hub.routed.push({
         name: "cpu-host-2",
         workload: "render",
@@ -417,7 +452,7 @@ describe("machines found through their gateway", () => {
 
   it.effect("marks a moved machine's route paired only once it answers", () =>
     Effect.gen(function* () {
-      const hub = yield* makeHub({ access: ["cpu-host-2"], names: ["gateway"] });
+      const hub = yield* makeHub({ access: ["cpu-host-2"], gateways: ["gateway"] });
       hub.silent.add("cpu-host-2");
       hub.routed.push({
         name: "cpu-host-2",
@@ -435,7 +470,7 @@ describe("machines found through their gateway", () => {
 
   it.effect("one whose route goes is said to be gone, never removed, and only then detaches", () =>
     Effect.gen(function* () {
-      const hub = yield* makeHub({ access: ["cpu-host-2"], names: ["gateway"] });
+      const hub = yield* makeHub({ access: ["cpu-host-2"], gateways: ["gateway"] });
       hub.routed.push({ name: "cpu-host-2", workload: "render", paired: true, pairingCode: null });
       yield* hub.spokes.discover;
       // Still routed: its workload's deploy is the way out.

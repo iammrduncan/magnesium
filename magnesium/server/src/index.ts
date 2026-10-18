@@ -96,12 +96,13 @@ export const routesLayer = Layer.mergeAll(
   pairingCodeLayer,
 ).pipe(
   Layer.provide(Home.layer),
+  // Fleet tells the hub's spokes which machines are gateways.
+  Layer.provide(HubSpokes.layer),
   // Fleet carries each machine's Home items in the relay that Home reads.
   Layer.provide(Fleet.layer),
   Layer.provide(Layer.mergeAll(LocalHome.layer, HomeRelay.layer)),
   Layer.provide(profileServicesLayer),
   Layer.provide(spokesLayer),
-  Layer.provide(HubSpokes.layer),
   Layer.provide(Layer.mergeAll(GatewayClient.layer, ModelKeys.layer)),
   Layer.provide(Layer.mergeAll(HubMachines.layer, ServerStatus.layer)),
   Layer.provide(MagnesiumDb.layer),
