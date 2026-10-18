@@ -10,3 +10,13 @@ export const isMagnesiumSandboxed = (
   environment: Readonly<Record<string, string | undefined>> | undefined,
 ): boolean =>
   environment?.MAGNESIUM_SANDBOX === "fenced" || environment?.MAGNESIUM_SANDBOX === "container";
+
+/**
+ * Where a provider's instance-level health checks run. Upstream runs them in the
+ * server's state folder, out of `$HOME`; Magnesium's fence keeps a fenced agent
+ * out of that folder (D46), so a fenced instance checks itself in the temp folder.
+ */
+export const providerProbeDir = (
+  environment: Readonly<Record<string, string | undefined>>,
+  stateDir: string,
+): string => (isMagnesiumSandboxed(environment) ? (environment.TMPDIR ?? "/tmp") : stateDir);

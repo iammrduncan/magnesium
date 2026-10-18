@@ -27,6 +27,7 @@ import { makeClaudeTextGeneration } from "../../textGeneration/ClaudeTextGenerat
 import * as ProviderLatestVersions from "@t3tools/provider-core/server/ProviderLatestVersions";
 import * as ProviderHost from "@t3tools/provider-core/server/ProviderHost";
 import * as ServerConfig from "../../config.ts";
+import { providerProbeDir } from "@magnesium/server/sandbox"; // magnesium: goal 03
 import { expandHomePath } from "@t3tools/provider-core/server/pathExpansion";
 import * as ProviderEventLoggers from "@t3tools/provider-core/server/ProviderEventLoggers";
 import {
@@ -136,6 +137,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv, Path.
         .current(DRIVER_KIND)
         .pipe(Effect.map(resolveClaudeModelCatalog));
       const processEnv = yield* mergeProviderInstanceEnvironment(environment);
+      const probeDir = providerProbeDir(processEnv, stateDir); // magnesium: goal 03, D46
       const fallbackContinuationIdentity = defaultProviderContinuationIdentity({
         driverKind: DRIVER_KIND,
         instanceId,
@@ -208,7 +210,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv, Path.
         timeToLive: CAPABILITIES_PROBE_TTL,
         lookup: () =>
           Effect.all([
-            probeClaudeCapabilities(effectiveConfig, processEnv, stateDir),
+            probeClaudeCapabilities(effectiveConfig, processEnv, probeDir), // magnesium: goal 03
             ClaudeResetCredits.readClaudeOrganizationId(accountConfigPath),
           ]).pipe(
             Effect.map(([capabilities, workspaceId]) =>
@@ -234,7 +236,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv, Path.
                 effectiveConfig,
                 () => Cache.get(capabilitiesProbeCache, capabilitiesCacheKey),
                 processEnv,
-                stateDir,
+                probeDir, // magnesium: goal 03
                 catalog,
                 scopedLimitNames,
                 (version) =>
