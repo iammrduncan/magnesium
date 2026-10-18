@@ -95,7 +95,7 @@ jobs:
         run: vp run --filter t3 build
 
   image:
-    # Both architectures: the Spark pair's workloads are arm64.
+    # Both architectures: workloads it attaches to may run on arm64.
     name: Spoke image (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     strategy:

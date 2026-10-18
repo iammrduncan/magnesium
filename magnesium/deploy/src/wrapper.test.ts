@@ -330,7 +330,7 @@ describe("magnesium-claude and magnesium-codex", () => {
     expect(refused.status).toBe(78);
     expect(refused.stderr).toContain("agents work only in projects/, worktrees/ and scratch/");
     expect(refused.calls, "podman never ran").toEqual([]);
-    const project = NodePath.join(profile.stateHome, "projects", "mg-scratch");
+    const project = NodePath.join(profile.stateHome, "projects", "app");
     NodeFS.mkdirSync(project, { recursive: true });
     expect(profile.run("magnesium-claude", SESSION, env, project).calls[0]?.name).toBe("podman");
   });
@@ -387,8 +387,8 @@ describe.each(MECHANISMS)("the %s fence", (mechanism) => {
     () => {
       const profile = makeProfile();
       // Where T3 puts them under its home: projects made by name, worktrees, Scratch.
-      const workspaces = ["projects/mg-scratch", "worktrees/repo/branch", "scratch/today"].map(
-        (folder) => NodePath.join(profile.stateHome, folder),
+      const workspaces = ["projects/app", "worktrees/repo/branch", "scratch/today"].map((folder) =>
+        NodePath.join(profile.stateHome, folder),
       );
       for (const folder of workspaces) NodeFS.mkdirSync(folder, { recursive: true });
       const attachment = NodePath.join(profile.stateHome, "userdata", "attachments", "a.png");
@@ -468,7 +468,7 @@ describe.each(MECHANISMS)("the %s fence", (mechanism) => {
     const key = NodePath.join(backup, "secrets", "magnesium-hub-machine-1.bin");
     NodeFS.mkdirSync(NodePath.dirname(key), { recursive: true });
     NodeFS.writeFileSync(key, "machine-key");
-    const project = NodePath.join(profile.stateHome, "projects", "mg-scratch");
+    const project = NodePath.join(profile.stateHome, "projects", "app");
     NodeFS.mkdirSync(project, { recursive: true });
     const env = {
       MAGNESIUM_REAL_BIN: process.execPath,

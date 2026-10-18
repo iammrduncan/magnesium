@@ -1,12 +1,13 @@
 # OpenCode {{ magnesium_opencode_version }} per user, pointed at an LLM gateway (D36).
 # The API key reaches OpenCode by name: the unit loads it from a secret env file,
 # and opencode.json reads {env:NAME}. It never appears in settings, argv or logs.
-- name: The LiteLLM key's env file is among the secret env files
+- name: The gateway, its models, and the LiteLLM key's env file are set
   ansible.builtin.assert:
     that:
+      - magnesium_opencode_base_url | length > 0
       - magnesium_secret_env_files | length > 0
       - magnesium_opencode_models | length > 0
-    fail_msg: "Set magnesium_secret_env_files (holding {{ magnesium_opencode_api_key_env }}) and magnesium_opencode_models."
+    fail_msg: "Set magnesium_opencode_base_url, magnesium_secret_env_files (holding {{ magnesium_opencode_api_key_env }}) and magnesium_opencode_models."
 
 - name: Installed OpenCode version
   ansible.builtin.command: "{{ magnesium_root }}/opencode/opencode --version"

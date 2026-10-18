@@ -60,6 +60,6 @@ magnesium_opencode_version: "1.18.34"
 magnesium_opencode_sha256:
   x64: 0f22479647226d1d2dd99595d20082ee7bda3870b62dc6a90b41efc1a71d7e9a
   arm64: bbdb3f00c2c51e42e315525233151309724226a8776da8e9145e3b0fa3d5310f
-magnesium_opencode_base_url: https://litellm.example.ts.net/v1
-magnesium_opencode_models: [] # ["opencode-go/<model>"]; the first is the default
+magnesium_opencode_base_url: "" # https://llm-gateway.example.com/v1
+magnesium_opencode_models: [] # ["<model>"]; the first is the default
 magnesium_opencode_api_key_env: LITELLM_API_KEY

@@ -1,7 +1,7 @@
 # @magnesium/deploy
 
-Deploy assets for Magnesium. Goal 02's roles install them; until then they are
-applied by hand.
+Deploy assets for Magnesium. The [Ansible roles](ansible/README.md) install
+them (goal 02).
 
 - `systemd/magnesium.service`: the server as a user unit. Every unit here sets
   `T3CODE_TELEMETRY_ENABLED=false`, keeps state in `~/.magnesium` (never in a

@@ -58,7 +58,7 @@ spec:
             - name: MAGNESIUM_MACHINE
               value: gateway
             # Where it runs, which Fleet shows beside its name: its node, or a
-            # description you write, such as "the node (the VM it is on)".
+            # description you write.
             - name: MAGNESIUM_NODE
               valueFrom:
                 fieldRef:

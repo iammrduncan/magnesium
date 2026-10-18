@@ -1,4 +1,4 @@
-# Real hosts and values live in the private lab repo; only examples are public.
+# Your real inventory and vars stay out of git; only the examples are committed.
 inventory.yml
 group_vars/*.yml
 !group_vars/*.example.yml
