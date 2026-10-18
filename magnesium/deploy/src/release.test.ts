@@ -274,6 +274,9 @@ describe("magnesium-release", () => {
     // Held open like the running server: the row stays in the WAL, not state.sqlite.
     const live = new NodeSqlite.DatabaseSync(NodePath.join(userdata, "state.sqlite"));
     live.exec("PRAGMA journal_mode=WAL; CREATE TABLE t (x); INSERT INTO t VALUES ('kept')");
+    // The server's lock, held as a running server holds it: no data, never copied.
+    const owner = new NodeSqlite.DatabaseSync(NodePath.join(userdata, "server-owner.sqlite"));
+    owner.exec("BEGIN EXCLUSIVE");
 
     const runKeep = (keep: string) =>
       NodeChildProcess.spawnSync("bash", [script, "backup"], {
@@ -287,6 +290,7 @@ describe("magnesium-release", () => {
       });
     const first = runKeep("2");
     live.close();
+    owner.close();
     expect(first.stderr).toBe("");
     expect(first.status).toBe(0);
 

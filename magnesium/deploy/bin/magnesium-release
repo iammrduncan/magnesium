@@ -137,7 +137,8 @@ backup() {
   for entry in "$userdata"/*; do
     base="$(basename "$entry")"
     case "$base" in
-      logs | server-runtime.json | *.sqlite-wal | *.sqlite-shm | *.sqlite-journal) ;;
+      # server-owner.sqlite is the running server's lock: an exclusive transaction, no data.
+      logs | server-runtime.json | server-owner.sqlite | *.sqlite-wal | *.sqlite-shm | *.sqlite-journal) ;;
       *.sqlite) with_node node --no-warnings -e "$SQLITE_BACKUP" "$entry" "$work/$base" ;;
       *) cp -a "$entry" "$work/" ;;
     esac
