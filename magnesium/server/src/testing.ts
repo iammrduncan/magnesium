@@ -325,6 +325,8 @@ export const makeTestThreads = Effect.gen(function* () {
   const threads = new Map<ThreadId, OrchestrationV2ThreadShell>();
   const requests = new Map<ThreadId, ThreadRequestRecords>();
   const work = new Map<ThreadId, ReadonlyArray<OrchestrationV2TurnItem>>();
+  /** Scheduled task ids by `<thread>/<run>`. */
+  const startedBy = new Map<string, string>();
   const projects: Array<OrchestrationProjectShell> = [];
   const dispatched: Array<OrchestrationV2Command> = [];
   const changes = yield* PubSub.unbounded<ThreadId>();
@@ -340,6 +342,8 @@ export const makeTestThreads = Effect.gen(function* () {
       ),
     recentWork: (threadId, runId) =>
       Effect.sync(() => (work.get(threadId) ?? []).filter((item) => item.runId === runId)),
+    scheduledTaskOf: (threadId, runId) =>
+      Effect.sync(() => Option.fromNullishOr(startedBy.get(`${threadId}/${runId}`))),
     projects: Effect.sync(() => [...projects]),
     dispatch: (command) => Effect.sync(() => void dispatched.push(command)),
   };
@@ -364,6 +368,9 @@ export const makeTestThreads = Effect.gen(function* () {
       ),
     addProject: (project: OrchestrationProjectShell) =>
       Effect.sync(() => void projects.push(project)),
+    /** Marks a run as started by a scheduled task; set it before the thread's upsert. */
+    startedByTask: (threadId: string, runId: string, taskId: string) =>
+      Effect.sync(() => void startedBy.set(`${threadId}/${runId}`, taskId)),
   };
 });
 
@@ -435,6 +442,7 @@ export const noThreads: ThreadPorts = {
   changes: Stream.never,
   requests: () => Effect.succeedNone,
   recentWork: () => Effect.succeed([]),
+  scheduledTaskOf: () => Effect.succeedNone,
   projects: Effect.succeed([]),
   dispatch: () => Effect.void,
 };

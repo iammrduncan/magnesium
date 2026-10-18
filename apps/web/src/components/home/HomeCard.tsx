@@ -149,7 +149,13 @@ export function HomeCard({
       ) : item.body._tag === "plan" ? (
         <PlanBody item={item} body={item.body} locked={locked} onAnswer={answer} />
       ) : item.body._tag === "failure" ? (
-        <FailureBody item={item} message={item.body.message} locked={locked} onAnswer={answer} />
+        <FailureBody
+          item={item}
+          message={item.body.message}
+          taskId={item.body.taskId}
+          locked={locked}
+          onAnswer={answer}
+        />
       ) : item.body._tag === "scheduled-failure" ? (
         <ScheduledFailureBody
           item={item}
@@ -404,14 +410,17 @@ function PlanBody({
   );
 }
 
+/** A failed run: settle it, or open its thread; a scheduled task's run can also be retried. */
 function FailureBody({
   item,
   message,
+  taskId,
   locked,
   onAnswer,
 }: {
   item: HomeItem;
   message: string | null;
+  taskId: string | undefined;
   locked: boolean;
   onAnswer: (answer: HomeAnswer, label: string) => void;
 }) {
@@ -428,6 +437,15 @@ function FailureBody({
           Settle
         </Button>
         <OpenThreadButton item={item} label="Open thread" />
+        {taskId === undefined ? null : (
+          <Button
+            size="sm"
+            disabled={locked}
+            onClick={() => onAnswer({ _tag: "retry", taskId }, "Retrying")}
+          >
+            Retry now
+          </Button>
+        )}
       </Actions>
     </>
   );

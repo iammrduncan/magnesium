@@ -285,9 +285,9 @@ export const commandsForAnswer = (input: {
     }
     case "settle":
       return [{ type: "thread.settle", commandId: context.commandId(), threadId: view.id }];
-    // Not a thread's command: the scheduler runs the task (see `LocalHome`).
+    // The scheduler runs the task again first (see `LocalHome`); the failed run is then done with.
     case "retry":
-      return [];
+      return [{ type: "thread.settle", commandId: context.commandId(), threadId: view.id }];
   }
 };
 
@@ -301,11 +301,19 @@ export const answeredKey = (threadId: string, answer: HomeAnswer): string => {
     case "plan":
       return `${threadId}:plan:${answer.planId}`;
     case "settle":
-      return `${threadId}:failure`;
     case "retry":
-      return scheduleFailureKey(answer.taskId);
+      return `${threadId}:failure`;
   }
 };
+
+/** A failure left by a scheduled task's run names the task, so its card can retry it. */
+export const withRetryTask = (
+  items: ReadonlyArray<LocalHomeItem>,
+  taskId: string,
+): ReadonlyArray<LocalHomeItem> =>
+  items.map((item) =>
+    item.body._tag === "failure" ? { ...item, body: { ...item.body, taskId } } : item,
+  );
 
 /** Keys of a scheduled task's items, apart from any thread's. */
 export const scheduleNextKey = (taskId: string) => `schedule:${taskId}:next`;

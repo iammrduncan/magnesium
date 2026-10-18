@@ -49,6 +49,11 @@ export interface ThreadPorts {
     threadId: ThreadId,
     runId: RunId,
   ) => Effect.Effect<ReadonlyArray<OrchestrationV2TurnItem>, ServerPortError>;
+  /** The scheduled task that sent a run its message, when a task's run started it. */
+  readonly scheduledTaskOf: (
+    threadId: ThreadId,
+    runId: RunId,
+  ) => Effect.Effect<Option.Option<string>, ServerPortError>;
   /** The server's active projects, for their titles. */
   readonly projects: Effect.Effect<ReadonlyArray<OrchestrationProjectShell>, ServerPortError>;
   /** Runs a command as a client's would run: answers to approvals and questions, plans to implement. */

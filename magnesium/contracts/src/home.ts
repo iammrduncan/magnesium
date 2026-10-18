@@ -85,13 +85,16 @@ export type HomePlan = typeof HomePlan.Type;
 /** The thread's last turn failed. */
 export const HomeFailure = Schema.TaggedStruct("failure", {
   message: Schema.NullOr(Schema.String),
+  /** The scheduled task whose run it was, so Retry can run the task again (goal 24). */
+  taskId: Schema.optional(Schema.String),
 });
 export type HomeFailure = typeof HomeFailure.Type;
 
 /**
  * A scheduled task's last run could not start (goal 24): its thread was never
  * made, or its message never sent. Retry runs it now; the task's page has the
- * rest. A run that started and failed is a failed thread instead.
+ * rest. A run that started and failed is a failed thread instead, whose card
+ * can retry the task too.
  */
 export const HomeScheduledFailure = Schema.TaggedStruct("scheduled-failure", {
   taskId: Schema.String,
@@ -202,7 +205,10 @@ export const HomeAnswer = Schema.Union([
   Schema.TaggedStruct("plan", { planId: Schema.String }),
   /** Done with a failure: settle its thread, as the sidebar does. Unsettle brings it back. */
   Schema.TaggedStruct("settle", {}),
-  /** Run a scheduled task now, after its last run could not start. */
+  /**
+   * Run a scheduled task now: after its last run could not start, or from the
+   * thread of a run that failed, which is then settled.
+   */
   Schema.TaggedStruct("retry", { taskId: Schema.String }),
 ]);
 export type HomeAnswer = typeof HomeAnswer.Type;

@@ -386,6 +386,57 @@ describe("scheduled runs on Home (goal 24)", () => {
       expect(schedule.ran).toEqual(["nightly"]);
     }).pipe(Effect.scoped),
   );
+
+  it.live("retries a scheduled task from its failed run's thread, and settles that thread", () =>
+    Effect.gen(function* () {
+      const DIGEST_KEY = "@self/digest-1:failure";
+      const MANUAL_KEY = "@self/manual:failure";
+      const schedule = yield* makeTestSchedule;
+      yield* schedule.set([
+        testScheduledTask("digest", { title: "Morning digest", lastRunStatus: "succeeded" }),
+      ]);
+      // The run started, so the scheduler counts it a success; it failed in its thread.
+      const threads = yield* makeTestThreads;
+      yield* threads.startedByTask("digest-1", "digest-1-run", "digest");
+      yield* threads.upsert(
+        testThread("digest-1", { run: "failed", lastError: "git worktree add failed" }),
+      );
+      yield* threads.upsert(testThread("manual", { run: "failed", lastError: "Provider exited" }));
+      const hub = yield* startTestServer({
+        files: { [HUB_MACHINES_CONFIG_FILE]: testHubConfig({}) },
+        ports: { threads: threads.ports, schedule: schedule.ports },
+      });
+      const browser = yield* connect(hub.wsUrl("operator"));
+      const needs = yield* watchTable(browser[MAGNESIUM_WS_METHODS.homeNeeds]({}), homeItemKey);
+      yield* needs.until(() => needs.rows.has(DIGEST_KEY) && needs.rows.has(MANUAL_KEY));
+      expect(needs.rows.get(DIGEST_KEY)?.body).toEqual({
+        _tag: "failure",
+        message: "git worktree add failed",
+        taskId: "digest",
+      });
+      // A run no task started has nothing to retry.
+      expect(needs.rows.get(MANUAL_KEY)?.body).toEqual({
+        _tag: "failure",
+        message: "Provider exited",
+      });
+
+      const wrong = yield* browser[MAGNESIUM_WS_METHODS.homeAnswer]({
+        key: MANUAL_KEY,
+        answer: { _tag: "retry", taskId: "digest" },
+      }).pipe(Effect.flip);
+      expect(wrong).toMatchObject({ _tag: "HomeAnswerError" });
+      expect(schedule.ran).toEqual([]);
+
+      yield* browser[MAGNESIUM_WS_METHODS.homeAnswer]({
+        key: DIGEST_KEY,
+        answer: { _tag: "retry", taskId: "digest" },
+      });
+      expect(schedule.ran).toEqual(["digest"]);
+      expect(threads.dispatched).toEqual([
+        expect.objectContaining({ type: "thread.settle", threadId: "digest-1" }),
+      ]);
+    }).pipe(Effect.scoped),
+  );
 });
 
 describe("Home's byte budget", () => {

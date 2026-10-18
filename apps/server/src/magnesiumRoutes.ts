@@ -163,6 +163,24 @@ const serverPortsLayer = Layer.effect(
               Effect.map((records) => records.turnItems),
               Effect.mapError(portError("Could not read a thread.")),
             ),
+        scheduledTaskOf: (threadId, runId) =>
+          threads
+            .getThreadRecords(threadId, ["turnItems"], {
+              turnItemRunIds: [runId],
+              turnItemTypes: ["user_message"],
+            })
+            .pipe(
+              Effect.map((records) =>
+                Option.fromNullishOr(
+                  records.turnItems.flatMap((item) =>
+                    item.type === "user_message" && item.scheduledTaskId !== undefined
+                      ? [item.scheduledTaskId]
+                      : [],
+                  )[0],
+                ),
+              ),
+              Effect.mapError(portError("Could not read a thread.")),
+            ),
         projects: projects
           .listShells()
           .pipe(Effect.mapError(portError("Could not read the projects."))),

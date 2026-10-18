@@ -253,7 +253,7 @@ export function describeNeed(item: HomeItem): string {
     case "plan":
       return "Plan ready";
     case "failure":
-      return "Run failed";
+      return item.body.taskId === undefined ? "Run failed" : "Scheduled run failed";
     case "scheduled-failure":
       return "Scheduled run failed";
     case "running":

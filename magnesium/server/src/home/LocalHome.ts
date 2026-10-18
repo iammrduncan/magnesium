@@ -38,6 +38,7 @@ import {
   recentWorkOf,
   scheduleFailureKey,
   scheduleItemsOf,
+  withRetryTask,
 } from "./items.ts";
 
 /**
@@ -101,12 +102,20 @@ export const layer = Layer.effect(
         const requests = needsThreadRequests(view)
           ? Option.getOrNull(yield* ports.threads.requests(shell.id))
           : null;
-        return homeItemsOf({
+        const items = homeItemsOf({
           view,
           requests,
           projectTitle: yield* projectTitleOf(shell.projectId),
           now: DateTime.formatIso(yield* DateTime.now),
         });
+        // Only a failure on show is worth reading its run for; settled ones stay failed.
+        if (shell.latestRunId === null || !items.some((item) => item.body._tag === "failure")) {
+          return items;
+        }
+        const task = yield* ports.threads
+          .scheduledTaskOf(shell.id, shell.latestRunId)
+          .pipe(Effect.orElseSucceed(() => Option.none<string>()));
+        return Option.isSome(task) ? withRetryTask(items, task.value) : items;
       });
 
     /** Make the table hold exactly `items` for this thread. */
@@ -211,7 +220,7 @@ export const layer = Layer.effect(
 
     const answer = ({ threadId, answer: given }: LocalAnswerInput) =>
       Effect.gen(function* () {
-        if (given._tag === "retry") {
+        if (given._tag === "retry" && threadId === null) {
           if (!scheduleKeys.has(scheduleFailureKey(given.taskId))) {
             return yield* answerError("That run already started again, or the task is gone.");
           }
@@ -221,9 +230,17 @@ export const layer = Layer.effect(
         const shell = Option.getOrUndefined(yield* ports.threads.byId(threadId));
         if (shell === undefined) return yield* answerError("That thread is gone.");
         // The thread as it is now: an item answered elsewhere, or left behind, is refused.
-        const open = yield* itemsOf(shell);
-        if (!open.some((item) => item.key === answeredKey(threadId, given))) {
+        const open = (yield* itemsOf(shell)).find(
+          (item) => item.key === answeredKey(threadId, given),
+        );
+        if (open === undefined) {
           return yield* answerError("It was already answered, or the agent moved on.");
+        }
+        if (given._tag === "retry") {
+          if (open.body._tag !== "failure" || open.body.taskId !== given.taskId) {
+            return yield* answerError("That run wasn't started by this scheduled task.");
+          }
+          yield* ports.schedule.runNow(given.taskId);
         }
         let planMarkdown: string | undefined;
         if (given._tag === "plan") {
@@ -264,7 +281,9 @@ export const layer = Layer.effect(
         const items = runId === null ? [] : yield* ports.threads.recentWork(threadId, runId);
         return { activities: recentWorkOf(items) };
       }).pipe(
-        Effect.catchTag("ServerPortError", (error) => Effect.fail(answerError(error.detail))),
+        Effect.catchTags({
+          ServerPortError: (error) => Effect.fail(answerError(error.detail)),
+        }),
       );
 
     return LocalHome.of({
