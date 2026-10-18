@@ -8,6 +8,7 @@ import type {
   OrchestrationV2TurnItem,
   ProviderInstanceConfigMap,
   RunId,
+  ScheduledTask,
   ServerAuthSessionMethod,
   ServerSettings,
   ThreadId,
@@ -52,6 +53,14 @@ export interface ThreadPorts {
   readonly projects: Effect.Effect<ReadonlyArray<OrchestrationProjectShell>, ServerPortError>;
   /** Runs a command as a client's would run: answers to approvals and questions, plans to implement. */
   readonly dispatch: (command: OrchestrationV2Command) => Effect.Effect<void, ServerPortError>;
+}
+
+/** The server's scheduled tasks (upstream's scheduler). */
+export interface SchedulePorts {
+  /** Every task now, then again after each change: an edit, a run starting or ending, a reschedule. */
+  readonly tasks: Stream.Stream<ReadonlyArray<ScheduledTask>, ServerPortError>;
+  /** Runs a task now, as its page's Run now does. */
+  readonly runNow: (taskId: string) => Effect.Effect<void, ServerPortError>;
 }
 
 /** The caller of one of our routes, as the host server authenticated it. */
@@ -113,6 +122,7 @@ export class ServerPorts extends Context.Service<
     /** This server's identity, label and version. */
     readonly environment: Effect.Effect<ExecutionEnvironmentDescriptor>;
     readonly threads: ThreadPorts;
+    readonly schedule: SchedulePorts;
     readonly issueBearerSession: (input: {
       readonly subject: string;
       readonly scopes: ReadonlyArray<AuthEnvironmentScope>;

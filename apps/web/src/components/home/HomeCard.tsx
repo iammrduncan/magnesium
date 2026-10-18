@@ -10,6 +10,7 @@ import type {
 } from "@magnesium/contracts";
 import { describeNeed, type HeldAnswer, waitedFor } from "@magnesium/web";
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
+import { ScheduledTaskId } from "@t3tools/contracts";
 import { Link } from "@tanstack/react-router";
 import { PinIcon, PinOffIcon } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
@@ -29,13 +30,35 @@ const SHAPE: Record<HomeItem["body"]["_tag"], StatusShapeKind> = {
   question: "input",
   plan: "plan",
   failure: "failed",
+  "scheduled-failure": "failed",
   running: "working",
+  scheduled: "idle",
 };
 
-/** The thread, as a link when its machine's environment is known. */
-function ThreadLink({ item, children }: { item: HomeItem; children: ReactNode }) {
+/** The scheduled task an item is about, if any (goal 24). */
+const taskIdOf = (item: HomeItem) =>
+  item.body._tag === "scheduled" || item.body._tag === "scheduled-failure"
+    ? item.body.taskId
+    : null;
+
+/** The thread, or the scheduled task's page, as a link when its machine's environment is known. */
+export function ThreadLink({ item, children }: { item: HomeItem; children: ReactNode }) {
   const environmentId = item.machine.environmentId;
-  if (environmentId === null) return <span className="block truncate">{children}</span>;
+  const taskId = taskIdOf(item);
+  if (environmentId !== null && taskId !== null) {
+    return (
+      <Link
+        to="/settings/scheduled-tasks"
+        search={{ environmentId, taskId: ScheduledTaskId.make(taskId) }}
+        className="block truncate underline-offset-2 hover:underline"
+      >
+        {children}
+      </Link>
+    );
+  }
+  if (environmentId === null || item.threadId === null) {
+    return <span className="block truncate">{children}</span>;
+  }
   return (
     <Link
       to="/$environmentId/$threadId"
@@ -127,6 +150,14 @@ export function HomeCard({
         <PlanBody item={item} body={item.body} locked={locked} onAnswer={answer} />
       ) : item.body._tag === "failure" ? (
         <FailureBody item={item} message={item.body.message} locked={locked} onAnswer={answer} />
+      ) : item.body._tag === "scheduled-failure" ? (
+        <ScheduledFailureBody
+          item={item}
+          taskId={item.body.taskId}
+          message={item.body.message}
+          locked={locked}
+          onAnswer={answer}
+        />
       ) : null}
       {!item.reachable ? (
         <p className="text-sm text-muted-foreground">
@@ -402,9 +433,58 @@ function FailureBody({
   );
 }
 
+/** A scheduled task's run could not start: retry it, or open the task (goal 24). */
+function ScheduledFailureBody({
+  item,
+  taskId,
+  message,
+  locked,
+  onAnswer,
+}: {
+  item: HomeItem;
+  taskId: string;
+  message: string | null;
+  locked: boolean;
+  onAnswer: (answer: HomeAnswer, label: string) => void;
+}) {
+  const environmentId = item.machine.environmentId;
+  return (
+    <>
+      <p className="text-sm text-foreground">{message ?? "The run could not start."}</p>
+      <Actions>
+        {environmentId === null ? (
+          <Button size="sm" variant="outline" disabled>
+            Open task
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            render={
+              <Link
+                to="/settings/scheduled-tasks"
+                search={{ environmentId, taskId: ScheduledTaskId.make(taskId) }}
+              />
+            }
+          >
+            Open task
+          </Button>
+        )}
+        <Button
+          size="sm"
+          disabled={locked}
+          onClick={() => onAnswer({ _tag: "retry", taskId }, "Retrying")}
+        >
+          Retry now
+        </Button>
+      </Actions>
+    </>
+  );
+}
+
 function OpenThreadButton({ item, label }: { item: HomeItem; label: string }) {
   const environmentId = item.machine.environmentId;
-  if (environmentId === null) {
+  if (environmentId === null || item.threadId === null) {
     return (
       <Button size="sm" variant="outline" disabled>
         {label}

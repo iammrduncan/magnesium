@@ -7,7 +7,7 @@ import {
   ServerPortError,
   ServerPorts,
 } from "@magnesium/server";
-import { AuthStandardClientScopes } from "@t3tools/contracts";
+import { AuthStandardClientScopes, ScheduledTaskId } from "@t3tools/contracts";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -24,6 +24,7 @@ import * as ProjectStore from "./orchestration-v2/ProjectStore.ts";
 import * as ThreadManagementService from "./orchestration-v2/ThreadManagementService.ts";
 import { userFacingDispatchErrorMessage } from "./orchestration-v2/UserFacingErrors.ts";
 import * as AuthPairingLinks from "./persistence/AuthPairingLinks.ts";
+import * as ScheduledTasks from "./scheduledTasks/ScheduledTaskService.ts";
 import * as ServerSettings from "./serverSettings.ts";
 
 const portError = (detail: string) => (cause: unknown) => new ServerPortError({ detail, cause });
@@ -108,6 +109,7 @@ const serverPortsLayer = Layer.effect(
     const environment = yield* ServerEnvironment.ServerEnvironment;
     const threads = yield* ThreadManagementService.ThreadManagementService;
     const projects = yield* ProjectStore.ProjectStoreV2;
+    const scheduledTasks = yield* ScheduledTasks.ScheduledTaskService;
     const callers = callerAuthentication(auth);
     const settings = yield* ServerSettings.ServerSettingsService;
     const pairingLinks = yield* AuthPairingLinks.AuthPairingLinkRepository;
@@ -175,6 +177,17 @@ const serverPortsLayer = Layer.effect(
                   cause,
                 }),
             ),
+          ),
+      },
+      schedule: {
+        tasks: scheduledTasks.subscribeList().pipe(
+          Stream.map((list) => list.tasks),
+          Stream.mapError(portError("Could not read the scheduled tasks.")),
+        ),
+        runNow: (taskId) =>
+          scheduledTasks.runNow({ id: ScheduledTaskId.make(taskId) }).pipe(
+            Effect.asVoid,
+            Effect.mapError((cause) => new ServerPortError({ detail: cause.message, cause })),
           ),
       },
       issueBearerSession: (input) =>

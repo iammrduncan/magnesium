@@ -138,8 +138,32 @@ export const homeNeeds = (items: LiveTableState<HomeItem>): ReadonlyArray<HomeIt
 /** What is working now, longest-running first. */
 export const homeRunning = (items: LiveTableState<HomeItem>): ReadonlyArray<HomeItem> =>
   [...items.rows.values()]
-    .filter((item) => !isHomeNeed(item))
+    .filter((item) => item.body._tag === "running")
     .sort((left, right) => left.since.localeCompare(right.since));
+
+/** Each scheduled task's next run, soonest first (goal 24). */
+export const homeNextRuns = (items: LiveTableState<HomeItem>): ReadonlyArray<HomeItem> =>
+  [...items.rows.values()]
+    .filter((item) => item.body._tag === "scheduled")
+    .sort(
+      (left, right) => left.since.localeCompare(right.since) || left.key.localeCompare(right.key),
+    );
+
+/** A run's time as the board writes it: "14:00" today, "Sat 02:00" this week, else the date. */
+export function runTime(at: string, now: number): string {
+  const when = Date.parse(at);
+  const clock = new Intl.DateTimeFormat([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(when);
+  const day = new Intl.DateTimeFormat([], { dateStyle: "short" });
+  if (day.format(when) === day.format(now)) return clock;
+  if (when - now < 6 * 24 * 60 * 60 * 1000) {
+    return `${new Intl.DateTimeFormat([], { weekday: "short" }).format(when)} ${clock}`;
+  }
+  return `${new Intl.DateTimeFormat([], { month: "short", day: "numeric" }).format(when)} ${clock}`;
+}
 
 export interface HomeNeedGroup {
   readonly label: string;
@@ -191,13 +215,17 @@ export function waitedFor(since: string, now: number): string {
   return `${Math.floor(hours / 24)}d`;
 }
 
-/** The header's line: "5 need you · 4 running", or what the hub can't see. */
-export function describeHome(summary: HomeSummary | null): string {
+/** The header's line: "5 need you · 4 running · next run 14:00", or what the hub can't see. */
+export function describeHome(
+  summary: HomeSummary | null,
+  nextRun: { readonly at: string; readonly now: number } | null = null,
+): string {
   if (summary === null) return "Loading…";
   const parts = [
     summary.counts.total === 0 ? "Nothing needs you" : `${summary.counts.total} need you`,
   ];
   if (summary.counts.running > 0) parts.push(`${summary.counts.running} running`);
+  if (nextRun !== null) parts.push(`next run ${runTime(nextRun.at, nextRun.now)}`);
   if (summary.unseen.length > 0) parts.push(`not counted: ${summary.unseen.join(", ")}`);
   return parts.join(" · ");
 }
@@ -226,8 +254,12 @@ export function describeNeed(item: HomeItem): string {
       return "Plan ready";
     case "failure":
       return "Run failed";
+    case "scheduled-failure":
+      return "Scheduled run failed";
     case "running":
       return "Working";
+    case "scheduled":
+      return "Scheduled";
   }
 }
 

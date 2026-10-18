@@ -26,6 +26,7 @@ import {
   ProjectId,
   RunId,
   RuntimeRequestId,
+  type ScheduledTask,
   type ServerAuthSessionMethod,
   ThreadId,
 } from "@t3tools/contracts";
@@ -49,6 +50,7 @@ import { routesLayer } from "./index.ts";
 import {
   CallerUnauthenticatedError,
   type CallerSession,
+  type SchedulePorts,
   ServerPorts,
   type ThreadPorts,
   type ThreadRequestRecords,
@@ -369,7 +371,62 @@ export const makeTestThreads = Effect.gen(function* () {
 export const defaultSettingsPorts = {
   getSettings: Effect.succeed(DEFAULT_SERVER_SETTINGS),
   setProviderInstances: () => Effect.void,
-} satisfies Pick<ServerPorts["Service"], "getSettings" | "setProviderInstances">;
+  // And no scheduled tasks.
+  schedule: {
+    tasks: Stream.make([]).pipe(Stream.concat(Stream.never)),
+    runNow: () => Effect.void,
+  },
+} satisfies Pick<ServerPorts["Service"], "getSettings" | "setProviderInstances" | "schedule">;
+
+/** A scheduler with no tasks, for tests that do not look at them. */
+export const noSchedule: SchedulePorts = {
+  tasks: Stream.make([]).pipe(Stream.concat(Stream.never)),
+  runNow: () => Effect.void,
+};
+
+/** In-memory scheduled tasks that announce each change, like upstream's scheduler. */
+export const makeTestSchedule = Effect.gen(function* () {
+  let tasks: ReadonlyArray<ScheduledTask> = [];
+  const ran: Array<string> = [];
+  const changes = yield* PubSub.unbounded<ReadonlyArray<ScheduledTask>>();
+  const ports: SchedulePorts = {
+    tasks: Stream.concat(
+      Stream.suspend(() => Stream.make(tasks)),
+      Stream.fromPubSub(changes),
+    ),
+    runNow: (taskId) => Effect.sync(() => void ran.push(taskId)),
+  };
+  return {
+    ports,
+    ran,
+    set: (next: ReadonlyArray<ScheduledTask>) =>
+      Effect.sync(() => {
+        tasks = next;
+      }).pipe(Effect.andThen(PubSub.publish(changes, next))),
+  };
+});
+
+/** A scheduled task with only what Home reads. */
+export const testScheduledTask = (
+  id: string,
+  overrides: Partial<ScheduledTask> = {},
+): ScheduledTask =>
+  ({
+    id,
+    title: id,
+    prompt: "Run it.",
+    enabled: true,
+    projectId: "project-1",
+    threadId: null,
+    createdAt: "2026-10-16T00:00:00.000Z",
+    updatedAt: "2026-10-16T00:00:00.000Z",
+    nextRunAt: "2026-10-16T14:00:00.000Z",
+    lastRunAt: null,
+    lastRunStatus: "never",
+    lastRunError: null,
+    runCount: 0,
+    ...overrides,
+  }) as unknown as ScheduledTask;
 
 /** Threads that never change, for tests that do not look at them. */
 export const noThreads: ThreadPorts = {

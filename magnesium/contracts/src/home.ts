@@ -88,27 +88,49 @@ export const HomeFailure = Schema.TaggedStruct("failure", {
 });
 export type HomeFailure = typeof HomeFailure.Type;
 
+/**
+ * A scheduled task's last run could not start (goal 24): its thread was never
+ * made, or its message never sent. Retry runs it now; the task's page has the
+ * rest. A run that started and failed is a failed thread instead.
+ */
+export const HomeScheduledFailure = Schema.TaggedStruct("scheduled-failure", {
+  taskId: Schema.String,
+  message: Schema.NullOr(Schema.String),
+});
+export type HomeScheduledFailure = typeof HomeScheduledFailure.Type;
+
 /** Not a need: the thread is working right now ("Running now"). */
 export const HomeRunning = Schema.TaggedStruct("running", {});
 export type HomeRunning = typeof HomeRunning.Type;
+
+/** Not a need: a scheduled task's next run ("Next scheduled runs"); the item's `since` is when. */
+export const HomeScheduled = Schema.TaggedStruct("scheduled", {
+  taskId: Schema.String,
+  /** How the task's last run went. */
+  lastRun: Schema.Literals(["never", "running", "succeeded", "failed"]),
+});
+export type HomeScheduled = typeof HomeScheduled.Type;
 
 export const HomeItemBody = Schema.Union([
   HomeApproval,
   HomeQuestion,
   HomePlan,
   HomeFailure,
+  HomeScheduledFailure,
   HomeRunning,
+  HomeScheduled,
 ]);
 export type HomeItemBody = typeof HomeItemBody.Type;
 
 /** One item from one server's own threads. */
 export const LocalHomeItem = Schema.Struct({
-  /** Unique on its server: the thread, the kind, and the request or plan. */
+  /** Unique on its server: the thread (or scheduled task), the kind, and the request or plan. */
   key: Schema.String,
-  threadId: ThreadId,
+  /** None for a scheduled task that starts a new thread each run. */
+  threadId: Schema.NullOr(ThreadId),
   title: Schema.String,
   projectTitle: Schema.NullOr(Schema.String),
-  /** When it started waiting on you, or started working. */
+  /** When it started waiting on you, or started working; when it runs, for a scheduled run. */
   since: IsoDateTime,
   body: HomeItemBody,
 });
@@ -180,10 +202,16 @@ export const HomeAnswer = Schema.Union([
   Schema.TaggedStruct("plan", { planId: Schema.String }),
   /** Done with a failure: settle its thread, as the sidebar does. Unsettle brings it back. */
   Schema.TaggedStruct("settle", {}),
+  /** Run a scheduled task now, after its last run could not start. */
+  Schema.TaggedStruct("retry", { taskId: Schema.String }),
 ]);
 export type HomeAnswer = typeof HomeAnswer.Type;
 
-export const LocalAnswerInput = Schema.Struct({ threadId: ThreadId, answer: HomeAnswer });
+export const LocalAnswerInput = Schema.Struct({
+  /** None for an answer to a scheduled task. */
+  threadId: Schema.NullOr(ThreadId),
+  answer: HomeAnswer,
+});
 export type LocalAnswerInput = typeof LocalAnswerInput.Type;
 
 export const HomeAnswerInput = Schema.Struct({ key: Schema.String, answer: HomeAnswer });
@@ -220,7 +248,10 @@ export const compareHomeNeeds = (left: HomeItem, right: HomeItem): number => {
     if (right.pinnedAt === null) return -1;
     return right.pinnedAt.localeCompare(left.pinnedAt);
   }
-  const kind = (item: HomeItem) => HOME_NEED_KINDS.indexOf(item.body._tag as HomeNeedKind);
+  const kind = (item: HomeItem) => {
+    const need = homeNeedKind(item.body);
+    return need === null ? HOME_NEED_KINDS.length : HOME_NEED_KINDS.indexOf(need);
+  };
   return (
     kind(left) - kind(right) ||
     left.since.localeCompare(right.since) ||
@@ -228,7 +259,20 @@ export const compareHomeNeeds = (left: HomeItem, right: HomeItem): number => {
   );
 };
 
-export const isHomeNeed = (item: Pick<HomeItem, "body">) => item.body._tag !== "running";
+/** The kind of need an item is, for Home's order and counts; null for what isn't a need. */
+export const homeNeedKind = (body: HomeItemBody): HomeNeedKind | null => {
+  switch (body._tag) {
+    case "running":
+    case "scheduled":
+      return null;
+    case "scheduled-failure":
+      return "failure";
+    default:
+      return body._tag;
+  }
+};
+
+export const isHomeNeed = (item: Pick<HomeItem, "body">) => homeNeedKind(item.body) !== null;
 
 /** Cuts a long text for the wire, and says whether it did. */
 export const clipHomeText = (text: string): { readonly text: string; readonly clipped: boolean } =>

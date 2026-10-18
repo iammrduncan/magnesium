@@ -7,6 +7,7 @@ import {
   type HomeDetail,
   type HomeItem,
   homeItemKey,
+  homeNeedKind,
   type HomePinInput,
   type HomeSummary,
   homeSummaryKey,
@@ -74,8 +75,8 @@ const emptyCounts = (): { -readonly [K in keyof HomeCounts]: number } => ({
 /**
  * Home's rows and counts from every server's items. A machine the hub can't
  * reach keeps its needs on Home, marked unreachable and left out of the
- * counts, which name it instead; its "working" items are dropped, since
- * nothing says they still are.
+ * counts, which name it instead; its "working" items and next runs are
+ * dropped, since nothing says they still hold.
  */
 export const buildHome = (input: {
   readonly sources: ReadonlyArray<HomeSource>;
@@ -87,8 +88,8 @@ export const buildHome = (input: {
   for (const source of input.sources) {
     if (!source.reachable) unseen.push(source.label);
     for (const item of source.items) {
-      const running = item.body._tag === "running";
-      if (running && !source.reachable) continue;
+      const need = homeNeedKind(item.body);
+      if (need === null && !source.reachable) continue;
       const key = toHomeKey(source.name, localHomeItemKey(item));
       items.push({
         ...item,
@@ -98,11 +99,11 @@ export const buildHome = (input: {
         pinnedAt: input.pins.get(key) ?? null,
       });
       if (!source.reachable) continue;
-      if (item.body._tag === "running") {
-        counts.running += 1;
-      } else {
-        counts[item.body._tag] += 1;
+      if (need !== null) {
+        counts[need] += 1;
         counts.total += 1;
+      } else if (item.body._tag === "running") {
+        counts.running += 1;
       }
     }
   }
@@ -286,7 +287,15 @@ export const make = Effect.gen(function* () {
         yield* poke;
       }),
     detail: (key) =>
-      followed(route(key).pipe(Effect.flatMap(({ item, calls }) => calls.detail(item.threadId)))),
+      followed(
+        route(key).pipe(
+          Effect.flatMap(({ item, calls }) =>
+            item.threadId === null
+              ? Effect.fail(new HomeAnswerError({ detail: "This has no thread to show." }))
+              : calls.detail(item.threadId),
+          ),
+        ),
+      ),
   });
 });
 

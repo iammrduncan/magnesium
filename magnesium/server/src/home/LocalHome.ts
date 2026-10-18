@@ -36,6 +36,8 @@ import {
   needsThreadRequests,
   planMarkdownOf,
   recentWorkOf,
+  scheduleFailureKey,
+  scheduleItemsOf,
 } from "./items.ts";
 
 /**
@@ -77,6 +79,7 @@ export const layer = Layer.effect(
       maxRows: MAX_ITEMS,
     });
     const keysByThread = new Map<ThreadId, ReadonlySet<string>>();
+    let scheduleKeys: ReadonlySet<string> = new Set();
     let projectTitles = new Map<string, string>();
 
     const loadProjectTitles = ports.threads.projects.pipe(
@@ -118,6 +121,25 @@ export const layer = Layer.effect(
         else keysByThread.set(threadId, next);
       });
 
+    /** Make the table hold exactly `items` for the scheduled tasks. */
+    const placeSchedule = (items: ReadonlyArray<LocalHomeItem>) =>
+      Effect.gen(function* () {
+        const next = new Set(items.map(localHomeItemKey));
+        for (const key of scheduleKeys) if (!next.has(key)) yield* table.remove(key);
+        for (const item of items) yield* table.set(item);
+        scheduleKeys = next;
+      });
+
+    /** Follows the scheduler: every task's next run, and a run that could not start. */
+    const followSchedule = ports.schedule.tasks.pipe(
+      Stream.runForEach((tasks) =>
+        Effect.gen(function* () {
+          for (const task of tasks) yield* projectTitleOf(task.projectId);
+          yield* placeSchedule(scheduleItemsOf(tasks, (id) => projectTitles.get(id) ?? null));
+        }),
+      ),
+    );
+
     const refresh = (threadId: ThreadId) =>
       ports.threads.byId(threadId).pipe(
         Effect.flatMap(
@@ -155,6 +177,8 @@ export const layer = Layer.effect(
         );
         yield* readAll;
         yield* Deferred.succeed(loaded, undefined);
+        // The scheduler's own stream sends the list now and after each change.
+        yield* Effect.forkScoped(followSchedule);
         yield* readAll.pipe(
           Effect.delay(RESYNC_EVERY),
           Effect.repeat(Schedule.forever),
@@ -187,6 +211,13 @@ export const layer = Layer.effect(
 
     const answer = ({ threadId, answer: given }: LocalAnswerInput) =>
       Effect.gen(function* () {
+        if (given._tag === "retry") {
+          if (!scheduleKeys.has(scheduleFailureKey(given.taskId))) {
+            return yield* answerError("That run already started again, or the task is gone.");
+          }
+          return yield* ports.schedule.runNow(given.taskId);
+        }
+        if (threadId === null) return yield* answerError("That answer needs a thread.");
         const shell = Option.getOrUndefined(yield* ports.threads.byId(threadId));
         if (shell === undefined) return yield* answerError("That thread is gone.");
         // The thread as it is now: an item answered elsewhere, or left behind, is refused.

@@ -15,7 +15,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
 import { ServerPorts } from "../ports.ts";
-import { noThreads, testDescriptor } from "../testing.ts";
+import { noThreads, noSchedule, testDescriptor } from "../testing.ts";
 import { ProfilesConfig } from "./catalog.ts";
 import * as ProfileSync from "./ProfileSync.ts";
 
@@ -51,6 +51,7 @@ describe("profile sync", () => {
         authenticateWebSocket: () => Effect.die("unused"),
         environment: Effect.succeed(testDescriptor()),
         threads: noThreads,
+        schedule: noSchedule,
         issueBearerSession: () => Effect.die("unused"),
         getSecret: () => Effect.succeedNone,
         setSecret: () => Effect.void,

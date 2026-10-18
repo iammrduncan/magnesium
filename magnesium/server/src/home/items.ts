@@ -14,6 +14,8 @@ import {
   PlanId,
   type ProviderApprovalOption,
   RuntimeRequestId,
+  type ScheduledTask,
+  ThreadId,
 } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 
@@ -283,6 +285,9 @@ export const commandsForAnswer = (input: {
     }
     case "settle":
       return [{ type: "thread.settle", commandId: context.commandId(), threadId: view.id }];
+    // Not a thread's command: the scheduler runs the task (see `LocalHome`).
+    case "retry":
+      return [];
   }
 };
 
@@ -297,8 +302,52 @@ export const answeredKey = (threadId: string, answer: HomeAnswer): string => {
       return `${threadId}:plan:${answer.planId}`;
     case "settle":
       return `${threadId}:failure`;
+    case "retry":
+      return scheduleFailureKey(answer.taskId);
   }
 };
+
+/** Keys of a scheduled task's items, apart from any thread's. */
+export const scheduleNextKey = (taskId: string) => `schedule:${taskId}:next`;
+export const scheduleFailureKey = (taskId: string) => `schedule:${taskId}:failure`;
+
+/**
+ * A server's scheduled tasks on Home (goal 24): each enabled task's next run,
+ * and a card for a task whose last run could not start, until a run starts.
+ */
+export const scheduleItemsOf = (
+  tasks: ReadonlyArray<ScheduledTask>,
+  projectTitleOf: (projectId: string) => string | null,
+): ReadonlyArray<LocalHomeItem> =>
+  tasks.flatMap((task): ReadonlyArray<LocalHomeItem> => {
+    const base = {
+      threadId: task.threadId === null ? null : ThreadId.make(task.threadId),
+      title: task.title,
+      projectTitle: projectTitleOf(task.projectId),
+    };
+    const items: Array<LocalHomeItem> = [];
+    if (task.lastRunStatus === "failed") {
+      items.push({
+        ...base,
+        key: scheduleFailureKey(task.id),
+        since: task.lastRunAt ?? task.updatedAt,
+        body: {
+          _tag: "scheduled-failure",
+          taskId: task.id,
+          message: task.lastRunError === null ? null : clipHomeText(task.lastRunError).text,
+        },
+      });
+    }
+    if (task.enabled && task.nextRunAt !== null) {
+      items.push({
+        ...base,
+        key: scheduleNextKey(task.id),
+        since: task.nextRunAt,
+        body: { _tag: "scheduled", taskId: task.id, lastRun: task.lastRunStatus },
+      });
+    }
+    return items;
+  });
 
 /** The turn item types Detail lists, as the thread's work log names them. */
 export const RECENT_WORK_ITEM_TYPES = [

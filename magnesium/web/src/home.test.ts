@@ -1,3 +1,4 @@
+// @effect-diagnostics globalDate:off - run times are written in the local time zone, so the test builds local dates.
 import type { HomeAnswer, HomeItem } from "@magnesium/contracts";
 import { describe, expect, it } from "@effect/vitest";
 
@@ -5,9 +6,12 @@ import { emptyLiveTable } from "./stream/liveTable.ts";
 import {
   createAnswerHold,
   describeHome,
+  describeNeed,
   homeNeeds,
   homeNeedsByMachine,
+  homeNextRuns,
   homeRunning,
+  runTime,
   waitedFor,
 } from "./home.ts";
 
@@ -93,6 +97,50 @@ describe("Home's order", () => {
         unseen: ["gpu-host-2"],
       }),
     ).toBe("Nothing needs you · not counted: gpu-host-2");
+  });
+});
+
+describe("scheduled runs on Home (goal 24)", () => {
+  const failed = item(
+    "schedule:nightly:failure",
+    { _tag: "scheduled-failure", taskId: "nightly", message: "The folder is gone." },
+    "2026-10-16T02:00:00.000Z",
+  );
+  const next = (key: string, since: string) =>
+    item(key, { _tag: "scheduled", taskId: key, lastRun: "succeeded" }, since);
+
+  it("counts a run that could not start as a failure, and lists next runs soonest first", () => {
+    const items = tableOf([
+      failed,
+      next("crawl", "2026-10-16T14:00:00.000Z"),
+      next("feeds", "2026-10-16T13:30:00.000Z"),
+      item("working", { _tag: "running" }, "2026-10-16T00:30:00.000Z"),
+      item("approval", approval, "2026-10-16T03:00:00.000Z"),
+    ]);
+    // A scheduled failure ranks with failures: after approvals.
+    expect(homeNeeds(items).map((need) => need.key)).toEqual([
+      "approval",
+      "schedule:nightly:failure",
+    ]);
+    expect(describeNeed(failed)).toBe("Scheduled run failed");
+    expect(homeRunning(items).map((running) => running.key)).toEqual(["working"]);
+    expect(homeNextRuns(items).map((run) => run.key)).toEqual(["feeds", "crawl"]);
+  });
+
+  it("names the next run in the header, by its time today and its day later on", () => {
+    const at = (hours: number, minutes = 0) => {
+      const when = new Date(2026, 9, 16, hours, minutes);
+      return when.getTime();
+    };
+    const now = at(9);
+    const counts = { approval: 0, question: 0, plan: 0, failure: 1, total: 1, running: 0 };
+    expect(
+      describeHome(
+        { key: "home", counts, unseen: [] },
+        { at: new Date(at(14)).toISOString(), now },
+      ),
+    ).toBe("1 need you · next run 14:00");
+    expect(runTime(new Date(at(9 + 24 * 2)).toISOString(), now)).toMatch(/^\S+ 09:00$/);
   });
 });
 
