@@ -13,7 +13,8 @@ import {
 } from "./lib/windowControlsOverlay";
 import { AppRoot } from "./AppRoot";
 import { clearChunkReloadGuard, reloadOnceForChunkLoadError } from "./lib/chunkReloadGuard";
-import { registerShellServiceWorker } from "@magnesium/web"; // magnesium: goal 05
+import { registerShellServiceWorker, watchForNewBuild } from "@magnesium/web"; // magnesium: goals 05, 24
+import { toastManager } from "./components/ui/toast"; // magnesium: the new-build reload prompt
 
 prepareProviderAuthDelivery();
 
@@ -43,6 +44,20 @@ window.addEventListener("vite:preloadError", (event) => {
 
 // magnesium: the shell service worker, so the installed PWA opens offline (goal 05)
 registerShellServiceWorker({ enabled: import.meta.env.PROD && !isElectron });
+
+// magnesium: an open page keeps running the build it loaded, which the server
+// may no longer understand after an update; offer a reload when it changes
+if (import.meta.env.PROD) {
+  watchForNewBuild(() => {
+    toastManager.add({
+      type: "info",
+      title: "Magnesium was updated",
+      description: "Reload to use the new version. Until then, this page may not work with it.",
+      timeout: 0,
+      actionProps: { children: "Reload", onClick: () => window.location.reload() },
+    });
+  });
+}
 
 // The index.html boot splash lives inside #root, and React's first commit
 // clears it. Resolve everything that first commit needs, the initial route's
