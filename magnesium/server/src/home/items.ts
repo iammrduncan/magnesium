@@ -283,6 +283,16 @@ export const commandsForAnswer = (input: {
         },
       ];
     }
+    // Out of plan mode, the thread no longer offers its plan (here or in the sidebar).
+    case "dismiss-plan":
+      return [
+        {
+          type: "thread.interaction-mode.set",
+          commandId: context.commandId(),
+          threadId: view.id,
+          interactionMode: "default",
+        },
+      ];
     case "settle":
       return [{ type: "thread.settle", commandId: context.commandId(), threadId: view.id }];
     // The scheduler runs the task again first (see `LocalHome`); the failed run is then done with.
@@ -299,6 +309,7 @@ export const answeredKey = (threadId: string, answer: HomeAnswer): string => {
     case "question":
       return `${threadId}:question:${answer.requestId}`;
     case "plan":
+    case "dismiss-plan":
       return `${threadId}:plan:${answer.planId}`;
     case "settle":
     case "retry":

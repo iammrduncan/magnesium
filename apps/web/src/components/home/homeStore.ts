@@ -51,9 +51,13 @@ export const answerHold = createAnswerHold({
     const item = view.items.rows.get(key);
     if (watch === null) throw new Error("Not connected to the hub.");
     await watch.answer(key, answer);
-    // An implemented plan leaves plan mode, as the thread's own Implement does, so
-    // the next message from its composer doesn't put the thread back into planning.
-    if (answer._tag === "plan" && item?.machine.environmentId != null && item.threadId !== null) {
+    // An implemented or dismissed plan leaves plan mode, as the thread's own Implement
+    // does, so the next message from its composer doesn't put the thread back into planning.
+    if (
+      (answer._tag === "plan" || answer._tag === "dismiss-plan") &&
+      item?.machine.environmentId != null &&
+      item.threadId !== null
+    ) {
       useComposerDraftStore
         .getState()
         .setInteractionMode(scopeThreadRef(item.machine.environmentId, item.threadId), "default");

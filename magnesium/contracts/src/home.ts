@@ -203,6 +203,11 @@ export const HomeAnswer = Schema.Union([
   }),
   /** Implement the plan in its own thread. */
   Schema.TaggedStruct("plan", { planId: Schema.String }),
+  /**
+   * Leave the plan unimplemented: the thread goes back to its default mode and
+   * the plan stays in it. Plan mode again brings the card back.
+   */
+  Schema.TaggedStruct("dismiss-plan", { planId: Schema.String }),
   /** Done with a failure: settle its thread, as the sidebar does. Unsettle brings it back. */
   Schema.TaggedStruct("settle", {}),
   /**

@@ -344,11 +344,28 @@ describe("answering from Home", () => {
     ).toEqual(["message.dispatch"]);
   });
 
+  it("dismisses a plan by leaving plan mode, without a run", () => {
+    expect(
+      commandsForAnswer({
+        view: viewOf(planThread),
+        answer: { _tag: "dismiss-plan", planId: "new" },
+        context,
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        type: "thread.interaction-mode.set",
+        threadId: "backups",
+        interactionMode: "default",
+      }),
+    ]);
+  });
+
   it("knows which item an answer settles", () => {
     expect(answeredKey("t", { _tag: "approval", requestId: "r", decision: "decline" })).toBe(
       "t:approval:r",
     );
     expect(answeredKey("t", { _tag: "plan", planId: "p" })).toBe("t:plan:p");
+    expect(answeredKey("t", { _tag: "dismiss-plan", planId: "p" })).toBe("t:plan:p");
     expect(answeredKey("t", { _tag: "settle" })).toBe("t:failure");
   });
 });

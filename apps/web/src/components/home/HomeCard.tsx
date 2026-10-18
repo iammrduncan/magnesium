@@ -397,6 +397,14 @@ function PlanBody({
         </p>
       ) : null}
       <Actions>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={locked}
+          onClick={() => onAnswer({ _tag: "dismiss-plan", planId: body.planId }, "Dismissing")}
+        >
+          Dismiss
+        </Button>
         <OpenThreadButton item={item} label="Refine" />
         <Button
           size="sm"
