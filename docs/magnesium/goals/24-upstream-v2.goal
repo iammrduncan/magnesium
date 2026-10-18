@@ -5,7 +5,7 @@ kind: maintenance
 depends_on: [mg-home, mg-spokes-k8s]
 phase: 2
 boards: []
-decisions: [D11, D51, D52]
+decisions: [D11, D51, D52, D64]
 ---
 # Take upstream's v0.1.0: Orchestrator V2
 
@@ -60,11 +60,12 @@ Moving the fleet to OpenCode 2 (after the merge, one machine at a time).
   - An open page kept running the old client after the hub updated, and the two refused each other: Home's marks went nowhere until a full reload. A page now offers Reload when the hub serves a new build.
   - On V2 the scheduler counts a run as started once its thread exists, so a run that then failed (a worktree it couldn't make) had no Retry on Home. Its thread's card now names the task, and Retry now runs the task again and settles the failed thread. An end-to-end test covers it.
   - The merge brought back a Settings row saying Magnesium collects anonymous usage data, linking to T3 Code's policy. Telemetry is off (D13), so the row is gone.
+  - A plan card had no way to dismiss it. Dismiss now takes the thread out of plan mode, which clears the card and the sidebar's Plan Ready; the plan stays in the thread.
   - In an attached workload, `magnesium-release backup` found no state from a plain shell.
   - A gateway's refusal reached the hub's trace with no reason.
 - **Left:** test 5's Retry now on a real failed run, once the hub runs the build with it.
 - **Skipped:** test 6, the rollback, at the owner's call. Every server still keeps its previous build and its untouched V1 database.
-- **Open:** whose clock scheduled tasks keep (O27). A task set for 09:00 runs at 09:00 in its server's own zone.
+- **Decided:** every server keeps one time zone, set when it's deployed (D64), so a scheduled task's 09:00 is one time everywhere.
 
 ## Next steps
 

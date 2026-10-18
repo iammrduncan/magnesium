@@ -103,6 +103,7 @@ describe("the hub through a gateway", () => {
           spokeOrigin: (name) => (name === "cpu-host-2" ? spoke.origin : "http://127.0.0.1:9"),
           image: (build) => `magnesium:${build}`,
           storageClass: null,
+          timeZone: null,
         }).pipe(HttpRouter.provideRequest(FetchHttpClient.layer)),
       });
 

@@ -36,6 +36,8 @@ export interface RenderContext {
   readonly defaultBuild: string;
   /** The storage class for new volumes; null takes the namespace's default. */
   readonly storageClass: string | null;
+  /** The time zone every spoke keeps, the gateway's own (D64); null for none set. */
+  readonly timeZone: string | null;
 }
 
 const labels = (name: string) => ({
@@ -122,6 +124,8 @@ export const renderWorkload = (
     // Where it runs, for Fleet: its name doesn't say.
     { name: "MAGNESIUM_NODE", valueFrom: { fieldRef: { fieldPath: "spec.nodeName" } } },
   ];
+  // A scheduled task's 09:00 means the same time on every server.
+  if (context.timeZone !== null) env.push({ name: "MAGNESIUM_TIMEZONE", value: context.timeZone });
   if (spec.opencode !== null) {
     env.push(
       { name: "MAGNESIUM_OPENCODE_BASE_URL", value: spec.opencode.baseUrl },

@@ -34,6 +34,12 @@ magnesium_enable_linger: false
 # name. Set it to `hub` on the hub. Profiles name machines by it.
 magnesium_machine_name: ""
 
+# The time zone the server keeps, such as Europe/Berlin. Scheduled tasks run at
+# their times in it, so set the same one for every server, Kubernetes ones too
+# (MAGNESIUM_TIMEZONE), and a task's 09:00 means one time everywhere (D64). Empty:
+# the machine's own zone.
+magnesium_timezone: ""
+
 # Agents run fenced by default and need nothing for it (goal 03). The optional
 # container sandbox needs rootless Podman and a base image pinned by digest;
 # empty leaves it off. Profiles' CLIs are mounted from the host, read-only.

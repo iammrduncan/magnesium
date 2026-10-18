@@ -9,6 +9,9 @@
 #   MAGNESIUM_OPENCODE_MODELS    its models, comma-separated; the first is the default
 #   MAGNESIUM_OPENCODE_API_KEY_ENV  the env var holding the key (LITELLM_API_KEY);
 #                                the config names it, never holds it (D36)
+#   MAGNESIUM_TIMEZONE           the time zone the server keeps, such as
+#                                Europe/Berlin, so scheduled tasks run at the
+#                                same clock time on every machine (D64)
 set -euo pipefail
 
 die() {
@@ -29,6 +32,10 @@ if [ -z "${NODE_EXTRA_CA_CERTS:-}" ] && [ -r "$sa_ca" ]; then
 fi
 # CLIs the user installs or updates in their home come before the image's.
 export PATH="$HOME/.local/bin:$PATH"
+# Only the server's clock: an attached workload's own processes keep theirs.
+if [ -n "${MAGNESIUM_TIMEZONE:-}" ]; then
+  export TZ="$MAGNESIUM_TIMEZONE"
+fi
 
 mkdir -p "$T3CODE_HOME/userdata"
 settings="$T3CODE_HOME/userdata/settings.json"

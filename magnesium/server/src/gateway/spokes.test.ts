@@ -33,6 +33,7 @@ const context: RenderContext = {
   image: (build) => `localhost/magnesium:${build}`,
   defaultBuild: "f2fbc55f42",
   storageClass: null,
+  timeZone: null,
 };
 
 describe("a spoke's objects", () => {
@@ -79,6 +80,11 @@ describe("a spoke's objects", () => {
       renderWorkload({ ...spec, build: "8c2913d863" }, context).spec.template.spec.containers[0]!
         .image,
     ).toBe("localhost/magnesium:8c2913d863");
+    // A gateway with a time zone gives it to every spoke (D64).
+    expect(
+      renderWorkload(spec, { ...context, timeZone: "Europe/Berlin" }).spec.template.spec
+        .containers[0]!.env,
+    ).toContainEqual({ name: "MAGNESIUM_TIMEZONE", value: "Europe/Berlin" });
   });
 
   it("keep keys and the pairing code in the Secret, and size the volume as asked", () => {
@@ -242,7 +248,12 @@ const fakeCluster = (allowed: ReadonlyArray<string>, options: { podsLinger?: boo
   ).pipe(Layer.provide(Layer.succeed(HttpClient.HttpClient, client)));
   const spokes = Layer.effect(
     Spokes.Spokes,
-    Spokes.make({ image: context.image, defaultBuild: "f2fbc55f42", storageClass: null }),
+    Spokes.make({
+      image: context.image,
+      defaultBuild: "f2fbc55f42",
+      storageClass: null,
+      timeZone: null,
+    }),
   ).pipe(Layer.provide(kube));
   return { calls, objects, spokes };
 };

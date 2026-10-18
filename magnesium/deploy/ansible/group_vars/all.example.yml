@@ -1,3 +1,6 @@
 # Copy to group_vars/all.yml (git-ignored).
 # Pin the build every host runs: a tag or commit of the Magnesium repo.
 magnesium_version: main
+# One time zone for every server, so a scheduled task's 09:00 is the same everywhere
+# (D64). Give Kubernetes servers the same one as MAGNESIUM_TIMEZONE.
+magnesium_timezone: "" # an IANA zone, such as Europe/Berlin

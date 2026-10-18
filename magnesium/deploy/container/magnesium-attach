@@ -18,7 +18,7 @@
 #   MAGNESIUM_NODE       where it runs (the downward API's spec.nodeName)
 #   T3CODE_PORT          the server's port (3773); pick another in a host-network
 #                        pod whose host runs Magnesium on 3773
-#   MAGNESIUM_HUB_PAIRING_CODE, MAGNESIUM_OPENCODE_*  as for a spoke
+#   MAGNESIUM_HUB_PAIRING_CODE, MAGNESIUM_OPENCODE_*, MAGNESIUM_TIMEZONE  as for a spoke
 set -eu
 
 bundle=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)

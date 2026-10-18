@@ -81,6 +81,7 @@ const spokesLayer = Layer.unwrap(
         image: gateway.image,
         defaultBuild: release ?? "unknown",
         storageClass: gateway.storageClass,
+        timeZone: gateway.timeZone,
       }),
     ).pipe(Layer.provide(inClusterLayer));
   }),

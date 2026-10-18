@@ -38,14 +38,16 @@ export interface GatewayConfig {
   readonly image: (build: string) => string;
   /** The storage class for spokes' volumes; null takes the namespace's default. */
   readonly storageClass: string | null;
+  /** The time zone the gateway keeps, passed on to its spokes (D64); null for none set. */
+  readonly timeZone: string | null;
 }
 
 /**
  * The gateway's config from its environment, or null when this server is not
  * a gateway: `MAGNESIUM_ROLE=gateway`; `MAGNESIUM_SPOKE_URL`, a template with
  * `{name}` (default `http://magnesium-{name}:3773`); `MAGNESIUM_SPOKE_IMAGE`,
- * a template with `{build}` (default `magnesium:{build}`); and
- * `MAGNESIUM_SPOKE_STORAGE_CLASS`.
+ * a template with `{build}` (default `magnesium:{build}`);
+ * `MAGNESIUM_SPOKE_STORAGE_CLASS`; and `MAGNESIUM_TIMEZONE`.
  */
 export const gatewayConfigFromEnv = (
   env: Readonly<Record<string, string | undefined>>,
@@ -57,6 +59,7 @@ export const gatewayConfigFromEnv = (
     spokeOrigin: (name) => url.replaceAll("{name}", name),
     image: (build) => image.replaceAll("{build}", build),
     storageClass: env.MAGNESIUM_SPOKE_STORAGE_CLASS?.trim() || null,
+    timeZone: env.MAGNESIUM_TIMEZONE?.trim() || null,
   };
 };
 
