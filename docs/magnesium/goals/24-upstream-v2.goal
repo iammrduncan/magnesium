@@ -41,31 +41,34 @@ Moving the fleet to OpenCode 2 (after the merge, one machine at a time).
 
 ## Goal summary
 
-**2026-10-18, in progress.** All of upstream v0.1.0 is merged into `main` (1,051 upstream commits, not only V2), and every server runs it: a hub, a gateway, three machines attached to workloads and two on bare metal, moved in one window. CI passes the full typecheck and test suite.
+**2026-10-18, in progress: one live check left.** All of upstream v0.1.0 is merged into `main` (1,051 upstream commits, not only V2), and every server runs it: a hub, a gateway, three machines attached to workloads and two on bare metal, moved in one window. CI passes the full typecheck and test suite.
 
 - **Merge.** All 29 conflicting files are resolved. Goal 03's fence and the supervised default are ported back by hand, with tests: new threads and scheduled tasks start supervised, and a fenced agent can't read Magnesium's state home. The merge, rename and strip scripts each had bugs, now fixed.
 - **Fixed on V2, with tests:**
   - A Codex thread moving between a fenced instance and its native twin could lose its history.
   - Every fenced Claude would have shown as broken, because the fence blocked V2's health check folder.
   - The hub's machine sessions kept V1's narrower grants. Machines now renew them early, as what they meant.
-- **Home on V2:** approvals, questions, plans and failures come from V2's threads, and answers go out as V2 commands. Scheduled runs that couldn't start are cards with Retry now and Open task, and Next scheduled runs sits beside the feed.
+- **Home on V2:** approvals, questions, plans and failures come from V2's threads, and answers go out as V2 commands. Next scheduled runs sits beside the feed, and the header names the next run.
 - **Tests passed:**
   - Test 1: rehearsals on copies of real data, and every server's real migration kept all its threads and projects, with the V1 database left untouched.
-  - Test 2: security, in the suite.
-  - Test 3: the lockstep upgrade, with backups first. Every server reports the V2 protocol.
-- **Found during the rollout, fixed:**
+  - Test 2: security, in the suite, and on the hub new threads start Supervised and fenced.
+  - Test 3: the lockstep upgrade, with backups first. Fleet shows all seven servers connected on the new build.
+  - Test 4: on the hub, one pairing reaches every machine. An approval (bare metal), a question (the hub) and a plan (another machine) showed on Home, in the sidebar and in the footer. The approval and the question were answered from Home, and the cards stayed gone. Fleet → Terminal works, and threads imported from V1 open with their messages.
+  - Test 5: a scheduled task's failed run showed on Home, and Next scheduled runs listed three tasks on three machines, soonest first.
+  - Home compared with its board; the differences are under the board in [mockups](../mockups.md).
+- **Found during the tests, fixed:**
   - An open page kept running the old client after the hub updated, and the two refused each other: Home's marks went nowhere until a full reload. A page now offers Reload when the hub serves a new build.
+  - On V2 the scheduler counts a run as started once its thread exists, so a run that then failed (a worktree it couldn't make) had no Retry on Home. Its thread's card now names the task, and Retry now runs the task again and settles the failed thread. An end-to-end test covers it.
+  - The merge brought back a Settings row saying Magnesium collects anonymous usage data, linking to T3 Code's policy. Telemetry is off (D13), so the row is gone.
   - In an attached workload, `magnesium-release backup` found no state from a plain shell.
   - A gateway's refusal reached the hub's trace with no reason.
-- **Left:**
-  - Test 3's Fleet check and test 4, on the hub.
-  - Test 5: scheduled runs on real tasks.
-  - Comparing Home with its board.
+- **Left:** test 5's Retry now on a real failed run, once the hub runs the build with it.
 - **Skipped:** test 6, the rollback, at the owner's call. Every server still keeps its previous build and its untouched V1 database.
+- **Open:** whose clock scheduled tasks keep (O27). A task set for 09:00 runs at 09:00 in its server's own zone.
 
 ## Next steps
 
-1. Finish tests 3 to 5 and the board comparison, then mark this goal verified.
+1. Deploy the current `main` to the hub, retry a failed scheduled run from Home, then mark this goal verified.
 2. Goal 33, Waiting on you (D62).
 3. Goal 15, Projects.
 

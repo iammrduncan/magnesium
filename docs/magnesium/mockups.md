@@ -66,6 +66,13 @@ Not mocked yet: **Schedule** (goal 11 mocks it), a **Profile** page, and the **d
 - Beside the feed is Running now. Next scheduled runs (goal 24), fleet tiles (goal 10) and Brain today (goal 12) are still to come.
 - "Needs you" has no warning sign, and Home's count in the sidebar is a soft amber pill, not a solid one.
 
+**2026-10-18, goal 24 (scheduled runs, on V2):** built and compared on the hub. Differences from the board:
+
+- Next scheduled runs names each task's project and machine, not its sandbox, and has no "Today" label: a run on another day shows its day.
+- A scheduled run that started and failed is its thread's failure, labelled "Scheduled run failed", with Settle, Open thread and Retry now. Open thread stands in for Open log.
+- A run that never started (no thread was made) has Open task and Retry now.
+- The header shows the next run as on the board; Group: need is still not there.
+
 ### Session · desktop
 
 ![Session on the desktop](mockups/session-desktop.png)
