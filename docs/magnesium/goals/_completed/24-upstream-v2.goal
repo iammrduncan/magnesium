@@ -1,6 +1,6 @@
 ---
 id: mg-upstream-v2
-status: IN_PROGRESS
+status: VERIFIED
 kind: maintenance
 depends_on: [mg-home, mg-spokes-k8s]
 phase: 2
@@ -41,7 +41,7 @@ Moving the fleet to OpenCode 2 (after the merge, one machine at a time).
 
 ## Goal summary
 
-**2026-10-18, in progress: one live check left.** All of upstream v0.1.0 is merged into `main` (1,051 upstream commits, not only V2). The hub and every machine moved to it in one window, deployed with the Ansible roles; `magnesium-release rollback` restores the previous build (Done means 5). CI passes the full typecheck and test suite.
+**2026-10-18, verified.** All of upstream v0.1.0 is merged into `main` (1,051 upstream commits, not only V2). The hub and every machine moved to it in one window, deployed with the Ansible roles; `magnesium-release rollback` restores the previous build (Done means 5). CI passes the full typecheck and test suite.
 
 - **Merge.** All 29 conflicting files are resolved. Goal 03's fence and the supervised default are ported back by hand, with tests: new threads and scheduled tasks start supervised, and a fenced agent can't read Magnesium's state home. The merge, rename and strip scripts each had bugs, now fixed.
 - **Fixed on V2, with tests:**
@@ -54,23 +54,23 @@ Moving the fleet to OpenCode 2 (after the merge, one machine at a time).
   - Test 2: security, in the suite, and on the hub new threads start Supervised and fenced.
   - Test 3: the lockstep upgrade, with backups first. Fleet shows every server connected on the new build.
   - Test 4: on the hub, one pairing reaches every machine. An approval, a question and a plan, each from a different machine, showed on Home, in the sidebar and in the footer. The approval and the question were answered from Home, and the cards stayed gone. Fleet → Terminal works, and threads imported from V1 open with their messages.
-  - Test 5: a scheduled task's failed run showed on Home, and Next scheduled runs listed tasks from several machines, soonest first.
+  - Test 5: a scheduled task's failed run showed on Home as "Scheduled run failed". After the task was fixed, Retry now ran it again from that card: the new run replied, and the failed thread was settled. Next scheduled runs listed tasks from several machines, soonest first, each at the 09:00 it was set for.
   - Home compared with its board; the differences are under the board in [mockups](../mockups.md).
 - **Found during the tests, fixed:**
   - An open page kept running the old client after the hub updated, and the two refused each other: Home's marks went nowhere until a full reload. A page now offers Reload when the hub serves a new build.
   - On V2 the scheduler counts a run as started once its thread exists, so a run that then failed (a worktree it couldn't make) had no Retry on Home. Its thread's card now names the task, and Retry now runs the task again and settles the failed thread. An end-to-end test covers it.
   - The merge brought back a Settings row saying Magnesium collects anonymous usage data, linking to T3 Code's policy. Telemetry is off (D13), so the row is gone.
   - A plan card had no way to dismiss it. Dismiss now takes the thread out of plan mode, which clears the card and the sidebar's Plan Ready; the plan stays in the thread.
+  - `magnesium-release backup`, and so `activate`, failed on every V2 server: it tried to copy V2's lock file (`server-owner.sqlite`, an exclusive transaction with no data). Backups now skip it, with a test that holds the lock as the server does.
   - In an attached workload, `magnesium-release backup` found no state from a plain shell.
   - A gateway's refusal reached the hub's trace with no reason.
-- **Left:** test 5's Retry on a real failed run, on a build that has the fix.
 - **Skipped:** test 6, the rollback, at the owner's call. `magnesium-release rollback` restores the previous build, and V2 leaves the V1 database untouched.
-- **Decided:** every server keeps one time zone, set when it's deployed (D64), so a scheduled task's 09:00 is one time everywhere.
+- **Decided and shipped:** every server keeps one time zone, set when it's deployed (D64): Ansible's `magnesium_timezone`, and `MAGNESIUM_TIMEZONE` in Kubernetes, which a gateway passes to its spokes. A task's 09:00 is now one time everywhere.
 
 ## Next steps
 
-1. On a build that has the fix, retry a failed scheduled run from Home, then mark this goal verified.
-2. Goal 33, Waiting on you (D62).
-3. Goal 15, Projects.
+1. Goal 33, Waiting on you (D62).
+2. Goal 15, Projects.
+3. Small: the hub finds gateways by asking every plain machine to list spokes, so each one logs a refusal at start-up. Skip machines whose status already says they aren't gateways.
 
 Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).
