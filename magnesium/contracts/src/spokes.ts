@@ -83,7 +83,12 @@ export type SpokeStatus = typeof SpokeStatus.Type;
 export class SpokeError extends Schema.TaggedError<SpokeError>()("SpokeError", {
   /** What went wrong, in a sentence for Fleet, such as the cluster refusing a node. */
   detail: Schema.String,
-}) {}
+}) {
+  // Traces and logs print the message; without this a refusal shows as a bare "SpokeError".
+  override get message(): string {
+    return this.detail;
+  }
+}
 
 /** A spoke the hub runs through a gateway, as the hub keeps it. */
 export const HubSpoke = Schema.Struct({

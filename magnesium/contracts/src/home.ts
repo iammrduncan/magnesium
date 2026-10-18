@@ -223,7 +223,12 @@ export type HomePinInput = typeof HomePinInput.Type;
 /** Why an answer did not go through, in a sentence for the card. */
 export class HomeAnswerError extends Schema.TaggedError<HomeAnswerError>()("HomeAnswerError", {
   detail: Schema.String,
-}) {}
+}) {
+  // Traces and logs print the message, so it carries the card's sentence.
+  override get message(): string {
+    return this.detail;
+  }
+}
 
 /** One recent step of a thread's work, for Detail: a tool call and what it printed. */
 export const HomeActivity = Schema.Struct({
