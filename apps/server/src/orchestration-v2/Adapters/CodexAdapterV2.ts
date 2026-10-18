@@ -73,7 +73,6 @@ import type {
 import * as CodexClient from "effect-codex-app-server/client";
 import * as CodexErrors from "effect-codex-app-server/errors";
 import * as CodexSchema from "effect-codex-app-server/schema";
-import { takeCodexHomeTurn } from "@magnesium/server/codexHome"; // magnesium: goal 03
 import { isMagnesiumSandboxed } from "@magnesium/server/sandbox"; // magnesium: goal 03
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
@@ -1746,12 +1745,6 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
                     }),
                 ),
               );
-        // magnesium: a fresh home is set up by one app-server at a time (goal 03).
-        const homeTurn = yield* takeCodexHomeTurn(
-          (resolvedRuntime?.config ?? adapterOptions.settings).homePath ||
-            (resolvedRuntime?.environment ?? adapterOptions.environment)?.CODEX_HOME,
-        );
-        yield* Scope.addFinalizer(scope, homeTurn.release);
         const magnesiumSandboxed = isMagnesiumSandboxed(
           resolvedRuntime?.environment ?? adapterOptions.environment,
         ); // magnesium: goal 03
@@ -1836,7 +1829,6 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
                       : Effect.fail(error),
                 }),
               );
-            yield* homeTurn.ready; // magnesium: the home is set up once the app-server answers
             yield* client.notify("initialized", undefined);
             yield* Ref.set(initialized, true);
           }),

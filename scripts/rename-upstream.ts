@@ -44,6 +44,8 @@ const RENAME_EXCLUDED = [
   "apps/server/src/mcp",
   "apps/server/src/provider/CodexDeveloperInstructions.ts",
   "apps/server/src/provider/CodexDeveloperInstructions.test.ts",
+  // Asserts the agent-facing instructions above, as upstream wrote them.
+  "apps/server/src/orchestration-v2/Adapters/AcpAdapterV2.test.ts",
   "apps/server/src/vcs/GitVcsDriver.ts",
   "apps/server/src/cli/triagePrompt.ts",
   "apps/server/src/project/ManagedProjectFolders.ts",
@@ -72,6 +74,10 @@ const KEPT_TEXT: ReadonlyArray<{ file: string; text: string }> = [
   {
     file: "apps/server/src/provider/CodexProvider.ts",
     text: 'const CODEX_CLIENT_NAME = "T3 Code";',
+  },
+  {
+    file: "apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.test.ts",
+    text: 'clientInfo: { name: "T3 Code", title: "T3 Code", version: packageJson.version }',
   },
 ];
 

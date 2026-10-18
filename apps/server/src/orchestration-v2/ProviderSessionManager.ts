@@ -2455,6 +2455,8 @@ export const layerWithOptions = (
             const key = sessionKey(input.providerSessionId);
             const currentEntry = (yield* Ref.get(sessions)).get(key);
             let detachedProviderThreads: ReadonlyArray<OrchestrationV2ProviderThread> = [];
+            // magnesium: provider threads of this app thread now bound to another session (see heldProviderThread)
+            let movedProviderThreadIds: ReadonlySet<string> = new Set();
             if (currentEntry?.supportsMultipleProviderThreads === true) {
               const projection = yield* Effect.option(
                 projectionStore.getThreadRecords(input.threadId, [
@@ -2469,6 +2471,11 @@ export const layerWithOptions = (
                     .map((thread) => [thread.id, thread] as const),
                 );
                 detachedProviderThreads = [...providerThreads.values()];
+                movedProviderThreadIds = new Set(
+                  projection.value.providerThreads
+                    .filter((thread) => thread.providerSessionId !== input.providerSessionId)
+                    .map((thread) => thread.id),
+                ); // magnesium
                 const activeTurns = projection.value.providerTurns.filter(
                   (turn) => turn.status === "running" && providerThreads.has(turn.providerThreadId),
                 );
@@ -2605,19 +2612,21 @@ export const layerWithOptions = (
                   ) {
                     return;
                   }
+                  // magnesium: the held thread, only once it moved to another session (see heldProviderThread)
                   const held = Option.isSome(detachResult)
                     ? detachResult.value.heldProviderThread
-                    : null; // magnesium: see heldProviderThread
+                    : null;
+                  const heldMoved =
+                    held !== null &&
+                    movedProviderThreadIds.has(held.id) &&
+                    !detachedProviderThreads.some(
+                      (thread) =>
+                        thread.nativeThreadRef?.nativeId === held.nativeThreadRef?.nativeId,
+                    );
                   yield* Effect.forEach(
-                    [
-                      ...detachedProviderThreads,
-                      ...(held !== null &&
-                      !detachedProviderThreads.some(
-                        (thread) => thread.nativeThreadRef === held.nativeThreadRef,
-                      )
-                        ? [held]
-                        : []),
-                    ].filter((thread) => thread.nativeThreadRef !== null),
+                    [...detachedProviderThreads, ...(heldMoved ? [held] : [])].filter(
+                      (thread) => thread.nativeThreadRef !== null,
+                    ),
                     (providerThread) =>
                       unloadThread({ providerThread }).pipe(
                         // Bounded so a wedged provider cannot hold up the
