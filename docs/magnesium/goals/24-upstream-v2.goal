@@ -41,11 +41,32 @@ Moving the fleet to OpenCode 2 (after the merge, one machine at a time).
 
 ## Goal summary
 
-Not started.
+**2026-10-18, in progress.** All of upstream v0.1.0 is merged into `main` (1,051 upstream commits, not only V2), and every server runs it: a hub, a gateway, three machines attached to workloads and two on bare metal, moved in one window. CI passes the full typecheck and test suite.
+
+- **Merge.** All 29 conflicting files are resolved. Goal 03's fence and the supervised default are ported back by hand, with tests: new threads and scheduled tasks start supervised, and a fenced agent can't read Magnesium's state home. The merge, rename and strip scripts each had bugs, now fixed.
+- **Fixed on V2, with tests:**
+  - A Codex thread moving between a fenced instance and its native twin could lose its history.
+  - Every fenced Claude would have shown as broken, because the fence blocked V2's health check folder.
+  - The hub's machine sessions kept V1's narrower grants. Machines now renew them early, as what they meant.
+- **Home on V2:** approvals, questions, plans and failures come from V2's threads, and answers go out as V2 commands. Scheduled runs that couldn't start are cards with Retry now and Open task, and Next scheduled runs sits beside the feed.
+- **Tests passed:**
+  - Test 1: rehearsals on copies of real data, and every server's real migration kept all its threads and projects, with the V1 database left untouched.
+  - Test 2: security, in the suite.
+  - Test 3: the lockstep upgrade, with backups first. Every server reports the V2 protocol.
+- **Found during the rollout, fixed:**
+  - An open page kept running the old client after the hub updated, and the two refused each other: Home's marks went nowhere until a full reload. A page now offers Reload when the hub serves a new build.
+  - In an attached workload, `magnesium-release backup` found no state from a plain shell.
+  - A gateway's refusal reached the hub's trace with no reason.
+- **Left:**
+  - Test 3's Fleet check and test 4, on the hub.
+  - Test 5: scheduled runs on real tasks.
+  - Comparing Home with its board.
+- **Skipped:** test 6, the rollback, at the owner's call. Every server still keeps its previous build and its untouched V1 database.
 
 ## Next steps
 
-1. Goal 33, Waiting on you (D62).
-2. Goal 15, Projects.
+1. Finish tests 3 to 5 and the board comparison, then mark this goal verified.
+2. Goal 33, Waiting on you (D62).
+3. Goal 15, Projects.
 
 Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).
