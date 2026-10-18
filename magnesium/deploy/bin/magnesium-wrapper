@@ -155,7 +155,7 @@ else
   # bound to that address; a small private address of its own avoids that, and
   # -T forwards the server's port on the container's loopback to the host's,
   # for a server that listens on loopback. Nothing here assumes a VPN or LAN.
-  set -- "--network=pasta:-a,10.255.254.2,-n,30,-g,10.255.254.1${MG_SERVER_PORT:+,-T,$MG_SERVER_PORT}" "$@"
+  set -- "--network=pasta:-a,10.255.254.2,-n,30,-g,10.255.254.1${MG_SERVER_PORT:+,-T,$MG_SERVER_PORT}" "$@" # public-check: allow (pasta's own addresses)
 fi
 set -- run --rm -i --init --name "$name" \
   --label io.magnesium.agent=1 \

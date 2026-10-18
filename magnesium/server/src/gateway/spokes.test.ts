@@ -241,7 +241,7 @@ const fakeCluster = (allowed: ReadonlyArray<string>, options: { podsLinger?: boo
   const kube = Layer.effect(
     KubeApi,
     makeKube({
-      server: "https://10.43.0.1:443",
+      server: "https://10.43.0.1:443", // public-check: allow (K3s's default API address)
       namespace: "magnesium",
       token: Effect.succeed("sa-token"),
     }),

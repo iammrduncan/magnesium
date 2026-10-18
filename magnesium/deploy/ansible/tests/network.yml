@@ -25,7 +25,7 @@
     - name: A fake tailscale that reports a tailnet address
       ansible.builtin.copy:
         dest: "{{ scratch.path }}/tailnet/tailscale"
-        content: "#!/bin/sh\necho 100.64.0.7\n"
+        content: "#!/bin/sh\necho 100.64.0.7\n" # public-check: allow (a stand-in tailnet address)
         mode: "0755"
 
     - name: An explicit host wins, and Tailscale is never asked
@@ -53,7 +53,7 @@
     - name: It binds the tailnet address
       ansible.builtin.assert:
         that:
-          - magnesium_bind_host == "100.64.0.7"
+          - magnesium_bind_host == "100.64.0.7" # public-check: allow (the stand-in above)
 
     - name: No host and no Tailscale stops with a clear message
       block:

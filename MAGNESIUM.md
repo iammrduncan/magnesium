@@ -41,7 +41,7 @@ This file is for agents working in this repo. **Where it disagrees with upstream
 
 ## Rules
 
-- **This repo is public, and Magnesium is a product others install.** Docs, goals and commit messages describe the product: what it does and how anyone installs, configures and tests it. Commit nothing about the owner's own lab or deployments (hosts, addresses, network paths, ports opened where, workload names, deploy logs), no people's names or private paths, no secrets and no knowledge-base content. Lab-specific notes live in the gitignored `.internal/` folder, never in public files. Scan `git diff --cached` before every commit.
+- **This repo is public, and Magnesium is a product others install.** Docs, goals and commit messages describe the product: what it does and how anyone installs, configures and tests it. Commit nothing about the owner's own lab or deployments (hosts, addresses, network paths, ports opened where, workload names, deploy logs), no people's names or private paths, no secrets and no knowledge-base content. Lab-specific notes live in the gitignored `.internal/` folder, never in public files. Before every commit, run `vp run check:public` (it reads what you staged, against the private denylist in `.internal/`) and read `git diff --cached`.
 - **Secrets pass by name only.** They never go in settings, profiles, app manifests, argv or logs.
 - **Supervised by default.** Full access is never a default. Headless and scheduled runs are never weaker than the `container` sandbox.
 - **Never run a server against a real T3 home** (`~/.t3`) on the owner's machines. Use the worktree's `.t3` or a scratch `T3CODE_HOME`.

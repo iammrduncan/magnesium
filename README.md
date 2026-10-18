@@ -121,4 +121,4 @@ Talk about Magnesium in the [Hackers in the Loop Discord](https://discord.gg/3Qs
 
 ## Licence
 
-MIT. [LICENSE](LICENSE) keeps T3 Tools Inc.'s copyright as it came, and Magnesium's own additions are under the same licence. [NOTICE](NOTICE) says what Magnesium is and how it relates to T3 Code.
+MIT. [LICENSE](LICENSE) keeps T3 Tools Inc.'s copyright for T3 Code and adds a copyright line for Magnesium's own work, under the same licence. [NOTICE](NOTICE) says what Magnesium is and how it relates to T3 Code.

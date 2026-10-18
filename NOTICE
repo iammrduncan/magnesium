@@ -1,8 +1,9 @@
 Magnesium
 
 Magnesium is a personal fork of T3 Code (https://github.com/pingdotgg/t3code),
-copyright (c) 2026 T3 Tools Inc. and released under the MIT License, which is
-kept unchanged in LICENSE.
+copyright (c) 2026 T3 Tools Inc. and released under the MIT License. LICENSE
+keeps that copyright and adds one for Magnesium's own work, under the same
+licence.
 
 Magnesium is not made, endorsed or supported by T3 Tools Inc. Its changes to
 T3 Code's own files are marked with "magnesium:" comments, and its new code

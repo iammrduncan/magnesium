@@ -281,7 +281,7 @@ describe("magnesium-claude and magnesium-codex", () => {
     expect(args).toContain(`io.magnesium.state=${profile.stateHome}`);
     // Its own address, and the server's port forwarded, so it reaches T3's MCP tools
     // whether the server listens on loopback or on the host's address.
-    expect(args).toContain("--network=pasta:-a,10.255.254.2,-n,30,-g,10.255.254.1,-T,3773");
+    expect(args).toContain("--network=pasta:-a,10.255.254.2,-n,30,-g,10.255.254.1,-T,3773"); // public-check: allow (pasta's own addresses)
     expect(profile.log()).toContain("level=container mode=session");
   });
 

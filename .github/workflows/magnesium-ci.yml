@@ -41,6 +41,14 @@ jobs:
           node scripts/strip-upstream.ts --check
           node scripts/rename-upstream.ts --check
 
+      # Generic patterns only: the lab denylist is private. The base is the watermark in
+      # upstream-changelog.md, fetched alone because the checkout is shallow.
+      - name: Public content
+        run: |
+          base=$(sed -n 's/.*fully inspected:\*\* `\([0-9a-f]\{40\}\)`.*/\1/p' upstream-changelog.md)
+          git fetch --no-tags --depth=1 origin "$base"
+          node scripts/check-public.ts
+
       - name: Typecheck
         run: vp run -r --concurrency-limit 2 typecheck
 
