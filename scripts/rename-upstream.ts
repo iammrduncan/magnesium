@@ -43,6 +43,7 @@ const RENAME_EXCLUDED = [
   "apps/server/src/textGeneration",
   "apps/server/src/mcp",
   "apps/server/src/provider/CodexDeveloperInstructions.ts",
+  "apps/server/src/provider/CodexDeveloperInstructions.test.ts",
   "apps/server/src/vcs/GitVcsDriver.ts",
   "apps/server/src/cli/triagePrompt.ts",
   "apps/server/src/project/ManagedProjectFolders.ts",
@@ -61,6 +62,17 @@ const RENAME_EXCLUDED = [
   "apps/server/src/cloud",
   "apps/server/src/relay",
   "apps/server/src/desktopUpdate",
+];
+
+/**
+ * Upstream's identity inside files the rename otherwise owns: names other
+ * software keys on, such as the originator Codex reports for each request.
+ */
+const KEPT_TEXT: ReadonlyArray<{ file: string; text: string }> = [
+  {
+    file: "apps/server/src/provider/CodexProvider.ts",
+    text: 'const CODEX_CLIENT_NAME = "T3 Code";',
+  },
 ];
 
 /** Exact replacements applied before the plain rename. */
@@ -154,7 +166,15 @@ export function renameText(file: string, source: string): string {
   for (const replacement of EXACT_REPLACEMENTS) {
     if (replacement.file === file) text = text.replaceAll(replacement.from, replacement.to);
   }
-  return text.replaceAll(FROM, TO);
+  const kept = KEPT_TEXT.filter((entry) => entry.file === file);
+  kept.forEach((entry, index) => {
+    text = text.replaceAll(entry.text, `\u0000kept-${index}\u0000`);
+  });
+  text = text.replaceAll(FROM, TO);
+  kept.forEach((entry, index) => {
+    text = text.replaceAll(`\u0000kept-${index}\u0000`, entry.text);
+  });
+  return text;
 }
 
 /** Applies the rename and returns the files it changed (or would change). */

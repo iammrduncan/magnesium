@@ -89,6 +89,13 @@ describe("rename", () => {
     expect(renameText("apps/web/index.html", "<title>T3 Code (Beta)</title>")).toBe(
       "<title>Magnesium</title>",
     );
+    // Codex reports this name as each request's originator: an identity, kept.
+    expect(
+      renameText(
+        "apps/server/src/provider/CodexProvider.ts",
+        'const CODEX_CLIENT_NAME = "T3 Code";\nconst label = "T3 Code";',
+      ),
+    ).toBe('const CODEX_CLIENT_NAME = "T3 Code";\nconst label = "Magnesium";');
   });
 
   it("keeps agent-facing and inert server files out of the rename", () => {
