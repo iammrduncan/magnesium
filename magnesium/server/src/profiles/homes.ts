@@ -233,7 +233,7 @@ const BEARER = /^Bearer \$\{([A-Za-z_][A-Za-z0-9_]*)\}$/;
 /**
  * mcp.json as Codex `[mcp_servers]` tables. Codex has no `${VAR}`, so a value is
  * passed by name (`env_vars`, `bearer_token_env_var`) or not at all: anything
- * else would put a secret on disk. (dBrain's translation.)
+ * else would put a secret on disk.
  */
 export const mcpToCodexToml = (servers: Record<string, unknown>) => {
   const warnings: string[] = [];

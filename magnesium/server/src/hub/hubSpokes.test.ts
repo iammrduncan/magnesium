@@ -145,7 +145,7 @@ const makeHub = (options: {
                 {
                   name: "cpu-host-2",
                   node: "node-b",
-                  build: "f2fbc55f42",
+                  build: "4d5e6f7081",
                   replicas: 1,
                   ready: true,
                   detail: null,
@@ -213,7 +213,7 @@ describe("the hub's spokes", () => {
   it.effect("a new spoke gets a one-time code and its keys, and the hub pairs once it is up", () =>
     Effect.gen(function* () {
       const hub = yield* makeHub({ upAfter: 3 });
-      yield* hub.keys.set("LITELLM_API_KEY", "sk-lab");
+      yield* hub.keys.set("LITELLM_API_KEY", "sk-test");
 
       const added = yield* hub.spokes.apply({
         gateway: "gateway",
@@ -223,7 +223,7 @@ describe("the hub's spokes", () => {
       expect(added).toMatchObject({ name: "cpu-host-2", paired: false, status: { ready: false } });
       const first = hub.applied[0]!;
       expect(first.gateway).toBe("gateway");
-      expect(first.input.secrets?.keys).toEqual({ LITELLM_API_KEY: "sk-lab" });
+      expect(first.input.secrets?.keys).toEqual({ LITELLM_API_KEY: "sk-test" });
       expect(first.input.secrets?.pairingCode).toMatch(/^[0-9A-F]{32}$/);
       expect(yield* hub.records).toEqual([
         expect.objectContaining({
@@ -239,7 +239,7 @@ describe("the hub's spokes", () => {
       expect(hub.access.has("cpu-host-2")).toBe(true);
       expect(hub.applied[1]!.input.secrets).toEqual({
         pairingCode: null,
-        keys: { LITELLM_API_KEY: "sk-lab" },
+        keys: { LITELLM_API_KEY: "sk-test" },
       });
       expect(yield* hub.spokes.list).toMatchObject([
         { name: "cpu-host-2", paired: true, status: { ready: true }, detail: null },
@@ -277,7 +277,7 @@ describe("the hub's spokes", () => {
       expect(itself.detail).toContain("isn't a gateway");
       expect(hub.applied).toEqual([]);
       // A model key's value never comes back.
-      yield* hub.keys.set("LITELLM_API_KEY", "sk-lab");
+      yield* hub.keys.set("LITELLM_API_KEY", "sk-test");
       expect(yield* hub.keys.names).toEqual(["LITELLM_API_KEY"]);
     }).pipe(Effect.scoped),
   );
@@ -403,13 +403,13 @@ describe("machines found through their gateway", () => {
       const hub = yield* makeHub({ access: ["cpu-host-2"], names: ["gateway"] });
       hub.routed.push({
         name: "cpu-host-2",
-        workload: "display",
+        workload: "render",
         paired: false,
         pairingCode: null,
       });
       yield* hub.spokes.discover;
       expect(yield* hub.spokes.attached).toEqual([
-        { name: "cpu-host-2", gateway: "gateway", workload: "display", paired: true, detail: null },
+        { name: "cpu-host-2", gateway: "gateway", workload: "render", paired: true, detail: null },
       ]);
       expect(hub.markedPaired).toEqual(["cpu-host-2"]);
     }).pipe(Effect.scoped),
@@ -421,7 +421,7 @@ describe("machines found through their gateway", () => {
       hub.silent.add("cpu-host-2");
       hub.routed.push({
         name: "cpu-host-2",
-        workload: "display",
+        workload: "render",
         paired: false,
         pairingCode: null,
       });
@@ -436,7 +436,7 @@ describe("machines found through their gateway", () => {
   it.effect("one whose route goes is said to be gone, never removed, and only then detaches", () =>
     Effect.gen(function* () {
       const hub = yield* makeHub({ access: ["cpu-host-2"], names: ["gateway"] });
-      hub.routed.push({ name: "cpu-host-2", workload: "display", paired: true, pairingCode: null });
+      hub.routed.push({ name: "cpu-host-2", workload: "render", paired: true, pairingCode: null });
       yield* hub.spokes.discover;
       // Still routed: its workload's deploy is the way out.
       const refused = yield* hub.spokes

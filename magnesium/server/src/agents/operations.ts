@@ -15,7 +15,7 @@ import {
 import { HubProfilePusher } from "../profiles/HubProfilePusher.ts";
 
 /**
- * The Magnesium agents API (D37: what dBrain's agents API did). Each operation
+ * The Magnesium agents API (D37). Each operation
  * is written once here and served by the `magnesium-agents` CLI, by REST under
  * AGENTS_API_PATH, and as MCP tools at AGENTS_MCP_PATH. The web UI calls the
  * same functions over `/api/magnesium/ws`. Operations take JSON and return JSON,

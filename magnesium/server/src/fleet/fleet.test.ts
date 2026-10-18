@@ -168,13 +168,13 @@ describe("Fleet's byte budget", () => {
     environmentId: EnvironmentId.make(
       `0e7c1f3a-58d2-4a7e-9c1b-${name.padEnd(12, "0").slice(0, 12)}`,
     ),
-    serverVersion: "0.0.46-nightly.20261014.3132",
-    release: "f0d9e1703a",
+    serverVersion: "0.1.10-nightly.20260101.1000",
+    release: "1a2b3c4d5e",
     deployment: null,
     node: null,
     workload: null,
-    startedAt: "2026-10-15T04:49:40.967Z",
-    lastSeenAt: "2026-10-15T04:49:40.967Z",
+    startedAt: "2026-01-01T00:00:00.000Z",
+    lastSeenAt: "2026-01-01T00:00:00.000Z",
     threads: { total: 140, running: 12, waiting: 3, approvals: 2, questions: 1 },
     detail: null,
   });

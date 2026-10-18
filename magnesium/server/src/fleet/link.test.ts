@@ -25,7 +25,7 @@ const status = (waiting: number): ServerStatus => ({
   environmentId: EnvironmentId.make("env-cpu-host-1"),
   label: "cpu-host-1",
   serverVersion: "0.0.45",
-  release: "f0d9e1703a",
+  release: "1a2b3c4d5e",
   deployment: "pod",
   node: "node-b",
   workload: null,

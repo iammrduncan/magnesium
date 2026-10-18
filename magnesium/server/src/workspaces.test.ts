@@ -7,7 +7,7 @@ describe("workspaceRefusal", () => {
 
   it("lets agents work in T3's workspaces in the state home, and anywhere outside it", () => {
     for (const cwd of [
-      `${home}/projects/mg-scratch`,
+      `${home}/projects/app`,
       `${home}/projects`,
       `${home}/worktrees/repo/branch`,
       `${home}/scratch/today`,

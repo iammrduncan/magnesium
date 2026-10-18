@@ -16,7 +16,7 @@ import { tokenizeCliArgs } from "@t3tools/shared/cliArgs";
 import { parse as parseYaml } from "yaml";
 
 /**
- * A profile is a folder in dBrain's layout (D37: Magnesium does what dBrain did):
+ * A profile is a folder in the profile folder layout (D37):
  * `profile.yaml` and `AGENTS.md` are required; `CLAUDE.md`, `CONVENTIONS.md`,
  * `MEMORIES.md`, `mcp.json`, `hooks.json` and `skills/<name>/SKILL.md` are optional.
  * Magnesium adds `display_name`, `accent`, `machines`, `harnesses` and
@@ -110,7 +110,7 @@ export interface ResolvedProfile {
 export const ENV_NAME_PATTERN = /^[A-Z_][A-Z0-9_]*$/;
 const MACHINE_PATTERN = /^(\*|[a-z0-9][a-z0-9-]{0,62})$/;
 const ACCENT_PATTERN = /^#[0-9a-fA-F]{6}$/;
-/** dBrain's check: a literal token or key in a JSON file instead of `${VAR}`. */
+/** The secrets check: a literal token or key in a JSON file instead of `${VAR}`. */
 const SECRET_LITERAL =
   /["\s](sk-|ghp_|gho_|github_pat_|xox[bp]-|eyJ)[A-Za-z0-9_-]{8,}|Bearer (?!\$\{)[A-Za-z0-9._~+/-]{16,}/;
 

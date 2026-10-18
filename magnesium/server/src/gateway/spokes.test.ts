@@ -31,7 +31,7 @@ const spec: SpokeSpec = {
 const context: RenderContext = {
   namespace: "magnesium",
   image: (build) => `localhost/magnesium:${build}`,
-  defaultBuild: "f2fbc55f42",
+  defaultBuild: "4d5e6f7081",
   storageClass: null,
   timeZone: null,
 };
@@ -57,7 +57,7 @@ describe("a spoke's objects", () => {
       },
     });
     const container = pod.containers[0]!;
-    expect(container.image).toBe("localhost/magnesium:f2fbc55f42");
+    expect(container.image).toBe("localhost/magnesium:4d5e6f7081");
     expect(container.securityContext).toEqual({
       allowPrivilegeEscalation: false,
       readOnlyRootFilesystem: true,
@@ -77,9 +77,9 @@ describe("a spoke's objects", () => {
     ]);
     expect(container.volumeMounts).toContainEqual({ name: "home", mountPath: "/home/agent" });
     expect(
-      renderWorkload({ ...spec, build: "8c2913d863" }, context).spec.template.spec.containers[0]!
+      renderWorkload({ ...spec, build: "5e6f708192" }, context).spec.template.spec.containers[0]!
         .image,
-    ).toBe("localhost/magnesium:8c2913d863");
+    ).toBe("localhost/magnesium:5e6f708192");
     // A gateway with a time zone gives it to every spoke (D64).
     expect(
       renderWorkload(spec, { ...context, timeZone: "Europe/Berlin" }).spec.template.spec
@@ -112,7 +112,7 @@ describe("a spoke's objects", () => {
     expect(spokeStatusOf({ ...deployment, status: { readyReplicas: 1 } })).toEqual({
       name: "cpu-host-2",
       node: "node-b",
-      build: "f2fbc55f42",
+      build: "4d5e6f7081",
       replicas: 1,
       ready: true,
       detail: null,
@@ -250,7 +250,7 @@ const fakeCluster = (allowed: ReadonlyArray<string>, options: { podsLinger?: boo
     Spokes.Spokes,
     Spokes.make({
       image: context.image,
-      defaultBuild: "f2fbc55f42",
+      defaultBuild: "4d5e6f7081",
       storageClass: null,
       timeZone: null,
     }),
@@ -319,7 +319,7 @@ describe("a gateway's spokes", () => {
       const second = fingerprint();
       expect(second).not.toBe(first);
       // A change that sends no secrets keeps the Secret, and the pod with it.
-      yield* spokes.apply({ spec: { ...spec, build: "8c2913d863" }, secrets: null });
+      yield* spokes.apply({ spec: { ...spec, build: "5e6f708192" }, secrets: null });
       expect(fingerprint()).toBe(second);
     }).pipe(Effect.provide(cluster.spokes));
   });
@@ -427,8 +427,8 @@ describe("a gateway's spokes", () => {
         "magnesium.dev/attached": "notebook",
         "magnesium.dev/workload": "notebook-ws",
       });
-      route("magnesium-display", {
-        "magnesium.dev/attached": "display",
+      route("magnesium-render", {
+        "magnesium.dev/attached": "render",
         "magnesium.dev/paired": "true",
       });
       // A route whose name doesn't match its label isn't one Magnesium's naming made.
@@ -449,7 +449,7 @@ describe("a gateway's spokes", () => {
             paired: false,
             pairingCode: "0123456789ABCDEF0123456789ABCDEF",
           },
-          { name: "display", workload: null, paired: true, pairingCode: null },
+          { name: "render", workload: null, paired: true, pairingCode: null },
         ]);
         yield* spokes.attachedPaired("notebook");
         const writes = cluster.calls

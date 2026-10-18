@@ -111,11 +111,11 @@ describe("server status", () => {
 describe("the release a server runs", () => {
   it("is the release folder its script runs from, and none in development", () => {
     expect(
-      releaseOf("/home/agent/.local/share/magnesium/releases/f0d9e1703a/apps/server/dist/bin.mjs"),
-    ).toBe("f0d9e1703a");
+      releaseOf("/home/agent/.local/share/magnesium/releases/1a2b3c4d5e/apps/server/dist/bin.mjs"),
+    ).toBe("1a2b3c4d5e");
     // The image keeps the same layout under /opt/magnesium (goal 25).
-    expect(releaseOf("/opt/magnesium/releases/742bb8fa1f/apps/server/dist/bin.mjs")).toBe(
-      "742bb8fa1f",
+    expect(releaseOf("/opt/magnesium/releases/3c4d5e6f70/apps/server/dist/bin.mjs")).toBe(
+      "3c4d5e6f70",
     );
     expect(releaseOf("/home/agent/magnesium/apps/server/src/bin.ts")).toBeNull();
   });

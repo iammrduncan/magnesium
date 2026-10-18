@@ -248,7 +248,7 @@ function ChangeBuildDialog({
   const submit = () => {
     const trimmed = build.trim();
     if (trimmed !== "" && !/^[0-9a-f]{7,40}$/.test(trimmed)) {
-      return action.setError("A build is a commit, such as d05b2baa70.");
+      return action.setError("A build is a commit, such as 6f708192a3.");
     }
     const spec: SpokeSpec = { ...spoke.spec, build: trimmed === "" ? null : trimmed };
     void action

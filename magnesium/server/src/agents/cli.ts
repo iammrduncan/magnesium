@@ -19,7 +19,7 @@ import { findOperation } from "./operations.ts";
 
 /**
  * `t3 agents ...`, installed as `magnesium-agents`: the agents API's operations
- * at the terminal (D37: what `dbrain` did). It reads the same folder and
+ * at the terminal (D37). It reads the same folder and
  * settings the server does, so it works with the server stopped.
  *
  *   magnesium-agents list                  every profile, and what it runs as here

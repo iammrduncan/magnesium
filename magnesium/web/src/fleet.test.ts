@@ -19,7 +19,7 @@ const machine = (name: string | null, overrides: Partial<FleetMachine> = {}): Fl
   link: "connected",
   environmentId: EnvironmentId.make(`env-${name ?? "hub"}`),
   serverVersion: "0.0.45",
-  release: "f0d9e1703a",
+  release: "1a2b3c4d5e",
   deployment: null,
   node: null,
   workload: null,
@@ -74,10 +74,10 @@ describe("Fleet in the browser", () => {
 
   it("shows each server's build, and calls out a machine on a different one", () => {
     const hub = machine(null);
-    expect(describeVersion(hub, hub.release)).toBe("0.0.45 · f0d9e1703a");
-    expect(describeVersion(machine("cpu-host-1"), hub.release)).toBe("0.0.45 · f0d9e1703a");
-    expect(describeVersion(machine("cpu-host-2", { release: "80706f6b08" }), hub.release)).toBe(
-      "0.0.45 · 80706f6b08 (not the hub's build)",
+    expect(describeVersion(hub, hub.release)).toBe("0.0.45 · 1a2b3c4d5e");
+    expect(describeVersion(machine("cpu-host-1"), hub.release)).toBe("0.0.45 · 1a2b3c4d5e");
+    expect(describeVersion(machine("cpu-host-2", { release: "2b3c4d5e6f" }), hub.release)).toBe(
+      "0.0.45 · 2b3c4d5e6f (not the hub's build)",
     );
     // A server that predates releases, or one in development, shows its version alone.
     expect(describeVersion(machine("gpu-host-1", { release: null }), hub.release)).toBe("0.0.45");
@@ -99,7 +99,7 @@ describe("Fleet in the browser", () => {
     ).toBe("in notebook on node-b");
     // The version line keeps to the version and the build.
     expect(
-      describeVersion(machine("cpu-host-2", { deployment: "pod", node: "node-b" }), "f0d9e1703a"),
-    ).toBe("0.0.45 · f0d9e1703a");
+      describeVersion(machine("cpu-host-2", { deployment: "pod", node: "node-b" }), "1a2b3c4d5e"),
+    ).toBe("0.0.45 · 1a2b3c4d5e");
   });
 });

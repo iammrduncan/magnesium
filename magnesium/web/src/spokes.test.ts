@@ -66,7 +66,7 @@ describe("a spoke's row", () => {
     status: {
       name: "cpu-host-2",
       node: "node-b",
-      build: "d05b2baa70",
+      build: "6f708192a3",
       replicas: 1,
       ready: true,
       detail: null,
@@ -77,9 +77,9 @@ describe("a spoke's row", () => {
   });
 
   it("says whether it runs, where and on which build, and what's in the way", () => {
-    expect(describeSpoke(spoke({}))).toBe("Running · on node-b · d05b2baa70");
+    expect(describeSpoke(spoke({}))).toBe("Running · on node-b · 6f708192a3");
     expect(describeSpoke(spoke({ paired: false }))).toBe(
-      "Up, waiting to pair with the hub · on node-b · d05b2baa70",
+      "Up, waiting to pair with the hub · on node-b · 6f708192a3",
     );
     expect(
       describeSpoke(
@@ -96,7 +96,7 @@ describe("a spoke's row", () => {
       ),
     ).toBe("node node-b is not allowed · on node-b");
     expect(describeSpoke(spoke({ spec: { ...spoke({}).spec, replicas: 0 } }))).toBe(
-      "Stopped · on node-b · d05b2baa70",
+      "Stopped · on node-b · 6f708192a3",
     );
     expect(
       describeSpoke(spoke({ status: null, detail: "Could not reach the gateway gateway." })),

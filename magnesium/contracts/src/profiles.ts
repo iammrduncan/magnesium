@@ -4,11 +4,12 @@ import { HUB_MACHINES_PATH } from "./hub.ts";
 
 /**
  * Magnesium profiles and sandboxes (goal 03; doc 11 "Profiles are provider
- * instances"; D39 to D42). A profile is a folder in dBrain's layout. The hub
- * holds them and pushes each to the machines it names; on a single box the hub
- * is the only machine. Every server's profile sync turns a profile into one
- * provider instance per harness and sandbox level, all sharing the profile's
- * home, so a thread can switch level without losing its session.
+ * instances"; D37, D39 to D42). A profile is a folder in the profile folder
+ * layout. The hub holds them and pushes each to the machines it names; on a
+ * single box the hub is the only machine. Every server's profile sync turns a
+ * profile into one provider instance per harness and sandbox level, all
+ * sharing the profile's home, so a thread can switch level without losing its
+ * session.
  */
 
 /**
