@@ -1,8 +1,8 @@
 # Magnesium mockups
 
-These are the 16 boards of the owner's mock canvas, "dBrain Harness Mocks" (D9), rendered on 2026-10-14 in their default state and light theme. They are **the UX target** for the build: each goal says which boards it makes real, and a goal is checked against its boards before it is done ([goals](goals/README.md), "Done means" 2).
+These are the 16 boards of the owner's mock canvas (D9), rendered on 2026-10-14 in their default state and light theme. They are **the UX target** for the build: each goal says which boards it makes real, and a goal is checked against its boards before it is done ([goals](goals/README.md), "Done means" 2).
 
-**The boards are the target, not the code.** Components are built in the fork, on T3 Code's tokens ([doc 07](07-t3code-ux.md)), and compared with these images. Every number, name and machine in them is **example data**. The machines (`workstation`, `gpu-a`, `gpu-b`, `enclave-1`, `kb-host`, `nas`) and the bots (`serving`, `research`, `ops`, `scribe`, `reviewer`) are stand-ins, not real machines.
+**The boards are the target, not the code.** Components are built in the fork, on T3 Code's tokens ([doc 07](07-t3code-ux.md)), and compared with these images. Every number, name, machine, bot and project on the boards is invented **example data**.
 
 **What's built today:** the sidebar of Home and Session, and the footer's core items (goal 05). The rest of each board comes with the goals in the table below; each built part has a dated note under its board.
 

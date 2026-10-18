@@ -58,9 +58,9 @@ Phone layouts and push (goal 07), fleet tiles (goal 10) and Brain stats (goal 12
 
 ## Goal summary
 
-**2026-10-16: VERIFIED.** Builds 1 to 5 are done, and Test it 1 to 9 passed on the hub and the machines, with every server on the same build; each one's previous build is one `magnesium-release rollback` away. CI is green on the full typecheck, tests and build.
+**2026-10-16: VERIFIED.** Builds 1 to 5 are done, and Test it 1 to 9 passed on the hub and the machines. Deployed with the Ansible roles; `magnesium-release rollback` restores the previous build (Done means 5). CI is green on the full typecheck, tests and build.
 
-**Test it, 2026-10-16 (18:55 to 19:10 UTC), in the owner's Chrome on the hub.** New threads used OpenCode on two machines, each in its own project; the plan was a Codex thread on a third.
+**Test it, 2026-10-16, in Chrome on the hub, over about 15 minutes.** New threads used OpenCode on different machines, each in its own project; the plan was a Codex thread.
 
 1. **Ranking: passed.** Glance read: an approval (2m), another approval (now), a question, a plan (13h), then an older failed run (20h). Kind first, then the longest wait.
 2. **Approve from Home: passed.** "Approving in 4s" with Undo; after the hold the card left Home, and `uname -r` ran in the thread on its machine, which replied with the kernel version.
@@ -68,7 +68,7 @@ Phone layouts and push (goal 07), fleet tiles (goal 10) and Brain stats (goal 12
 4. **Answer a question: passed.** "Answering in 4s", then the thread recorded "Thanks for reading" as the answer and replied with it.
 5. **Pin: passed.** The plan card moved to the top and stayed there after a reload; Unpin put it back between the question and the failures.
 6. **Zoom: passed.** Glance is one line per need; Detail added "Recent work" to a card, with `ls -la` and its output, fetched when Detail opened.
-7. **A machine goes away: passed.** A machine's server stopped at 18:58:58 UTC. Within 20 s its three cards stayed on Home with "… is offline. Answer it when it's back." and their buttons disabled; the header read "2 need you · not counted: …" and the footer added "· 1 offline". It started again at 18:59:43; within 30 s the cards were live again. A request that waited through the restart can't be completed, though: OpenCode 1.x's session dies with the server, so approving it from Home failed in the thread ("ProviderAdapterRequestError … permission.reply"), exactly as the thread's own buttons do, and the approval stays waiting there. Requests made after the restart were answered from Home normally. Goal 24 takes this up (V2 with OpenCode 2).
+7. **A machine goes away: passed.** A machine's server stopped. Within 20 s its three cards stayed on Home with "… is offline. Answer it when it's back." and their buttons disabled; the header read "2 need you · not counted: …" and the footer added "· 1 offline". It started again 45 s later; within 30 s the cards were live again. A request that waited through the restart can't be completed, though: OpenCode 1.x's session dies with the server, so approving it from Home failed in the thread ("ProviderAdapterRequestError … permission.reply"), exactly as the thread's own buttons do, and the approval stays waiting there. Requests made after the restart were answered from Home normally. Goal 24 takes this up (V2 with OpenCode 2).
 8. **Speed: passed.** A new approval reached Home's count 83 ms after the sidebar's own status for that thread, which comes straight from its machine.
 9. **Against the board: passed, with differences,** in light and dark. They are listed under Home · desktop in [mockups](../../mockups.md). The comparison found two problems, fixed before the hub's deploy: plan cards showed raw markdown, and Home's count in the sidebar vanished in dark mode.
 
@@ -85,15 +85,15 @@ Phone layouts and push (goal 07), fleet tiles (goal 10) and Brain stats (goal 12
 
 **Found along the way:**
 
-- OpenCode (1.18 here) has no plan mode, and upstream marks plan mode "legacy" (off by default, Settings → General → Legacy features). Plan cards appear only for Codex or Claude threads in plan mode.
+- OpenCode 1.x has no plan mode, and upstream marks plan mode "legacy" (off by default, Settings → General → Legacy features). Plan cards appear only for Codex or Claude threads in plan mode.
 - Upstream's scheduler isn't in Magnesium's base; scheduled-run cards and Next runs come with goal 24 (D51).
 - When projects on several machines share a name, the new-thread picker offers only one of them, the current thread's machine first. Goal 15 makes projects span machines.
-- Two test threads hold requests that died in the restart, so their cards stay on Home until the threads are settled or removed.
+- A request that died in a restart keeps its card on Home until its thread is settled or removed.
 
 ## Next steps
 
 1. Goal 24, upstream V2: scheduled-run cards and Next runs, and requests that survive a restart with OpenCode 2.
 2. Goal 15, Projects, including the new-thread picker for projects that share a name across machines.
-3. The owner: accept or reject the board differences; settle or remove the two test threads with dead requests.
+3. The owner: accept or reject the board differences.
 
 Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](../README.md#done-means-for-every-goal)).

@@ -9,7 +9,7 @@ decisions: [D1, D9, D10, D13]
 ---
 # Magnesium in daily use: every board real, upgradeable and recoverable
 
-This is the finish line. Every mocked screen works with real data on the hub and the four agent machines, on desktop and phone. Upgrades from upstream are routine, and a broken hub can be restored. Both overriding goals hold:
+This is the finish line. Every mocked screen works with real data on the hub and the agent machines, on desktop and phone. Upgrades from upstream are routine, and a broken hub can be restored. Both overriding goals hold:
 - **P1:** at a glance, what is going on, what is priority, and where you are needed;
 - **P2:** move between high level and low level easily.
 
@@ -18,7 +18,7 @@ This is the finish line. Every mocked screen works with real data on the hub and
 1. **A full acceptance pass.** Compare every board (the 16 on the canvas, plus Schedule and Pill) side by side with the app, on desktop and phone, with real data. Fix each difference, or get the owner to accept it.
 2. **An upgrade drill.**
    - Take upstream's latest stable tag through `scripts/merge-upstream`, and run every test.
-   - Deploy it to all five machines with the Ansible roles.
+   - Deploy it to every server with the Ansible roles.
    - Roll back, then forward again.
    - Record the conflicts per file and the time it took.
 3. **Backups and a restore drill.**
@@ -37,7 +37,7 @@ This is the finish line. Every mocked screen works with real data on the hub and
    - A runbook in the Magnesium repo: install, update, roll back, back up and restore, add a machine.
    - A status per screen in doc 13.
    - A README for the Magnesium repo.
-8. **Add a machine.** Add one more machine with one inventory line and the runbook. This proves Magnesium works beyond these five.
+8. **Add a machine.** Add one more machine with one inventory line and the runbook. This proves the fleet grows with nothing more.
 
 ## Test it
 

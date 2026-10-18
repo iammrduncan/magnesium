@@ -73,18 +73,18 @@ The Fleet board's design: metrics, GPUs, jobs and launch (goal 10).
 
 ## Goal summary
 
-**2026-10-15: VERIFIED.** Builds 1 to 6 are done. Test it 1, 2, 3 and 6 passed on the real machines, 4 was checked in goal 02, and 5 passes in tests. Every server runs goal 04's code, rolled out with the Ansible roles; the previous release is one `magnesium-release rollback` away. CI is green.
+**2026-10-15: VERIFIED.** Builds 1 to 6 are done. Test it 1, 2, 3 and 6 passed on the real machines, 4 was checked in goal 02, and 5 passes in tests. Deployed with the Ansible roles; `magnesium-release rollback` restores the previous build (Done means 5). CI is green.
 
-**Test it, 2026-10-15, in the owner's Chrome, every server on the same build:**
+**Test it, 2026-10-15, in Chrome:**
 
 1. **Every server: passed.** A row for each, all Connected, with counts that match the threads.
 2. **A wait shows up fast: passed.** An approval on a machine showed "1 waiting on you". It was already there when the tab came into view, and it went back to 0 when the approval was allowed.
 3. **Offline and back: passed.**
-   - After `systemctl --user stop` on a machine, Fleet showed Offline within seconds, last seen 12:59 AM, "It did not answer". Recent showed "went offline: The connection dropped".
+   - After `systemctl --user stop` on a machine, Fleet showed Offline within seconds, with when it was last seen and "It did not answer". Recent showed "went offline: The connection dropped".
    - After a start, it came back Connected on its own in about 30 seconds, boot included, and Recent showed "connected".
 4. **No machine tokens in the browser:** checked in goal 02; nothing in this goal stores one.
 5. **Scopes hold: passed in tests.** A read-only session is refused `magnesium.fleet.reconnect`, both over the route and in `fleet.test.ts`. CLI-minted sessions are refused the hub's machine routes against upstream's real auth.
-6. **One front door: passed** (2026-10-15). From the owner's desktop, a machine's server can't be reached directly and the old per-machine hostnames no longer resolve; the hub answers. In the owner's Chrome, Fleet shows every server Connected, and a thread on each machine ran a new turn through the hub.
+6. **One front door: passed** (2026-10-15). From a desktop, a machine's own address is refused; the hub answers. In Chrome, Fleet shows every server Connected, and a thread on each machine ran a new turn through the hub.
 
 **Follow-ups from the rollout:**
 
@@ -128,7 +128,7 @@ The Fleet board's design: metrics, GPUs, jobs and launch (goal 10).
 
 - Our packages: 56 server tests and 10 web tests. They cover:
   - the route over a real socket, and the scope guard;
-  - byte budgets: Fleet opens for five servers in under 4 KiB, and each change is under 640 bytes;
+  - byte budgets: Fleet opens for several servers in under 4 KiB, and each change is under 640 bytes;
   - links under the test clock: backoff, wake, a silent machine, flapping;
   - a hub and a machine as real servers: Connected, a wait shown within 2 seconds, Offline on stop within 10, a read-only session refused on Reconnect, back after a restart.
 - `apps/server/src/magnesiumRoutes.test.ts` checks every kind of credential against upstream's real auth.

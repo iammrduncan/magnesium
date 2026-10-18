@@ -31,7 +31,7 @@ The phone runs the same web UI as an installed PWA (D10). Push goes through the 
 4. **Pairing and revoking devices** through the hub. This replaces the removed hosted sign-in (D13).
    - **Signing back in needs no shell.** A browser loses its sign-in when its site data is cleared, the app is uninstalled or the browser changes. The user signs it in again from another signed-in device, for example by scanning a code with the phone.
    - A shell on the hub (`magnesium-release pair --admin`) stays only as the last resort, when no device is signed in.
-   - Follow-up from 2026-10-15: clearing site data in desktop Chrome signed out the only admin browser, and only a shell on the hub brought it back.
+   - This covers the only admin browser too: when its site data is cleared, another signed-in device brings it back, without a shell.
 5. **Every page is usable at phone width**, with no sideways scrolling, even before its phone board is built.
 
 ## Test it

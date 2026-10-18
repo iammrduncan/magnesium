@@ -19,7 +19,7 @@ Today a Kubernetes cluster needs its operator to bootstrap Magnesium's gateway a
    - **Its own pod:** today's form for a managed spoke (goal 25), now reachable from the same dialog.
    - **Attach to a workload:** the hub lists the Deployments and StatefulSets the cluster's identity may change, and for the one you pick shows the change it will make: the init container, the wrapped command (the hub reads the image's entrypoint so you don't have to), the home volume, the environment, the Service and the labelled route. Apply it, and the workload restarts once with Magnesium in it, which then pairs by itself (goal 25's labels and code).
    - **Take it out:** the same view, reversed; the workload restarts without Magnesium.
-4. **Images.** A cluster that can't pull from a registry gets the image another way: the hub's build pushed to a registry you name, or a note that the operator loads it, as nodes that import images do today.
+4. **Images.** A cluster that can't pull from a registry gets the image another way: the hub's build pushed to a registry you name, or a note that the operator loads it onto nodes that import images.
 5. **Agents and schedules.** Deploying a gateway, attaching to a workload and taking Magnesium out are service methods, and so agents-API operations and MCP tools, behind the access scope, each showing its change before applying it.
 6. **Docs:** `docs/user/kubernetes.md` gains the hub's way beside the manifest way.
 

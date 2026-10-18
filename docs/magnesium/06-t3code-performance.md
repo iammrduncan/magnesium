@@ -2,7 +2,7 @@
 
 **Result:** the speed comes mostly from how little data it sends and how little work the client redoes, not from one trick. A thread opens with about 75 rows instead of its whole history. Tool output and diffs are stripped from the wire and fetched on demand. Clients resume from a sequence number instead of reloading. The server coalesces bursts and buffers text to paragraph boundaries. The client keeps object identities stable and virtualises the list. Byte budgets are enforced by tests.
 
-**Status:** read from source and docs, **not run or profiled**. Paths are in the T3 Code repo at commit `380bba36` (2026-10-13; a shallow clone, so no perf history). Ranking by impact is a judgement from how many bytes each mechanism removes and how much code and test it gets. Whether the gateway UI you found slow does the opposite of each item is **not verified**: that UI was not inspected.
+**Status:** read from source and docs, **not run or profiled**. Paths are in the T3 Code repo at commit `380bba36` (2026-10-13; a shallow clone, so no perf history). Ranking by impact is a judgement from how many bytes each mechanism removes and how much code and test it gets.
 
 ## Ranked summary
 
@@ -126,7 +126,7 @@
 
 A lesson from the docs: older benchmarks seeded v1 data and gave "reassuring timings while missing the active transport path" (`performance-regressions.md:9-12`). Test the path users actually hit.
 
-## What a dBrain UI needs, in priority order
+## What our UI needs, in priority order
 
 1. **A sequenced API contract:** `snapshot(window, cursor)`, `subscribe(afterSequence)`, `history(cursor)`. Without it none of the cache, resume or bounded-open wins are possible.
 2. **Summary and detail projections** with byte caps and an on-demand detail call.

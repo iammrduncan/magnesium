@@ -10,8 +10,8 @@ This file is for agents working in this repo. **Where it disagrees with upstream
   1. Open its file in [`docs/magnesium/goals/`](docs/magnesium/goals/).
   2. Read the goals [README](docs/magnesium/goals/README.md): "Done means" and "Rules for every goal".
   3. Read the docs the goal links to.
-- **For the why:** [decisions](docs/magnesium/09-decisions-and-open-questions.md) (D1–D29), the [fork plan](docs/magnesium/11-fork-plan.md), and [mocks to a working app](docs/magnesium/13-mocks-to-working-app.md). The index is [`docs/magnesium/README.md`](docs/magnesium/README.md).
-- **The UX target** is the owner's mock canvas, "dBrain Harness Mocks" (D9). Every board is rendered, with notes, in [`docs/magnesium/mockups.md`](docs/magnesium/mockups.md). Compare your screens with those boards, and ask the owner for the live canvas link when you need to click through.
+- **For the why:** [decisions](docs/magnesium/09-decisions-and-open-questions.md) (D1 onward), the [fork plan](docs/magnesium/11-fork-plan.md), and [mocks to a working app](docs/magnesium/13-mocks-to-working-app.md). The index is [`docs/magnesium/README.md`](docs/magnesium/README.md).
+- **The UX target** is the owner's mock canvas (D9). Every board is rendered, with notes, in [`docs/magnesium/mockups.md`](docs/magnesium/mockups.md). Compare your screens with those boards, and ask the owner for the live canvas link when you need to click through.
 
 ## Where upstream's AGENTS.md doesn't apply
 
@@ -19,7 +19,7 @@ This file is for agents working in this repo. **Where it disagrees with upstream
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | "We, us and maintainers" are T3 Code's maintainers        | **The owner directs this fork.** Upstream doesn't take outside changes, so nothing here goes upstream.                                                                                                                         |
 | Three surfaces: web (with app.t3.codes), desktop, mobile  | **One surface: our web UI as a PWA,** at desktop and phone widths (D10). The strip script deletes `apps/desktop`, `apps/mobile`, `apps/marketing` and `infra/relay`. Ignore guidance for them, and the `test-t3-mobile` skill. |
-| T3 Connect is core                                        | **T3 Connect, Clerk sign-in and product analytics are being removed** (D13). Pairing is the sign-in, Tailscale is the reach, and the hub is the one front door.                                                                |
+| T3 Connect is core                                        | **T3 Connect, Clerk sign-in and product analytics are being removed** (D13). Pairing is the sign-in, any network that reaches the hub (a LAN, a tailnet or a VPN) is the reach, and the hub is the one front door.             |
 | "Hit every surface" lists web, desktop and mobile clients | Web only. The rest of that list still applies: entry points, providers, agents, contracts, reverse states, connection modes and docs.                                                                                          |
 | Don't commit plans or research notes                      | **`docs/magnesium/` is committed on purpose** (D29): research, decisions and goals, about the product. Keep it current. Scratch work and notes about the owner's own lab go in the gitignored `.internal/` folder.             |
 | Don't run repo-wide checks                                | Use targeted checks while you work. **To finish a goal,** the full typecheck and test suite must pass once, locally or in our CI.                                                                                              |
@@ -49,18 +49,11 @@ This file is for agents working in this repo. **Where it disagrees with upstream
 - **Telemetry stays off,** and self-update never points at upstream.
 - **Owner gates** are listed in the goals README and in each goal. Stop and ask at each one.
 
-## dBrain is reference only (D37)
+## The earlier toolkit and the Brain (D37, D56)
 
-**Magnesium replaces dBrain.** dBrain was the owner's repo for agent profiles, schedules, the agents API, the KB tooling and the Ansible that deploys them. From now on, everything it did is built here, in the `magnesium/*` packages:
+Magnesium replaces an earlier private toolkit, dBrain (D37); where older docs or commits say dBrain, read "build it in Magnesium".
 
-- deployment (Ansible in `magnesium/deploy`);
-- profiles and their checks;
-- the agents API, with each operation written once for the CLI, REST and MCP;
-- schedules.
-
-**Read dBrain** to learn how something was done and what was learned. Don't add to it, and don't make Magnesium depend on it at runtime.
-
-**Older docs and goals that say "dBrain"** mean "build it in Magnesium" (D37). The Magnesium Brain is Magnesium's own knowledge base, a GBrain engine Magnesium runs and controls (D56, goal 29). An existing GBrain is only a source to import from; don't build on it.
+The Magnesium Brain is Magnesium's own knowledge base, a GBrain engine Magnesium runs and controls (D56, goal 29). An existing GBrain is only a source to import from; don't build on it.
 
 ## Reporting a goal
 

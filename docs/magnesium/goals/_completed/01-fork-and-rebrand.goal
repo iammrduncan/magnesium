@@ -13,8 +13,8 @@ Magnesium starts as T3 Code at a stable tag, in a GitHub fork of T3 Code named `
 
 ## Owner gates
 
-- None left. **The owner approved the force push** that moves the fork's `main` to the base below (2026-10-14: "force push is fine"). The owner ran it the same day; `main` on GitHub is now this fork.
-- **Owner sign-off on "Done means" 5 (2026-10-14, D34).** Goal 01 comes before goal 02's Ansible roles, so item 5 cannot be met as written. Asked how goal 01 should meet it, the owner chose **"Minimal rollback now"**: a release and rollback script in `magnesium/deploy`, the build rolled out on a Linux machine with it, and a rollback tested. That is what was done (see the summary), and the owner accepts it as meeting item 5 for this goal. Goal 02's roles wrap the same script. **Confirmed by the owner, 2026-10-14:** asked whether they accept this sign-off as recorded, the owner answered "Yes, accept as recorded".
+- None left. **The owner approved the force push** that moves the fork's `main` to the base below (2026-10-14), and ran it the same day; `main` on GitHub is now this fork.
+- **Owner sign-off on "Done means" 5 (2026-10-14, D34).** Goal 01 comes before goal 02's Ansible roles, so item 5 cannot be met as written. Asked how goal 01 should meet it, the owner chose a **minimal rollback now**: a release and rollback script in `magnesium/deploy`, the build rolled out on a Linux machine with it, and a rollback tested. That is what was done (see the summary), approved by the owner as meeting item 5 for this goal. Goal 02's roles wrap the same script.
 
 ## Build
 
@@ -82,7 +82,6 @@ Profiles, our own routes and pages, and deployment as a service.
 **The repo.**
 - No stable tag had the MCP-over-stdin fix yet. So `main` is v0.0.45 plus a hand port of #17898 (`ece6e9d41e`): v0.0.45's Claude sessions still run through `provider/Layers/ClaudeAdapter.ts`, not the V2 adapter the upstream commit patches.
 - Our commits follow the port: docs, NOTICE and `magnesium/*`, hazards, the web sign-in removal, scripts, strip, rename, then fixes.
-- A local branch `backup/pre-rebase-main` keeps the old upstream `main`.
 
 **Build.**
 1. **Strip:** `scripts/strip-upstream.ts` deletes the four apps, all 20 upstream workflows, `.github/scripts`, the release scripts built on the desktop app, one server test that imports mobile code, and 21 unused patches. It patches three files by content. A second run changes nothing.
@@ -111,7 +110,7 @@ Profiles, our own routes and pages, and deployment as a service.
    - `scripts/upstream-edits.ts` lists every marker. With `--check`, it fails on an unmarked upstream edit.
    - `scripts/merge-rehearsal.ts` writes the per-file report.
 7. **Our packages:** `@magnesium/contracts`, `server`, `web` and `deploy` are in the workspace, and they typecheck and test.
-8. **Builds:** `vp run --filter t3 build` takes 23 s on the desktop and 1 min 36 s on the Linux machine. The output runs with `node apps/server/dist/bin.mjs serve` on Node 24.
+8. **Builds:** `vp run --filter t3 build` takes 23 s on a macOS desktop and 1 min 36 s on a Linux server. The output runs with `node apps/server/dist/bin.mjs serve` on Node 24.
 
 **Tests, 2026-10-14.**
 1. **Desktop:**
@@ -143,23 +142,23 @@ Profiles, our own routes and pages, and deployment as a service.
    - **Against v0.0.45:** nothing to merge.
 7. **Typecheck and tests:**
    - **Typecheck:** passes for all 15 packages.
-   - **Desktop tests:** web 5,448/5,448, and scripts, packages and `magnesium/*` all pass. The server has 45 failures, which fail the same way on a clean v0.0.45 checkout on this Mac: symlinked temp paths, and this machine's npm/brew and Antigravity installs.
-   - **Linux tests (`vp run -r test`):** pass for all 15 packages; the server has 5,611 passed, 10 skipped and 0 failed. So the 45 failures on the Mac are environmental.
+   - **Desktop tests:** web 5,448/5,448, and scripts, packages and `magnesium/*` all pass. The server has 45 failures, which fail the same way on a clean v0.0.45 checkout on macOS: symlinked temp paths, and locally installed tools the tests pick up.
+   - **Linux tests (`vp run -r test`):** pass for all 15 packages; the server has 5,611 passed, 10 skipped and 0 failed. So the 45 failures on macOS are environmental.
 8. **Billing (O11, closed as D30):** both paths report `apiKeySource: "none"` and the claude.ai `five_hour` window, so both use the subscription meter.
 
 **Added on the owner's request:**
 - The root README is now Magnesium's own; merges keep it on a conflict.
 - The GitHub description is set, and the inherited t3.codes homepage is cleared.
 - The "forked from" link stays (D31).
-- Our packages moved from `dbrain/` to `magnesium/`, scoped `@magnesium/*` (D33).
+- Our packages moved to `magnesium/`, scoped `@magnesium/*` (D33).
 - Agents messaging each other by `@` session name went into goal 18 (D32).
 
 **Not checked against boards:** this goal has none.
 
 **Deployed and reversible ("Done means" 5, met with the owner's minimal option, since goal 02's roles don't exist yet).**
 - `magnesium/deploy/bin/magnesium-release` builds a commit into `releases/<sha>` and points `current` at it for the user unit. `rollback` goes back to the previous release in one command.
-- On the Linux machine, the user unit first ran an older build, and then `main` was rolled out. `magnesium-release rollback` brought the older build back: the unit restarted, and the page served the older web bundle again. Rolling forward again leaves `main` running there. The unit is active, not enabled at boot.
-- Running as a service showed that each start wrote a fresh startup pairing token to the journal. The unit now drops stdout, and pairing is done on demand with `pair`; a test holds every unit to this. The tokens already in the journal were one-time and had expired.
+- On a Linux machine, the user unit first ran an older build, and then `main` was rolled out. `magnesium-release rollback` brought the older build back: the unit restarted, and the page served the older web bundle again.
+- Running as a service showed that each start wrote a fresh startup pairing token to the journal. Units now drop stdout, so the startup pairing token never reaches the journal; pairing is done on demand with `pair`, and a test holds every unit to this.
 - Goal 02's Ansible roles should call `magnesium-release` rather than repeat it.
 
 **Found along the way:**
@@ -169,11 +168,10 @@ Profiles, our own routes and pages, and deployment as a service.
 
 ## Next steps
 
-1. **Owner:** delete the local `backup/pre-rebase-main` branch when happy. `main` is pushed.
-2. **Goal 02:** wrap `magnesium-release`, the unit and the seed in the Ansible roles. Decide whether units are enabled at boot. Set the Codex binary path in the seed, so a standalone Codex install is ready without "Use existing CLI".
-3. **Goal 03:** make supervised the code default, not just a seed, with a test.
-4. **At the first merge** (a stable tag with #17898):
+1. **Goal 02:** wrap `magnesium-release`, the unit and the seed in the Ansible roles. Decide whether units are enabled at boot. Set the Codex binary path in the seed, so a standalone Codex install is ready without "Use existing CLI".
+2. **Goal 03:** make supervised the code default, not just a seed, with a test.
+3. **At the first merge** (a stable tag with #17898):
    - drop the hand port;
    - add `packages/provider-*` to the rename scope;
    - decide on the favicon and price-table fetches.
-5. **Goal 22:** remove the inert server-side relay and Clerk code listed above.
+4. **Goal 22:** remove the inert server-side relay and Clerk code listed above.

@@ -13,7 +13,7 @@ Adding a machine today means Ansible, a deploy config and a pairing code carried
 
 ## How it works
 
-The patterns come from herdr and from Collie's `pack add` (which studied herdr's remote mode): the hub drives plain `ssh` and doesn't reimplement it.
+The patterns come from herdr's remote mode: the hub drives plain `ssh` and doesn't reimplement it.
 
 - **The hub's SSH.** The hub has its own SSH key, made on first use; Over SSH shows its public key, to put in the target's `authorized_keys`. The hub uses its user's `~/.ssh/config` and `known_hosts`, so host aliases and jump hosts work; it never turns off host-key checking, and a new host's key is shown for you to accept once. One multiplexed connection per run (`ControlMaster`), `BatchMode`, keepalives.
 - **Every remote step is a script on stdin** (`/bin/sh -s`): no `curl | sh`, no login shell, no assumptions about `PATH`. Secrets (the pairing code) only ever travel on stdin, never in arguments.

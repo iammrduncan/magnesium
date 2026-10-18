@@ -1,8 +1,8 @@
 # Magnesium build goals
 
-**Status: goals 01, 02, 04, 05 and 06 VERIFIED; the rest PLANNED.** Twenty-nine goals take Magnesium from a fork of T3 Code to the app in the mocks. At the end it runs on a hub and a fleet of agent machines, on bare metal, in VMs or inside Kubernetes workloads. Each goal ends in something the owner can test by hand.
+**Status: goals 01, 02, 04, 05, 06 and 25 VERIFIED; 03 BLOCKED on one test; 24 IN_PROGRESS; the rest PLANNED.** Thirty-three goals take Magnesium from a fork of T3 Code to the app in the mocks. At the end it runs on a hub and a fleet of agent machines, on bare metal, in VMs or inside Kubernetes workloads. Each goal ends in something the owner can test by hand.
 
-Read first: [doc 11](../11-fork-plan.md) (the fork plan), [doc 13](../13-mocks-to-working-app.md) (mocks to a working app), [doc 09](../09-decisions-and-open-questions.md) (decisions D1–D27), [doc 12](../12-channel-chat-and-events.md) (rooms) and [doc 14](../14-apps-and-footer-extension-model.md) (apps and the footer).
+Read first: [doc 11](../11-fork-plan.md) (the fork plan), [doc 13](../13-mocks-to-working-app.md) (mocks to a working app), [doc 09](../09-decisions-and-open-questions.md) (the decisions), [doc 12](../12-channel-chat-and-events.md) (rooms) and [doc 14](../14-apps-and-footer-extension-model.md) (apps and the footer).
 
 ## Test fleet
 
@@ -32,7 +32,7 @@ Goals are tested by hand on a real fleet: a hub and at least two machines, one o
 | 18  | [Agent control](18-agent-control.goal)                                       | A profile launches and steers a worker on another machine, within your grants                                                          | 03, 10         | Fleet (started-by)                                                      |
 | 19  | [More harnesses and sandboxes](19-more-harnesses-and-sandboxes.goal)         | OpenCode, Pi and oh-my-pi profiles; Kubernetes and microVM sandboxes                                                                   | 03, 10         | Session · desktop (picker)                                              |
 | 20  | [Desktop pill](20-desktop-pill.goal)                                         | A small desktop pill shows who needs you and approves in one click                                                                     | 06             | Pill board (mocked in this goal)                                        |
-| 21  | [Hermes moves](21-hermes-moves.goal)                                         | Each Hermes bot works from Magnesium, one at a time; then Hermes is off                                                                | 07, 09, 13, 18 | Room, Home                                                              |
+| 21  | [Hermes moves](21-hermes-moves.goal)                                         | Bots import from Hermes Agent one at a time, with a trial window; then Hermes can be retired                                           | 07, 09, 13, 18 | Room, Home                                                              |
 | 22  | [Release](22-release.goal)                                                   | A day of daily use; upgrade, rollback and restore drills pass                                                                          | all            | every board                                                             |
 | 23  | [Project knowledge](23-project-knowledge.goal)                               | Drop a doc on a project; it lands in the Brain, linked to the project's threads                                                        | 12, 15         | Project · desktop (docs and brain panel)                                |
 | 24  | [Upstream V2](24-upstream-v2.goal)                                           | Upstream's v0.1.0 on every server; scheduled runs on Home                                                                              | 06             | none                                                                    |
@@ -128,11 +128,11 @@ Front matter (`id`, `status`, `kind`, `depends_on`, `phase`, `boards`), then **O
 
 ## Rules for every goal
 
-- **Magnesium does what dBrain did (D37).** Profiles and their checks, the agents API (each operation written once for the `magnesium-agents` CLI, REST and MCP), schedules and deployment are built in the `magnesium/*` packages. dBrain is reference only: nothing goes into it, and Magnesium never depends on it at runtime.
+- **Magnesium builds its own tools (D37).** Profiles and their checks, the agents API (each operation written once for the `magnesium-agents` CLI, REST and MCP), schedules and deployment are built in the `magnesium/*` packages. An earlier toolkit is reference only: nothing goes into it, and Magnesium never depends on it at runtime.
 - **Owner gates: stop and ask** before:
   - any change to who can reach the hub or the machines;
   - anything that loosens the hub's isolation;
-  - moving each Hermes bot, and retiring Hermes (goal 21);
+  - importing each bot from Hermes, and retiring Hermes (goal 21);
   - publishing anything outside the owner's own setup.
 - **Supervised by default.** New threads start in supervised mode, and full access is never a default. Scheduled and headless runs are never weaker than the `container` sandbox.
 - **Secrets by name only.** They never go in settings, profiles, app manifests, argv or logs.

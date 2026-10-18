@@ -9,12 +9,11 @@ decisions: [D19, D20, D37]
 ---
 # Bots move in from Hermes Agent one at a time, then Hermes can be retired
 
-This goal is D19. Bots that run on Hermes Agent move into Magnesium one at a time, each as a profile on the hub with its rooms, memory and skills. Start with a low-risk bot and end with any bot that has admin rights. Hermes keeps running until the last bot moves; then it can be retired. This covers L1: the main bots and their profiles live on the hub.
+This goal is D19. Magnesium imports bots from Hermes Agent one at a time, each as a profile on the hub with its rooms, memory and skills. Hermes keeps running until the last bot moves; then it can be retired. This covers L1: the main bots and their profiles live on the hub.
 
 ## Owner gates
 
 - **Each bot moves only on the owner's go.**
-- **A bot with admin rights moves last.**
 - **Retiring Hermes** needs its own go.
 
 ## Build, for each bot
@@ -28,12 +27,10 @@ This goal is D19. Bots that run on Hermes Agent move into Magnesium one at a tim
    - Its secrets pass by name.
 2. **Recreate its rooms and DMs as Magnesium rooms.**
    - Bring recent history in as a room digest, not as replayed messages.
-   - Keep its membership rules: a bot sees only its rooms, and a bot with admin rights is never in a room that carries raw web content.
+   - Keep its membership rules: a bot sees only its rooms.
 3. **A trial window.** Run the bot in Magnesium while its Hermes copy is paused. Roll back by resuming the Hermes copy.
 4. **Cut over.** Disable the bot's Hermes profile.
-5. **A bot with admin rights keeps its rules.**
-   - It is never a room member.
-   - Requests reach it through a path the owner releases, as they did in Hermes.
+5. **A profile with elevated grants is never a room member.** Importing one recreates none of its rooms.
 
 ## Then, once, after the last bot
 

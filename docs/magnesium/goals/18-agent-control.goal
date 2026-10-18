@@ -9,7 +9,7 @@ decisions: [D15, D25, D32, D37]
 ---
 # Agents launch, message and steer sessions in the fleet, within grants you set
 
-This goal covers A5 (profile X messages profile Y), F3 (chosen agents control, message and steer sessions in the fleet) and L2 (workers started by you or by the bots). Bots moving in from Hermes Agent (goal 21) start workers with tools of their own today. This goal replaces those tools, so it lands before the bots move.
+This goal covers A5 (profile X messages profile Y), F3 (chosen agents control, message and steer sessions in the fleet) and L2 (workers started by you or by the bots). Bots imported from Hermes Agent (goal 21) bring their own tools for starting workers. This goal replaces those tools, so it lands before goal 21.
 
 ## Build
 

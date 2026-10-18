@@ -2,7 +2,7 @@
 
 **Status: mocked (2026-10-13).** These ideas became the mock canvas, and the owner approved the direction (D9). The canvas has 16 clickable boards, with example data only. What it takes to build them is in [doc 13](13-mocks-to-working-app.md). Nothing in this file is built. Each idea says which requirement it serves and which T3 Code feature it builds on.
 
-**Base:** T3 Code's look and layout (doc 07). No terminal in the main flow (D3). The app is **Magnesium**, the T3 Code fork (D8); the older Collie-based Fuse is a reference only (doc 03). Mocks: the "dBrain Harness Mocks" canvas (Home, Session, Room, Fleet, phone Home).
+**Base:** T3 Code's look and layout (doc 07). No terminal in the main flow (D3). The app is **Magnesium**, the T3 Code fork (D8); the older Collie-based Fuse is a reference only (doc 03). Mocks: the owner's mock canvas (Home, Session, Room, Fleet, phone Home).
 
 ## One shell, seven places
 
@@ -47,7 +47,7 @@ It would apply to the Home page, the Fleet page and a thread, so "as high or low
 - A profile has an avatar and accent colour, shown next to the model pill and on each row.
 - Its page shows identity, memory notes, skills, schedule and sandbox level.
 - Use T3's **inheritance-chain widget** for profile › project overrides.
-- Serves A4. Needs API reads that exist (`get_agent`, `read_memory`) and writes that do not.
+- Serves A4. Needs agents-API reads and writes for a profile and its memory.
 
 ### 4. Rooms for group chat (A6)
 

@@ -81,12 +81,12 @@ The operator bootstraps Magnesium's gateway there once. From then on Magnesium d
 
 ## Goal summary
 
-**2026-10-17: VERIFIED.** Builds 1 to 10 are done and every Test it step passed on the real fleet, which ended the day on one build across a hub, a gateway, two machines attached to workloads and two on bare metal.
+**2026-10-17: VERIFIED.** Builds 1 to 10 are done and every Test it step passed on real machines. Deployed with the Ansible roles; `magnesium-release rollback` restores the previous build (Done means 5).
 
 - **Tests:**
-  1. The gateway, bootstrapped by the operator, answers from the hub alone: after a policy fix, a laptop gets no connection, and every API through the gateway refuses a caller without a token.
+  1. The gateway, bootstrapped by the operator, answers from the hub alone. From a laptop the gateway refuses connections, and every API through it refuses a caller without a token.
   2. A Magnesium pod from Settings, and a brand-new machine attached in a workload, which paired by itself with its one-time code; taken out, Settings said its route had gone, and Detach let it go.
-  3. Three bare-metal machines moved in, keeping their names, threads, projects and the hub's access: one into a Magnesium pod and then into a workload, one into a dev workspace, and one into a GPU workspace.
+  3. A bare-metal machine moved into a Magnesium pod, and one into a workload, each kept its name, threads, projects and the hub's access.
   4. Home answered an approval from an attached machine; the footer, Fleet → Terminal (a shell in the workload's container) and provider sign-ins work there.
   5. Threads start supervised; a fenced agent gets "Permission denied" on the state home; no key or code is in any manifest except by Secret reference.
   6. Rollback: with Magnesium taken out of the workload and the bare-metal service started again, Detach keeping the hub's access brought the machine back on bare metal with its threads from before the move.
@@ -97,7 +97,7 @@ The operator bootstraps Magnesium's gateway there once. From then on Magnesium d
 
 ## Next steps
 
-1. Goal 24, upstream V2 (v0.1.0), on a branch, rolled out to every server in one window.
+1. Goal 24, upstream V2 (v0.1.0), on a branch; the hub and every machine upgrade in one window.
 2. Goal 33, Waiting on you (D62).
 3. Model keys reach attached and bare-metal machines from the hub (goal 30); until then a workload's deploy gives OpenCode its key.
 

@@ -13,8 +13,8 @@ The topology is D15: a Magnesium server on every machine that runs agents, plus 
 
 ## Owner gates
 
-- **The hub's machine:** decided 2026-10-14 (D35): a small VM of its own. The hub runs as its own user, never a bot's user.
-- **Approve the network policy change.** Allow only these paths, all one-way (D35):
+- **The hub's machine** (D35): give the hub a machine of its own; a small VM is enough. The hub runs as its own user, never a bot's user.
+- **The network policy** (D35). The recommended policy allows only these paths, all one-way:
   - the owner's devices to the hub;
   - the hub to each machine server's port.
   - Nothing from the machines to the hub.
@@ -22,7 +22,7 @@ The topology is D15: a Magnesium server on every machine that runs agents, plus 
 
 ## Build
 
-1. **Ansible roles in `magnesium/deploy/ansible/`** (D37). Follow dBrain's Ansible as a reference only. They are public, so use placeholders.
+1. **Ansible roles in `magnesium/deploy/ansible/`** (D37). One role per kind of server; a site's hosts and values live in an inventory outside the repo. The roles are public, so use placeholders.
    - `magnesium_server`:
      - deploys a pinned build and keeps the previous one for rollback (`magnesium_version`);
      - adds a systemd service for the agent user, with lingering;
@@ -83,10 +83,10 @@ Profiles and sandboxes (goal 03), and our own route and the hub's gathering (goa
   - Unauthenticated requests through the hub's proxy get 401, and pairing routes get 404.
 - **CI:** the fork's test job had failed since goal 01 on a git hint in one deploy test. Fixed: `magnesium-release` sets the default branch when it clones. CI is green: build, the full typecheck, and the full test suite.
 
-**Tests, 2026-10-14, in Chrome on the owner's desktop**
+**Tests, 2026-10-14, in Chrome on a desktop**
 
 1. **Pair: passed.** The owner paired with the hub and added the machines. Settings → Connections lists them all as Connected, and the hub is "This device".
-2. **A thread on each machine: passed.** One supervised thread per machine in a scratch folder. Each asked to run `hostname; whoami`, waited for approval, and answered with its own host and user. Machines without Claude Code ran OpenCode through a model gateway; the others ran Codex.
+2. **A thread on each machine: passed.** One supervised thread per machine in a scratch folder. Each asked to run `hostname; whoami`, waited for approval, and answered with its own host and user, on Codex and on OpenCode through a model gateway.
 3. **The phone: passed.**
    - The owner signed the desktop in once with `magnesium-release pair --admin` on the hub, and the machines moved to the hub.
    - Settings → Connections → Authorized clients → **Create link** made a QR code, and the owner scanned it with the phone.
@@ -99,10 +99,9 @@ Profiles and sandboxes (goal 03), and our own route and the hub's gathering (goa
 **Noticed, not fixed here**
 
 - Right after a restart, Codex's 10-second status check can time out. Turns still worked.
-- The hub's user has no git identity, so a project created there has no first commit. That's for goal 03's profiles.
+- The deploy roles set no git identity for the server's user, so a project created there has no first commit. That's for goal 03's profiles.
 
 ## Next steps
 
 1. **Later, in goal 04:** devices reach machines only through the hub (test 4).
-2. **Optional:** revoke the desktop's old "t3 pair" session under Authorized clients. The desktop now uses its admin session.
-3. Goals 03 and 04, which can run in parallel. Goal 04 keeps the live per-machine subscription and the Fleet page.
+2. Goals 03 and 04, which can run in parallel. Goal 04 keeps the live per-machine subscription and the Fleet page.

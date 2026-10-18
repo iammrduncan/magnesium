@@ -5,7 +5,7 @@
 - T3 Code **never drives an agent through a terminal or PTY.** Every harness goes through a structured protocol. The only PTY is a plain shell terminal for the user.
 - **Claude** runs through the **Claude Agent SDK**, which spawns the user's own `claude` binary. It is not `claude -p` and not the TUI. T3 uses `claude -p` only to write titles and commit messages.
 - It can **import past Claude and Codex sessions** from disk as text and resume them. It **cannot see live sessions it did not start.**
-- A **provider instance** has `binaryPath`, `homePath`, `launchArgs` and `environment`. That is a usable hook for dBrain profiles, with limits.
+- A **provider instance** has `binaryPath`, `homePath`, `launchArgs` and `environment`. That is a usable hook for Magnesium profiles, with limits.
 - It is **MIT** licensed. The codebase is large, moves fast and is built on Effect v4.
 
 **Status:** read from source and docs in the T3 Code repo at commit `380bba36` (2026-10-13), contracts package 0.0.45. **Nothing was run.** Items marked _not verified_ are inferred. No local T3 database was opened.
@@ -62,7 +62,7 @@ Cursor can change model between turns but cannot steer or fork. Other ACP agents
 - **Live sessions it did not start: cannot see them.** No file watcher, process discovery or hook receiver for outside agents. Confirmed by grep and reading the scanner.
 - A resumed thread is a **second process** on the same session id. Whether two writers on one Claude or Codex session are safe is _not verified_.
 
-## 4. Configuration and where dBrain flags could go
+## 4. Configuration and where profile flags could go
 
 A **provider instance** is `{ driver, displayName?, accentColor?, environment?[], enabled?, config? }`, kept in `settings.json` and editable over the `server.updateSettings` RPC (`packages/contracts/src/providerInstance.ts:100-130`; `apps/server/src/serverSettings.ts:92-165`). Instances route by id, so two Claude instances never share state. Claude supports several instances.
 
@@ -73,17 +73,16 @@ A **provider instance** is `{ driver, displayName?, accentColor?, environment?[]
 | `launchArgs`    | parsed into SDK `extraArgs`     | appended after `codex app-server` |
 | `environment[]` | name, value, `sensitive` flag   | same                              |
 
-What a dBrain profile could use:
+What a profile could use:
 
 - `--append-system-prompt-file`, `--mcp-config`, `--settings`, `--plugin-dir` can go in `launchArgs`. **Limits:**
   - A repeated flag keeps only the last value (`packages/shared/src/cliArgs.ts:92-129`), so several `--plugin-dir` entries collapse.
   - T3 also sets its own `systemPrompt.append` and `settings`. A user flag may duplicate or clash (_not verified_).
-  - **`--permission-mode` and `--dangerously-skip-permissions` override the thread's mode.** T3 removes them from the extra args, but uses their value in place of the thread's runtime mode, plan mode included (`ClaudeAdapterV2.ts:975-1014`; tested in `ClaudeAdapterV2.test.ts:254-269`). So an instance's launch args can force `bypassPermissions` for every thread. **dBrain must never write these flags into an instance**, and `dbrain check` should refuse them.
+  - **`--permission-mode` and `--dangerously-skip-permissions` override the thread's mode.** T3 removes them from the extra args, but uses their value in place of the thread's runtime mode, plan mode included (`ClaudeAdapterV2.ts:975-1014`; tested in `ClaudeAdapterV2.test.ts:254-269`). So an instance's launch args can force `bypassPermissions` for every thread. **Magnesium must never write these flags into an instance**, and `magnesium-agents check` refuses them (goal 03).
 - **A wrapper script as `binaryPath` is the most robust hook.** A path without a script extension (`.js`, `.mjs`, `.ts`, `.tsx`, `.jsx`; `ClaudeAdapterV2.ts:223`) is treated as a native binary. On Linux, T3 wraps it in a `/bin/sh` exec shim that raises its OOM score, optionally under `systemd-run --scope` (`packages/shared/src/AgentScope.ts:74-128`), and the SDK spawns that (`ClaudeAdapterV2.ts:691-714`). So a shell wrapper needs the exec bit and a shebang. A `.js` path is run with node or bun instead, and skips the shim. A launcher doing `exec claude <profile flags> "$@"`, or entering a container, can sit in front. _Not verified end to end._
 - A **per-profile `CLAUDE_CONFIG_DIR`** gives most profile behaviour with no flags: plugins, skills, hooks and `CLAUDE.md` come from the native config dir.
 - There is no per-session or per-project hook to inject arbitrary args. Project overrides cover things like default model and permissions.
 - Users cannot add extra MCP servers through T3; they come from the harness's own config.
-- `dbrain t3 <agent>` already prints a launch-args and env block for a Claude instance.
 
 **How T3's own MCP server reaches each harness:**
 
@@ -96,7 +95,7 @@ What a dBrain profile could use:
 
 `docs/orchestration-v2/orchestrator-mcp-server.md` still describes a Codex `T3_MCP_BEARER_TOKEN` mechanism that is **not in the Codex source**: that doc is stale.
 
-**The token-in-argv gap dBrain listed was real, and is fixed only in nightlies.** Upstream moved Claude's MCP servers from an inline `--mcp-config` argument to the stdin control channel on 2026-10-10 (commit `f82796a16`, PR #17898). The first build with the fix is `v0.0.46-nightly.20261010`. **No stable release carries it yet**: the latest stable is `v0.0.45` (2026-10-02). That matches the live sighting on 2026-10-12. The fork must start from a tag that has the fix, or cherry-pick it.
+**Claude's MCP token is out of argv.** Upstream moved Claude's MCP servers from an inline `--mcp-config` argument to the stdin control channel on 2026-10-10 (commit `f82796a16`, PR #17898), so the bearer token no longer appears in argv. The stable `v0.0.45` lacked the fix. Magnesium ported it by hand, and `v0.1.0`, which Magnesium has merged, includes it (see [`upstream-changelog.md`](../../upstream-changelog.md)).
 
 **Secrets:** sensitive env values and the Antigravity API key go into T3's own secret store on the host (`packages/contracts/src/settings.ts:767-772`; `apps/server/src/settingsSecrets.ts:24-27`). A second store conflicts with "secrets pass by name only". A wrapper that reads secrets by name from its own environment avoids it.
 
@@ -128,7 +127,7 @@ What a dBrain profile could use:
   - **Pending requests (approvals and questions):** list, read, respond.
   - **Queue:** list, edit, cancel, reorder, promote to steer.
   - **Projects and worktrees, scheduling, pull requests, previews, devices, HTML render, secret requests.**
-- **For dBrain:** a bot could list threads, launch one on a chosen instance, steer it, wait, and answer approvals. That works **only for threads T3 owns.**
+- **For Magnesium:** a bot could list threads, launch one on a chosen instance, steer it, wait, and answer approvals. That works **only for threads T3 owns.**
 
 ## 8. Persistence
 
@@ -155,15 +154,15 @@ The Claude adapter alone is 9.4k lines and the Codex adapter 7.4k: a sign of the
 
 Hard dependencies on third-party services exist in some paths (an identity SDK, the hosted relay, product telemetry, `app.t3.codes`). All are optional for a self-hosted server but need stripping in a branded fork.
 
-## 10. Options for a dBrain-backed UI
+## 10. Options for a harness UI
 
 |                                | A. Use T3 Code as is                                                                     | B. Fork T3 Code                             | C. Own UI on T3's contracts and client runtime                          | D. Build from scratch                                               |
 | ------------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| **Idea**                       | dBrain writes provider instances from profiles; T3 is the UI.                            | Add fleet, KB and profile layers inside T3. | A new front end speaks T3's RPC to unmodified T3 servers, one per host. | Own server and UI, borrowing T3's designs.                          |
+| **Idea**                       | A profile tool writes provider instances from profiles; T3 is the UI.                    | Add fleet, KB and profile layers inside T3. | A new front end speaks T3's RPC to unmodified T3 servers, one per host. | Own server and UI, borrowing T3's designs.                          |
 | **Effort**                     | Lowest                                                                                   | High, then a standing merge cost            | Medium                                                                  | Highest                                                             |
 | **Keeps T3's adapters**        | Yes                                                                                      | Yes                                         | Yes (server side)                                                       | No: re-implement them                                               |
 | **Fleet and KB view**          | No                                                                                       | You build it                                | You build it                                                            | You build it                                                        |
-| **Sees herdr or TUI sessions** | No                                                                                       | Only if you add it                          | No, unless dBrain adds a session source                                 | By design                                                           |
+| **Sees herdr or TUI sessions** | No                                                                                       | Only if you add it                          | No, unless we add a session source                                      | By design                                                           |
 | **Sandbox and profile rules**  | Bypassed unless a wrapper `binaryPath` enters a container, or T3 runs inside the sandbox | You add it in the adapter layer             | One T3 server per sandboxed host                                        | By design                                                           |
 | **Upstream**                   | Follows releases                                                                         | Upstream will not take changes              | Pin a server version                                                    | None                                                                |
 | **Main risk**                  | Two parallel worlds; secrets stored in T3's store                                        | Large Effect-v4 code base                   | Vendoring private packages; Effect comes with them                      | The long tail of adapter bugs; needs the SDK (breaks "only `yaml`") |
@@ -181,4 +180,4 @@ Hard dependencies on third-party services exist in some paths (an identity SDK, 
 2. Check whether `--append-system-prompt-file` or `--settings` in `launchArgs` clashes with T3's own options.
 3. Confirm Anthropic's billing for Agent-SDK-spawned `claude` sessions on a subscription.
 4. Test whether a herdr TUI and a T3 thread can safely share one Claude session id.
-5. The MCP-token-in-argv finding: **checked**. Fixed upstream on 2026-10-10, in nightlies only (section 4).
+5. The MCP-token-in-argv finding: **checked**. Fixed upstream on 2026-10-10, and in Magnesium since goal 01 (section 4).

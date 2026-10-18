@@ -38,7 +38,7 @@ This goal runs spike S5 (doc 11), then the read half of phase 5. The Brain is th
 ## Test it
 
 1. **Ask.** Ask the brain a question you know the answer to. The answer cites pages; open one in the reader.
-2. **Browse.** In the tree, expand Papers and a month, and open a page made from a PDF.
+2. **Browse.** In the tree, expand a folder, and open a page made from a PDF.
    - The summary, properties and backlinks show.
    - Clicking a backlink opens that page.
 3. **Speed.** Time how long the tree takes to load for the whole Brain, and record it with the page count.

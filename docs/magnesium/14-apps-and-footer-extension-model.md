@@ -96,7 +96,7 @@ One registry, as in Hermes: namespaced ids, an error boundary per item, and Magn
 3. **Every other call goes to the hub's approval queue,** whether it comes from a page, a popover button or an agent. The queue shows on Home and is pushed to the phone. Each request shows the app, its version, the author profile and the rendered `approval` text.
 4. **Outcomes are DeepSeek Harness's closed set.** Anything but `allowed-once` fails, including a request nobody answers.
 5. **A message from an app into a thread always asks first,** as in T3.
-6. **App servers run at the `container` sandbox level or stricter** (dBrain's `AGENTS.md`).
+6. **App servers run at the `container` sandbox level or stricter,** as `MAGNESIUM.md` requires of every headless run.
 7. **Turning an app off removes its page, footer item, card and tools together.**
 
 ### The design system (D54)

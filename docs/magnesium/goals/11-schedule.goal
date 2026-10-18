@@ -21,7 +21,7 @@ This goal covers M6: view, create and change scheduled jobs and agent runs. Upst
 2. **Run history** in `magnesium.sqlite`, fed in-process by thread-launch events from scheduled tasks. It is served on a `schedule.runs` stream.
 3. **The Schedule page** lists every task on every machine, from three sources:
    - upstream's scheduled tasks on each environment;
-   - the profiles' `SCHEDULE.yaml` tasks;
+   - the profiles' own scheduled tasks;
    - the Magnesium Brain's jobs, through `list_jobs`.
 
    It shows:
@@ -30,7 +30,7 @@ This goal covers M6: view, create and change scheduled jobs and agent runs. Upst
    - create, edit, pause and run now;
    - each webhook task's URL;
    - validation, such as an interval of at least 60 seconds.
-4. **New Magnesium agents-API operations `create_task` and `update_task`**, for the profiles' `SCHEDULE.yaml` tasks. Each is written once and served by the `magnesium-agents` CLI, REST and MCP, with tests. Magnesium runs these tasks itself; existing tasks come in with the profiles (goal 03). Upstream tasks are edited through the stock RPC.
+4. **New Magnesium agents-API operations `create_task` and `update_task`**, for the profiles' own scheduled tasks. Each is written once and served by the `magnesium-agents` CLI, REST and MCP, with tests. Magnesium runs these tasks itself; existing tasks come in with the profiles (goal 03). Upstream tasks are edited through the stock RPC.
 5. **Failed runs reach Home** (the failure kind) and push.
 6. **Scheduled runs are never weaker than `container`.** The form refuses a weaker level.
 7. **Home's Next runs** uses the merged list.
@@ -44,7 +44,7 @@ This goal covers M6: view, create and change scheduled jobs and agent runs. Upst
    - The next run fails, and the failure shows in the failure inbox, as a Home card and as a push.
    - Retry it from Home after fixing the folder.
 5. **The sandbox floor.** Try to set sandbox `native` on a scheduled task. The form refuses and says why.
-6. **Profile tasks.** Create a `SCHEDULE.yaml` task from the UI. `magnesium-agents schedule` shows it, and it runs on the next tick.
+6. **Profile tasks.** Create a profile's scheduled task from the UI. `magnesium-agents schedule` shows it, and it runs on the next tick.
 7. **Pause.** Pause a task; no run happens. Resume it.
 8. **Phone.** Edit a task on the phone.
 9. **Against the boards.** Compare with the boards you approved in step 1.

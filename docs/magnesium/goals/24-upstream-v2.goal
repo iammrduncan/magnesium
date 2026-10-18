@@ -41,7 +41,7 @@ Moving the fleet to OpenCode 2 (after the merge, one machine at a time).
 
 ## Goal summary
 
-**2026-10-18, in progress: one live check left.** All of upstream v0.1.0 is merged into `main` (1,051 upstream commits, not only V2), and every server runs it: a hub, a gateway, three machines attached to workloads and two on bare metal, moved in one window. CI passes the full typecheck and test suite.
+**2026-10-18, in progress: one live check left.** All of upstream v0.1.0 is merged into `main` (1,051 upstream commits, not only V2). The hub and every machine moved to it in one window, deployed with the Ansible roles; `magnesium-release rollback` restores the previous build (Done means 5). CI passes the full typecheck and test suite.
 
 - **Merge.** All 29 conflicting files are resolved. Goal 03's fence and the supervised default are ported back by hand, with tests: new threads and scheduled tasks start supervised, and a fenced agent can't read Magnesium's state home. The merge, rename and strip scripts each had bugs, now fixed.
 - **Fixed on V2, with tests:**
@@ -52,9 +52,9 @@ Moving the fleet to OpenCode 2 (after the merge, one machine at a time).
 - **Tests passed:**
   - Test 1: rehearsals on copies of real data, and every server's real migration kept all its threads and projects, with the V1 database left untouched.
   - Test 2: security, in the suite, and on the hub new threads start Supervised and fenced.
-  - Test 3: the lockstep upgrade, with backups first. Fleet shows all seven servers connected on the new build.
-  - Test 4: on the hub, one pairing reaches every machine. An approval (bare metal), a question (the hub) and a plan (another machine) showed on Home, in the sidebar and in the footer. The approval and the question were answered from Home, and the cards stayed gone. Fleet → Terminal works, and threads imported from V1 open with their messages.
-  - Test 5: a scheduled task's failed run showed on Home, and Next scheduled runs listed three tasks on three machines, soonest first.
+  - Test 3: the lockstep upgrade, with backups first. Fleet shows every server connected on the new build.
+  - Test 4: on the hub, one pairing reaches every machine. An approval, a question and a plan, each from a different machine, showed on Home, in the sidebar and in the footer. The approval and the question were answered from Home, and the cards stayed gone. Fleet → Terminal works, and threads imported from V1 open with their messages.
+  - Test 5: a scheduled task's failed run showed on Home, and Next scheduled runs listed tasks from several machines, soonest first.
   - Home compared with its board; the differences are under the board in [mockups](../mockups.md).
 - **Found during the tests, fixed:**
   - An open page kept running the old client after the hub updated, and the two refused each other: Home's marks went nowhere until a full reload. A page now offers Reload when the hub serves a new build.
@@ -63,13 +63,13 @@ Moving the fleet to OpenCode 2 (after the merge, one machine at a time).
   - A plan card had no way to dismiss it. Dismiss now takes the thread out of plan mode, which clears the card and the sidebar's Plan Ready; the plan stays in the thread.
   - In an attached workload, `magnesium-release backup` found no state from a plain shell.
   - A gateway's refusal reached the hub's trace with no reason.
-- **Left:** test 5's Retry now on a real failed run, once the hub runs the build with it.
-- **Skipped:** test 6, the rollback, at the owner's call. Every server still keeps its previous build and its untouched V1 database.
+- **Left:** test 5's Retry on a real failed run, on a build that has the fix.
+- **Skipped:** test 6, the rollback, at the owner's call. `magnesium-release rollback` restores the previous build, and V2 leaves the V1 database untouched.
 - **Decided:** every server keeps one time zone, set when it's deployed (D64), so a scheduled task's 09:00 is one time everywhere.
 
 ## Next steps
 
-1. Deploy the current `main` to the hub, retry a failed scheduled run from Home, then mark this goal verified.
+1. On a build that has the fix, retry a failed scheduled run from Home, then mark this goal verified.
 2. Goal 33, Waiting on you (D62).
 3. Goal 15, Projects.
 

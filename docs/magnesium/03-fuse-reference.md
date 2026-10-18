@@ -4,7 +4,7 @@
 
 **The name moved on (D8, 2026-10-13):** "Fuse" was given to the T3 Code fork (doc 11), which was then renamed **Magnesium** (D27). It replaces the Collie fork described below. In this doc, "Fuse" means the old Collie fork.
 
-The old Fuse is a fork of Collie, an open-source self-hosted phone web app for [herdr](https://herdr.dev). It was forked on 2026-10-12 from Collie 1.20.2. Its plan is in the Fuse repo's `FORK.md` (read 2026-10-13). Its rebrand (Phase 0) never started.
+The old Fuse is a fork of Collie, an open-source self-hosted phone web app for [herdr](https://herdr.dev). It was forked on 2026-10-12 from Collie 1.20.2. Its fork plan's first phase, the rebrand, never started.
 
 ## What Fuse is
 
@@ -15,9 +15,9 @@ A phone PWA that mirrors herdr terminal panes. A small Bun server sits between t
 | Reason                                       | Detail                                                                                                                                                                                                          |
 | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **It is a terminal mirror.**                 | It renders pane output, and turns known dialogs into buttons through per-harness parsers. A clean transcript, diffs and structured approvals are outside that model. The owner wants to stay away from the TUI. |
-| **Only Claude Code has a verified adapter.** | Other agents fall back to a raw terminal mirror (`FORK.md`, Phase 2).                                                                                                                                           |
+| **Only Claude Code has a verified adapter.** | Other agents fall back to a raw terminal mirror (its fork plan, Phase 2).                                                                                                                                       |
 | **It is a fork with a trademark condition.** | Collie's code is MIT; its name and logo are not. A fork needs its own name and mark before it is shared.                                                                                                        |
-| **A fast-moving upstream.**                  | `FORK.md` plans a weekly rebase. That is a standing cost.                                                                                                                                                       |
+| **A fast-moving upstream.**                  | Its fork plan called for a weekly rebase. That is a standing cost.                                                                                                                                              |
 
 ## What is worth keeping as a reference
 
@@ -41,4 +41,4 @@ Where Fuse mirrors a pane, T3 Code keeps a structured event log per thread and r
 
 ## Status
 
-Retired; reference only. Nothing in this repo depends on it. `FORK.md` in the Fuse repo still describes the Collie plan; it was not edited. The owner deleted the Fuse repo on 2026-10-14; Magnesium is a new fork of T3 Code (D28). A local clone of the Collie fork remains on the owner's desktop.
+Retired; reference only. Nothing in this repo depends on it. Magnesium is a new fork of T3 Code (D28).

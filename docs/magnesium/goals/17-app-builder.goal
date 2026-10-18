@@ -42,7 +42,7 @@ Apps and plugins are something you ask for, not something you code. Builder mode
 6. **Apps built with this flow, as its tests:**
    - **Ingest Queue:** the Magnesium Brain's ingest jobs and failures, with a footer item showing the queue depth.
    - **Cost and Usage:** tokens and cost per profile per day, with a footer item. If Magnesium lacks the usage data, record what's missing and how to collect it.
-   - **Autoresearch:** running campaigns and their best results, read-only, from the research harness's own records.
+   - **Autoresearch:** an autoresearch harness's runs and their best results, read-only, from the harness's own records.
    - **A dual app,** such as Repo Freshness: a machine part that checks each project's git state on its machine, with a tool for sessions there, and a hub page showing which projects are behind, on every machine.
    - Optional (D21): **Monitoring**, for machines with no Magnesium server (such as storage), read from monitoring you already run.
 

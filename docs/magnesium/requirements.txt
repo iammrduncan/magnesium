@@ -10,7 +10,7 @@ To me the harness has multiple parts:
 - Custom mini apps able to serve dashboards, add new features etc. Plugin style.
 
 
-The KB: (dbrain captures most of it today but)
+The KB:
 
 - persistent organized knowledge base wiki with vector/hybrid search
 - many types of sync modules that collect data and sync into system
