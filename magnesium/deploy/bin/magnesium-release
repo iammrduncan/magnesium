@@ -191,6 +191,7 @@ prune_releases() {
       continue
     fi
     rm -rf "${ROOT:?}/releases/$name"
+    echo "Removed old release $name."
     removed=$((removed + 1))
   done < <(ls -1td "$ROOT"/releases/*/ 2> /dev/null || true)
   echo "Removed $removed old release(s)."

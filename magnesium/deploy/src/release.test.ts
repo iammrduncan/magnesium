@@ -142,7 +142,7 @@ describe("magnesium-release", () => {
 
     const result = release.run("prune");
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain("Removed 1 old release(s).");
+    expect(result.stdout).toContain("Removed old release d.\nRemoved 1 old release(s).");
     expect(NodeFS.readdirSync(NodePath.join(release.root, "releases")).toSorted()).toEqual([
       ".build-123",
       "a",

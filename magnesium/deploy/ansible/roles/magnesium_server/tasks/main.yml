@@ -179,6 +179,12 @@
   when: not ansible_check_mode
   tags: [build]
 
+- name: Say which old releases were removed
+  ansible.builtin.debug:
+    msg: "{{ magnesium_prune.stdout_lines }}"
+  when: magnesium_prune is changed
+  tags: [build]
+
 - name: Run the server
   ansible.builtin.systemd_service:
     name: magnesium.service
