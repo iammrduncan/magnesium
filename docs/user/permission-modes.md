@@ -8,6 +8,11 @@ Projects can override the environment default. New threads use this setting rath
 mode of the thread you were viewing. The initial default is **Full access**; existing threads
 and modes you choose in a draft keep their permissions.
 
+<!-- magnesium: Magnesium's default is Supervised (MAGNESIUM.md: supervised by default). -->
+
+> **In Magnesium,** the initial default is **Supervised**, for new threads, drafts and scheduled
+> tasks. Full access is chosen per thread, never by default.
+
 | Mode                  | Behavior                                                                              |
 | --------------------- | ------------------------------------------------------------------------------------- |
 | **Supervised**        | Requests approval for commands and file changes.                                      |

@@ -1,9 +1,14 @@
-# T3 Code docs
+# Magnesium docs
 
-## Using T3 Code
+<!-- magnesium: Magnesium's index (D10, D13). It adds Magnesium's guides, and leaves out the pages for parts Magnesium removes or turns off: the desktop and mobile apps, T3 Connect and its relay, product analytics, `t3 service` and self-update, and upstream's release. Those pages stay in the tree so merges stay cheap. -->
 
+## Using Magnesium
+
+- [Install Magnesium](../README.md#install) <!-- magnesium: replaces T3 Code's install page -->
 - [The hub: every machine on every device](./user/hub.md) <!-- magnesium: D38 -->
-- [Install T3 Code](./user/install.md)
+- [Profiles and sandboxes](./user/profiles-and-sandboxes.md) <!-- magnesium: goal 03 -->
+- [Machines in Kubernetes](./user/kubernetes.md) <!-- magnesium: goal 25 -->
+- [Deploy runbook: machines, updates, rollback and backups](../magnesium/deploy/ansible/README.md) <!-- magnesium: goal 02 -->
 - [Messages and context](./user/composer.md)
 - [Working with threads](./user/thread-sidebar.md)
 - [Permission modes](./user/permission-modes.md)
@@ -12,25 +17,18 @@
 - [Project settings](./user/project-settings.md)
 - [Appearance and themes](./user/appearance.md)
 - [Keyboard shortcuts](./user/keybindings.md)
-- [SnapShots](./user/snap-shot.md)
 - [Visual replies](./user/html-renders.md)
-- [Import browser sessions](./user/browser-import.md)
-- [Use T3 Code as your default browser](./user/default-browser.md)
 - [Devices](./user/devices.md)
 - [Usage and limits](./user/usage.md)
-- [Product usage data](./user/telemetry.md)
 - [Remote access](./user/remote-access.md)
 - [Outside agents (MCP)](./user/outside-agents.md)
-- [Running in the background](./user/background-service.md)
-- [Updating T3 Code](./user/updating.md)
-- Provider guides: [Codex](./user/providers-codex.md) · [Claude](./user/providers-claude.md) · [OpenCode](./user/providers-opencode.md) · [Antigravity](./user/providers-antigravity.md) · [Pi](./user/providers-pi.md) · [Muse Code](./user/providers-muse.md)
+- Provider guides: [Setup](./user/install.md#providers) · [Codex](./user/providers-codex.md) · [Claude](./user/providers-claude.md) · [OpenCode](./user/providers-opencode.md) · [Antigravity](./user/providers-antigravity.md) · [Pi](./user/providers-pi.md) · [Muse Code](./user/providers-muse.md) <!-- magnesium: Setup links T3 Code's provider setup -->
 
 ---
 
-## Working on T3 Code
+## Working on Magnesium
 
-Start with the [development runbook](./operations/development.md) and
-[contribution policy](../CONTRIBUTING.md).
+Start with [MAGNESIUM.md](../MAGNESIUM.md) (the fork's rules), the [development runbook](./operations/development.md), and Magnesium's [research, decisions and goals](./magnesium/README.md). <!-- magnesium: Magnesium doesn't use T3 Code's contribution policy -->
 
 Internal notes preserve architectural decisions, constraints, and implementation traps that the
 source alone does not explain. Most code changes do not need an internal documentation update. Follow the
@@ -44,23 +42,13 @@ source alone does not explain. Most code changes do not need an internal documen
 - [Pull request file revisions](./internals/pull-request-file-revisions.md)
 - [Model classification](./internals/model-manifest.md)
 - [Remote environments](./internals/remote.md)
-- [Server updates](./internals/server-updates.md)
 - [Resource telemetry](./internals/resource-telemetry.md)
-- [Product analytics](./internals/product-analytics.md)
 - [Environment auth](./internals/environment-auth.md)
-- [T3 Connect](./internals/t3-connect.md)
 - [Assistant citations](./internals/assistant-citations.md)
-- [Mobile navigation](./internals/mobile-navigation.md)
-- [Mobile development lifecycle](./internals/mobile-development.md)
 - [Terminal runtime](./internals/terminal-runtime.md)
 - [Devices](./internals/devices.md)
-- [Voice input](./internals/voice-input.md)
 
 ### Runbooks
 
 - [Development and local builds](./operations/development.md)
-- [T3 Connect setup](./operations/connect-setup.md)
-- [Release](./operations/release.md)
 - [Observability](./operations/observability.md)
-- [Relay observability](./operations/relay-observability.md)
-- [Mobile app store screenshots](./operations/mobile-app-store-screenshots.md)

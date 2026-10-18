@@ -2,7 +2,9 @@
 
 ## First checkout
 
-Install `vp` using the [root README](../../README.md#install-vp). The checkout requires Node 24;
+<!-- magnesium: Magnesium's README has no "Install vp" section; link Vite+'s own guide -->
+
+Install `vp` using the [Vite+ guide](https://viteplus.dev/guide/). The checkout requires Node 24;
 Bun is optional. From the repository root:
 
 ```sh

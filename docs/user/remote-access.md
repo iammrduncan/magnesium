@@ -3,11 +3,17 @@
 Connect a phone, browser, or another desktop app to T3 Code running on a different
 machine. That machine must stay running and reachable while you work.
 
-<!-- magnesium: devices reach every machine through the hub (D38) -->
+<!-- magnesium: devices reach every machine through the hub (D38); T3 Connect, the desktop and mobile apps and app.t3.codes are removed (D10, D13) -->
 
 **In Magnesium, sign your devices in to the hub instead.** It carries every
 machine, so one sign-in per device brings them all. See
 [The hub: every machine on every device](./hub.md).
+
+**The rest of this page is T3 Code's, and much of it doesn't apply to
+Magnesium.** Magnesium has no T3 Connect, desktop app, mobile app or hosted
+app.t3.codes. Skip the sections about them (T3 Connect, Hosted web app,
+Desktop-managed SSH, T3 Connect troubleshooting, and Using the Desktop App as a
+Remote Only), and their mentions elsewhere on the page.
 
 ## T3 Connect
 

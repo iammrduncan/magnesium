@@ -40,6 +40,9 @@ const STRIPPED_FILES = [
   // Upstream's release announcements, read from its deleted release workflow.
   "scripts/notify-discord-release.ts",
   "scripts/notify-discord-release.test.ts",
+  // Upstream's security policy sends reports to T3 Tools, and GitHub reads `.github/` first;
+  // Magnesium's own policy is SECURITY.md at the root.
+  ".github/SECURITY.md",
 ];
 
 const WORKFLOWS_DIR = ".github/workflows";

@@ -1,5 +1,13 @@
 # Install T3 Code
 
+<!-- magnesium: this page is upstream's and installs T3 Code; Magnesium installs with its Ansible roles -->
+
+**Installing Magnesium? This page is T3 Code's.** Its install scripts, desktop
+app and mobile app install T3 Code, not Magnesium. Follow
+[Install](../../README.md#install) in Magnesium's README, or the
+[deploy runbook](../../magnesium/deploy/ansible/README.md). The
+[provider setup](#providers) below still applies.
+
 T3 Code runs coding agents on your computer and lets you control them from its
 desktop, web, or mobile app. Set up the machine where the agents will work first.
 
