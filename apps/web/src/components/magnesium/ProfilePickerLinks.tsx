@@ -30,7 +30,7 @@ export const ProfilePickerLinks = memo(function ProfilePickerLinks(props: {
         <Button
           size="xs"
           variant="ghost"
-          render={<Link to="/profiles" onClick={props.onNavigate} />}
+          render={<Link to="/profiles" search={{ new: true }} onClick={props.onNavigate} />}
         >
           Create a profile
         </Button>

@@ -2258,6 +2258,16 @@ function OpenCommandPaletteDialog(props: {
       await navigate({ to: "/profiles", search: {} });
     },
   });
+  actionItems.push({
+    kind: "action",
+    value: "action:new-profile",
+    searchTerms: ["new profile", "create profile", "agent", "add profile"],
+    title: "New profile",
+    icon: <UsersRoundIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/profiles", search: { new: true } });
+    },
+  });
 
   actionItems.push({
     kind: "action",

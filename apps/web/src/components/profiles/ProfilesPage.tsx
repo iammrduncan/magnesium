@@ -466,7 +466,8 @@ export function ProfilesPage() {
       fleetRows(fleet.machines).flatMap((machine) => (machine.name === null ? [] : [machine.name])),
     [fleet.machines],
   );
-  const [dialog, setDialog] = useState<"new" | "copy" | "delete" | null>(null);
+  const [chosenDialog, setDialog] = useState<"new" | "copy" | "delete" | null>(null);
+  const dialog = chosenDialog ?? (search.new === true ? "new" : null);
   const selected = profiles.find((profile) => profile.name === selectedName) ?? null;
   const homeItems = useHomeView().items;
   const asks = useMemo(() => profileAsks(homeItems), [homeItems]);
@@ -479,6 +480,18 @@ export function ProfilesPage() {
 
   const select = (name: string, nextTab: ProfileTab = tab) =>
     void navigate({ search: { name, tab: nextTab }, replace: true });
+  const closeDialog = () => {
+    setDialog(null);
+    if (search.new === true) {
+      void navigate({
+        search: ({ name, tab }) => ({
+          ...(name === undefined ? {} : { name }),
+          ...(tab === undefined ? {} : { tab }),
+        }),
+        replace: true,
+      });
+    }
+  };
   const changed = () => {
     void refresh();
     void refreshDetail();
@@ -642,14 +655,14 @@ export function ProfilesPage() {
       {dialog === "new" || dialog === "copy" ? (
         <NewProfileDialog
           open
-          onOpenChange={(open) => !open && setDialog(null)}
+          onOpenChange={(open) => !open && closeDialog()}
           taken={[
             ...profiles.map((profile) => profile.name),
             ...deleted.map((profile) => profile.name),
           ]}
           copyOf={dialog === "copy" ? selected : null}
           onCreated={(name) => {
-            setDialog(null);
+            closeDialog();
             void refresh();
             select(name, "instructions");
           }}
