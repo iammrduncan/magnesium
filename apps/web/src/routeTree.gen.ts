@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as UsageRouteImport } from './routes/usage'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ProfilesRouteImport } from './routes/profiles'
 import { Route as PairRouteImport } from './routes/pair'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as FleetRouteImport } from './routes/fleet'
@@ -51,6 +52,11 @@ const UsageRoute = UsageRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfilesRoute = ProfilesRouteImport.update({
+  id: '/profiles',
+  path: '/profiles',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PairRoute = PairRouteImport.update({
@@ -186,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/fleet': typeof FleetRoute
   '/home': typeof HomeRoute
   '/pair': typeof PairRoute
+  '/profiles': typeof ProfilesRoute
   '/settings': typeof SettingsRouteWithChildren
   '/usage': typeof UsageRoute
   '/welcome': typeof WelcomeRoute
@@ -214,6 +221,7 @@ export interface FileRoutesByTo {
   '/fleet': typeof FleetRoute
   '/home': typeof HomeRoute
   '/pair': typeof PairRoute
+  '/profiles': typeof ProfilesRoute
   '/settings': typeof SettingsRouteWithChildren
   '/usage': typeof UsageRoute
   '/welcome': typeof WelcomeRoute
@@ -245,6 +253,7 @@ export interface FileRoutesById {
   '/fleet': typeof FleetRoute
   '/home': typeof HomeRoute
   '/pair': typeof PairRoute
+  '/profiles': typeof ProfilesRoute
   '/settings': typeof SettingsRouteWithChildren
   '/usage': typeof UsageRoute
   '/welcome': typeof WelcomeRoute
@@ -277,6 +286,7 @@ export interface FileRouteTypes {
     | '/fleet'
     | '/home'
     | '/pair'
+    | '/profiles'
     | '/settings'
     | '/usage'
     | '/welcome'
@@ -305,6 +315,7 @@ export interface FileRouteTypes {
     | '/fleet'
     | '/home'
     | '/pair'
+    | '/profiles'
     | '/settings'
     | '/usage'
     | '/welcome'
@@ -335,6 +346,7 @@ export interface FileRouteTypes {
     | '/fleet'
     | '/home'
     | '/pair'
+    | '/profiles'
     | '/settings'
     | '/usage'
     | '/welcome'
@@ -366,6 +378,7 @@ export interface RootRouteChildren {
   FleetRoute: typeof FleetRoute
   HomeRoute: typeof HomeRoute
   PairRoute: typeof PairRoute
+  ProfilesRoute: typeof ProfilesRoute
   SettingsRoute: typeof SettingsRouteWithChildren
   UsageRoute: typeof UsageRoute
   WelcomeRoute: typeof WelcomeRoute
@@ -393,6 +406,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profiles': {
+      id: '/profiles'
+      path: '/profiles'
+      fullPath: '/profiles'
+      preLoaderRoute: typeof ProfilesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pair': {
@@ -635,6 +655,7 @@ const rootRouteChildren: RootRouteChildren = {
   FleetRoute: FleetRoute,
   HomeRoute: HomeRoute,
   PairRoute: PairRoute,
+  ProfilesRoute: ProfilesRoute,
   SettingsRoute: SettingsRouteWithChildren,
   UsageRoute: UsageRoute,
   WelcomeRoute: WelcomeRoute,

@@ -74,6 +74,7 @@ import {
   PaletteIcon,
   RotateCcwIcon,
   ServerIcon, // magnesium: Fleet (goal 04)
+  UsersRoundIcon, // magnesium: Profiles (goal 34)
   SettingsIcon,
   SquarePenIcon,
   SunIcon,
@@ -2243,6 +2244,18 @@ function OpenCommandPaletteDialog(props: {
     icon: <ServerIcon className={ITEM_ICON_CLASS} />,
     run: async () => {
       await navigate({ to: "/fleet" });
+    },
+  });
+
+  // magnesium: Profiles, made and managed in the app (goal 34)
+  actionItems.push({
+    kind: "action",
+    value: "action:profiles",
+    searchTerms: ["profiles", "agents", "instructions", "skills", "mcp", "tools", "permissions"],
+    title: "Open profiles",
+    icon: <UsersRoundIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/profiles", search: {} });
     },
   });
 

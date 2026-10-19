@@ -1,7 +1,7 @@
 // magnesium: the places at the top of the sidebar, as on the Home and Session boards.
-// Each place appears when its goal lands: Home (goal 06) and Fleet (goal 04) so far.
+// Each place appears when its goal lands: Home (goal 06), Fleet (goal 04) and Profiles (goal 34) so far.
 import { Link, useLocation } from "@tanstack/react-router";
-import { HouseIcon, ServerIcon } from "lucide-react";
+import { HouseIcon, ServerIcon, UsersRoundIcon } from "lucide-react";
 import { memo, useCallback } from "react";
 
 import { countOffline, useFleetView } from "../fleet/fleetStore";
@@ -12,6 +12,7 @@ export const SidebarPlaces = memo(function SidebarPlaces() {
   const { isMobile, setOpenMobile } = useSidebar();
   const onFleet = useLocation({ select: (location) => location.pathname === "/fleet" });
   const onHome = useLocation({ select: (location) => location.pathname === "/home" });
+  const onProfiles = useLocation({ select: (location) => location.pathname === "/profiles" });
   const offline = countOffline(useFleetView());
   const needs = useHomeView().summary?.counts.total ?? 0;
   const closeMobileSidebar = useCallback(() => {
@@ -52,6 +53,15 @@ export const SidebarPlaces = memo(function SidebarPlaces() {
                 role="img"
               />
             ) : null}
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            isActive={onProfiles}
+            render={<Link to="/profiles" onClick={closeMobileSidebar} />}
+          >
+            <UsersRoundIcon />
+            <span className="min-w-0 flex-1 truncate">Profiles</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>
