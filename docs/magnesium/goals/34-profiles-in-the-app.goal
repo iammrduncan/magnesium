@@ -104,10 +104,13 @@ Goal 03 built profiles: an agent's instructions, skills, tools and sandbox, kept
 
 ## Goal summary
 
-**2026-10-19, in progress: the boards are drawn and wait for the owner's approval (gate 1).** Profiles · desktop and Profiles · phone are on the mock canvas, which now lives in the repo (`docs/magnesium/mockups/canvas/`, `vp run mocks`). Every tab, the agent's change, a refused profile, Delete, Restore and New work on the desktop board. Nothing is built yet.
+**2026-10-19, in progress: both owner gates are passed; the build has started.**
+
+- **Gate 1:** the owner approved Profiles · desktop and Profiles · phone after one round of changes: the Brain tab, every machine by default, Add a file, and Allow, Ask or Off per tool (D67). Every board's sidebar now has the Profiles place.
+- **Gate 2:** goal 03's shared picker and composer sandbox chip stay; the approval card is to say where a command runs (step 14).
+- **The canvas** lives in the repo (`docs/magnesium/mockups/canvas/`); `vp run mocks` serves it.
 
 ## Next steps
 
-1. The owner approves the Profiles boards, or says what to change (gate 1), and accepts or rejects goal 03's board differences (gate 2).
-2. Once approved, every board's sidebar gains the Profiles place.
-3. Build: the profile service and its agent operations first, then the page.
+1. Build the profile service on the hub: read, create, change, delete and restore profiles, with the check before every save, history and delivery, and its agent operations, whose changes wait for the owner's approval.
+2. Then the page, at desktop and phone width, the per-tool permissions in each harness's settings, and the approval card's machine and sandbox.
