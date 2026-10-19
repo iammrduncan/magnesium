@@ -1,6 +1,6 @@
 # Magnesium mockups
 
-These are the 16 boards of the owner's mock canvas (D9), rendered on 2026-10-14 in their default state and light theme. They are **the UX target** for the build: each goal says which boards it makes real, and a goal is checked against its boards before it is done ([goals](goals/README.md), "Done means" 2).
+These are the 16 boards of the owner's mock canvas (D9), in their default state and light theme. The canvas lives in the repo, in [`mockups/canvas/`](mockups/canvas/): one `.dc.html` file per board, laid out by `canvas.json`. Run `vp run mocks` and open the printed address to click through every board, in light or dark; `vp run mocks:render` writes the images on this page from it. They are **the UX target** for the build: each goal says which boards it makes real, and a goal is checked against its boards before it is done ([goals](goals/README.md), "Done means" 2).
 
 **The boards are the target, not the code.** Components are built in the fork, on T3 Code's tokens ([doc 07](07-t3code-ux.md)), and compared with these images. Every number, name, machine, bot and project on the boards is invented **example data**.
 
@@ -251,4 +251,4 @@ The same web UI, installed as an app on the phone (D10). Goal 07 adds web push, 
 ## Keeping this page current
 
 - **When a goal makes a board real,** add a line under that board: the date, and how the built screen differs from the mock. The goal's summary has the screenshots and the full list of differences.
-- **When the canvas changes,** re-render the boards and replace the images here, keeping the file names. A redesign moves the canvas, not this page.
+- **When the canvas changes,** edit its board files in `mockups/canvas/`, run `vp run mocks:render` for the boards you changed, and commit both. A new board gets an entry in `canvas.json`, with the image name under `png`. A redesign moves the canvas, not this page.

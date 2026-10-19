@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Brain · document</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+.t3{--canvas:#fcfcfc;--sidebar:#fafafa;--surface:#ffffff;--fg:#27272a;--fg-strong:#18181b;--muted:#71717b;--subtle:#a1a1aa;--border:#e4e4e7;--hover:#f4f4f5;--sel:#e8eefc;--primary:#1b4ed8;--on-primary:#ffffff;--warn:#b45309;--info:#2563eb;--ok:#15803d;--err:#dc2626;--plan:#7c3aed;--shadow:0 1px 2px rgba(0,0,0,.04),0 10px 30px rgba(0,0,0,.07);color-scheme:light}
+.t3.dark{--canvas:#0a0a0a;--sidebar:#000000;--surface:#111111;--fg:#f5f5f5;--fg-strong:#ffffff;--muted:#8a8a8a;--subtle:#5c5c5c;--border:#1f1f1f;--hover:#171717;--sel:#14213f;--primary:#346bf1;--on-primary:#ffffff;--warn:#fbbf24;--info:#60a5fa;--ok:#4ade80;--err:#f87171;--plan:#c4b5fd;--shadow:0 10px 30px rgba(0,0,0,.5);color-scheme:dark}
+.t3 button{font:inherit;color:inherit;cursor:pointer}
+.t3 input{font:inherit;color:inherit}
+.hov:hover{background:var(--hover)}
+.pri:hover{filter:brightness(1.08)}
+.t3 :focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+</style>
+</helmet>
+<div class="t3 {{themeClass}}" style="display: flex; flex-wrap: wrap; min-height: 100vh; padding-bottom: 30px; box-sizing: border-box; background: var(--canvas); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5">
+
+  <aside style="flex: 0 0 256px; box-sizing: border-box; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 0 8px 12px; min-width: 0">
+    <div style="height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 6px">
+      <span style="width: 22px; height: 22px; border-radius: 6px; background: var(--fg-strong); color: var(--canvas); display: grid; place-items: center; font-size: 10px; font-weight: 700; letter-spacing: -0.02em">Mg</span>
+      <span style="font-weight: 600; font-size: 15px; color: var(--fg-strong); letter-spacing: -0.01em">Magnesium</span>
+    </div>
+    <nav aria-label="Places" style="display: flex; flex-direction: column; gap: 1px">
+      <a href="Main.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>
+        <span style="flex: 1">Home</span>
+        <span style="min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--warn); color: var(--canvas); font-size: 11px; font-weight: 600; display: grid; place-items: center">5</span>
+      </a>
+      <a href="Room.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"></path></svg>
+        <span style="flex: 1">Rooms</span><span style="font-size: 11px; color: var(--muted)">3</span>
+      </a>
+      <a href="Fleet.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="1.5"></rect><rect x="3" y="13" width="18" height="7" rx="1.5"></rect><path d="M7 7.5h.01M7 16.5h.01"></path></svg>
+        <span style="flex: 1">Fleet</span>
+      </a>
+      <a href="Apps.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+        <span style="flex: 1">Apps</span>
+      </a>
+      <a href="Brain.dc.html" aria-current="page" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; background: var(--hover); color: var(--fg-strong); font-weight: 500; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5a3 3 0 0 0-5.8 1A3 3 0 0 0 4 11a3 3 0 0 0 2 5 3 3 0 0 0 6 1Z"></path><path d="M12 5a3 3 0 0 1 5.8 1A3 3 0 0 1 20 11a3 3 0 0 1-2 5 3 3 0 0 1-6 1Z"></path></svg>
+        <span style="flex: 1">Brain</span>
+      </a>
+    </nav>
+    <div style="display: flex; align-items: center; gap: 6px; margin: 10px 0 4px; padding: 12px 4px 0 8px; border-top: 1px solid var(--border)">
+      <h2 style="margin: 0; flex: 1; font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase">Knowledge base</h2>
+      <span style="font-size: 11px; color: var(--subtle); font-variant-numeric: tabular-nums">1,284</span>
+      <a href="Brain.dc.html" class="hov" style="font-size: 11.5px; color: var(--primary); padding: 2px 6px; border-radius: 6px">Overview</a>
+    </div>
+    <div style="padding: 4px 0 6px">
+      <label for="kb-filter" style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--muted)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+        <input id="kb-filter" type="search" placeholder="Filter files" style="border: 0; outline: 0; background: transparent; width: 100%; font-size: 12.5px">
+      </label>
+    </div>
+    <div role="tree" aria-label="Files" style="display: flex; flex-direction: column; padding: 2px 0 16px; font-size: 13px">
+      <sc-for list="{{tree}}" as="n" hint-placeholder-count="18">
+        <sc-if value="{{n.isFolder}}" hint-placeholder-val="{{ true }}">
+          <button type="button" role="treeitem" class="hov" aria-expanded="{{n.expanded}}" onClick="{{n.toggle}}" style="{{n.rowStyle}}">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.6" stroke-linecap="round" aria-hidden="true" style="{{n.chevStyle}}"><path d="m9 6 6 6-6 6"></path></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2.5h8.5A1.5 1.5 0 0 1 21 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5Z"></path></svg>
+            <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-strong)">{{n.name}}</span>
+            <span style="font-size: 11px; color: var(--subtle); font-variant-numeric: tabular-nums">{{n.count}}</span>
+          </button>
+        </sc-if>
+        <sc-if value="{{n.isFile}}" hint-placeholder-val="{{ false }}">
+          <button type="button" role="treeitem" aria-selected="{{n.selected}}" onClick="{{n.pick}}" class="{{n.hovClass}}" style="{{n.rowStyle}}">
+            <span style="width: 11px; flex: none"></span>
+            <span style="{{n.badge}}">{{n.ext}}</span>
+            <span style="{{n.nameStyle}}">{{n.name}}</span>
+            <sc-if value="{{n.isNew}}" hint-placeholder-val="{{ false }}"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--info); flex: none" title="Added today"></span></sc-if>
+          </button>
+        </sc-if>
+      </sc-for>
+    </div>
+    <div style="margin-top: auto; padding: 12px 8px 0; display: flex; gap: 14px; font-size: 12px; color: var(--muted)"><span>Settings</span><span>Usage</span></div>
+  </aside>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; background: var(--surface)">
+    <header style="min-height: 52px; box-sizing: border-box; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 20px">
+      <nav aria-label="Path" style="flex: 1; min-width: 200px; display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); overflow: hidden; white-space: nowrap">
+        <a href="Brain.dc.html" style="color: var(--muted)">Brain</a><span style="color: var(--subtle)">/</span>
+        <sc-for list="{{crumbs}}" as="c" hint-placeholder-count="3">
+          <span>{{c.name}}</span><span style="color: var(--subtle)">/</span>
+        </sc-for>
+        <span style="color: var(--fg-strong); font-weight: 500; overflow: hidden; text-overflow: ellipsis">{{doc.file}}</span>
+      </nav>
+      <button type="button" class="hov" style="height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 12.5px">Open source</button>
+      <a href="Session.dc.html" class="pri" style="height: 30px; padding: 0 12px; border-radius: 8px; background: var(--primary); color: var(--on-primary); font-size: 12.5px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>
+        Ask about this
+      </a>
+    </header>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 32px; padding: 28px 32px 64px; align-items: flex-start">
+      <article style="flex: 3 1 460px; min-width: 0; max-width: 720px; display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
+          <span style="{{doc.badge}}">{{doc.ext}}</span>
+          <span style="font-size: 12px; color: var(--muted)">{{doc.meta}}</span>
+        </div>
+        <h1 style="margin: 0; font-size: 26px; line-height: 1.25; font-weight: 600; color: var(--fg-strong); letter-spacing: -0.015em">{{doc.title}}</h1>
+        <div style="background: var(--hover); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted)">Brain summary</span>
+          <p style="margin: 0; font-size: 14px; color: var(--fg)">{{doc.summary}}</p>
+        </div>
+        <sc-for list="{{doc.sections}}" as="s" hint-placeholder-count="3">
+          <section style="display: flex; flex-direction: column; gap: 6px">
+            <h2 style="margin: 8px 0 0; font-size: 16px; font-weight: 600; color: var(--fg-strong)">{{s.h}}</h2>
+            <p style="margin: 0; font-size: 14.5px; line-height: 1.65; color: var(--fg)">{{s.p}}</p>
+          </section>
+        </sc-for>
+        <sc-if value="{{doc.hasQuote}}" hint-placeholder-val="{{ false }}">
+          <blockquote style="margin: 4px 0 0; padding: 4px 0 4px 14px; border-left: 2px solid var(--border); font-size: 14px; color: var(--muted)">{{doc.quote}}</blockquote>
+        </sc-if>
+      </article>
+
+      <aside style="flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 20px; font-size: 13px">
+        <section aria-labelledby="props-h" style="display: flex; flex-direction: column; gap: 6px">
+          <h3 id="props-h" style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted)">Properties</h3>
+          <sc-for list="{{doc.props}}" as="p" hint-placeholder-count="4">
+            <div style="display: flex; gap: 10px"><span style="width: 76px; flex: none; color: var(--muted)">{{p.k}}</span><span style="flex: 1; min-width: 0; color: var(--fg)">{{p.v}}</span></div>
+          </sc-for>
+        </section>
+        <section aria-labelledby="tags-h" style="display: flex; flex-direction: column; gap: 6px">
+          <h3 id="tags-h" style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted)">Topics</h3>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px">
+            <sc-for list="{{doc.tags}}" as="t" hint-placeholder-count="3"><span style="height: 24px; padding: 0 9px; border: 1px solid var(--border); border-radius: 12px; display: inline-flex; align-items: center; font-size: 12px">{{t.name}}</span></sc-for>
+          </div>
+        </section>
+        <section aria-labelledby="links-h" style="display: flex; flex-direction: column; gap: 4px">
+          <h3 id="links-h" style="margin: 0 0 2px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted)">Linked from · {{doc.backCount}}</h3>
+          <sc-for list="{{doc.backlinks}}" as="b" hint-placeholder-count="4">
+            <button type="button" class="hov" onClick="{{b.go}}" style="display: flex; flex-direction: column; gap: 1px; padding: 6px 8px; margin: 0 -8px; border: 0; border-radius: 8px; background: transparent; text-align: left">
+              <span style="color: var(--fg-strong)">{{b.name}}</span>
+              <span style="font-size: 12px; color: var(--muted)">{{b.why}}</span>
+            </button>
+          </sc-for>
+        </section>
+        <section aria-labelledby="mem-h" style="display: flex; flex-direction: column; gap: 6px">
+          <h3 id="mem-h" style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted)">Memories from this</h3>
+          <sc-for list="{{doc.memories}}" as="m" hint-placeholder-count="2">
+            <p style="margin: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; font-size: 12.5px">{{m.text}}</p>
+          </sc-for>
+          <sc-if value="{{doc.noMemories}}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 12.5px; color: var(--muted)">None yet. The next dream cycle may propose some.</p></sc-if>
+        </section>
+      </aside>
+    </div>
+  </main>
+  <dc-import name="Footer" theme="{{themeName}}" hint-size="100%,30px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  st() { return Object.assign({ sel: 'sparse', open: { papers: true, oct: true, repos: true, harness: true, docs: true, notes: false, sessions: false, feeds: false, sept: false } }, this.state || {}); }
+
+  renderVals() {
+    const s = this.st();
+    const dark = (this.props.theme ?? 'light') === 'dark';
+    const extColor = { pdf: '#b91c1c', md: '#334155', log: '#7c3aed', post: '#0e7490' };
+
+    const docs = {
+      sparse: { file: 'sparse-attention-128k.pdf', ext: 'pdf', path: ['Papers', '2026-10'], title: 'Sparse attention at 128k',
+        meta: '14 pages · added 4m ago by Ingest Queue',
+        summary: 'Compares block-sparse and sliding-window attention past 64k tokens. Block-sparse keeps recall within 2 points of dense attention at 128k while using about a third of the memory.',
+        sections: [
+          { h: 'Setup', p: 'Three attention variants are trained on the same 7B base and evaluated on retrieval and long-document QA from 8k to 128k tokens. Batch size and learning rate are held fixed across runs.' },
+          { h: 'Findings', p: 'Sliding-window attention falls off sharply after 32k on retrieval tasks. Block-sparse with 4 global tokens per block holds up through 128k. Most of the memory saving comes from not materialising the full score matrix.' },
+          { h: 'Limits', p: 'Results are for a single model size, and the needle tests use synthetic text. The authors flag that the block size was tuned on the eval set.' }
+        ],
+        quote: 'Block-sparse attention recovers 97% of dense recall at 128k with 0.34× the activation memory.',
+        props: [ { k: 'Source', v: 'Ingest Queue · October papers' }, { k: 'Added', v: 'Today 13:52' }, { k: 'Embedded', v: 'Yes · 61 chunks' }, { k: 'Linked', v: 'Not yet (dream cycle failed)' } ],
+        tags: ['long context', 'attention', 'KV cache'],
+        backlinks: [ { id: 'kv', name: 'KV cache eviction policies', why: 'Cites the same memory baseline' }, { id: 'evalnote', name: 'Long-context eval plan', why: 'Lists this as background reading' }, { id: 'session48', name: 'Which eval set for the long-context run?', why: 'Mentioned by research, 14m ago' } ],
+        memories: [ 'Block-sparse attention is the default to try for runs past 64k.' ] },
+      kv: { file: 'kv-cache-eviction.pdf', ext: 'pdf', path: ['Papers', '2026-10'], title: 'KV cache eviction policies',
+        meta: '22 pages · added 9m ago by Ingest Queue',
+        summary: 'Surveys eviction policies for the KV cache during long generation. Attention-score-based eviction beats recency on QA, but costs extra bookkeeping per step.',
+        sections: [ { h: 'Policies compared', p: 'Recency (sliding window), attention-score heavy hitters, and a learned scorer are compared at fixed cache budgets of 10%, 20% and 50%.' }, { h: 'Takeaway', p: 'At a 20% budget, heavy-hitter eviction keeps most of the QA accuracy. Recency alone loses facts from early in the context.' } ],
+        quote: '',
+        props: [ { k: 'Source', v: 'Ingest Queue · October papers' }, { k: 'Added', v: 'Today 13:47' }, { k: 'Embedded', v: 'Yes · 88 chunks' } ],
+        tags: ['KV cache', 'serving'], backlinks: [ { id: 'sparse', name: 'Sparse attention at 128k', why: 'Shares the memory baseline' } ], memories: [] },
+      evalnote: { file: 'long-context-eval-plan.md', ext: 'md', path: ['Notes'], title: 'Long-context eval plan',
+        meta: 'Note · edited yesterday by research',
+        summary: 'Plan for the long-context eval run: which suites to use, sample sizes, and what counts as a regression.',
+        sections: [ { h: 'Suites', p: 'Long-context suite A covers 8k to 128k. Needle tests are a fast smoke check. Run both before any serving change.' } ],
+        quote: '', props: [ { k: 'Source', v: 'Written in Magnesium' }, { k: 'Edited', v: 'Yesterday 17:20' } ], tags: ['evals', 'long context'],
+        backlinks: [ { id: 'sparse', name: 'Sparse attention at 128k', why: 'Background reading' } ], memories: [ 'For long-context runs, default to Long-context suite A.' ] },
+      readme: { file: 'README.md', ext: 'md', path: ['Repos', 'harness', 'docs'], title: 'harness/server',
+        meta: 'Repo file · mirrored 1h ago by Repo crawl',
+        summary: 'Overview of the harness server: the room router, the session store and the job runner.',
+        sections: [ { h: 'Layout', p: 'The server is split into router, store and jobs packages. Each job runs in its own container on the host that owns it.' } ],
+        quote: '', props: [ { k: 'Source', v: 'Repo crawl · github mirror' }, { k: 'Commit', v: 'a41c9e2' } ], tags: ['room router'], backlinks: [], memories: [] },
+      router: { file: 'room-router.md', ext: 'md', path: ['Repos', 'harness', 'docs'], title: 'Room router',
+        meta: 'Repo file · mirrored 1h ago by Repo crawl',
+        summary: 'How messages in a room are routed to profiles, and when a question is passed to the owner.',
+        sections: [ { h: 'Hops', p: 'A message can hop between profiles at most 3 times before it is routed to the owner.' } ],
+        quote: '', props: [ { k: 'Source', v: 'Repo crawl · github mirror' }, { k: 'Commit', v: 'a41c9e2' } ], tags: ['room router'], backlinks: [ { id: 'readme', name: 'harness/server', why: 'Links to this page' } ], memories: [] }
+    };
+    const doc0 = docs[s.sel] || docs.sparse;
+
+    const T = [
+      { id: 'papers', name: 'Papers', count: '412', depth: 0, folder: true },
+      { id: 'oct', name: '2026-10', count: '58', depth: 1, folder: true, parent: 'papers' },
+      { id: 'sparse', depth: 2, parent: 'oct', isNew: true },
+      { id: 'kv', depth: 2, parent: 'oct', isNew: true },
+      { id: 'x1', name: 'ring-attention-revisited.pdf', ext: 'pdf', depth: 2, parent: 'oct' },
+      { id: 'x2', name: 'speculative-decoding-survey.pdf', ext: 'pdf', depth: 2, parent: 'oct' },
+      { id: 'sept', name: '2026-09', count: '71', depth: 1, folder: true, parent: 'papers' },
+      { id: 'repos', name: 'Repos', count: '318', depth: 0, folder: true },
+      { id: 'harness', name: 'harness', count: '64', depth: 1, folder: true, parent: 'repos' },
+      { id: 'docs', name: 'docs', count: '9', depth: 2, folder: true, parent: 'harness' },
+      { id: 'readme', depth: 3, parent: 'docs' },
+      { id: 'router', depth: 3, parent: 'docs' },
+      { id: 'x3', name: 'session-store.md', ext: 'md', depth: 3, parent: 'docs' },
+      { id: 'sessions', name: 'Sessions', count: '296', depth: 0, folder: true },
+      { id: 'feeds', name: 'Social feeds', count: '181', depth: 0, folder: true },
+      { id: 'notes', name: 'Notes', count: '77', depth: 0, folder: true },
+      { id: 'evalnote', depth: 1, parent: 'notes' }
+    ];
+    const parentOf = {}; T.forEach((n) => { parentOf[n.id] = n.parent; });
+    const visible = (n) => { let p = n.parent; while (p) { if (!s.open[p]) return false; p = parentOf[p]; } return true; };
+    const tree = T.filter(visible).map((n) => {
+      const pad = 'padding-left: ' + (6 + n.depth * 14) + 'px';
+      if (n.folder) {
+        const o = !!s.open[n.id];
+        return { isFolder: true, isFile: false, name: n.name, count: n.count, expanded: String(o),
+          toggle: () => { const op = Object.assign({}, this.st().open); op[n.id] = !o; this.setState({ open: op }); },
+          chevStyle: 'flex: none; transition: transform .12s; transform: rotate(' + (o ? 90 : 0) + 'deg)',
+          rowStyle: 'display: flex; align-items: center; gap: 6px; height: 28px; padding-right: 8px; border: 0; border-radius: 7px; background: transparent; text-align: left; font-size: 13px; ' + pad };
+      }
+      const d = docs[n.id];
+      const name = d ? d.file : n.name, ext = d ? d.ext : n.ext;
+      const sel = s.sel === n.id;
+      return { isFolder: false, isFile: true, name: name, ext: ext, isNew: !!n.isNew, selected: String(sel), hovClass: sel ? '' : 'hov',
+        pick: () => { if (docs[n.id]) this.setState({ sel: n.id }); },
+        badge: 'flex: none; width: 28px; text-align: center; font-size: 9px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; border-radius: 4px; padding: 1px 0; color: #ffffff; background: ' + extColor[ext],
+        nameStyle: 'flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; ' + (sel ? 'color: var(--fg-strong); font-weight: 600' : 'color: var(--fg)'),
+        rowStyle: 'display: flex; align-items: center; gap: 6px; height: 28px; padding-right: 8px; border: 0; border-radius: 7px; text-align: left; font-size: 13px; ' + pad + '; ' + (sel ? 'background: var(--sel); box-shadow: inset 2px 0 0 var(--primary)' : 'background: transparent') };
+    });
+
+    const doc = Object.assign({}, doc0, {
+      badge: 'font-size: 10px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; border-radius: 4px; padding: 2px 6px; color: #ffffff; background: ' + extColor[doc0.ext],
+      hasQuote: !!doc0.quote,
+      tags: doc0.tags.map((t) => ({ name: t })),
+      backCount: String(doc0.backlinks.length),
+      backlinks: doc0.backlinks.map((b) => Object.assign({}, b, { go: () => { if (docs[b.id]) this.setState({ sel: b.id }); } })),
+      memories: doc0.memories.map((m) => ({ text: m })), noMemories: doc0.memories.length === 0
+    });
+
+    return {
+      themeClass: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light',
+      tree: tree, doc: doc, crumbs: doc0.path.map((p) => ({ name: p }))
+    };
+  }
+}
+</script>
+</body>
+</html>

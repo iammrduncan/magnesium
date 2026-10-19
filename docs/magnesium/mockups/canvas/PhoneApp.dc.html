@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GPU Board on the phone</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+.ph{--screen:#fcfcfc;--card:#ffffff;--fg:#27272a;--fg-strong:#18181b;--muted:#71717b;--subtle:#a1a1aa;--border:#e4e4e7;--hover:#f4f4f5;--primary:#1b4ed8;--on-primary:#ffffff;--warn:#b45309;--warn-wash:#fffbeb;--info:#2563eb;--info-wash:#dbeafe;--ok:#15803d;--err:#dc2626;--glass:rgba(252,252,252,.86);--scrim:rgba(0,0,0,.28);--shadow:0 8px 28px rgba(0,0,0,.10);color-scheme:light}
+.ph.dark{--screen:#0a0a0a;--card:#111111;--fg:#f5f5f5;--fg-strong:#ffffff;--muted:#8a8a8a;--subtle:#5c5c5c;--border:#1f1f1f;--hover:#161616;--primary:#346bf1;--on-primary:#ffffff;--warn:#fbbf24;--warn-wash:#1f1705;--info:#60a5fa;--info-wash:#0f1a33;--ok:#4ade80;--err:#f87171;--glass:rgba(10,10,10,.86);--scrim:rgba(0,0,0,.6);--shadow:0 8px 28px rgba(0,0,0,.6);color-scheme:dark}
+.ph button{font:inherit;color:inherit;cursor:pointer}
+.ph :focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+</style>
+</helmet>
+<div class="ph {{themeClass}}" style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: var(--screen); color: var(--fg); font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.45">
+
+  <div style="position: absolute; left: 0; right: 0; top: 0; z-index: 2; padding: 50px 8px 8px; display: flex; align-items: center; gap: 6px; background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--border)">
+    <a href="Phone.dc.html" aria-label="Back" style="width: 44px; height: 44px; display: grid; place-items: center; color: var(--primary)">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>
+    </a>
+    <span style="width: 28px; height: 28px; border-radius: 8px; background: #2563eb; color: #ffffff; display: grid; place-items: center; font-size: 13px; font-weight: 700">G</span>
+    <div style="flex: 1; min-width: 0">
+      <div style="font-size: 16px; font-weight: 700; color: var(--fg-strong)">GPU Board</div>
+      <div style="font-size: 12px; color: var(--muted)">MCP app · by ops</div>
+    </div>
+    <button type="button" onClick="{{togglePin}}" aria-pressed="{{pinPressed}}" aria-label="{{pinLabel}}" style="width: 44px; height: 44px; border: 0; background: transparent; display: grid; place-items: center">
+      <svg width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke-linejoin="round" aria-hidden="true" style="{{starStyle}}"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"></path></svg>
+    </button>
+  </div>
+
+  <div style="height: 100%; overflow-y: auto; padding: 126px 16px 40px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px">
+    <div role="group" aria-label="Time range" style="display: flex; padding: 3px; border-radius: 12px; background: var(--hover)">
+      <sc-for list="{{ranges}}" as="r" hint-placeholder-count="3">
+        <button type="button" aria-pressed="{{r.pressed}}" onClick="{{r.pick}}" style="{{r.style}}">{{r.label}}</button>
+      </sc-for>
+    </div>
+
+    <section style="background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 8px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline"><h2 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--fg-strong)">gpu-a use</h2><span style="font-size: 22px; font-weight: 700; color: var(--info); font-variant-numeric: tabular-nums">78%</span></div>
+      <div style="display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 6px">
+        <div style="display: flex; flex-direction: column; justify-content: space-between; height: 110px; font-size: 10.5px; color: var(--muted); text-align: right"><span>100</span><span>50</span><span>0</span></div>
+        <div style="position: relative; height: 110px; border-left: 1px solid var(--border); border-bottom: 1px solid var(--border)">
+          <div style="position: absolute; left: 0; right: 0; top: 55px; border-top: 1px dashed var(--border)"></div>
+          <div style="position: absolute; inset: 0 2px 0 3px; display: flex; align-items: flex-end; gap: 2px">
+            <sc-for list="{{bars}}" as="b" hint-placeholder-count="24"><div style="{{b.style}}"></div></sc-for>
+          </div>
+        </div>
+        <span></span>
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--muted)"><span>{{rangeStart}}</span><span>now</span></div>
+      </div>
+    </section>
+
+    <section style="background: var(--card); border: 1px solid var(--border); border-radius: 20px; overflow: hidden">
+      <sc-for list="{{cards}}" as="c" hint-placeholder-count="6">
+        <div style="display: grid; grid-template-columns: 88px minmax(0, 1fr) 72px; gap: 10px; align-items: center; min-height: 48px; padding: 0 14px; border-top: {{c.border}}; font-size: 14px">
+          <span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12.5px; color: var(--muted)">{{c.id}}</span>
+          <span style="display: block; height: 8px; border-radius: 4px; background: var(--hover); overflow: hidden"><span style="{{c.bar}}"></span></span>
+          <span style="{{c.labelStyle}}">{{c.label}}</span>
+        </div>
+      </sc-for>
+    </section>
+
+    <button type="button" onClick="{{openSheet}}" style="height: 52px; border: 0; border-radius: 16px; background: var(--primary); color: var(--on-primary); font-size: 16px; font-weight: 700">{{reserveText}}</button>
+    <sc-if value="{{hasResult}}" hint-placeholder-val="{{ false }}">
+      <div role="status" style="font-size: 14px; border-radius: 14px; padding: 12px 14px; background: var(--hover)">{{result}}</div>
+    </sc-if>
+    <p style="margin: 0; font-size: 12px; color: var(--subtle); text-align: center">Sandboxed app · example data · no backend</p>
+  </div>
+
+  <sc-if value="{{sheetOpen}}" hint-placeholder-val="{{ false }}">
+    <button type="button" onClick="{{closeSheet}}" aria-label="Close" style="position: absolute; inset: 0; border: 0; background: var(--scrim); padding: 0"></button>
+    <div role="dialog" aria-label="Approve the app action" style="position: absolute; left: 0; right: 0; bottom: 0; background: var(--card); border-radius: 24px 24px 0 0; box-shadow: var(--shadow); padding: 8px 16px 28px; display: flex; flex-direction: column; gap: 12px">
+      <span style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: var(--border)"></span>
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; color: var(--warn)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2.5 20h19Z"></path><path d="M12 10v4M12 17h.01"></path></svg>
+        GPU Board wants to run an action
+      </div>
+      <p style="margin: 0">Reserve 2 GPUs on gpu-b for research until 18:00.</p>
+      <pre style="margin: 0; padding: 10px 12px; background: var(--hover); border-radius: 12px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere">reserve_gpus(machine: "gpu-b", count: 2, profile: "research")</pre>
+      <div style="display: flex; gap: 8px">
+        <button type="button" onClick="{{decline}}" style="flex: 1; height: 50px; border: 1px solid var(--border); background: var(--card); border-radius: 14px; font-size: 16px; font-weight: 500">Decline</button>
+        <button type="button" onClick="{{approve}}" style="flex: 1; height: 50px; border: 0; background: var(--primary); color: var(--on-primary); border-radius: 14px; font-size: 16px; font-weight: 700">Approve</button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  st() { return Object.assign({ range: '6h', pinned: true, sheet: false, outcome: null }, this.state || {}); }
+
+  renderVals() {
+    const s = this.st();
+    const dark = (this.props.theme ?? 'light') === 'dark';
+    const series = {
+      '1h': [72, 75, 74, 78, 80, 77, 79, 81, 78, 76, 79, 82, 80, 78, 77, 79, 81, 80, 78, 79, 77, 78, 80, 78],
+      '6h': [12, 10, 14, 35, 62, 70, 74, 71, 76, 78, 75, 73, 79, 81, 77, 74, 76, 80, 78, 75, 77, 79, 76, 78],
+      '24h': [8, 6, 5, 5, 4, 6, 20, 45, 66, 72, 70, 74, 68, 40, 22, 18, 35, 60, 71, 76, 79, 77, 80, 78]
+    };
+    const bars = series[s.range].map((v, i) => ({ style: 'flex: 1; min-width: 0; height: ' + v + '%; border-radius: 2px 2px 0 0; background: ' + (i === 23 ? 'var(--info)' : 'var(--info-wash)') + (i === 23 ? '' : '; box-shadow: inset 0 1.5px 0 var(--info)') }));
+    const ranges = ['1h', '6h', '24h'].map((r) => ({
+      label: r, pressed: String(s.range === r), pick: () => this.setState({ range: r }),
+      style: 'flex: 1; min-height: 36px; border: 0; border-radius: 9px; font-size: 14px; ' + (s.range === r ? 'background: var(--card); color: var(--fg-strong); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.08)' : 'background: transparent; color: var(--muted); font-weight: 500')
+    }));
+    const reserved = s.outcome === 'approved';
+    const card = (id, used, label, warn) => ({ id: id, label: label, bar: 'display: block; height: 8px; width: ' + Math.max(used, 1) + '%; background: ' + (warn ? 'var(--warn)' : 'var(--info)'), labelStyle: 'text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: ' + (warn ? 'var(--warn)' : 'var(--muted)') + (warn ? '; font-weight: 700' : '') });
+    const cards = [
+      card('gpu-a:0', 81, '81%'), card('gpu-a:1', 75, '75%'),
+      reserved ? card('gpu-b:0', 0, 'reserved', true) : card('gpu-b:0', 0, 'free'),
+      reserved ? card('gpu-b:1', 0, 'reserved', true) : card('gpu-b:1', 0, 'free'),
+      card('gpu-b:2', 0, 'free'), card('gpu-b:3', 0, 'free')
+    ].map((c, i) => Object.assign({}, c, { border: i === 0 ? '0' : '1px solid var(--border)' }));
+    return {
+      themeClass: dark ? 'dark' : '',
+      ranges: ranges, bars: bars, rangeStart: { '1h': '60 min ago', '6h': '6 h ago', '24h': '24 h ago' }[s.range],
+      cards: cards,
+      pinPressed: String(s.pinned), pinLabel: s.pinned ? 'Unpin GPU Board' : 'Pin GPU Board',
+      starStyle: s.pinned ? 'fill: var(--warn); stroke: var(--warn)' : 'fill: none; stroke: var(--muted)',
+      togglePin: () => this.setState({ pinned: !this.st().pinned }),
+      reserveText: reserved ? 'Reserve more GPUs' : 'Reserve 2 GPUs on gpu-b',
+      openSheet: () => this.setState({ sheet: true }), closeSheet: () => this.setState({ sheet: false }),
+      sheetOpen: s.sheet,
+      approve: () => this.setState({ sheet: false, outcome: 'approved' }),
+      decline: () => this.setState({ sheet: false, outcome: 'declined' }),
+      hasResult: !!s.outcome,
+      result: reserved ? 'Reserved gpu-b:0,1 for research until 18:00.' : 'Declined. Nothing was reserved.'
+    };
+  }
+}
+</script>
+</body>
+</html>

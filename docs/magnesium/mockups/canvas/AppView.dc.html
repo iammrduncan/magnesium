@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GPU Board</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+.t3{--canvas:#fcfcfc;--sidebar:#fafafa;--surface:#ffffff;--fg:#27272a;--fg-strong:#18181b;--muted:#71717b;--subtle:#a1a1aa;--border:#e4e4e7;--hover:#f4f4f5;--primary:#1b4ed8;--primary-wash:#eef2ff;--on-primary:#ffffff;--warn:#b45309;--warn-wash:#fffbeb;--input:#4f46e5;--info:#2563eb;--info-wash:#dbeafe;--ok:#15803d;--ok-wash:#ecfdf3;--err:#dc2626;--plan:#7c3aed;--shadow:0 1px 2px rgba(0,0,0,.04),0 10px 30px rgba(0,0,0,.07);color-scheme:light}
+.t3.dark{--canvas:#0a0a0a;--sidebar:#000000;--surface:#111111;--fg:#f5f5f5;--fg-strong:#ffffff;--muted:#8a8a8a;--subtle:#5c5c5c;--border:#1f1f1f;--hover:#171717;--primary:#346bf1;--primary-wash:#0f1a33;--on-primary:#ffffff;--warn:#fbbf24;--warn-wash:#1f1705;--input:#a5b4fc;--info:#60a5fa;--info-wash:#0f1a33;--ok:#4ade80;--ok-wash:#0b1f13;--err:#f87171;--plan:#c4b5fd;--shadow:0 10px 30px rgba(0,0,0,.5);color-scheme:dark}
+.t3 button{font:inherit;color:inherit;cursor:pointer}
+.hov:hover{background:var(--hover)}
+.pri:hover{filter:brightness(1.08)}
+.t3 :focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+</style>
+</helmet>
+<div class="t3 {{themeClass}}" style="display: flex; flex-wrap: wrap; min-height: 100vh; padding-bottom: 30px; box-sizing: border-box; background: var(--canvas); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5">
+
+  <aside style="flex: 0 0 256px; box-sizing: border-box; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 0 8px 12px; min-width: 0">
+    <div style="height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 6px">
+      <span style="width: 22px; height: 22px; border-radius: 6px; background: var(--fg-strong); color: var(--canvas); display: grid; place-items: center; font-size: 10px; font-weight: 700; letter-spacing: -0.02em">Mg</span>
+      <span style="font-weight: 600; font-size: 15px; color: var(--fg-strong); letter-spacing: -0.01em">Magnesium</span>
+    </div>
+    <nav aria-label="Places" style="display: flex; flex-direction: column; gap: 1px; padding-bottom: 10px; border-bottom: 1px solid var(--border)">
+      <a href="Main.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>
+        <span style="flex: 1">Home</span>
+        <span style="min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--warn); color: var(--canvas); font-size: 11px; font-weight: 600; display: grid; place-items: center">5</span>
+      </a>
+      <a href="Room.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"></path></svg>
+        <span style="flex: 1">Rooms</span><span style="font-size: 11px; color: var(--muted)">3</span>
+      </a>
+      <a href="Fleet.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="1.5"></rect><rect x="3" y="13" width="18" height="7" rx="1.5"></rect><path d="M7 7.5h.01M7 16.5h.01"></path></svg>
+        <span style="flex: 1">Fleet</span>
+      </a>
+      <a href="Apps.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+        <span style="flex: 1">Apps</span>
+      </a>
+      <a href="Brain.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5a3 3 0 0 0-5.8 1A3 3 0 0 0 4 11a3 3 0 0 0 2 5 3 3 0 0 0 6 1Z"></path><path d="M12 5a3 3 0 0 1 5.8 1A3 3 0 0 1 20 11a3 3 0 0 1-2 5 3 3 0 0 1-6 1Z"></path></svg>
+        <span style="flex: 1">Brain</span>
+      </a>
+    </nav>
+    <p style="margin: 14px 8px 6px; font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase">Pinned apps</p>
+    <a href="AppView.dc.html" aria-current="page" style="display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 8px; border-radius: 8px; font-size: 13px; background: var(--hover); color: var(--fg-strong); font-weight: 500">
+      <span style="flex: none; width: 20px; height: 20px; border-radius: 6px; background: #2563eb; color: #ffffff; display: grid; place-items: center; font-size: 9px; font-weight: 700">G</span><span style="flex: 1">GPU Board</span>
+    </a>
+    <a href="Apps.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+      <span style="flex: none; width: 20px; height: 20px; border-radius: 6px; background: #be185d; color: #ffffff; display: grid; place-items: center; font-size: 9px; font-weight: 700">K</span><span style="flex: 1">KB Explorer</span>
+    </a>
+    <a href="Apps.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+      <span style="flex: none; width: 20px; height: 20px; border-radius: 6px; background: #0e7490; color: #ffffff; display: grid; place-items: center; font-size: 9px; font-weight: 700">E</span><span style="flex: 1">Eval Leaderboard</span>
+    </a>
+    <a href="Apps.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+      <span style="flex: none; width: 20px; height: 20px; border-radius: 6px; background: #c2410c; color: #ffffff; display: grid; place-items: center; font-size: 9px; font-weight: 700">S</span><span style="flex: 1">Serving Console</span>
+    </a>
+  </aside>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="min-height: 52px; box-sizing: border-box; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 8px 16px">
+      <a href="Apps.dc.html" style="font-size: 13px; color: var(--muted)">Apps</a>
+      <span style="color: var(--subtle)">›</span>
+      <span style="flex: none; width: 24px; height: 24px; border-radius: 7px; background: #2563eb; color: #ffffff; display: grid; place-items: center; font-size: 11px; font-weight: 700">G</span>
+      <div style="flex: 1; min-width: 200px">
+        <h1 style="margin: 0; font-size: 14px; font-weight: 600; color: var(--fg-strong)">GPU Board</h1>
+        <div style="font-size: 11.5px; color: var(--muted)">MCP app · served by gpu-monitor on gpu-a · built by ops · v0.3</div>
+      </div>
+      <button type="button" class="hov" onClick="{{togglePin}}" aria-pressed="{{pinPressed}}" style="height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px">
+        <svg width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke-linejoin="round" aria-hidden="true" style="{{starStyle}}"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"></path></svg>
+        {{pinText}}
+      </button>
+      <button type="button" class="hov" onClick="{{toggleAsk}}" aria-expanded="{{askExpanded}}" style="height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"></path></svg>
+        Ask about this
+      </button>
+    </header>
+
+    <div style="display: flex; flex-wrap: wrap; flex: 1; min-height: 0">
+      <div style="flex: 999 1 560px; min-width: 0; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+        <div style="border: 1px solid var(--border); border-radius: 16px; background: var(--surface); overflow: hidden; display: flex; flex-direction: column">
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--border); background: var(--hover); font-size: 11px; color: var(--muted); font-family: ui-monospace, 'SF Mono', Menlo, monospace">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6Z"></path></svg>
+            sandboxed app · reads fleet metrics · actions ask you first
+          </div>
+
+          <div style="padding: 16px; display: flex; flex-direction: column; gap: 16px">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+              <h2 style="margin: 0; font-size: 15px; font-weight: 600; color: var(--fg-strong); flex: 1">GPU use</h2>
+              <div role="group" aria-label="Time range" style="display: inline-flex; padding: 2px; border-radius: 8px; background: var(--hover)">
+                <sc-for list="{{ranges}}" as="r" hint-placeholder-count="3">
+                  <button type="button" aria-pressed="{{r.pressed}}" onClick="{{r.pick}}" style="{{r.style}}">{{r.label}}</button>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 8px">
+              <div style="display: flex; flex-direction: column; justify-content: space-between; height: 140px; font-size: 10.5px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums">
+                <span>100%</span><span>50%</span><span>0%</span>
+              </div>
+              <div style="position: relative; height: 140px; border-left: 1px solid var(--border); border-bottom: 1px solid var(--border)">
+                <div style="position: absolute; left: 0; right: 0; top: 0; border-top: 1px dashed var(--border)"></div>
+                <div style="position: absolute; left: 0; right: 0; top: 70px; border-top: 1px dashed var(--border)"></div>
+                <div style="position: absolute; inset: 0 4px 0 4px; display: flex; align-items: flex-end; gap: 3px">
+                  <sc-for list="{{bars}}" as="b" hint-placeholder-count="24">
+                    <div title="{{b.title}}" style="{{b.style}}"></div>
+                  </sc-for>
+                </div>
+              </div>
+              <span></span>
+              <div style="display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted)"><span>{{rangeStart}}</span><span>gpu-a, mean of both cards</span><span>now</span></div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 10px">
+              <sc-for list="{{machines}}" as="m" hint-placeholder-count="2">
+                <section style="border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px">
+                  <div style="display: flex; align-items: baseline; gap: 8px">
+                    <h3 style="margin: 0; font-size: 13.5px; font-weight: 600; color: var(--fg-strong)">{{m.name}}</h3>
+                    <span style="font-size: 12px; color: var(--muted)">{{m.spec}}</span>
+                    <span style="margin-left: auto; font-size: 12px; color: var(--muted)">{{m.free}}</span>
+                  </div>
+                  <sc-for list="{{m.gpus}}" as="g" hint-placeholder-count="2">
+                    <div style="display: grid; grid-template-columns: 44px minmax(0, 1fr) 96px; gap: 8px; align-items: center; font-size: 12px">
+                      <span style="color: var(--muted); font-family: ui-monospace, 'SF Mono', Menlo, monospace">{{g.id}}</span>
+                      <div style="height: 8px; border-radius: 4px; background: var(--hover); overflow: hidden"><div style="{{g.bar}}"></div></div>
+                      <span style="{{g.labelStyle}}">{{g.label}}</span>
+                    </div>
+                  </sc-for>
+                </section>
+              </sc-for>
+            </div>
+
+            <div style="border: 1px solid var(--border); border-radius: 12px; overflow-x: auto">
+              <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 520px">
+                <thead><tr style="text-align: left; color: var(--muted)"><th style="padding: 8px 12px; font-weight: 500">Job</th><th style="padding: 8px 12px; font-weight: 500">Profile</th><th style="padding: 8px 12px; font-weight: 500">GPUs</th><th style="padding: 8px 12px; font-weight: 500">State</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{jobs}}" as="j" hint-placeholder-count="3">
+                    <tr style="border-top: 1px solid var(--border)">
+                      <td style="padding: 8px 12px; color: var(--fg-strong)">{{j.name}}</td>
+                      <td style="padding: 8px 12px">{{j.profile}}</td>
+                      <td style="padding: 8px 12px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px">{{j.gpus}}</td>
+                      <td style="padding: 8px 12px"><span style="{{j.stateStyle}}">{{j.state}}</span></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+
+            <div style="border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+                <h3 style="margin: 0; font-size: 13.5px; font-weight: 600; color: var(--fg-strong); flex: 1">Reserve GPUs</h3>
+                <span style="font-size: 12px; color: var(--muted)">Runs <code style="font-family: ui-monospace, 'SF Mono', Menlo, monospace">reserve_gpus</code>, which asks you first</span>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px">
+                <span style="color: var(--muted)">2 GPUs on</span>
+                <span style="border: 1px solid var(--border); border-radius: 7px; padding: 3px 9px">gpu-b</span>
+                <span style="color: var(--muted)">for</span>
+                <span style="border: 1px solid var(--border); border-radius: 7px; padding: 3px 9px">research</span>
+                <span style="color: var(--muted)">until</span>
+                <span style="border: 1px solid var(--border); border-radius: 7px; padding: 3px 9px">18:00</span>
+                <button type="button" class="pri" onClick="{{request}}" style="{{requestStyle}}">{{requestText}}</button>
+              </div>
+              <sc-if value="{{pendingApproval}}" hint-placeholder-val="{{ false }}">
+                <div role="region" aria-label="Approval for the app" style="border-radius: 10px; background: var(--warn-wash); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px">
+                  <div style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--warn)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2.5 20h19Z"></path><path d="M12 10v4M12 17h.01"></path></svg>
+                    GPU Board wants to run an action
+                  </div>
+                  <pre style="margin: 0; padding: 6px 8px; border-radius: 7px; background: var(--surface); border: 1px solid var(--border); font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; white-space: pre-wrap">reserve_gpus(machine: "gpu-b", count: 2, profile: "research", until: "18:00")</pre>
+                  <div style="display: flex; gap: 8px; justify-content: flex-end">
+                    <button type="button" class="hov" onClick="{{decline}}" style="height: 30px; padding: 0 12px; border: 1px solid var(--border); background: var(--surface); border-radius: 8px; font-size: 12.5px">Decline</button>
+                    <button type="button" class="pri" onClick="{{approve}}" style="height: 30px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--primary); color: var(--on-primary); font-size: 12.5px; font-weight: 500">Approve</button>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{hasResult}}" hint-placeholder-val="{{ false }}">
+                <div role="status" style="font-size: 12.5px; border-radius: 8px; padding: 8px 10px; background: var(--hover)">{{result}}</div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+
+        <sc-if value="{{askOpen}}" hint-placeholder-val="{{ false }}">
+          <div style="border: 1px solid var(--border); border-radius: 22px; background: var(--surface); box-shadow: var(--shadow); padding: 10px 12px; display: flex; align-items: center; gap: 8px">
+            <span style="flex: none; width: 22px; height: 22px; border-radius: 6px; background: #4d7c0f; color: #ffffff; display: grid; place-items: center; font-size: 9px; font-weight: 700">OP</span>
+            <label for="ask-app" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Ask ops about GPU Board</label>
+            <input id="ask-app" type="text" placeholder="Ask ops about what GPU Board shows. The app's data goes along as context." style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 13.5px; color: var(--fg)">
+            <a href="Session.dc.html" aria-label="Send" style="width: 30px; height: 30px; border-radius: 15px; background: var(--fg-strong); color: var(--canvas); display: grid; place-items: center">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
+            </a>
+          </div>
+        </sc-if>
+      </div>
+
+      <aside aria-label="About this app" style="flex: 1 1 300px; max-width: 360px; min-width: 0; border-left: 1px solid var(--border); background: var(--surface); padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px">
+        <section style="display: flex; flex-direction: column; gap: 8px">
+          <h2 style="margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">What it can do</h2>
+          <sc-for list="{{tools}}" as="t" hint-placeholder-count="3">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px">
+              <code style="flex: 1; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px">{{t.name}}</code>
+              <span style="{{t.style}}">{{t.mode}}</span>
+            </div>
+          </sc-for>
+        </section>
+        <section style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border); padding-top: 14px">
+          <h2 style="margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Data it reads</h2>
+          <p style="margin: 0; font-size: 13px">GPU metrics from gpu-a and gpu-b, and the job list from the Magnesium server. Nothing from the KB.</p>
+        </section>
+        <section style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 14px">
+          <h2 style="margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Footer item</h2>
+          <div style="display: flex; align-items: center; gap: 10px">
+            <label for="footer-item" style="flex: 1; font-size: 13px">Show "GPU 78%" in the footer<br><span style="font-size: 12px; color: var(--muted)">Click it for a popover with each machine</span></label>
+            <button id="footer-item" type="button" role="switch" aria-checked="{{footerOn}}" onClick="{{toggleFooter}}" style="{{switchStyle}}"><span style="width: 18px; height: 18px; border-radius: 9px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,.2)"></span></button>
+          </div>
+        </section>
+        <section style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border); padding-top: 14px">
+          <h2 style="margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Made by</h2>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 13px">
+            <span style="flex: none; width: 22px; height: 22px; border-radius: 6px; background: #4d7c0f; color: #ffffff; display: grid; place-items: center; font-size: 9px; font-weight: 700">OP</span>
+            <span style="flex: 1">ops, in "Build a GPU dashboard"</span>
+            <a href="Session.dc.html" style="font-size: 12px; color: var(--primary)">Thread</a>
+          </div>
+          <dl style="margin: 4px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12.5px">
+            <dt style="color: var(--muted)">v0.3</dt><dd style="margin: 0">Today · added reservations</dd>
+            <dt style="color: var(--muted)">v0.2</dt><dd style="margin: 0">3 days ago · per-card memory</dd>
+            <dt style="color: var(--muted)">v0.1</dt><dd style="margin: 0">Last week · first version</dd>
+          </dl>
+        </section>
+        <p style="margin: 0; font-size: 11.5px; color: var(--subtle)">Example data · no backend.</p>
+      </aside>
+    </div>
+  </main>
+  <dc-import name="Footer" theme="{{themeName}}" gpu="{{footerProp}}" hint-size="100%,30px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  st() { return Object.assign({ range: '6h', pinned: true, ask: false, approval: 'none', footer: true }, this.state || {}); }
+
+  renderVals() {
+    const s = this.st();
+    const dark = (this.props.theme ?? 'light') === 'dark';
+    const series = {
+      '1h': [72, 75, 74, 78, 80, 77, 79, 81, 78, 76, 79, 82, 80, 78, 77, 79, 81, 80, 78, 79, 77, 78, 80, 78],
+      '6h': [12, 10, 14, 35, 62, 70, 74, 71, 76, 78, 75, 73, 79, 81, 77, 74, 76, 80, 78, 75, 77, 79, 76, 78],
+      '24h': [8, 6, 5, 5, 4, 6, 20, 45, 66, 72, 70, 74, 68, 40, 22, 18, 35, 60, 71, 76, 79, 77, 80, 78]
+    };
+    const starts = { '1h': '60 min ago', '6h': '6 h ago', '24h': '24 h ago' };
+    const bars = series[s.range].map((v, i) => ({
+      title: v + '%',
+      style: 'flex: 1; min-width: 0; height: ' + v + '%; border-radius: 3px 3px 0 0; background: ' + (i === 23 ? 'var(--info)' : 'var(--info-wash)') + (i === 23 ? '' : '; box-shadow: inset 0 1.5px 0 var(--info)')
+    }));
+    const seg = (on) => 'height: 26px; padding: 0 10px; border: 0; border-radius: 6px; font-size: 12px; ' + (on ? 'background: var(--surface); color: var(--fg-strong); font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,.08)' : 'background: transparent; color: var(--muted)');
+    const ranges = ['1h', '6h', '24h'].map((r) => ({ label: r, pressed: String(s.range === r), style: seg(s.range === r), pick: () => this.setState({ range: r }) }));
+    const reserved = s.approval === 'approved';
+    const gpuRow = (id, used, mem, note) => ({
+      id: id,
+      bar: 'height: 8px; width: ' + Math.max(used, 1) + '%; background: ' + (note ? 'var(--warn)' : 'var(--info)'),
+      label: note || used + '% · ' + mem,
+      labelStyle: 'font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; color: ' + (note ? 'var(--warn)' : 'var(--muted)') + (note ? '; font-weight: 600' : '')
+    });
+    const machines = [
+      { name: 'gpu-a', spec: '2 × 48 GB', free: '0 free', gpus: [gpuRow('gpu0', 81, '41/48 GB'), gpuRow('gpu1', 75, '39/48 GB')] },
+      { name: 'gpu-b', spec: '4 × 16 GB', free: reserved ? '2 free' : '4 free', gpus: [
+        reserved ? gpuRow('gpu0', 0, '', 'reserved') : gpuRow('gpu0', 0, '0/16 GB'),
+        reserved ? gpuRow('gpu1', 0, '', 'reserved') : gpuRow('gpu1', 0, '0/16 GB'),
+        gpuRow('gpu2', 0, '0/16 GB'), gpuRow('gpu3', 0, '0/16 GB')] }
+    ];
+    const st = (c, w) => 'font-weight: ' + (w || 500) + '; color: ' + c;
+    const jobs = [
+      { name: 'KV-cache sweep, batch 4', profile: 'research', gpus: 'gpu-a:0,1', state: '62% · 18 min left', stateStyle: st('var(--info)') },
+      { name: 'Serving deployment', profile: 'serving', gpus: 'gpu-a:0,1', state: 'Waiting for your approval', stateStyle: st('var(--warn)', 600) }
+    ].concat(reserved ? [{ name: 'Reservation until 18:00', profile: 'research', gpus: 'gpu-b:0,1', state: 'Reserved', stateStyle: st('var(--ok)') }] : []);
+    const tool = (name, mode, c) => ({ name: name, mode: mode, style: 'font-size: 11.5px; padding: 1px 7px; border-radius: 6px; border: 1px solid var(--border); color: ' + c });
+    return {
+      themeClass: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light',
+      ranges: ranges, bars: bars, rangeStart: starts[s.range],
+      machines: machines, jobs: jobs,
+      pinPressed: String(s.pinned), pinText: s.pinned ? 'Pinned' : 'Pin',
+      starStyle: s.pinned ? 'fill: var(--warn); stroke: var(--warn)' : 'fill: none; stroke: var(--muted)',
+      togglePin: () => this.setState({ pinned: !this.st().pinned }),
+      askOpen: s.ask, askExpanded: String(s.ask), toggleAsk: () => this.setState({ ask: !this.st().ask }),
+      pendingApproval: s.approval === 'pending',
+      request: () => { if (this.st().approval !== 'pending') this.setState({ approval: 'pending' }); },
+      requestText: s.approval === 'pending' ? 'Waiting for you' : reserved ? 'Reserve more' : 'Request',
+      requestStyle: 'margin-left: auto; height: 30px; padding: 0 14px; border: 0; border-radius: 8px; font-size: 12.5px; font-weight: 500; ' + (s.approval === 'pending' ? 'background: var(--hover); color: var(--muted)' : 'background: var(--primary); color: var(--on-primary)'),
+      approve: () => this.setState({ approval: 'approved' }),
+      decline: () => this.setState({ approval: 'declined' }),
+      hasResult: s.approval === 'approved' || s.approval === 'declined',
+      result: s.approval === 'approved' ? 'Reserved gpu-b:0,1 for research until 18:00. The app logged the action in the ops thread.' : 'Declined. Nothing was reserved.',
+      tools: [ tool('list_gpus', 'reads', 'var(--muted)'), tool('gpu_history', 'reads', 'var(--muted)'), tool('reserve_gpus', 'asks first', 'var(--warn)') ],
+      footerProp: s.footer ? 'on' : 'off',
+      footerOn: String(s.footer), toggleFooter: () => this.setState({ footer: !this.st().footer }),
+      switchStyle: 'flex: none; width: 36px; height: 22px; border-radius: 11px; border: 0; padding: 2px; display: flex; ' + (s.footer ? 'background: var(--primary); justify-content: flex-end' : 'background: var(--border); justify-content: flex-start')
+    };
+  }
+}
+</script>
+</body>
+</html>

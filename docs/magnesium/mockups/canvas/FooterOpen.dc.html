@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Footer · popover open</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="{{rootStyle}}">
+  <footer aria-label="Status bar" style="position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; height: 30px; box-sizing: border-box; display: flex; align-items: center; gap: 2px; padding: 0 8px; background: var(--f-bar); border-top: 1px solid var(--f-border); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 12px; line-height: 1; color: var(--f-muted)">
+    <sc-for list="{{items}}" as="it" hint-placeholder-count="6">
+      <sc-if value="{{it.isSpacer}}" hint-placeholder-val="{{ false }}"><span style="flex: 1"></span></sc-if>
+      <sc-if value="{{it.isItem}}" hint-placeholder-val="{{ true }}">
+        <div style="position: relative; display: flex; align-items: center; height: 100%">
+          <button type="button" onClick="{{it.toggle}}" aria-expanded="{{it.expanded}}" aria-haspopup="dialog" title="{{it.title}}" style="{{it.btnStyle}}">
+            <span style="{{it.dotStyle}}"></span>
+            <sc-if value="{{it.hasBar}}" hint-placeholder-val="{{ false }}"><span style="width: 26px; height: 4px; border-radius: 2px; background: var(--f-track); overflow: hidden; display: inline-block"><span style="{{it.barStyle}}"></span></span></sc-if>
+            <span>{{it.text}}</span>
+            <sc-if value="{{it.fromApp}}" hint-placeholder-val="{{ false }}"><span style="font-size: 10.5px; color: var(--f-subtle)">{{it.app}}</span></sc-if>
+          </button>
+
+          <sc-if value="{{it.open}}" hint-placeholder-val="{{ false }}">
+            <div role="dialog" aria-label="{{it.title}}" style="{{it.popStyle}}">
+              <div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--f-border)">
+                <span style="font-size: 12.5px; font-weight: 600; color: var(--f-fg); flex: 1">{{it.title}}</span>
+                <span style="font-size: 11px; color: var(--f-subtle)">{{it.source}}</span>
+              </div>
+              <div style="padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; line-height: 1.45; color: var(--f-fg)">
+
+                <sc-if value="{{it.isFleet}}" hint-placeholder-val="{{ false }}">
+                  <sc-for list="{{machines}}" as="m" hint-placeholder-count="4">
+                    <div style="display: flex; align-items: center; gap: 8px"><span style="{{m.dot}}"></span><span style="flex: 1">{{m.name}}</span><span style="color: var(--f-muted)">{{m.note}}</span></div>
+                  </sc-for>
+                  <a href="Fleet.dc.html" style="color: var(--f-primary); text-decoration: none; font-weight: 500">Open Fleet</a>
+                </sc-if>
+
+                <sc-if value="{{it.isNeeds}}" hint-placeholder-val="{{ false }}">
+                  <sc-for list="{{needs}}" as="n" hint-placeholder-count="3">
+                    <div style="display: flex; gap: 8px; align-items: baseline"><span style="{{n.style}}">{{n.kind}}</span><span style="flex: 1; color: var(--f-fg)">{{n.text}}</span></div>
+                  </sc-for>
+                  <a href="Main.dc.html" style="color: var(--f-primary); text-decoration: none; font-weight: 500">Open Home</a>
+                </sc-if>
+
+                <sc-if value="{{it.isGpu}}" hint-placeholder-val="{{ false }}">
+                  <sc-for list="{{gpus}}" as="g" hint-placeholder-count="4">
+                    <div style="display: flex; flex-direction: column; gap: 3px">
+                      <div style="display: flex; justify-content: space-between"><span>{{g.name}}</span><span style="color: var(--f-muted); font-variant-numeric: tabular-nums">{{g.text}}</span></div>
+                      <div style="height: 5px; border-radius: 3px; background: var(--f-track); overflow: hidden"><div style="{{g.bar}}"></div></div>
+                    </div>
+                  </sc-for>
+                  <a href="AppView.dc.html" style="color: var(--f-primary); text-decoration: none; font-weight: 500">Open GPU Board</a>
+                </sc-if>
+
+                <sc-if value="{{it.isIngest}}" hint-placeholder-val="{{ false }}">
+                  <div style="display: flex; justify-content: space-between"><span>Index the October papers</span><span style="color: var(--f-muted); font-variant-numeric: tabular-nums">31 of 58</span></div>
+                  <div style="height: 5px; border-radius: 3px; background: var(--f-track); overflow: hidden"><div style="height: 5px; width: 53%; background: var(--f-info)"></div></div>
+                  <div style="color: var(--f-muted)">Last in: "Sparse attention at 128k", "KV cache eviction policies"</div>
+                  <a href="Apps.dc.html" style="color: var(--f-primary); text-decoration: none; font-weight: 500">Open Ingest Queue</a>
+                </sc-if>
+
+                <sc-if value="{{it.isUsage}}" hint-placeholder-val="{{ false }}">
+                  <div style="display: flex; justify-content: space-between"><span>Claude · this week</span><span style="color: var(--f-muted)">42%</span></div>
+                  <div style="height: 5px; border-radius: 3px; background: var(--f-track); overflow: hidden"><div style="height: 5px; width: 42%; background: var(--f-fg); opacity: .7"></div></div>
+                  <div style="display: flex; justify-content: space-between"><span>Codex · this week</span><span style="color: var(--f-muted)">18%</span></div>
+                  <div style="height: 5px; border-radius: 3px; background: var(--f-track); overflow: hidden"><div style="height: 5px; width: 18%; background: var(--f-fg); opacity: .7"></div></div>
+                  <div style="color: var(--f-muted)">Resets Monday 09:00</div>
+                </sc-if>
+
+                <sc-if value="{{it.isDream}}" hint-placeholder-val="{{ false }}">
+                  <div>{{dreamText}}</div>
+                  <sc-if value="{{dreamFailed}}" hint-placeholder-val="{{ true }}">
+                    <div style="display: flex; gap: 6px">
+                      <button type="button" onClick="{{retry}}" style="height: 28px; padding: 0 12px; border: 0; border-radius: 7px; background: var(--f-primary); color: #ffffff; font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer">Retry now</button>
+                      <a href="Main.dc.html" style="height: 28px; padding: 0 10px; border: 1px solid var(--f-border); border-radius: 7px; display: inline-flex; align-items: center; color: var(--f-fg); text-decoration: none">Open log</a>
+                    </div>
+                  </sc-if>
+                </sc-if>
+
+                <sc-if value="{{it.isCustomize}}" hint-placeholder-val="{{ false }}">
+                  <div style="color: var(--f-muted)">Apps add items here: a short label, and a popover when clicked.</div>
+                  <sc-for list="{{registry}}" as="r" hint-placeholder-count="6">
+                    <div style="display: flex; align-items: center; gap: 10px">
+                      <span style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="color: var(--f-fg)">{{r.label}}</span><span style="font-size: 11px; color: var(--f-subtle)">{{r.source}}</span></span>
+                      <button type="button" role="switch" aria-checked="{{r.on}}" aria-label="{{r.aria}}" onClick="{{r.flip}}" style="{{r.switchStyle}}"><span style="width: 14px; height: 14px; border-radius: 7px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,.25)"></span></button>
+                    </div>
+                  </sc-for>
+                  <code style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11px; color: var(--f-muted); background: var(--f-hover); border-radius: 6px; padding: 6px 8px; white-space: pre-wrap">footer.add({ id, label, tone, popover })</code>
+                </sc-if>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+    </sc-for>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"openItem":{"editor":"enum","options":["gpu","ingest","usage","dream","fleet","needs","customize","none"],"default":"gpu"},"$preview":{"width":1440,"height":420}}'>
+class Component extends DCLogic {
+  st() { return Object.assign({ open: (this.props.openItem ?? 'gpu') === 'none' ? null : (this.props.openItem ?? 'gpu'), hidden: {}, retried: false }, this.state || {}); }
+
+  renderVals() {
+    const s = this.st();
+    const dark = (this.props.theme ?? 'light') === 'dark';
+    const T = dark
+      ? { bar: '#050505', surface: '#111111', fg: '#f5f5f5', muted: '#8a8a8a', subtle: '#5c5c5c', border: '#1f1f1f', hover: '#171717', track: '#222222', primary: '#346bf1', warn: '#fbbf24', ok: '#4ade80', err: '#f87171', info: '#60a5fa', shadow: '0 12px 32px rgba(0,0,0,.6)' }
+      : { bar: '#fafafa', surface: '#ffffff', fg: '#27272a', muted: '#71717b', subtle: '#a1a1aa', border: '#e4e4e7', hover: '#f4f4f5', track: '#ececee', primary: '#1b4ed8', warn: '#b45309', ok: '#15803d', err: '#dc2626', info: '#2563eb', shadow: '0 1px 2px rgba(0,0,0,.04),0 12px 32px rgba(0,0,0,.10)' };
+    const rootStyle = Object.keys(T).map((k) => '--f-' + k + ': ' + T[k]).join('; ') + '; color-scheme: ' + (dark ? 'dark' : 'light');
+    const tone = { ok: 'var(--f-ok)', warn: 'var(--f-warn)', err: 'var(--f-err)', info: 'var(--f-info)', muted: 'var(--f-subtle)' };
+
+    const defs = [
+      { id: 'fleet', core: true, kind: 'fleet', text: '6 machines · 1 offline', title: 'Fleet', source: 'Magnesium', tone: 'warn', dot: 'dot' },
+      { id: 'needs', core: true, kind: 'needs', text: 'Needs you 5', title: 'Needs you', source: 'Magnesium', tone: 'warn', dot: 'tri' },
+      { id: 'spacer', spacer: true },
+      { id: 'gpu', kind: 'gpu', app: 'GPU Board', text: 'GPU 78%', title: 'GPUs right now', source: 'GPU Board app', tone: 'info', bar: 78 },
+      { id: 'ingest', kind: 'ingest', app: 'Ingest Queue', text: 'Ingest 31/58', title: 'KB ingest', source: 'Ingest Queue app', tone: 'info', dot: 'half' },
+      { id: 'usage', kind: 'usage', app: 'Cost & Usage', text: 'Week 42%', title: 'Subscription usage', source: 'Cost & Usage app', tone: 'muted', dot: 'ring' },
+      { id: 'dream', kind: 'dream', app: 'Scheduler', text: s.retried ? 'Dream cycle running' : 'Dream cycle failed', title: 'Nightly dream cycle', source: 'Scheduler', tone: s.retried ? 'info' : 'err', dot: s.retried ? 'half' : 'square' },
+      { id: 'customize', core: true, kind: 'customize', text: 'Footer', title: 'Footer items', source: 'Magnesium', tone: 'muted', dot: 'plus', right: true }
+    ];
+
+    const dotFor = (d, c) => {
+      const b = 'flex: none; display: inline-block; ';
+      if (d === 'tri') return b + 'width: 9px; height: 9px; background: ' + c + '; clip-path: polygon(50% 6%, 100% 94%, 0 94%)';
+      if (d === 'half') return b + 'width: 8px; height: 8px; border-radius: 50%; background: linear-gradient(90deg, transparent 50%, ' + c + ' 50%); box-shadow: inset 0 0 0 1.5px ' + c;
+      if (d === 'ring') return b + 'width: 8px; height: 8px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px ' + c;
+      if (d === 'square') return b + 'width: 8px; height: 8px; border-radius: 2px; background: ' + c;
+      if (d === 'plus') return b + 'width: 9px; height: 9px; background: linear-gradient(' + c + ', ' + c + ') center / 9px 1.6px no-repeat, linear-gradient(' + c + ', ' + c + ') center / 1.6px 9px no-repeat';
+      if (d === 'dot') return b + 'width: 7px; height: 7px; border-radius: 50%; background: ' + c;
+      return 'display: none';
+    };
+
+    const items = defs.filter((d) => d.spacer || d.core || !s.hidden[d.id]).map((d) => {
+      if (d.spacer) return { isSpacer: true, isItem: false };
+      const open = s.open === d.id;
+      const c = tone[d.tone];
+      return {
+        isSpacer: false, isItem: true, text: d.text, title: d.title, source: d.source, app: d.app || '', fromApp: !!d.app,
+        open: open, expanded: String(open),
+        isFleet: d.kind === 'fleet', isNeeds: d.kind === 'needs', isGpu: d.kind === 'gpu', isIngest: d.kind === 'ingest',
+        isUsage: d.kind === 'usage', isDream: d.kind === 'dream', isCustomize: d.kind === 'customize',
+        hasBar: typeof d.bar === 'number',
+        barStyle: 'display: block; height: 4px; width: ' + (d.bar || 0) + '%; background: ' + c,
+        dotStyle: d.dot ? dotFor(d.dot, c) : 'display: none',
+        toggle: () => this.setState({ open: this.st().open === d.id ? null : d.id }),
+        btnStyle: 'display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border: 0; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; ' + (open ? 'background: var(--f-hover); color: var(--f-fg)' : 'background: transparent; color: ' + (d.tone === 'err' || d.tone === 'warn' ? c : 'var(--f-muted)')) + (d.tone === 'err' || d.tone === 'warn' ? '; font-weight: 600' : ''),
+        popStyle: 'position: absolute; bottom: 30px; ' + (d.right ? 'right: 0' : 'left: 0') + '; width: 300px; background: var(--f-surface); border: 1px solid var(--f-border); border-radius: 12px; box-shadow: var(--f-shadow); overflow: hidden'
+      };
+    });
+
+    const registry = defs.filter((d) => d.app).map((d) => {
+      const on = !s.hidden[d.id];
+      return {
+        label: d.text, source: 'from ' + d.app, on: String(on), aria: 'Show ' + d.app + ' in the footer',
+        flip: () => { const h = Object.assign({}, this.st().hidden); h[d.id] = on; this.setState({ hidden: h }); },
+        switchStyle: 'flex: none; width: 30px; height: 18px; border-radius: 9px; border: 0; padding: 2px; display: flex; cursor: pointer; ' + (on ? 'background: var(--f-primary); justify-content: flex-end' : 'background: var(--f-track); justify-content: flex-start')
+      };
+    });
+
+    const mDot = (c) => 'width: 7px; height: 7px; border-radius: 50%; flex: none; background: ' + c;
+    return {
+      rootStyle: rootStyle,
+      items: items, registry: registry,
+      machines: [
+        { name: 'workstation', note: '3 threads', dot: mDot('var(--f-ok)') },
+        { name: 'gpu-a', note: 'GPU 78%', dot: mDot('var(--f-ok)') },
+        { name: 'kb-host', note: '1 failed task', dot: mDot('var(--f-warn)') },
+        { name: 'nas', note: 'offline 12m', dot: 'width: 7px; height: 7px; border-radius: 2px; flex: none; background: var(--f-err)' }
+      ],
+      needs: [
+        { kind: 'Approval', text: 'serving: kubectl apply on gpu-a', style: 'flex: none; width: 62px; font-weight: 600; color: var(--f-warn)' },
+        { kind: 'Question', text: 'research: which eval set?', style: 'flex: none; width: 62px; font-weight: 600; color: var(--f-primary)' },
+        { kind: 'Failed', text: 'Nightly dream cycle', style: 'flex: none; width: 62px; font-weight: 600; color: var(--f-err)' }
+      ],
+      gpus: [
+        { name: 'gpu-a · 2 × 48 GB', text: '78%', bar: 'height: 5px; width: 78%; background: var(--f-info)' },
+        { name: 'gpu-b · 4 × 16 GB', text: 'idle', bar: 'height: 5px; width: 2%; background: var(--f-info)' }
+      ],
+      dreamFailed: !s.retried,
+      dreamText: s.retried ? 'Running again on kb-host. Started just now.' : 'Failed at 02:04 on kb-host: the embedder timed out on 3 of 3 retries.',
+      retry: () => this.setState({ retried: true })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fleet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+.t3{--canvas:#fcfcfc;--sidebar:#fafafa;--surface:#ffffff;--fg:#27272a;--fg-strong:#18181b;--muted:#71717b;--subtle:#a1a1aa;--border:#e4e4e7;--hover:#f4f4f5;--primary:#1b4ed8;--primary-wash:#eef2ff;--on-primary:#ffffff;--warn:#b45309;--warn-wash:#fffbeb;--input:#4f46e5;--info:#2563eb;--ok:#15803d;--err:#dc2626;--plan:#7c3aed;--shadow:0 1px 2px rgba(0,0,0,.04),0 10px 30px rgba(0,0,0,.07);color-scheme:light}
+.t3.dark{--canvas:#0a0a0a;--sidebar:#000000;--surface:#111111;--fg:#f5f5f5;--fg-strong:#ffffff;--muted:#8a8a8a;--subtle:#5c5c5c;--border:#1f1f1f;--hover:#171717;--primary:#346bf1;--primary-wash:#0f1a33;--on-primary:#ffffff;--warn:#fbbf24;--warn-wash:#1f1705;--input:#a5b4fc;--info:#60a5fa;--ok:#4ade80;--err:#f87171;--plan:#c4b5fd;--shadow:0 10px 30px rgba(0,0,0,.5);color-scheme:dark}
+.t3 button{font:inherit;color:inherit;cursor:pointer}
+.hov:hover{background:var(--hover)}
+.pri:hover{filter:brightness(1.08)}
+.t3 :focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+</style>
+</helmet>
+<div class="t3 {{themeClass}}" style="display: flex; flex-wrap: wrap; min-height: 100vh; padding-bottom: 30px; box-sizing: border-box; background: var(--canvas); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5">
+
+  <aside style="flex: 0 0 256px; box-sizing: border-box; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 0 8px 12px; min-width: 0">
+    <div style="height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 6px">
+      <span style="width: 22px; height: 22px; border-radius: 6px; background: var(--fg-strong); color: var(--canvas); display: grid; place-items: center; font-size: 10px; font-weight: 700; letter-spacing: -0.02em">Mg</span>
+      <span style="font-weight: 600; font-size: 15px; color: var(--fg-strong); letter-spacing: -0.01em">Magnesium</span>
+    </div>
+    <nav aria-label="Places" style="display: flex; flex-direction: column; gap: 1px">
+      <a href="Main.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>
+        <span style="flex: 1">Home</span>
+        <span style="min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--warn); color: var(--canvas); font-size: 11px; font-weight: 600; display: grid; place-items: center">5</span>
+      </a>
+      <a href="Room.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"></path></svg>
+        <span style="flex: 1">Rooms</span><span style="font-size: 11px; color: var(--muted)">3</span>
+      </a>
+      <a href="Fleet.dc.html" aria-current="page" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px; background: var(--hover); color: var(--fg-strong); font-weight: 500">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="1.5"></rect><rect x="3" y="13" width="18" height="7" rx="1.5"></rect><path d="M7 7.5h.01M7 16.5h.01"></path></svg>
+        <span style="flex: 1">Fleet</span>
+      </a>
+      <a href="Apps.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+        <span style="flex: 1">Apps</span>
+      </a>
+      <a href="Brain.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5a3 3 0 0 0-5.8 1A3 3 0 0 0 4 11a3 3 0 0 0 2 5 3 3 0 0 0 6 1Z"></path><path d="M12 5a3 3 0 0 1 5.8 1A3 3 0 0 1 20 11a3 3 0 0 1-2 5 3 3 0 0 1-6 1Z"></path></svg>
+        <span style="flex: 1">Brain</span>
+      </a>
+    </nav>
+    <p style="margin: 18px 8px 6px; font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase">Machines</p>
+    <sc-for list="{{machines}}" as="m" hint-placeholder-count="6">
+      <button type="button" class="hov" onClick="{{m.select}}" style="{{m.sideStyle}}">
+        <span style="{{m.dotStyle}}"></span>
+        <span style="flex: 1; text-align: left">{{m.name}}</span>
+        <span style="font-size: 11.5px; color: var(--muted)">{{m.count}}</span>
+      </button>
+    </sc-for>
+  </aside>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="min-height: 52px; box-sizing: border-box; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 8px 20px">
+      <div style="display: flex; align-items: baseline; gap: 10px; flex: 1; min-width: 220px">
+        <h1 style="margin: 0; font-size: 14px; font-weight: 600; color: var(--fg-strong)">Fleet</h1>
+        <span style="font-size: 12.5px; color: var(--muted)">{{headline}}</span>
+      </div>
+      <div style="display: flex; gap: 6px; flex-wrap: wrap">
+        <sc-for list="{{filters}}" as="f" hint-placeholder-count="4">
+          <button type="button" aria-pressed="{{f.pressed}}" onClick="{{f.pick}}" style="{{f.style}}">{{f.label}}</button>
+        </sc-for>
+      </div>
+      <div role="group" aria-label="View" style="display: inline-flex; padding: 2px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface)">
+        <button type="button" aria-pressed="{{gridPressed}}" onClick="{{showGrid}}" style="{{gridStyle}}">By machine</button>
+        <button type="button" aria-pressed="{{listPressed}}" onClick="{{showList}}" style="{{listStyle}}">Everything running</button>
+      </div>
+    </header>
+
+    <div style="display: flex; flex-wrap: wrap; flex: 1; min-height: 0">
+      <div style="flex: 999 1 520px; min-width: 0; padding: 20px">
+        <sc-if value="{{isGrid}}" hint-placeholder-val="{{ true }}">
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px">
+            <sc-for list="{{shown}}" as="m" hint-placeholder-count="6">
+              <article style="{{m.cardStyle}}">
+                <button type="button" onClick="{{m.select}}" aria-label="{{m.selectLabel}}" style="display: flex; align-items: center; gap: 10px; border: 0; background: transparent; padding: 0; text-align: left; width: 100%">
+                  <span style="width: 32px; height: 32px; border-radius: 9px; background: var(--hover); display: grid; place-items: center; color: var(--fg); flex: none">
+                    <sc-if value="{{m.isLaptop}}" hint-placeholder-val="{{ false }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="11" rx="1.5"></rect><path d="M2 19h20"></path></svg></sc-if>
+                    <sc-if value="{{m.isGpu}}" hint-placeholder-val="{{ true }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"></rect><circle cx="9" cy="12" r="2.4"></circle><circle cx="15.5" cy="12" r="2.4"></circle><path d="M7 18v2M17 18v2"></path></svg></sc-if>
+                    <sc-if value="{{m.isServer}}" hint-placeholder-val="{{ false }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="1.5"></rect><rect x="3" y="13" width="18" height="7" rx="1.5"></rect><path d="M7 7.5h.01M7 16.5h.01"></path></svg></sc-if>
+                    <sc-if value="{{m.isNas}}" hint-placeholder-val="{{ false }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="8" ry="2.5"></ellipse><path d="M4 5.5v13c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-13"></path><path d="M4 12c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"></path></svg></sc-if>
+                  </span>
+                  <span style="flex: 1; min-width: 0">
+                    <span style="display: block; font-size: 14px; font-weight: 600; color: var(--fg-strong)">{{m.name}}</span>
+                    <span style="display: block; font-size: 12px; color: var(--muted)">{{m.route}}</span>
+                  </span>
+                  <span style="{{m.pillStyle}}">{{m.state}}</span>
+                </button>
+
+                <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+                  <sc-for list="{{m.meters}}" as="g" hint-placeholder-count="3">
+                    <div style="display: flex; flex-direction: column; gap: 3px">
+                      <div style="display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted)"><span>{{g.label}}</span><span style="font-variant-numeric: tabular-nums">{{g.text}}</span></div>
+                      <div style="height: 4px; border-radius: 2px; background: var(--hover); overflow: hidden"><div style="{{g.barStyle}}"></div></div>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--border); padding-top: 8px">
+                  <sc-if value="{{m.isEmpty}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12.5px; color: var(--muted); padding: 4px 0">{{m.emptyText}}</span></sc-if>
+                  <sc-for list="{{m.items}}" as="it" hint-placeholder-count="2">
+                    <a href="{{it.href}}" class="hov" style="display: flex; flex-direction: column; gap: 3px; padding: 5px 6px; margin: 0 -6px; border-radius: 8px">
+                      <span style="display: flex; align-items: center; gap: 8px">
+                        <span style="{{it.avStyle}}">{{it.initials}}</span>
+                        <span style="flex: 1; min-width: 0; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{it.title}}</span>
+                        <span style="{{it.statusStyle}}">{{it.label}}</span>
+                      </span>
+                      <sc-if value="{{it.hasProgress}}" hint-placeholder-val="{{ false }}">
+                        <span style="display: block; height: 3px; border-radius: 2px; background: var(--hover); overflow: hidden; margin-left: 26px"><span style="{{it.progressStyle}}"></span></span>
+                      </sc-if>
+                    </a>
+                  </sc-for>
+                </div>
+              </article>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isList}}" hint-placeholder-val="{{ false }}">
+          <div style="border: 1px solid var(--border); border-radius: 14px; background: var(--surface); overflow-x: auto">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px">
+              <thead><tr style="text-align: left; color: var(--muted); font-size: 12px"><th style="padding: 10px 14px; font-weight: 500">What</th><th style="padding: 10px 14px; font-weight: 500">Kind</th><th style="padding: 10px 14px; font-weight: 500">Profile</th><th style="padding: 10px 14px; font-weight: 500">Machine</th><th style="padding: 10px 14px; font-weight: 500">Sandbox</th><th style="padding: 10px 14px; font-weight: 500">Status</th></tr></thead>
+              <tbody>
+                <sc-for list="{{flat}}" as="it" hint-placeholder-count="8">
+                  <tr style="border-top: 1px solid var(--border)">
+                    <td style="padding: 9px 14px"><a href="{{it.href}}" style="color: var(--fg-strong)">{{it.title}}</a></td>
+                    <td style="padding: 9px 14px; color: var(--muted)">{{it.kind}}</td>
+                    <td style="padding: 9px 14px"><span style="display: inline-flex; align-items: center; gap: 6px"><span style="{{it.avStyle}}">{{it.initials}}</span>{{it.profile}}</span></td>
+                    <td style="padding: 9px 14px; color: var(--muted)">{{it.machine}}</td>
+                    <td style="padding: 9px 14px; color: var(--muted); font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px">{{it.sandbox}}</td>
+                    <td style="padding: 9px 14px"><span style="{{it.statusStyle}}">{{it.label}}</span></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </sc-if>
+        <p style="margin: 14px 0 0; font-size: 11.5px; color: var(--subtle)">Example data · no backend. Only sessions started from Magnesium are shown (D25).</p>
+      </div>
+
+      <aside aria-label="Machine detail" style="flex: 1 1 320px; max-width: 380px; min-width: 0; border-left: 1px solid var(--border); background: var(--surface); padding: 18px; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <div style="flex: 1">
+            <h2 style="margin: 0; font-size: 15px; font-weight: 600; color: var(--fg-strong)">{{sel.name}}</h2>
+            <div style="font-size: 12px; color: var(--muted)">{{sel.about}}</div>
+          </div>
+          <span style="{{sel.pillStyle}}">{{sel.state}}</span>
+        </div>
+
+        <section style="display: flex; flex-direction: column; gap: 6px">
+          <h3 style="margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Routes</h3>
+          <sc-for list="{{sel.routes}}" as="r" hint-placeholder-count="2">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 9px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--subtle)" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01"></path></svg>
+              <span style="flex: 1">{{r.name}}</span>
+              <span style="{{r.style}}">{{r.state}}</span>
+            </div>
+          </sc-for>
+        </section>
+
+        <section style="display: flex; flex-direction: column; gap: 6px">
+          <h3 style="margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">New threads</h3>
+          <div role="group" aria-label="Load balancing" style="display: flex; flex-wrap: wrap; padding: 2px; border-radius: 8px; background: var(--hover)">
+            <sc-for list="{{balance}}" as="b" hint-placeholder-count="4">
+              <button type="button" aria-pressed="{{b.pressed}}" onClick="{{b.pick}}" style="{{b.style}}">{{b.label}}</button>
+            </sc-for>
+          </div>
+        </section>
+
+        <section style="display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--border); padding-top: 16px">
+          <h3 style="margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Launch on {{sel.name}}</h3>
+          <sc-if value="{{sel.offline}}" hint-placeholder-val="{{ false }}">
+            <p style="margin: 0; font-size: 13px; color: var(--muted)">This machine is offline. Launching is off until it reconnects.</p>
+          </sc-if>
+          <sc-if value="{{sel.online}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 4px">
+              <span style="font-size: 12.5px; color: var(--muted)">Profile</span>
+              <div style="display: flex; flex-wrap: wrap; gap: 6px">
+                <sc-for list="{{launchProfiles}}" as="p" hint-placeholder-count="5">
+                  <button type="button" aria-pressed="{{p.pressed}}" onClick="{{p.pick}}" style="{{p.style}}"><span style="{{p.avStyle}}">{{p.initials}}</span>{{p.name}}</button>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px">
+              <span style="font-size: 12.5px; color: var(--muted)">Sandbox</span>
+              <div role="group" aria-label="Sandbox" style="display: flex; padding: 2px; border-radius: 8px; background: var(--hover)">
+                <sc-for list="{{sandboxes}}" as="b" hint-placeholder-count="4">
+                  <button type="button" aria-pressed="{{b.pressed}}" onClick="{{b.pick}}" style="{{b.style}}">{{b.label}}</button>
+                </sc-for>
+              </div>
+              <span style="font-size: 11.5px; color: var(--muted)">{{sandboxHint}}</span>
+            </div>
+            <button type="button" class="pri" onClick="{{launch}}" style="height: 36px; border: 0; border-radius: 9px; background: var(--primary); color: var(--on-primary); font-size: 13px; font-weight: 500">Launch {{launchProfile}} on {{sel.name}}</button>
+          </sc-if>
+          <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+            <div role="status" style="font-size: 12.5px; color: var(--ok); background: var(--hover); border-radius: 8px; padding: 8px 10px">{{toast}}</div>
+          </sc-if>
+        </section>
+      </aside>
+    </div>
+  </main>
+  <dc-import name="Footer" theme="{{themeName}}" hint-size="100%,30px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  componentWillUnmount() { if (this._t) clearTimeout(this._t); }
+
+  st() {
+    return Object.assign({ selected: 'gpu-a', view: 'grid', filter: 'all', balance: { 'gpu-a': 'normal' }, lp: 'research', sandbox: 'container', launched: [], toast: '' }, this.state || {});
+  }
+
+  renderVals() {
+    const s = this.st();
+    const dark = (this.props.theme ?? 'light') === 'dark';
+    const P = { serving: ['SE', '#c2410c'], research: ['RE', '#0e7490'], ops: ['OP', '#4d7c0f'], scribe: ['SC', '#be185d'], reviewer: ['RV', '#475569'] };
+    const av = (p) => 'flex: none; width: 18px; height: 18px; border-radius: 5px; background: ' + P[p][1] + '; color: #ffffff; display: grid; place-items: center; font-size: 8.5px; font-weight: 700';
+    const statusColor = { approval: 'var(--warn)', input: 'var(--input)', working: 'var(--info)', plan: 'var(--plan)', done: 'var(--ok)', failed: 'var(--err)', idle: 'var(--muted)', starting: 'var(--info)' };
+    const human = { approval: 1, input: 1, plan: 1, failed: 1 };
+
+    const base = [
+      { name: 'workstation', kind: 'laptop', route: 'This machine', about: 'macOS · 12 cores · 64 GB', state: 'Connected', health: 'ok', meters: [['CPU', 31], ['Memory', 58]], routes: [['Local', 'Connected']], tags: [],
+        items: [
+          { kind: 'Thread', profile: 'reviewer', title: 'Review PR #48: room router', status: 'working', label: 'Working 3m', sandbox: 'native', href: 'Session.dc.html' },
+          { kind: 'Thread', profile: 'research', title: 'Which eval set for the long-context run?', status: 'input', label: 'Input', sandbox: 'container', href: 'Session.dc.html' },
+          { kind: 'Thread', profile: 'research', title: 'Compare tokenizer throughput', status: 'idle', label: '2h', sandbox: 'container', href: 'Session.dc.html' } ] },
+      { name: 'gpu-a', kind: 'gpu', route: 'via LAN · 2 × 48 GB', about: 'Linux · 2 GPUs · K3s GPU node', state: 'Connected', health: 'ok', meters: [['CPU', 22], ['Memory', 41], ['GPU', 78]], routes: [['LAN', 'Connected · 2 ms'], ['Tailscale', 'Standby']], tags: ['gpu'],
+        items: [
+          { kind: 'Thread', profile: 'serving', title: 'Draft the serving deployment', status: 'approval', label: 'Approval', sandbox: 'container', href: 'Session.dc.html' },
+          { kind: 'Job', profile: 'research', title: 'KV-cache sweep, batch 4', status: 'working', label: '62% · 18m left', progress: 62, sandbox: 'container', href: 'Session.dc.html' } ] },
+      { name: 'gpu-b', kind: 'gpu', route: 'via LAN · 4 × 16 GB', about: 'Linux · 4 GPUs · K3s GPU node', state: 'Connected', health: 'ok', meters: [['CPU', 4], ['Memory', 12], ['GPU', 0]], routes: [['LAN', 'Connected · 3 ms']], tags: ['gpu'], items: [], empty: 'Idle. 4 GPUs free.' },
+      { name: 'enclave-1', kind: 'server', route: 'via Tailscale · enclave', about: 'Linux VM · bots and admin agent', state: 'Connected', health: 'ok', meters: [['CPU', 17], ['Memory', 49]], routes: [['Tailscale', 'Connected · 9 ms']], tags: ['enclave'],
+        items: [
+          { kind: 'Thread', profile: 'ops', title: 'Rotate KB backups to the new pool', status: 'plan', label: 'Plan ready', sandbox: 'microvm', href: 'Session.dc.html' },
+          { kind: 'Thread', profile: 'ops', title: 'Check certificate expiry across hosts', status: 'working', label: 'Working 2m', sandbox: 'microvm', href: 'Session.dc.html' },
+          { kind: 'Bot', profile: 'serving', title: 'Seat in #serving-plan', status: 'working', label: 'Replying', sandbox: 'container', href: 'Room.dc.html' } ] },
+      { name: 'kb-host', kind: 'server', route: 'via Tailscale · enclave', about: 'Linux VM · GBrain and its jobs', state: 'Degraded', health: 'warn', meters: [['CPU', 12], ['Memory', 66]], routes: [['Tailscale', 'Connected · 11 ms']], tags: ['enclave'],
+        items: [
+          { kind: 'Job', profile: 'scribe', title: 'Index the October papers', status: 'working', label: '31 of 58', progress: 53, sandbox: 'container', href: 'Session.dc.html' },
+          { kind: 'Scheduled', profile: 'scribe', title: 'Nightly dream cycle', status: 'failed', label: 'Failed 02:04', sandbox: 'container', href: 'Main.dc.html' } ] },
+      { name: 'nas', kind: 'nas', route: 'via LAN', about: 'Storage · tiered pools', state: 'Offline', health: 'off', meters: [['CPU', 0], ['Disk', 71]], routes: [['LAN', 'No answer for 12m'], ['Tailscale', 'No answer']], tags: [], items: [], empty: 'Last seen 12 minutes ago.' }
+    ];
+
+    const machines = base.map((m) => {
+      const items = m.items.concat(s.launched.filter((l) => l.machine === m.name)).map((it) => Object.assign({}, it, {
+        machine: m.name, initials: P[it.profile][0], avStyle: av(it.profile),
+        statusStyle: 'flex: none; font-size: 11.5px; font-weight: ' + (human[it.status] ? 600 : 500) + '; color: ' + statusColor[it.status],
+        hasProgress: typeof it.progress === 'number',
+        progressStyle: 'display: block; height: 3px; width: ' + (it.progress || 0) + '%; background: var(--info)'
+      }));
+      const needs = items.filter((it) => human[it.status]).length;
+      const selected = s.selected === m.name;
+      const pill = 'flex: none; font-size: 11.5px; font-weight: 500; padding: 2px 8px; border-radius: 999px; ' + (m.health === 'ok' ? 'color: var(--ok); background: var(--hover)' : m.health === 'warn' ? 'color: var(--warn); background: var(--warn-wash)' : 'color: var(--err); background: var(--hover)');
+      return Object.assign({}, m, {
+        items: items, count: m.health === 'off' ? 'offline' : String(items.length), needs: needs,
+        isLaptop: m.kind === 'laptop', isGpu: m.kind === 'gpu', isServer: m.kind === 'server', isNas: m.kind === 'nas',
+        isEmpty: items.length === 0, emptyText: m.empty || 'Nothing running.',
+        selectLabel: 'Show ' + m.name,
+        select: () => this.setState({ selected: m.name }),
+        pillStyle: pill,
+        dotStyle: 'width: 7px; height: 7px; flex: none; border-radius: ' + (m.health === 'off' ? '2px' : '50%') + '; background: ' + (m.health === 'ok' ? 'var(--ok)' : m.health === 'warn' ? 'var(--warn)' : 'var(--err)'),
+        sideStyle: 'display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border: 0; border-radius: 8px; font-size: 13px; ' + (selected ? 'background: var(--hover); color: var(--fg-strong); font-weight: 500' : 'background: transparent'),
+        cardStyle: 'display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 14px; background: var(--surface); border: 1px solid ' + (selected ? 'var(--fg-strong)' : 'var(--border)') + '; opacity: ' + (m.health === 'off' ? 0.6 : 1),
+        meters: m.meters.map((g) => ({ label: g[0], text: m.health === 'off' ? '—' : g[1] + '%', barStyle: 'height: 4px; width: ' + (m.health === 'off' ? 0 : g[1]) + '%; background: ' + (g[1] > 75 ? 'var(--warn)' : 'var(--fg)') + '; opacity: 0.75' })),
+        routes: m.routes.map((r) => ({ name: r[0], state: r[1], style: 'font-size: 12px; color: ' + (/Connected/.test(r[1]) ? 'var(--ok)' : /No answer/.test(r[1]) ? 'var(--err)' : 'var(--muted)') }))
+      });
+    });
+
+    const filterDefs = [ ['all', 'All'], ['needs', 'Needs you'], ['gpu', 'GPU'], ['enclave', 'Enclave'] ];
+    const filters = filterDefs.map((f) => ({
+      label: f[1], pressed: String(s.filter === f[0]), pick: () => this.setState({ filter: f[0] }),
+      style: 'height: 28px; padding: 0 10px; border-radius: 14px; font-size: 12.5px; border: 1px solid ' + (s.filter === f[0] ? 'var(--fg-strong)' : 'var(--border)') + '; background: ' + (s.filter === f[0] ? 'var(--fg-strong)' : 'var(--surface)') + '; color: ' + (s.filter === f[0] ? 'var(--canvas)' : 'var(--fg)')
+    }));
+    const shown = machines.filter((m) => s.filter === 'all' || (s.filter === 'needs' ? m.needs > 0 : m.tags.indexOf(s.filter) >= 0));
+    const flat = [];
+    shown.forEach((m) => m.items.forEach((it) => flat.push(Object.assign({}, it))));
+
+    const sel = machines.filter((m) => m.name === s.selected)[0] || machines[0];
+    const bal = (s.balance[sel.name] || 'normal');
+    const seg = (on) => 'flex: 1; height: 28px; padding: 0 8px; border: 0; border-radius: 6px; font-size: 12px; white-space: nowrap; ' + (on ? 'background: var(--surface); color: var(--fg-strong); font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,.08)' : 'background: transparent; color: var(--muted)');
+    const balance = [ ['normal', 'Normal'], ['prefer', 'Prefer'], ['less', 'Less often'], ['manual', 'Manual only'] ].map((b) => ({
+      label: b[1], pressed: String(bal === b[0]), style: seg(bal === b[0]),
+      pick: () => { const nb = Object.assign({}, this.st().balance); nb[sel.name] = b[0]; this.setState({ balance: nb }); }
+    }));
+    const sandboxes = [ ['native', 'native'], ['container', 'container'], ['microvm', 'microvm'] ].map((b) => ({
+      label: b[1], pressed: String(s.sandbox === b[0]), style: seg(s.sandbox === b[0]), pick: () => this.setState({ sandbox: b[0] })
+    }));
+    const launchProfiles = Object.keys(P).map((p) => ({
+      name: p, initials: P[p][0], avStyle: av(p), pressed: String(s.lp === p), pick: () => this.setState({ lp: p }),
+      style: 'display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px 0 6px; border-radius: 8px; font-size: 12.5px; border: 1px solid ' + (s.lp === p ? 'var(--fg-strong)' : 'var(--border)') + '; background: var(--surface)'
+    }));
+    const seg2 = (on) => 'height: 26px; padding: 0 10px; border: 0; border-radius: 7px; font-size: 12.5px; ' + (on ? 'background: var(--fg-strong); color: var(--canvas); font-weight: 500' : 'background: transparent; color: var(--muted)');
+    const total = machines.reduce((n, m) => n + m.items.length, 0);
+
+    return {
+      themeClass: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light',
+      machines: machines, shown: shown, flat: flat, filters: filters,
+      headline: machines.length + ' machines · 1 offline · ' + total + ' threads and jobs',
+      isGrid: s.view === 'grid', isList: s.view === 'list',
+      gridPressed: String(s.view === 'grid'), listPressed: String(s.view === 'list'),
+      gridStyle: seg2(s.view === 'grid'), listStyle: seg2(s.view === 'list'),
+      showGrid: () => this.setState({ view: 'grid' }), showList: () => this.setState({ view: 'list' }),
+      sel: Object.assign({}, sel, { offline: sel.health === 'off', online: sel.health !== 'off' }),
+      balance: balance, sandboxes: sandboxes, launchProfiles: launchProfiles, launchProfile: s.lp,
+      sandboxHint: s.sandbox === 'native' ? 'The harness sandbox only. Scheduled runs never use less than container.' : s.sandbox === 'container' ? 'Docker or Podman with gVisor. The default.' : 'A microVM. The strongest isolation.',
+      launch: () => {
+        const cur = this.st();
+        const item = { kind: 'Thread', profile: cur.lp, title: 'New session', status: 'working', label: 'Starting', sandbox: cur.sandbox, machine: sel.name, href: 'Session.dc.html' };
+        this.setState({ launched: cur.launched.concat([item]), toast: 'Started ' + cur.lp + ' on ' + sel.name + ' in a ' + cur.sandbox + ' sandbox.' });
+        if (this._t) clearTimeout(this._t);
+        this._t = setTimeout(() => this.setState({ toast: '' }), 4000);
+      },
+      hasToast: !!s.toast, toast: s.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

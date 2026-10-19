@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Session</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+.t3{--canvas:#fcfcfc;--sidebar:#fafafa;--surface:#ffffff;--fg:#27272a;--fg-strong:#18181b;--muted:#71717b;--subtle:#a1a1aa;--border:#e4e4e7;--hover:#f4f4f5;--bubble:#f4f4f5;--primary:#1b4ed8;--on-primary:#ffffff;--warn:#b45309;--warn-wash:#fffbeb;--input:#4f46e5;--info:#2563eb;--ok:#15803d;--ok-wash:#ecfdf3;--err:#dc2626;--plan:#7c3aed;--glass:rgba(255,255,255,.82);--shadow:0 1px 2px rgba(0,0,0,.04),0 10px 30px rgba(0,0,0,.07);color-scheme:light}
+.t3.dark{--canvas:#0a0a0a;--sidebar:#000000;--surface:#111111;--fg:#f5f5f5;--fg-strong:#ffffff;--muted:#8a8a8a;--subtle:#5c5c5c;--border:#1f1f1f;--hover:#171717;--bubble:#161616;--primary:#346bf1;--on-primary:#ffffff;--warn:#fbbf24;--warn-wash:#1f1705;--input:#a5b4fc;--info:#60a5fa;--ok:#4ade80;--ok-wash:#0b1f13;--err:#f87171;--plan:#c4b5fd;--glass:rgba(17,17,17,.82);--shadow:0 10px 30px rgba(0,0,0,.5);color-scheme:dark}
+.t3 button{font:inherit;color:inherit;cursor:pointer}
+.t3 textarea{font:inherit;color:inherit}
+.hov:hover{background:var(--hover)}
+.pri:hover{filter:brightness(1.08)}
+.t3 :focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+</style>
+</helmet>
+<div class="t3 {{themeClass}}" style="display: flex; flex-wrap: wrap; min-height: 100vh; padding-bottom: 30px; box-sizing: border-box; background: var(--canvas); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5">
+
+  <aside style="flex: 0 0 256px; box-sizing: border-box; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 0 8px 12px; min-width: 0">
+    <div style="height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 6px">
+      <span style="width: 22px; height: 22px; border-radius: 6px; background: var(--fg-strong); color: var(--canvas); display: grid; place-items: center; font-size: 10px; font-weight: 700; letter-spacing: -0.02em">Mg</span>
+      <span style="font-weight: 600; font-size: 15px; color: var(--fg-strong); letter-spacing: -0.01em">Magnesium</span>
+    </div>
+    <nav aria-label="Places" style="display: flex; flex-direction: column; gap: 1px; padding: 0 0 10px; border-bottom: 1px solid var(--border)">
+      <a href="Main.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>
+        <span style="flex: 1">Home</span>
+        <span style="min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--warn); color: var(--canvas); font-size: 11px; font-weight: 600; display: grid; place-items: center">{{homeCount}}</span>
+      </a>
+      <a href="Room.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"></path></svg>
+        <span style="flex: 1">Rooms</span><span style="font-size: 11px; color: var(--muted)">3</span>
+      </a>
+      <a href="Fleet.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="1.5"></rect><rect x="3" y="13" width="18" height="7" rx="1.5"></rect><path d="M7 7.5h.01M7 16.5h.01"></path></svg>
+        <span style="flex: 1">Fleet</span>
+      </a>
+      <a href="Apps.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+        <span style="flex: 1">Apps</span>
+      </a>
+      <a href="Brain.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5a3 3 0 0 0-5.8 1A3 3 0 0 0 4 11a3 3 0 0 0 2 5 3 3 0 0 0 6 1Z"></path><path d="M12 5a3 3 0 0 1 5.8 1A3 3 0 0 1 20 11a3 3 0 0 1-2 5 3 3 0 0 1-6 1Z"></path></svg>
+        <span style="flex: 1">Brain</span>
+      </a>
+    </nav>
+    <div style="display: flex; align-items: center; gap: 6px; margin: 14px 4px 4px 8px">
+      <p style="margin: 0; flex: 1; font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase">Projects</p>
+      <div role="group" aria-label="Row density" style="display: inline-flex; padding: 2px; border-radius: 7px; background: var(--hover)">
+        <button type="button" aria-pressed="{{comfyPressed}}" onClick="{{setComfy}}" title="Comfy rows" aria-label="Comfy rows" style="{{comfyStyle}}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="16" height="6" rx="1.5"></rect><rect x="4" y="14" width="16" height="6" rx="1.5"></rect></svg>
+        </button>
+        <button type="button" aria-pressed="{{compactPressed}}" onClick="{{setCompact}}" title="Compact rows" aria-label="Compact rows" style="{{compactStyle}}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+        </button>
+      </div>
+    </div>
+
+    <sc-for list="{{projects}}" as="p" hint-placeholder-count="5">
+      <div style="display: flex; flex-direction: column">
+        <button type="button" class="hov" onClick="{{p.toggle}}" aria-expanded="{{p.expanded}}" style="display: flex; align-items: center; gap: 7px; height: 32px; padding: 0 8px 0 4px; border: 0; background: transparent; border-radius: 8px; font-size: 13px; text-align: left; min-width: 0">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="{{p.chevStyle}}"><path d="m9 6 6 6-6 6"></path></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2.5h8.5A1.5 1.5 0 0 1 21 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5Z"></path></svg>
+          <span style="{{p.nameStyle}}">{{p.name}}</span>
+          <span style="{{p.rollStyle}}"><span style="{{p.glyph}}"></span>{{p.rollLabel}}</span>
+        </button>
+        <sc-if value="{{p.open}}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column; margin: 0 0 4px 13px; padding-left: 6px; border-left: 1px solid var(--border)">
+            <sc-for list="{{p.threads}}" as="t" hint-placeholder-count="2">
+              <a href="{{t.href}}" class="hov" style="{{t.rowStyle}}">
+                <sc-if value="{{isComfy}}" hint-placeholder-val="{{ true }}">
+                  <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted)">
+                      <span style="{{t.avStyle}}">{{t.initials}}</span>
+                      <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{t.profile}}</span>
+                      <span style="{{t.statusStyle}}"><span style="{{t.glyph}}"></span>{{t.label}}</span>
+                    </div>
+                    <div style="{{t.titleStyle}}">{{t.title}}</div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{isCompact}}" hint-placeholder-val="{{ false }}">
+                  <div style="display: flex; align-items: center; gap: 8px; height: 30px; min-width: 0">
+                    <span style="{{t.glyph}}"></span>
+                    <span style="{{t.compactTitleStyle}}">{{t.title}}</span>
+                    <span style="{{t.compactLabelStyle}}">{{t.shortLabel}}</span>
+                  </div>
+                </sc-if>
+              </a>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+
+    <p style="margin: 14px 8px 4px; font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase">Threads</p>
+    <sc-for list="{{standalone}}" as="t" hint-placeholder-count="3">
+      <a href="{{t.href}}" class="hov" style="{{t.rowStyle}}">
+        <sc-if value="{{isComfy}}" hint-placeholder-val="{{ true }}">
+          <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted)">
+              <span style="{{t.avStyle}}">{{t.initials}}</span>
+              <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{t.profile}}</span>
+              <span style="{{t.statusStyle}}"><span style="{{t.glyph}}"></span>{{t.label}}</span>
+            </div>
+            <div style="{{t.titleStyle}}">{{t.title}}</div>
+          </div>
+        </sc-if>
+        <sc-if value="{{isCompact}}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; align-items: center; gap: 8px; height: 30px; min-width: 0">
+            <span style="{{t.glyph}}"></span>
+            <span style="{{t.compactTitleStyle}}">{{t.title}}</span>
+            <span style="{{t.compactLabelStyle}}">{{t.shortLabel}}</span>
+          </div>
+        </sc-if>
+      </a>
+    </sc-for>
+  </aside>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="min-height: 52px; box-sizing: border-box; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 16px">
+      <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 220px; font-size: 13px">
+        <span style="color: var(--muted)">infra</span>
+        <span style="color: var(--subtle)">›</span>
+        <span style="font-weight: 600; color: var(--fg-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap">Draft the serving deployment</span>
+      </div>
+      <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px; border: 1px solid var(--border); border-radius: 13px; font-size: 12px; color: var(--muted)">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"></rect><circle cx="9" cy="12" r="2.4"></circle><circle cx="15.5" cy="12" r="2.4"></circle></svg>
+        gpu-a · container
+      </span>
+      <button type="button" class="hov" onClick="{{togglePanel}}" aria-pressed="{{panelPressed}}" aria-label="Toggle diff panel" style="height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16"></path></svg>
+        Diff
+      </button>
+    </header>
+
+    <div style="display: flex; flex: 1; min-height: 0; flex-wrap: wrap">
+      <div style="flex: 999 1 480px; min-width: 0; display: flex; flex-direction: column">
+        <div style="flex: 1; padding: 28px 20px 24px">
+          <div style="max-width: 736px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px">
+            <button type="button" class="hov" style="align-self: center; height: 28px; padding: 0 12px; border: 1px solid var(--border); background: transparent; border-radius: 14px; font-size: 12px; color: var(--muted)">Load earlier · 3 turns</button>
+
+            <sc-for list="{{msgs}}" as="m" hint-placeholder-count="6">
+              <sc-if value="{{m.isUser}}" hint-placeholder-val="{{ true }}">
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
+                  <div style="max-width: 80%; background: var(--bubble); border-radius: 18px; padding: 10px 14px; color: var(--fg-strong); white-space: pre-wrap">{{m.text}}</div>
+                </div>
+              </sc-if>
+              <sc-if value="{{m.isAssistant}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; flex-direction: column; gap: 10px; color: var(--fg)">
+                  <sc-for list="{{m.paras}}" as="p" hint-placeholder-count="2"><p style="margin: 0">{{p.text}}</p></sc-for>
+                  <sc-if value="{{m.hasBullets}}" hint-placeholder-val="{{ false }}">
+                    <ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 3px">
+                      <sc-for list="{{m.bullets}}" as="b" hint-placeholder-count="3"><li>{{b.text}}</li></sc-for>
+                    </ul>
+                  </sc-if>
+                </div>
+              </sc-if>
+              <sc-if value="{{m.isTools}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; flex-direction: column; gap: 6px">
+                  <button type="button" class="hov" onClick="{{m.toggle}}" aria-expanded="{{m.expanded}}" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; margin-left: -8px; border: 0; background: transparent; border-radius: 8px; font-size: 13px; color: var(--muted)">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="{{m.chevStyle}}"><path d="m9 6 6 6-6 6"></path></svg>
+                    {{m.summary}}
+                    <sc-if value="{{m.hasFail}}" hint-placeholder-val="{{ false }}"><span style="color: var(--err); font-weight: 500">· {{m.failText}}</span></sc-if>
+                  </button>
+                  <sc-if value="{{m.open}}" hint-placeholder-val="{{ false }}">
+                    <div style="border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface)">
+                      <sc-for list="{{m.rows}}" as="r" hint-placeholder-count="3">
+                        <div style="border-top: {{r.border}}; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px">
+                          <div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px">
+                            <span style="{{r.dotStyle}}"></span>
+                            <code style="flex: 1; min-width: 0; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{r.cmd}}</code>
+                            <span style="font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; flex: none">{{r.meta}}</span>
+                            <sc-if value="{{r.hasOut}}" hint-placeholder-val="{{ true }}">
+                              <button type="button" class="hov" onClick="{{r.toggle}}" style="flex: none; height: 24px; padding: 0 8px; border: 1px solid var(--border); background: transparent; border-radius: 6px; font-size: 11.5px; color: var(--muted)">{{r.btn}}</button>
+                            </sc-if>
+                          </div>
+                          <sc-if value="{{r.open}}" hint-placeholder-val="{{ false }}">
+                            <pre style="margin: 0; padding: 8px 10px; background: var(--hover); border-radius: 8px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11.5px; white-space: pre-wrap; overflow-wrap: anywhere">{{r.out}}</pre>
+                          </sc-if>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+              <sc-if value="{{m.isFiles}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--surface); flex-wrap: wrap">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"></path><path d="M14 3v5h5"></path></svg>
+                  <span style="font-size: 13px; font-weight: 500">1 changed file</span>
+                  <code style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--muted)">deploy/serving.yaml</code>
+                  <span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--ok)">+38</span>
+                  <span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--err)">−0</span>
+                  <button type="button" class="hov" onClick="{{openPanel}}" style="margin-left: auto; height: 28px; padding: 0 10px; border: 1px solid var(--border); background: transparent; border-radius: 7px; font-size: 12.5px">Open diff</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{m.isFold}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted)">
+                  <span style="flex: 1; height: 1px; background: var(--border)"></span>{{m.text}}<span style="flex: 1; height: 1px; background: var(--border)"></span>
+                </div>
+              </sc-if>
+              <sc-if value="{{m.isEvent}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); justify-content: center">
+                  <span style="{{m.avStyle}}">{{m.initials}}</span>{{m.text}}
+                </div>
+              </sc-if>
+              <sc-if value="{{m.isLive}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--info)">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 3.5a8.5 8.5 0 0 1 0 17Z" fill="currentColor"></path></svg>
+                  <code style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--muted)">{{m.text}}</code>
+                </div>
+              </sc-if>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="position: sticky; bottom: 30px; padding: 0 20px 16px; background: linear-gradient(to bottom, transparent, var(--canvas) 28px)">
+          <div style="max-width: 736px; margin: 0 auto; display: flex; flex-direction: column">
+
+            <sc-if value="{{hasBanner}}" hint-placeholder-val="{{ true }}">
+              <div role="region" aria-label="Command approval" style="border: 1px solid var(--border); border-bottom: 0; border-radius: 18px 18px 0 0; background: var(--warn-wash); padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; margin: 0 10px">
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--warn)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2.5 20h19Z"></path><path d="M12 10v4M12 17h.01"></path></svg>
+                  Command approval
+                  <span style="margin-left: auto; font-weight: 500; color: var(--muted)">1/1</span>
+                </div>
+                <pre style="margin: 0; padding: 8px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--fg-strong)">kubectl apply -f deploy/serving.yaml -n inference</pre>
+                <div style="display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap; position: relative">
+                  <span style="margin-right: auto; font-size: 12px; color: var(--muted)">Creates the inference namespace · runs in the container sandbox</span>
+                  <button type="button" class="hov" onClick="{{decline}}" style="height: 32px; padding: 0 12px; border: 1px solid var(--border); background: var(--surface); border-radius: 8px; font-size: 13px">Decline</button>
+                  <button type="button" class="pri" onClick="{{approve}}" style="height: 32px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--primary); color: var(--on-primary); font-size: 13px; font-weight: 500">Approve</button>
+                  <button type="button" class="hov" onClick="{{toggleMenu}}" aria-label="More approval options" aria-expanded="{{menuExpanded}}" style="width: 32px; height: 32px; border: 1px solid var(--border); background: var(--surface); border-radius: 8px; display: grid; place-items: center">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg>
+                  </button>
+                  <sc-if value="{{menuOpen}}" hint-placeholder-val="{{ false }}">
+                    <div role="menu" style="position: absolute; right: 0; bottom: 40px; min-width: 220px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 4px; display: flex; flex-direction: column">
+                      <button type="button" role="menuitem" class="hov" onClick="{{alwaysAllow}}" style="text-align: left; border: 0; background: transparent; border-radius: 8px; padding: 8px 10px; font-size: 13px">Always allow this session</button>
+                      <button type="button" role="menuitem" class="hov" onClick="{{toggleMenu}}" style="text-align: left; border: 0; background: transparent; border-radius: 8px; padding: 8px 10px; font-size: 13px; color: var(--muted)">Cancel</button>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-if>
+
+            <div style="border: 1px solid var(--border); border-radius: 22px; background: var(--glass); backdrop-filter: blur(12px) saturate(1.14); -webkit-backdrop-filter: blur(12px) saturate(1.14); box-shadow: var(--shadow); padding: 12px 12px 8px; display: flex; flex-direction: column; gap: 8px; position: relative">
+              <label for="composer" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Message</label>
+              <textarea id="composer" rows="2" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onKey}}" placeholder="{{placeholder}}" style="border: 0; outline: 0; resize: none; background: transparent; font-size: 14px; line-height: 1.5; padding: 2px 4px; min-height: 44px"></textarea>
+              <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap">
+                <button type="button" class="hov" aria-label="Attach" style="width: 30px; height: 30px; border: 0; background: transparent; border-radius: 8px; display: grid; place-items: center; color: var(--muted)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+                </button>
+                <span style="width: 1px; height: 16px; background: var(--border); margin: 0 2px"></span>
+                <div style="position: relative">
+                  <button type="button" class="hov" onClick="{{togglePicker}}" aria-expanded="{{pickerExpanded}}" aria-haspopup="listbox" style="height: 30px; padding: 0 8px 0 5px; border: 0; background: transparent; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px">
+                    <span style="{{profileAv}}">{{profileInitials}}</span>
+                    <span style="font-weight: 500">{{profileName}}</span>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+                  </button>
+                  <sc-if value="{{pickerOpen}}" hint-placeholder-val="{{ false }}">
+                    <div role="listbox" aria-label="Profile" style="position: absolute; left: 0; bottom: 38px; width: 320px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); padding: 6px; display: flex; flex-direction: column; gap: 2px; z-index: 5">
+                      <div style="padding: 6px 8px 4px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted)">Profile</div>
+                      <sc-for list="{{profiles}}" as="p" hint-placeholder-count="5">
+                        <button type="button" role="option" aria-selected="{{p.selected}}" class="hov" onClick="{{p.pick}}" style="{{p.rowStyle}}">
+                          <span style="{{p.avStyle}}">{{p.initials}}</span>
+                          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+                            <span style="font-size: 13px; font-weight: 500; color: var(--fg-strong)">{{p.name}}</span>
+                            <span style="font-size: 11.5px; color: var(--muted)">{{p.desc}}</span>
+                          </span>
+                          <span style="font-size: 11px; color: var(--muted); border: 1px solid var(--border); border-radius: 5px; padding: 0 5px">{{p.sandbox}}</span>
+                        </button>
+                      </sc-for>
+                      <div style="padding: 6px 8px 4px; font-size: 11.5px; color: var(--muted); border-top: 1px solid var(--border); margin-top: 4px">Switching mid-thread hands off the last turns to the new profile.</div>
+                    </div>
+                  </sc-if>
+                </div>
+                <button type="button" class="hov" style="height: 30px; padding: 0 8px; border: 0; background: transparent; border-radius: 8px; display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--muted)">
+                  {{modelName}}
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+                </button>
+                <button type="button" class="hov" style="height: 30px; padding: 0 8px; border: 0; background: transparent; border-radius: 8px; font-size: 12.5px; color: var(--muted)">High</button>
+                <div role="group" aria-label="Interaction mode" style="display: inline-flex; padding: 2px; border-radius: 8px; background: var(--hover); margin-left: 2px">
+                  <button type="button" aria-pressed="{{buildPressed}}" onClick="{{setBuild}}" style="{{buildStyle}}">Build</button>
+                  <button type="button" aria-pressed="{{planPressed}}" onClick="{{setPlan}}" style="{{planStyle}}">Plan</button>
+                </div>
+                <button type="button" class="hov" style="height: 30px; padding: 0 8px; border: 0; background: transparent; border-radius: 8px; display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--muted)">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6Z"></path></svg>
+                  {{accessLabel}}
+                </button>
+                <span style="margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums" title="Context window">
+                  <svg width="16" height="16" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="14" fill="none" stroke="var(--border)" stroke-width="4"></circle><circle cx="18" cy="18" r="14" fill="none" stroke="var(--muted)" stroke-width="4" stroke-dasharray="26 88" transform="rotate(-90 18 18)"></circle></svg>
+                  29%
+                </span>
+                <button type="button" onClick="{{onSend}}" aria-label="{{sendLabel}}" style="{{sendStyle}}">
+                  <sc-if value="{{sendIsArrow}}" hint-placeholder-val="{{ true }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></sc-if>
+                  <sc-if value="{{sendIsStop}}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2.5"></rect></svg></sc-if>
+                  <sc-if value="{{sendIsSteer}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12.5px; font-weight: 500; padding: 0 4px">Steer</span></sc-if>
+                </button>
+              </div>
+            </div>
+            <div style="display: flex; gap: 14px; padding: 6px 14px 0; font-size: 11.5px; color: var(--muted); font-family: ui-monospace, 'SF Mono', Menlo, monospace; flex-wrap: wrap">
+              <span>harness/serving</span><span>worktree</span><span>gpu-a · container</span><span style="margin-left: auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif">Example data · no backend</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <sc-if value="{{panelOpen}}" hint-placeholder-val="{{ true }}">
+        <aside aria-label="Right panel" style="flex: 1 1 420px; max-width: 520px; min-width: 0; border-left: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column">
+          <div role="tablist" style="display: flex; gap: 2px; padding: 8px 8px 0; border-bottom: 1px solid var(--border)">
+            <button type="button" role="tab" aria-selected="true" style="height: 32px; padding: 0 12px; border: 0; border-bottom: 2px solid var(--fg-strong); background: transparent; font-size: 12.5px; font-weight: 500; color: var(--fg-strong)">Diff</button>
+            <button type="button" role="tab" aria-selected="false" class="hov" style="height: 32px; padding: 0 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; font-size: 12.5px; color: var(--muted); border-radius: 6px 6px 0 0">Files</button>
+            <button type="button" role="tab" aria-selected="false" class="hov" style="height: 32px; padding: 0 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; font-size: 12.5px; color: var(--muted); border-radius: 6px 6px 0 0">Browser</button>
+            <button type="button" role="tab" aria-selected="false" class="hov" style="height: 32px; padding: 0 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; font-size: 12.5px; color: var(--muted); border-radius: 6px 6px 0 0">Terminal</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--border)">
+            <span style="border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; color: var(--fg)">Latest turn</span>
+            <code style="font-family: ui-monospace, 'SF Mono', Menlo, monospace">deploy/serving.yaml</code>
+            <span style="margin-left: auto; color: var(--ok); font-family: ui-monospace, 'SF Mono', Menlo, monospace">+38 −0</span>
+          </div>
+          <div style="overflow-x: auto; padding: 6px 0; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; line-height: 1.6">
+            <sc-for list="{{diff}}" as="d" hint-placeholder-count="20">
+              <div style="display: flex; background: var(--ok-wash); white-space: pre">
+                <span style="width: 38px; flex: none; text-align: right; padding-right: 10px; color: var(--subtle); font-variant-numeric: tabular-nums">{{d.n}}</span>
+                <span style="color: var(--ok); width: 14px; flex: none">+</span>
+                <span style="color: var(--fg); padding-right: 12px">{{d.text}}</span>
+              </div>
+            </sc-for>
+          </div>
+        </aside>
+      </sc-if>
+    </div>
+  </main>
+  <dc-import name="Footer" theme="{{themeName}}" hint-size="100%,30px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"density":{"editor":"enum","options":["comfy","compact"],"default":"compact"},"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  componentWillUnmount() { (this._timers || []).forEach((t) => clearTimeout(t)); }
+
+  later(ms, fn) {
+    this._timers = this._timers || [];
+    this._timers.push(setTimeout(fn, ms));
+  }
+
+  st() {
+    return Object.assign({
+      msgs: this.initialMsgs(), open: {}, out: {}, banner: true, menu: false, running: false,
+      draft: '', profile: 'serving', picker: false, panel: true, mode: 'build', allowAll: false, seq: 100
+    }, this.state || {});
+  }
+
+  initialMsgs() {
+    return [
+      { id: 'm1', kind: 'user', text: 'Draft a deployment for the new model on gpu-a: two replicas, 16k context, in the inference namespace.' },
+      { id: 'm2', kind: 'assistant', paras: ['I will check what gpu-a has free and how the other services in deploy/ are set up, then write the manifest.'] },
+      { id: 'tg1', kind: 'tools', summary: 'Ran 3 commands, read 2 files', rows: [
+        { cmd: 'kubectl get nodes -o wide', meta: 'exit 0 · 0.8 s', ok: true, out: 'NAME    STATUS   ROLES    VERSION\ngpu-a   Ready    worker   v1.31' },
+        { cmd: 'nvidia-smi --query-gpu=memory.total --format=csv', meta: 'exit 0 · 0.3 s', ok: true, out: 'memory.total [MiB]\n49140 MiB\n49140 MiB' },
+        { cmd: 'kubectl get ns inference', meta: 'exit 1 · 0.4 s', ok: false, out: 'Error from server (NotFound): namespaces "inference" not found' },
+        { cmd: 'read deploy/README.md', meta: '64 lines', ok: true },
+        { cmd: 'read deploy/base.yaml', meta: '41 lines', ok: true }
+      ] },
+      { id: 'm4', kind: 'assistant', paras: [
+        'Two replicas will not fit. At 8-bit the weights take about 70 GB, and gpu-a has two 48 GB cards. I wrote one replica across both cards instead. That leaves about 26 GB for the KV cache, enough for 16k context at batch 2.',
+        'The inference namespace does not exist yet. Applying the manifest creates it, so I need your approval for that step.'
+      ], bullets: ['1 replica, tensor parallel across 2 GPUs', '16k context, batch 2', 'Readiness probe on /health with a 60 s grace period', 'Creates the inference namespace'] },
+      { id: 'f1', kind: 'files' },
+      { id: 'fold1', kind: 'fold', text: 'Worked for 5m 52s' }
+    ];
+  }
+
+  push(items, extra) {
+    const s = this.st();
+    this.setState(Object.assign({ msgs: s.msgs.concat(items) }, extra || {}));
+  }
+
+  dropLive() {
+    const s = this.st();
+    return s.msgs.filter((m) => m.kind !== 'live');
+  }
+
+  approve(always) {
+    this.setState({ banner: false, menu: false, running: true, allowAll: !!always });
+    this.push([{ id: 'live1', kind: 'live', text: 'kubectl apply -f deploy/serving.yaml -n inference' }], { banner: false, menu: false, running: true });
+    this.later(2200, () => {
+      this.setState({ msgs: this.dropLive().concat([
+        { id: 'tg2', kind: 'tools', summary: 'Ran 1 command', rows: [
+          { cmd: 'kubectl apply -f deploy/serving.yaml -n inference', meta: 'exit 0 · 1.9 s', ok: true, out: 'namespace/inference created\ndeployment.apps/serving created\nservice/serving created' }
+        ] }
+      ]) });
+    });
+    this.later(2700, () => this.push([{ id: 'm9', kind: 'assistant', paras: ['Applied. The inference namespace exists and the serving pod is starting. I will watch it and tell you when it passes the readiness probe.'] }]));
+    this.later(3100, () => this.push([{ id: 'fold2', kind: 'fold', text: 'Worked for 21s' }], { running: false }));
+  }
+
+  decline() {
+    this.setState({ banner: false, menu: false });
+    this.push([{ id: 'm8', kind: 'assistant', paras: ['Understood. I did not apply anything. Should I change the manifest first, or leave it for you to apply?'] }, { id: 'fold3', kind: 'fold', text: 'Worked for 3s' }], { banner: false, menu: false });
+  }
+
+  send() {
+    const s = this.st();
+    const text = (s.draft || '').trim();
+    if (s.running && !text) { this.setState({ running: false, msgs: this.dropLive() }); return; }
+    if (!text) return;
+    const seq = s.seq + 1;
+    const steer = s.running;
+    this.setState({ draft: '', seq: seq, running: true, msgs: s.msgs.concat([{ id: 'u' + seq, kind: 'user', text: text }, { id: 'l' + seq, kind: 'live', text: steer ? 'steering the current turn' : 'thinking' }]) });
+    this.later(900, () => this.setState({ msgs: this.dropLive().concat([{ id: 'a' + seq, kind: 'assistant', paras: ['Got it. I will fold that into the manifest and show you the diff before anything touches the cluster.'] }]) }));
+    this.later(1300, () => {
+      const cur = this.st();
+      const msgs = cur.msgs.map((m) => m.id === 'a' + seq ? Object.assign({}, m, { paras: m.paras.concat(['Anything that runs against the cluster will come back to you as an approval, like the last one.']) }) : m);
+      this.setState({ msgs: msgs.concat([{ id: 'fd' + seq, kind: 'fold', text: 'Worked for 6s' }]), running: false });
+    });
+  }
+
+  renderVals() {
+    const s = this.st();
+    const dark = (this.props.theme ?? 'light') === 'dark';
+    const P = {
+      serving: { initials: 'SE', color: '#c2410c', desc: 'Claude Code · 42 memories · 6 skills', sandbox: 'container', model: 'Opus 5.5' },
+      research: { initials: 'RE', color: '#0e7490', desc: 'Claude Code · 118 memories · 9 skills', sandbox: 'container', model: 'Opus 5.5' },
+      ops: { initials: 'OP', color: '#4d7c0f', desc: 'Codex · 31 memories · 4 skills', sandbox: 'microvm', model: 'GPT-5.5 Codex' },
+      scribe: { initials: 'SC', color: '#be185d', desc: 'Claude Code · 77 memories · 5 skills', sandbox: 'container', model: 'Sonnet 5.5' },
+      reviewer: { initials: 'RV', color: '#475569', desc: 'Codex · 12 memories · 3 skills', sandbox: 'native', model: 'GPT-5.5 Codex' }
+    };
+    const av = (p, size) => 'flex: none; width: ' + size + 'px; height: ' + size + 'px; border-radius: ' + (size > 18 ? 6 : 5) + 'px; background: ' + P[p].color + '; color: #ffffff; display: grid; place-items: center; font-size: ' + (size > 18 ? 9.5 : 8.5) + 'px; font-weight: 700';
+
+    const msgs = s.msgs.map((m, i) => {
+      const isTools = m.kind === 'tools';
+      const open = !!s.open[m.id];
+      const rows = isTools ? m.rows.map((r, j) => {
+        const key = m.id + ':' + j;
+        const ro = !!s.out[key];
+        return Object.assign({}, r, {
+          border: j === 0 ? '0' : '1px solid var(--border)',
+          dotStyle: 'width: 7px; height: 7px; flex: none; border-radius: ' + (r.ok ? '50%' : '2px') + '; background: ' + (r.ok ? 'var(--ok)' : 'var(--err)'),
+          hasOut: !!r.out, open: ro, btn: ro ? 'Hide output' : 'Show output',
+          toggle: () => { const out = Object.assign({}, this.st().out); out[key] = !ro; this.setState({ out: out }); }
+        });
+      }) : [];
+      const fails = rows.filter((r) => !r.ok).length;
+      return Object.assign({}, m, {
+        isUser: m.kind === 'user', isAssistant: m.kind === 'assistant', isTools: isTools, isFiles: m.kind === 'files',
+        isFold: m.kind === 'fold', isEvent: m.kind === 'event', isLive: m.kind === 'live',
+        paras: (m.paras || []).map((t) => ({ text: t })),
+        bullets: (m.bullets || []).map((t) => ({ text: t })), hasBullets: !!(m.bullets && m.bullets.length),
+        rows: rows, open: open, expanded: String(open),
+        hasFail: fails > 0, failText: fails + ' failed',
+        chevStyle: 'transition: transform .12s; transform: rotate(' + (open ? 90 : 0) + 'deg)',
+        toggle: () => { const o = Object.assign({}, this.st().open); o[m.id] = !open; this.setState({ open: o }); },
+        avStyle: m.profile ? av(m.profile, 16) : '', initials: m.profile ? P[m.profile].initials : '',
+        text: m.text || ''
+      });
+    });
+
+    const status = s.banner ? 'approval' : s.running ? 'working' : 'done';
+    const statusColor = { approval: 'var(--warn)', working: 'var(--info)', done: 'var(--ok)', input: 'var(--input)', plan: 'var(--plan)', failed: 'var(--err)', idle: 'var(--muted)' };
+    const labels = { approval: 'Approval', working: 'Working', done: 'Done', input: 'Input', plan: 'Plan ready', failed: 'Failed' };
+    const needsHuman = { approval: true, input: true, plan: true, failed: true };
+    const rank = { approval: 6, input: 5, failed: 4, plan: 3, working: 2, done: 1, idle: 0 };
+    const compact = (s.density || this.props.density || 'compact') === 'compact';
+    const glyph = (st, size) => {
+      const c = statusColor[st];
+      const b = 'flex: none; display: inline-block; width: ' + size + 'px; height: ' + size + 'px; ';
+      if (st === 'approval') return b + 'background: ' + c + '; clip-path: polygon(50% 6%, 100% 94%, 0 94%)';
+      if (st === 'input') return b + 'background: ' + c + '; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%)';
+      if (st === 'working') return b + 'border-radius: 50%; background: linear-gradient(90deg, transparent 50%, ' + c + ' 50%); box-shadow: inset 0 0 0 1.5px ' + c;
+      if (st === 'plan') return b + 'border-radius: 3px; box-shadow: inset 0 0 0 1.75px ' + c;
+      if (st === 'done') return b + 'border-radius: 50%; background: ' + c;
+      if (st === 'failed') return b + 'border-radius: 2px; background: ' + c;
+      return b + 'border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--subtle)';
+    };
+    const thread = (t) => {
+      const human = needsHuman[t.status];
+      const recede = (t.status === 'working' || t.status === 'idle') && !t.active;
+      return Object.assign({}, t, {
+        href: t.active ? 'Session.dc.html' : 'Main.dc.html',
+        initials: P[t.profile].initials, avStyle: av(t.profile, 16),
+        label: t.status === 'idle' ? t.time : labels[t.status] + (t.status === 'working' && t.time ? ' ' + t.time : ''),
+        shortLabel: human ? labels[t.status] : t.time,
+        glyph: glyph(t.status, 9),
+        statusStyle: 'flex: none; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: ' + (human ? 600 : 500) + '; color: ' + statusColor[t.status],
+        rowStyle: (compact ? 'display: block; padding: 0 8px; border-radius: 8px; ' : 'display: block; padding: 8px 8px 9px; border-radius: 10px; margin-bottom: 2px; ') + 'min-width: 0; ' + (t.active ? 'background: var(--hover); ' : '') + 'opacity: ' + (recede ? 0.7 : 1),
+        titleStyle: 'font-size: 13px; line-height: 1.35; color: var(--fg-strong); font-weight: ' + (human ? 600 : 400) + '; overflow: hidden; text-overflow: ellipsis; white-space: nowrap',
+        compactTitleStyle: 'flex: 1; min-width: 0; font-size: 13px; color: var(--fg-strong); font-weight: ' + (human || t.active ? 600 : 400) + '; overflow: hidden; text-overflow: ellipsis; white-space: nowrap',
+        compactLabelStyle: 'flex: none; font-size: 11.5px; font-variant-numeric: tabular-nums; ' + (human ? 'font-weight: 600; color: ' + statusColor[t.status] : 'color: var(--muted)')
+      });
+    };
+    const projectDefs = [
+      { name: 'infra', threads: [
+        { id: 't1', profile: s.profile, title: 'Draft the serving deployment', status: status, time: 'now', active: true },
+        { id: 't8', profile: 'ops', title: 'Check certificate expiry across hosts', status: 'working', time: '2m' } ] },
+      { name: 'evals', threads: [
+        { id: 't2', profile: 'research', title: 'Which eval set for the long-context run?', status: 'input', time: '14m' },
+        { id: 't7', profile: 'research', title: 'Compare tokenizer throughput', status: 'idle', time: '2h' } ] },
+      { name: 'kb', threads: [ { id: 't3', profile: 'ops', title: 'Rotate KB backups to the new pool', status: 'plan', time: '22m' } ] },
+      { name: 'harness', threads: [ { id: 't4', profile: 'reviewer', title: 'Review PR #48: room router', status: 'working', time: '3m' } ] },
+      { name: 'brain', threads: [
+        { id: 't5', profile: 'scribe', title: 'Index the October papers', status: 'working', time: '12m' },
+        { id: 't6', profile: 'scribe', title: "Summarise yesterday's sessions", status: 'done', time: '1h' } ] }
+    ];
+    const standalone = [
+      { id: 's1', profile: 'research', title: 'What changed in the DRA driver this month?', status: 'done', time: '3h' },
+      { id: 's2', profile: 'scribe', title: 'Draft a note for #lab-ops', status: 'working', time: '1m' },
+      { id: 's3', profile: 'serving', title: 'GPU prices this quarter', status: 'idle', time: '1d' }
+    ].map(thread);
+    const expandedMap = Object.assign({ infra: true }, s.expanded || {});
+    const projects = projectDefs.map((p) => {
+      const threads = p.threads.map(thread);
+      const top = threads.slice().sort((a, b) => rank[b.status] - rank[a.status])[0];
+      const working = threads.filter((t) => t.status === 'working').length;
+      const human = needsHuman[top.status];
+      const open = !!expandedMap[p.name];
+      return {
+        name: p.name, threads: threads, open: open, expanded: String(open),
+        toggle: () => { const e = Object.assign({ infra: true }, this.st().expanded || {}); e[p.name] = !open; this.setState({ expanded: e }); },
+        chevStyle: 'flex: none; transition: transform .12s; transform: rotate(' + (open ? 90 : 0) + 'deg)',
+        nameStyle: 'flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-strong); font-weight: ' + (human ? 600 : 500),
+        glyph: glyph(top.status, 8),
+        rollLabel: human ? labels[top.status] : working ? working + ' working' : String(threads.length),
+        rollStyle: 'flex: none; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; ' + (human ? 'font-weight: 600; color: ' + statusColor[top.status] : 'color: var(--muted)')
+      };
+    });
+    const densSeg = (on) => 'width: 24px; height: 20px; border: 0; border-radius: 5px; display: grid; place-items: center; padding: 0; ' + (on ? 'background: var(--surface); color: var(--fg-strong); box-shadow: 0 1px 2px rgba(0,0,0,.1)' : 'background: transparent; color: var(--muted)');
+
+    const profiles = Object.keys(P).map((k) => ({
+      name: k, initials: P[k].initials, desc: P[k].desc, sandbox: P[k].sandbox, avStyle: av(k, 24),
+      selected: String(s.profile === k),
+      rowStyle: 'display: flex; align-items: center; gap: 10px; padding: 7px 8px; border: 0; border-radius: 9px; text-align: left; ' + (s.profile === k ? 'background: var(--hover)' : 'background: transparent'),
+      pick: () => {
+        if (k === s.profile) { this.setState({ picker: false }); return; }
+        this.push([{ id: 'ev' + Date.now(), kind: 'event', profile: k, text: 'Switched to ' + k + ' · handoff carries the last 3 turns (16k-token budget)' }], { profile: k, picker: false });
+      }
+    }));
+
+    const text = (s.draft || '').trim();
+    const sendMode = s.running ? (text ? 'steer' : 'stop') : 'send';
+    const canSend = sendMode !== 'send' || !!text;
+    const seg = (on) => 'height: 26px; padding: 0 9px; border: 0; border-radius: 6px; font-size: 12px; ' + (on ? 'background: var(--surface); color: var(--fg-strong); font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,.08)' : 'background: transparent; color: var(--muted)');
+
+    const diffText = ['apiVersion: v1', 'kind: Namespace', 'metadata:', '  name: inference', '---', 'apiVersion: apps/v1', 'kind: Deployment', 'metadata:', '  name: serving', '  namespace: inference', 'spec:', '  replicas: 1', '  selector:', '    matchLabels: { app: serving }', '  template:', '    metadata:', '      labels: { app: serving }', '    spec:', '      containers:', '        - name: server', '          image: registry.example/serving:1.4.2', '          args:', '            - --max-model-len=16384', '            - --max-num-seqs=2', '            - --tensor-parallel-size=2', '            - --quantization=fp8', '          ports: [{ containerPort: 8000 }]', '          readinessProbe:', '            httpGet: { path: /health, port: 8000 }', '            initialDelaySeconds: 60', '          resources:', '            limits:', '              nvidia.com/gpu: 2', '---', 'apiVersion: v1', 'kind: Service', 'metadata: { name: serving, namespace: inference }', 'spec: { selector: { app: serving }, ports: [{ port: 80, targetPort: 8000 }] }'];
+
+    return {
+      themeClass: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light',
+      projects: projects, standalone: standalone,
+      isComfy: !compact, isCompact: compact,
+      comfyPressed: String(!compact), compactPressed: String(compact),
+      comfyStyle: densSeg(!compact), compactStyle: densSeg(compact),
+      setComfy: () => this.setState({ density: 'comfy' }), setCompact: () => this.setState({ density: 'compact' }),
+      homeCount: s.banner ? 5 : 4,
+      msgs: msgs,
+      hasBanner: s.banner,
+      approve: () => this.approve(false),
+      alwaysAllow: () => this.approve(true),
+      decline: () => this.decline(),
+      menuOpen: s.menu, menuExpanded: String(s.menu), toggleMenu: () => this.setState({ menu: !this.st().menu }),
+      draft: s.draft,
+      onDraft: (e) => this.setState({ draft: e.target.value }),
+      onKey: (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.send(); } },
+      placeholder: s.running ? 'Steer the current turn, or press Stop' : 'Ask ' + s.profile + ' anything, or type / for commands',
+      onSend: () => this.send(),
+      sendLabel: sendMode === 'stop' ? 'Stop' : sendMode === 'steer' ? 'Steer' : 'Send',
+      sendIsArrow: sendMode === 'send', sendIsStop: sendMode === 'stop', sendIsSteer: sendMode === 'steer',
+      sendStyle: 'min-width: 32px; height: 32px; padding: 0 6px; border: 0; border-radius: 16px; display: inline-grid; place-items: center; margin-left: 6px; ' + (canSend ? 'background: var(--fg-strong); color: var(--canvas)' : 'background: var(--hover); color: var(--subtle)'),
+      togglePicker: () => this.setState({ picker: !this.st().picker }),
+      pickerOpen: s.picker, pickerExpanded: String(s.picker),
+      profiles: profiles,
+      profileName: s.profile, profileInitials: P[s.profile].initials, profileAv: av(s.profile, 18),
+      modelName: P[s.profile].model,
+      accessLabel: s.allowAll ? 'Auto-accept (session)' : 'Supervised',
+      buildPressed: String(s.mode === 'build'), planPressed: String(s.mode === 'plan'),
+      buildStyle: seg(s.mode === 'build'), planStyle: seg(s.mode === 'plan'),
+      setBuild: () => this.setState({ mode: 'build' }), setPlan: () => this.setState({ mode: 'plan' }),
+      panelOpen: s.panel, panelPressed: String(s.panel),
+      togglePanel: () => this.setState({ panel: !this.st().panel }),
+      openPanel: () => this.setState({ panel: true }),
+      diff: diffText.map((t, i) => ({ n: i + 1, text: t }))
+    };
+  }
+}
+</script>
+</body>
+</html>

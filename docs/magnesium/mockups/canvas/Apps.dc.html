@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Apps</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+.t3{--canvas:#fcfcfc;--sidebar:#fafafa;--surface:#ffffff;--fg:#27272a;--fg-strong:#18181b;--muted:#71717b;--subtle:#a1a1aa;--border:#e4e4e7;--hover:#f4f4f5;--primary:#1b4ed8;--primary-wash:#eef2ff;--on-primary:#ffffff;--warn:#b45309;--warn-wash:#fffbeb;--input:#4f46e5;--info:#2563eb;--ok:#15803d;--err:#dc2626;--plan:#7c3aed;--shadow:0 1px 2px rgba(0,0,0,.04),0 10px 30px rgba(0,0,0,.07);color-scheme:light}
+.t3.dark{--canvas:#0a0a0a;--sidebar:#000000;--surface:#111111;--fg:#f5f5f5;--fg-strong:#ffffff;--muted:#8a8a8a;--subtle:#5c5c5c;--border:#1f1f1f;--hover:#171717;--primary:#346bf1;--primary-wash:#0f1a33;--on-primary:#ffffff;--warn:#fbbf24;--warn-wash:#1f1705;--input:#a5b4fc;--info:#60a5fa;--ok:#4ade80;--err:#f87171;--plan:#c4b5fd;--shadow:0 10px 30px rgba(0,0,0,.5);color-scheme:dark}
+.t3 button{font:inherit;color:inherit;cursor:pointer}
+.t3 input{font:inherit;color:inherit}
+.hov:hover{background:var(--hover)}
+.pri:hover{filter:brightness(1.08)}
+.card:hover{border-color:var(--subtle)}
+.t3 :focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+</style>
+</helmet>
+<div class="t3 {{themeClass}}" style="display: flex; flex-wrap: wrap; min-height: 100vh; padding-bottom: 30px; box-sizing: border-box; background: var(--canvas); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5">
+
+  <aside style="flex: 0 0 256px; box-sizing: border-box; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 0 8px 12px; min-width: 0">
+    <div style="height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 6px">
+      <span style="width: 22px; height: 22px; border-radius: 6px; background: var(--fg-strong); color: var(--canvas); display: grid; place-items: center; font-size: 10px; font-weight: 700; letter-spacing: -0.02em">Mg</span>
+      <span style="font-weight: 600; font-size: 15px; color: var(--fg-strong); letter-spacing: -0.01em">Magnesium</span>
+    </div>
+    <nav aria-label="Places" style="display: flex; flex-direction: column; gap: 1px; padding-bottom: 10px; border-bottom: 1px solid var(--border)">
+      <a href="Main.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>
+        <span style="flex: 1">Home</span>
+        <span style="min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--warn); color: var(--canvas); font-size: 11px; font-weight: 600; display: grid; place-items: center">5</span>
+      </a>
+      <a href="Room.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"></path></svg>
+        <span style="flex: 1">Rooms</span><span style="font-size: 11px; color: var(--muted)">3</span>
+      </a>
+      <a href="Fleet.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="1.5"></rect><rect x="3" y="13" width="18" height="7" rx="1.5"></rect><path d="M7 7.5h.01M7 16.5h.01"></path></svg>
+        <span style="flex: 1">Fleet</span>
+      </a>
+      <a href="Apps.dc.html" aria-current="page" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px; background: var(--hover); color: var(--fg-strong); font-weight: 500">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+        <span style="flex: 1">Apps</span>
+      </a>
+      <a href="Brain.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5a3 3 0 0 0-5.8 1A3 3 0 0 0 4 11a3 3 0 0 0 2 5 3 3 0 0 0 6 1Z"></path><path d="M12 5a3 3 0 0 1 5.8 1A3 3 0 0 1 20 11a3 3 0 0 1-2 5 3 3 0 0 1-6 1Z"></path></svg>
+        <span style="flex: 1">Brain</span>
+      </a>
+    </nav>
+    <p style="margin: 14px 8px 6px; font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase">Pinned apps</p>
+    <sc-for list="{{pinned}}" as="a" hint-placeholder-count="4">
+      <a href="AppView.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <span style="{{a.iconSmall}}">{{a.letter}}</span>
+        <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{a.name}}</span>
+        <sc-if value="{{a.hasBadge}}" hint-placeholder-val="{{ false }}"><span style="font-size: 11px; color: var(--warn); font-weight: 600">{{a.badge}}</span></sc-if>
+      </a>
+    </sc-for>
+  </aside>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="min-height: 52px; box-sizing: border-box; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 8px 20px">
+      <div style="display: flex; align-items: baseline; gap: 10px; flex: 1; min-width: 200px">
+        <h1 style="margin: 0; font-size: 14px; font-weight: 600; color: var(--fg-strong)">Apps</h1>
+        <span style="font-size: 12.5px; color: var(--muted)">{{headline}}</span>
+      </div>
+      <label for="app-search" style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; width: 240px; max-width: 100%; box-sizing: border-box; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--muted)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+        <input id="app-search" type="search" placeholder="Search apps" value="{{query}}" onChange="{{onQuery}}" style="border: 0; outline: 0; background: transparent; width: 100%; font-size: 13px">
+      </label>
+      <button type="button" class="pri" onClick="{{toggleNew}}" aria-expanded="{{newExpanded}}" style="height: 32px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--primary); color: var(--on-primary); font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+        New app
+      </button>
+    </header>
+
+    <div style="padding: 20px 20px 48px; display: flex; flex-direction: column; gap: 22px; max-width: 1180px; box-sizing: border-box; width: 100%">
+
+      <sc-if value="{{newOpen}}" hint-placeholder-val="{{ false }}">
+        <section aria-label="New app" style="border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 16px; display: flex; flex-direction: column; gap: 10px">
+          <h2 style="margin: 0; font-size: 14px; font-weight: 600; color: var(--fg-strong)">Ask an agent to build an app</h2>
+          <p style="margin: 0; font-size: 13px; color: var(--muted)">It runs as a thread you can watch. The app ships as a sandboxed page or an MCP app, and any action it takes on the fleet asks you first.</p>
+          <label for="new-app" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Describe the app</label>
+          <textarea id="new-app" rows="2" value="{{newText}}" onChange="{{onNewText}}" placeholder="A board that shows which papers the KB ingested this week, grouped by project" style="border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; resize: none; background: var(--canvas); font: inherit; font-size: 13.5px; color: var(--fg)"></textarea>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+            <span style="font-size: 12.5px; color: var(--muted)">Built by</span>
+            <sc-for list="{{builders}}" as="b" hint-placeholder-count="3">
+              <button type="button" aria-pressed="{{b.pressed}}" onClick="{{b.pick}}" style="{{b.style}}"><span style="{{b.av}}">{{b.initials}}</span>{{b.name}}</button>
+            </sc-for>
+            <button type="button" class="pri" onClick="{{startBuild}}" style="margin-left: auto; height: 32px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--fg-strong); color: var(--canvas); font-size: 13px; font-weight: 500">Start building</button>
+          </div>
+        </section>
+      </sc-if>
+      <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+        <div role="status" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; background: var(--primary-wash); color: var(--primary); font-size: 13px">
+          <span style="flex: 1">{{toast}}</span>
+          <a href="Session.dc.html" style="font-weight: 600">Watch the thread</a>
+        </div>
+      </sc-if>
+
+      <section aria-labelledby="pin-h" style="display: flex; flex-direction: column; gap: 10px">
+        <h2 id="pin-h" style="margin: 0; font-size: 13px; font-weight: 600; color: var(--fg-strong)">Pinned</h2>
+        <sc-if value="{{noPinned}}" hint-placeholder-val="{{ false }}">
+          <div style="border: 1px dashed var(--border); border-radius: 14px; padding: 18px; color: var(--muted); font-size: 13px">Pin an app with its star to keep it here and in the sidebar.</div>
+        </sc-if>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 10px">
+          <sc-for list="{{pinned}}" as="a" hint-placeholder-count="4">
+            <a href="AppView.dc.html" class="card" style="display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface)">
+              <div style="display: flex; align-items: center; gap: 10px">
+                <span style="{{a.iconLarge}}">{{a.letter}}</span>
+                <div style="flex: 1; min-width: 0">
+                  <div style="font-size: 14px; font-weight: 600; color: var(--fg-strong)">{{a.name}}</div>
+                  <div style="font-size: 12px; color: var(--muted)">{{a.kindLine}}</div>
+                </div>
+              </div>
+              <div style="font-size: 12.5px; color: var(--fg); background: var(--hover); border-radius: 8px; padding: 6px 8px; font-variant-numeric: tabular-nums">{{a.live}}</div>
+            </a>
+          </sc-for>
+        </div>
+      </section>
+
+      <section aria-labelledby="all-h" style="display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+          <h2 id="all-h" style="margin: 0; font-size: 13px; font-weight: 600; color: var(--fg-strong)">All apps</h2>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto">
+            <sc-for list="{{filters}}" as="f" hint-placeholder-count="4">
+              <button type="button" aria-pressed="{{f.pressed}}" onClick="{{f.pick}}" style="{{f.style}}">{{f.label}}</button>
+            </sc-for>
+          </div>
+        </div>
+        <sc-if value="{{noResults}}" hint-placeholder-val="{{ false }}">
+          <div style="border: 1px dashed var(--border); border-radius: 14px; padding: 18px; color: var(--muted); font-size: 13px">No app matches. Try "New app" to have an agent build it.</div>
+        </sc-if>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 10px">
+          <sc-for list="{{apps}}" as="a" hint-placeholder-count="9">
+            <article class="card" style="display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface)">
+              <div style="display: flex; align-items: flex-start; gap: 10px">
+                <span style="{{a.iconLarge}}">{{a.letter}}</span>
+                <div style="flex: 1; min-width: 0">
+                  <div style="font-size: 14px; font-weight: 600; color: var(--fg-strong)">{{a.name}}</div>
+                  <div style="font-size: 12px; color: var(--muted)">{{a.kindLine}}</div>
+                </div>
+                <button type="button" class="hov" onClick="{{a.togglePin}}" aria-pressed="{{a.pinPressed}}" aria-label="{{a.pinLabel}}" style="width: 30px; height: 30px; border: 0; background: transparent; border-radius: 8px; display: grid; place-items: center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke-linejoin="round" aria-hidden="true" style="{{a.starStyle}}"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"></path></svg>
+                </button>
+              </div>
+              <p style="margin: 0; font-size: 13px; color: var(--fg)">{{a.desc}}</p>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap">
+                <sc-for list="{{a.tags}}" as="t" hint-placeholder-count="2">
+                  <span style="font-size: 11px; color: var(--muted); border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px">{{t.text}}</span>
+                </sc-for>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border)">
+                <span style="{{a.byAv}}">{{a.byInitials}}</span>
+                <span style="flex: 1; font-size: 12px; color: var(--muted)">{{a.byLine}}</span>
+                <a href="AppView.dc.html" class="hov" style="height: 28px; padding: 0 12px; border: 1px solid var(--border); border-radius: 7px; display: inline-flex; align-items: center; font-size: 12.5px; color: var(--fg-strong)">Open</a>
+              </div>
+            </article>
+          </sc-for>
+        </div>
+      </section>
+      <p style="margin: 0; font-size: 11.5px; color: var(--subtle)">Example data · no backend. Apps open on their own page, not as a new right-panel tab (doc 11).</p>
+    </div>
+  </main>
+  <dc-import name="Footer" theme="{{themeName}}" hint-size="100%,30px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  componentWillUnmount() { if (this._t) clearTimeout(this._t); }
+
+  st() {
+    return Object.assign({ pins: { gpu: true, kb: true, evals: true, serving: true }, filter: 'all', query: '', newOpen: false, newText: '', builder: 'research', toast: '' }, this.state || {});
+  }
+
+  renderVals() {
+    const s = this.st();
+    const dark = (this.props.theme ?? 'light') === 'dark';
+    const P = { serving: ['SE', '#c2410c'], research: ['RE', '#0e7490'], ops: ['OP', '#4d7c0f'], scribe: ['SC', '#be185d'], reviewer: ['RV', '#475569'], fuse: ['Mg', 'var(--fg-strong)'] };
+    const av = (p) => 'flex: none; width: 18px; height: 18px; border-radius: 5px; background: ' + P[p][1] + '; color: ' + (p === 'fuse' ? 'var(--canvas)' : '#ffffff') + '; display: grid; place-items: center; font-size: 8.5px; font-weight: 700';
+    const defs = [
+      { id: 'gpu', name: 'GPU Board', letter: 'G', hue: '#2563eb', kind: 'MCP app', by: 'ops', runs: 'gpu-a', desc: 'Live GPU use, free cards and the jobs on them, across the fleet.', live: 'gpu-a 78% · gpu-b idle · 4 free', footer: true, approvals: 1 },
+      { id: 'kb', name: 'KB Explorer', letter: 'K', hue: '#be185d', kind: 'Built in', by: 'fuse', runs: 'kb-host', desc: 'Browse pages, links and what was ingested today.', live: '41 pages in today · 6 memories to review' },
+      { id: 'evals', name: 'Eval Leaderboard', letter: 'E', hue: '#0e7490', kind: 'HTML app', by: 'research', runs: 'workstation', desc: 'Every eval run, scored by model and profile.', live: 'Best this week: 81.4 on suite A' },
+      { id: 'serving', name: 'Serving Console', letter: 'S', hue: '#c2410c', kind: 'MCP app', by: 'serving', runs: 'gpu-a', desc: 'Endpoints, replicas and request latency.', live: '1 endpoint · p95 420 ms', approvals: 2 },
+      { id: 'ingest', name: 'Ingest Queue', letter: 'I', hue: '#7c3aed', kind: 'MCP app', by: 'scribe', runs: 'kb-host', desc: 'What is waiting to enter the KB, and why it matters.', live: '31 of 58 papers', footer: true },
+      { id: 'usage', name: 'Cost & Usage', letter: '$', hue: '#15803d', kind: 'Built in', by: 'fuse', runs: 'this machine', desc: 'Tokens and limits by model, profile and project.', live: 'Week 42% · resets Monday', footer: true },
+      { id: 'papers', name: 'Paper Digest', letter: 'P', hue: '#b45309', kind: 'HTML app', by: 'scribe', runs: 'kb-host', desc: "This week's papers, ranked by why they matter to your projects.", live: '12 new · 3 flagged for evals' },
+      { id: 'memory', name: 'Memory Review', letter: 'M', hue: '#4f46e5', kind: 'Built in', by: 'fuse', runs: 'kb-host', desc: 'Approve or reject the memories the dream cycle proposed.', live: '6 waiting', badge: '6' },
+      { id: 'certs', name: 'Cert Watch', letter: 'C', hue: '#4d7c0f', kind: 'MCP app', by: 'ops', runs: 'enclave-1', desc: 'Certificate expiry across every host, with renewals.', live: 'All valid 30+ days' },
+      { id: 'router', name: 'Room Analytics', letter: 'R', hue: '#475569', kind: 'HTML app', by: 'reviewer', runs: 'workstation', desc: 'What the room router decided, and where it was wrong.', live: '9 wakes · 22 observe today' },
+      { id: 'backups', name: 'Backup Status', letter: 'B', hue: '#0f766e', kind: 'MCP app', by: 'ops', runs: 'enclave-1', desc: 'Last backup and last restore test, per store.', live: 'nas offline · 1 job waiting', approvals: 1 }
+    ];
+    const icon = (a, size) => 'flex: none; width: ' + size + 'px; height: ' + size + 'px; border-radius: ' + Math.round(size * 0.28) + 'px; background: ' + a.hue + '; color: #ffffff; display: grid; place-items: center; font-size: ' + Math.round(size * 0.46) + 'px; font-weight: 700';
+    const q = (s.query || '').trim().toLowerCase();
+    const decorate = (a) => {
+      const pinned = !!s.pins[a.id];
+      const tags = [{ text: a.kind }].concat(a.footer ? [{ text: 'Adds a footer item' }] : []).concat(a.approvals ? [{ text: a.approvals + (a.approvals > 1 ? ' actions ask first' : ' action asks first') }] : []);
+      return Object.assign({}, a, {
+        iconSmall: icon(a, 20), iconLarge: icon(a, 36),
+        kindLine: a.kind + ' · on ' + a.runs,
+        tags: tags,
+        hasBadge: !!a.badge, badge: a.badge || '',
+        byAv: av(a.by), byInitials: P[a.by][0], byLine: a.by === 'fuse' ? 'Part of Magnesium' : 'Built by ' + a.by,
+        pinPressed: String(pinned), pinLabel: pinned ? 'Unpin ' + a.name : 'Pin ' + a.name,
+        starStyle: pinned ? 'fill: var(--warn); stroke: var(--warn)' : 'fill: none; stroke: var(--muted)',
+        togglePin: () => { const p = Object.assign({}, this.st().pins); p[a.id] = !pinned; this.setState({ pins: p }); }
+      });
+    };
+    const all = defs.map(decorate);
+    const apps = all.filter((a) => {
+      if (q && (a.name + ' ' + a.desc).toLowerCase().indexOf(q) < 0) return false;
+      if (s.filter === 'pinned') return !!s.pins[a.id];
+      if (s.filter === 'agents') return a.by !== 'fuse';
+      if (s.filter === 'footer') return !!a.footer;
+      return true;
+    });
+    const pinned = all.filter((a) => s.pins[a.id]);
+    const filters = [ ['all', 'All'], ['pinned', 'Pinned'], ['agents', 'Built by agents'], ['footer', 'Adds to footer'] ].map((f) => ({
+      label: f[1], pressed: String(s.filter === f[0]), pick: () => this.setState({ filter: f[0] }),
+      style: 'height: 28px; padding: 0 10px; border-radius: 14px; font-size: 12.5px; border: 1px solid ' + (s.filter === f[0] ? 'var(--fg-strong)' : 'var(--border)') + '; background: ' + (s.filter === f[0] ? 'var(--fg-strong)' : 'var(--surface)') + '; color: ' + (s.filter === f[0] ? 'var(--canvas)' : 'var(--fg)')
+    }));
+    const builders = ['research', 'scribe', 'ops'].map((b) => ({
+      name: b, initials: P[b][0], av: av(b), pressed: String(s.builder === b), pick: () => this.setState({ builder: b }),
+      style: 'display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px 0 6px; border-radius: 8px; font-size: 12.5px; border: 1px solid ' + (s.builder === b ? 'var(--fg-strong)' : 'var(--border)') + '; background: var(--surface)'
+    }));
+    return {
+      themeClass: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light',
+      headline: all.length + ' apps · ' + pinned.length + ' pinned · ' + all.filter((a) => a.by !== 'fuse').length + ' built by agents',
+      pinned: pinned, noPinned: pinned.length === 0,
+      apps: apps, noResults: apps.length === 0, filters: filters,
+      query: s.query, onQuery: (e) => this.setState({ query: e.target.value }),
+      newOpen: s.newOpen, newExpanded: String(s.newOpen), toggleNew: () => this.setState({ newOpen: !this.st().newOpen }),
+      newText: s.newText, onNewText: (e) => this.setState({ newText: e.target.value }),
+      builders: builders,
+      startBuild: () => {
+        const cur = this.st();
+        const what = (cur.newText || '').trim() || 'a weekly papers board';
+        this.setState({ newOpen: false, newText: '', toast: cur.builder + ' started building "' + (what.length > 48 ? what.slice(0, 48) + '…' : what) + '" in a new thread.' });
+        if (this._t) clearTimeout(this._t);
+        this._t = setTimeout(() => this.setState({ toast: '' }), 6000);
+      },
+      hasToast: !!s.toast, toast: s.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

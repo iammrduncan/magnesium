@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Session on the phone</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+.ph{--screen:#fcfcfc;--card:#ffffff;--fg:#27272a;--fg-strong:#18181b;--muted:#71717b;--subtle:#a1a1aa;--border:#e4e4e7;--hover:#f4f4f5;--bubble:#efeff1;--primary:#1b4ed8;--on-primary:#ffffff;--warn:#b45309;--warn-wash:#fffbeb;--info:#2563eb;--ok:#15803d;--err:#dc2626;--glass:rgba(252,252,252,.86);--shadow:0 8px 28px rgba(0,0,0,.10);color-scheme:light}
+.ph.dark{--screen:#0a0a0a;--card:#111111;--fg:#f5f5f5;--fg-strong:#ffffff;--muted:#8a8a8a;--subtle:#5c5c5c;--border:#1f1f1f;--hover:#161616;--bubble:#161616;--primary:#346bf1;--on-primary:#ffffff;--warn:#fbbf24;--warn-wash:#1f1705;--info:#60a5fa;--ok:#4ade80;--err:#f87171;--glass:rgba(10,10,10,.86);--shadow:0 8px 28px rgba(0,0,0,.6);color-scheme:dark}
+.ph button{font:inherit;color:inherit;cursor:pointer}
+.ph :focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+</style>
+</helmet>
+<div class="ph {{themeClass}}" style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: var(--screen); color: var(--fg); font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.45">
+
+  <div style="position: absolute; left: 0; right: 0; top: 0; z-index: 2; padding: 50px 8px 8px; display: flex; align-items: center; gap: 4px; background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--border)">
+    <a href="Phone.dc.html" aria-label="Back to Home" style="width: 44px; height: 44px; display: grid; place-items: center; color: var(--primary)">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>
+    </a>
+    <div style="flex: 1; min-width: 0; text-align: center">
+      <div style="font-size: 15px; font-weight: 700; color: var(--fg-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap">Draft the serving deployment</div>
+      <div style="font-size: 12px; color: var(--muted)">serving · gpu-a · container</div>
+    </div>
+    <span style="width: 44px; height: 44px; display: grid; place-items: center"><span style="width: 26px; height: 26px; border-radius: 8px; background: #c2410c; color: #ffffff; display: grid; place-items: center; font-size: 10px; font-weight: 700">SE</span></span>
+  </div>
+
+  <div style="height: 100%; overflow-y: auto; padding: 124px 16px 110px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px">
+    <div style="align-self: flex-end; max-width: 82%; background: var(--bubble); border-radius: 20px; padding: 10px 14px; color: var(--fg-strong)">Draft a deployment for the new model on gpu-a: two replicas, 16k context, in the inference namespace.</div>
+    <p style="margin: 0">I checked what gpu-a has free and how the other services are set up.</p>
+
+    <button type="button" onClick="{{toggleTools}}" aria-expanded="{{toolsExpanded}}" style="align-self: flex-start; min-height: 44px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border); background: var(--card); border-radius: 14px; padding: 0 14px; font-size: 14px; color: var(--muted)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true" style="{{chevStyle}}"><path d="m9 6 6 6-6 6"></path></svg>
+      Ran 3 commands <span style="color: var(--err); font-weight: 700">· 1 failed</span>
+    </button>
+    <sc-if value="{{toolsOpen}}" hint-placeholder-val="{{ false }}">
+      <div style="border: 1px solid var(--border); border-radius: 16px; background: var(--card); overflow: hidden">
+        <sc-for list="{{tools}}" as="t" hint-placeholder-count="3">
+          <div style="display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 14px; border-top: {{t.border}}">
+            <span style="{{t.dot}}"></span>
+            <code style="flex: 1; min-width: 0; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{t.cmd}}</code>
+            <span style="font-size: 12px; color: var(--muted)">{{t.meta}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <p style="margin: 0">Two replicas will not fit on two 48 GB cards. I wrote one replica across both, with 16k context at batch 2. Applying it creates the inference namespace.</p>
+    <div style="display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); padding: 12px 14px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"></path><path d="M14 3v5h5"></path></svg>
+      <span style="flex: 1">deploy/serving.yaml</span>
+      <span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 13px; color: var(--ok)">+38</span>
+    </div>
+
+    <sc-if value="{{showApproval}}" hint-placeholder-val="{{ true }}">
+      <article style="border-radius: 20px; background: var(--warn-wash); padding: 14px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 700; color: var(--warn)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2.5 20h19Z"></path><path d="M12 10v4M12 17h.01"></path></svg>
+          Command approval
+        </div>
+        <pre style="margin: 0; padding: 10px 12px; background: var(--card); border-radius: 12px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12.5px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--fg-strong)">kubectl apply -f deploy/serving.yaml -n inference</pre>
+        <div style="display: flex; gap: 8px">
+          <button type="button" onClick="{{decline}}" style="flex: 1; height: 48px; border: 1px solid var(--border); background: var(--card); border-radius: 14px; font-size: 15px; font-weight: 500">Decline</button>
+          <button type="button" onClick="{{approve}}" style="flex: 1; height: 48px; border: 0; background: var(--primary); color: var(--on-primary); border-radius: 14px; font-size: 15px; font-weight: 700">Approve</button>
+        </div>
+      </article>
+    </sc-if>
+
+    <sc-for list="{{extra}}" as="m" hint-placeholder-count="2">
+      <sc-if value="{{m.isLive}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; align-items: center; gap: 8px; color: var(--info); font-size: 14px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 3.5a8.5 8.5 0 0 1 0 17Z" fill="currentColor"></path></svg>
+          {{m.text}}
+        </div>
+      </sc-if>
+      <sc-if value="{{m.isUser}}" hint-placeholder-val="{{ false }}">
+        <div style="align-self: flex-end; max-width: 82%; background: var(--bubble); border-radius: 20px; padding: 10px 14px; color: var(--fg-strong)">{{m.text}}</div>
+      </sc-if>
+      <sc-if value="{{m.isText}}" hint-placeholder-val="{{ true }}">
+        <p style="margin: 0">{{m.text}}</p>
+      </sc-if>
+      <sc-if value="{{m.isFold}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted)"><span style="flex: 1; height: 1px; background: var(--border)"></span>{{m.text}}<span style="flex: 1; height: 1px; background: var(--border)"></span></div>
+      </sc-if>
+    </sc-for>
+  </div>
+
+  <div style="position: absolute; left: 12px; right: 12px; bottom: 16px; display: flex; align-items: center; gap: 6px; height: 54px; padding: 0 6px 0 16px; border-radius: 27px; background: var(--glass); backdrop-filter: blur(16px) saturate(1.1); -webkit-backdrop-filter: blur(16px) saturate(1.1); border: 1px solid var(--border); box-shadow: var(--shadow)">
+    <label for="ps-compose" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Message serving</label>
+    <input id="ps-compose" type="text" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onKey}}" placeholder="{{placeholder}}" style="flex: 1; min-width: 0; height: 44px; border: 0; outline: 0; background: transparent; font: inherit; font-size: 16px; color: var(--fg)">
+    <button type="button" onClick="{{send}}" aria-label="{{sendLabel}}" style="{{sendStyle}}">
+      <sc-if value="{{isStop}}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="3"></rect></svg></sc-if>
+      <sc-if value="{{isArrow}}" hint-placeholder-val="{{ true }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></sc-if>
+    </button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  componentWillUnmount() { (this._timers || []).forEach((t) => clearTimeout(t)); }
+  later(ms, fn) { this._timers = this._timers || []; this._timers.push(setTimeout(fn, ms)); }
+  st() { return Object.assign({ tools: false, approval: 'pending', extra: [], running: false, draft: '', n: 0 }, this.state || {}); }
+  add(items, extra) { const s = this.st(); this.setState(Object.assign({ extra: s.extra.filter((m) => m.kind !== 'live').concat(items) }, extra || {})); }
+
+  renderVals() {
+    const s = this.st();
+    const dark = (this.props.theme ?? 'light') === 'dark';
+    const tools = [
+      { cmd: 'kubectl get nodes -o wide', meta: 'exit 0', ok: true },
+      { cmd: 'nvidia-smi --query-gpu=memory.total', meta: 'exit 0', ok: true },
+      { cmd: 'kubectl get ns inference', meta: 'exit 1', ok: false }
+    ].map((t, i) => Object.assign({}, t, { border: i === 0 ? '0' : '1px solid var(--border)', dot: 'width: 8px; height: 8px; flex: none; border-radius: ' + (t.ok ? '50%' : '2px') + '; background: ' + (t.ok ? 'var(--ok)' : 'var(--err)') }));
+    const extra = s.extra.map((m) => ({ text: m.text, isLive: m.kind === 'live', isUser: m.kind === 'user', isText: m.kind === 'text', isFold: m.kind === 'fold' }));
+    const text = (s.draft || '').trim();
+    const stop = s.running && !text;
+    return {
+      themeClass: dark ? 'dark' : '',
+      tools: tools, toolsOpen: s.tools, toolsExpanded: String(s.tools),
+      toggleTools: () => this.setState({ tools: !this.st().tools }),
+      chevStyle: 'transition: transform .12s; transform: rotate(' + (s.tools ? 90 : 0) + 'deg)',
+      showApproval: s.approval === 'pending',
+      approve: () => {
+        this.setState({ approval: 'done', running: true });
+        this.add([{ kind: 'live', text: 'Running kubectl apply…' }], { approval: 'done', running: true });
+        this.later(1800, () => this.add([{ kind: 'text', text: 'Applied. The namespace exists and the serving pod is starting. I will tell you when it is ready.' }, { kind: 'fold', text: 'Worked for 19s' }], { running: false }));
+      },
+      decline: () => { this.setState({ approval: 'done' }); this.add([{ kind: 'text', text: 'Understood. Nothing was applied.' }], { approval: 'done' }); },
+      draft: s.draft, onDraft: (e) => this.setState({ draft: e.target.value }),
+      onKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.sendNow(); } },
+      send: () => this.sendNow(),
+      placeholder: s.running ? 'Steer, or tap stop' : 'Message serving',
+      isStop: stop, isArrow: !stop, sendLabel: stop ? 'Stop' : 'Send',
+      sendStyle: 'flex: none; width: 44px; height: 44px; border: 0; border-radius: 22px; display: grid; place-items: center; ' + (text || stop ? 'background: var(--fg-strong); color: var(--screen)' : 'background: var(--hover); color: var(--subtle)')
+    };
+  }
+
+  sendNow() {
+    const s = this.st();
+    const text = (s.draft || '').trim();
+    if (s.running && !text) { this.add([], { running: false }); return; }
+    if (!text) return;
+    this.setState({ draft: '' });
+    this.add([{ kind: 'user', text: text }, { kind: 'live', text: s.running ? 'Steering…' : 'Thinking…' }], { running: true, draft: '' });
+    this.later(1200, () => this.add([{ kind: 'text', text: 'Got it. I will change the manifest and ask before applying anything.' }, { kind: 'fold', text: 'Worked for 5s' }], { running: false }));
+  }
+}
+</script>
+</body>
+</html>

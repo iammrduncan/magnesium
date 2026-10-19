@@ -1,0 +1,214 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-13T23:10:00Z"
+  },
+  "title": "Magnesium mocks",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 960,
+      "title": "Home · desktop",
+      "expand": "fill",
+      "is_interactive": true,
+      "png": "home-desktop.png"
+    },
+    "Session.dc.html": {
+      "x": 1520,
+      "y": 0,
+      "w": 1440,
+      "h": 960,
+      "title": "Session · desktop",
+      "expand": "fill",
+      "is_interactive": true,
+      "png": "session-desktop.png"
+    },
+    "Room.dc.html": {
+      "x": 3040,
+      "y": 0,
+      "w": 1440,
+      "h": 960,
+      "title": "Room · desktop",
+      "expand": "fill",
+      "is_interactive": true,
+      "png": "room-desktop.png"
+    },
+    "Fleet.dc.html": {
+      "x": 0,
+      "y": 1400,
+      "w": 1440,
+      "h": 960,
+      "title": "Fleet · desktop",
+      "expand": "fill",
+      "is_interactive": true,
+      "png": "fleet-desktop.png"
+    },
+    "Apps.dc.html": {
+      "x": 1520,
+      "y": 1400,
+      "w": 1440,
+      "h": 960,
+      "title": "Apps · desktop",
+      "expand": "fill",
+      "is_interactive": true,
+      "png": "apps-desktop.png"
+    },
+    "AppView.dc.html": {
+      "x": 3040,
+      "y": 1400,
+      "w": 1440,
+      "h": 960,
+      "title": "Selected app · desktop",
+      "expand": "fill",
+      "is_interactive": true,
+      "png": "app-desktop.png"
+    },
+    "Phone.dc.html": {
+      "x": 0,
+      "y": 2800,
+      "w": 390,
+      "h": 844,
+      "title": "Home · phone",
+      "is_interactive": true,
+      "radius": 44,
+      "png": "home-phone.png"
+    },
+    "PhoneSession.dc.html": {
+      "x": 470,
+      "y": 2800,
+      "w": 390,
+      "h": 844,
+      "title": "Session · phone",
+      "is_interactive": true,
+      "radius": 44,
+      "png": "session-phone.png"
+    },
+    "PhoneRoom.dc.html": {
+      "x": 940,
+      "y": 2800,
+      "w": 390,
+      "h": 844,
+      "title": "Room · phone",
+      "is_interactive": true,
+      "radius": 44,
+      "png": "room-phone.png"
+    },
+    "PhoneFleet.dc.html": {
+      "x": 1410,
+      "y": 2800,
+      "w": 390,
+      "h": 844,
+      "title": "Fleet · phone",
+      "is_interactive": true,
+      "radius": 44,
+      "png": "fleet-phone.png"
+    },
+    "PhoneApp.dc.html": {
+      "x": 1880,
+      "y": 2800,
+      "w": 390,
+      "h": 844,
+      "title": "App · phone",
+      "is_interactive": true,
+      "radius": 44,
+      "png": "app-phone.png"
+    },
+    "Footer.dc.html": {
+      "x": 2430,
+      "y": 2800,
+      "w": 1440,
+      "h": 420,
+      "title": "Footer · shared component",
+      "is_interactive": true,
+      "png": "footer.png"
+    },
+    "FooterOpen.dc.html": {
+      "x": 2430,
+      "y": 3340,
+      "w": 1440,
+      "h": 420,
+      "title": "Footer · GPU popover open",
+      "is_interactive": true,
+      "png": "footer-popover.png"
+    },
+    "Brain.dc.html": {
+      "x": 4560,
+      "y": 0,
+      "w": 1440,
+      "h": 960,
+      "title": "Brain · desktop",
+      "expand": "fill",
+      "is_interactive": true,
+      "png": "brain-desktop.png"
+    },
+    "BrainDoc.dc.html": {
+      "x": 6080,
+      "y": 0,
+      "w": 1440,
+      "h": 960,
+      "title": "Brain · document open",
+      "expand": "fill",
+      "is_interactive": true,
+      "png": "brain-document.png"
+    },
+    "Project.dc.html": {
+      "x": 7600,
+      "y": 0,
+      "w": 1440,
+      "h": 960,
+      "title": "Project · desktop",
+      "expand": "fill",
+      "is_interactive": true,
+      "png": "project-desktop.png"
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Session.dc.html",
+    "Room.dc.html",
+    "Brain.dc.html",
+    "BrainDoc.dc.html",
+    "Project.dc.html",
+    "Fleet.dc.html",
+    "Apps.dc.html",
+    "AppView.dc.html",
+    "Phone.dc.html",
+    "PhoneSession.dc.html",
+    "PhoneRoom.dc.html",
+    "PhoneFleet.dc.html",
+    "PhoneApp.dc.html",
+    "Footer.dc.html",
+    "FooterOpen.dc.html"
+  ],
+  "notes": {
+    "rowDesktop": {
+      "x": 0,
+      "y": -300,
+      "text": "Desktop: T3 Code's shell with Magnesium's places",
+      "kind": "title1",
+      "maxW": 9040
+    },
+    "rowFleet": {
+      "x": 0,
+      "y": 1100,
+      "text": "Fleet and apps",
+      "kind": "title1",
+      "maxW": 4480
+    },
+    "rowPhone": {
+      "x": 0,
+      "y": 2500,
+      "text": "Phone, and the footer apps extend",
+      "kind": "title1",
+      "maxW": 3870
+    }
+  },
+  "designSystems": []
+}

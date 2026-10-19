@@ -12,7 +12,7 @@ This file is for agents working in this repo. **Where it disagrees with upstream
   2. Read the goals [README](docs/magnesium/goals/README.md): "Done means" and "Rules for every goal".
   3. Read the docs the goal links to.
 - **For the why:** [decisions](docs/magnesium/09-decisions-and-open-questions.md) (D1 onward), the [fork plan](docs/magnesium/11-fork-plan.md), and [mocks to a working app](docs/magnesium/13-mocks-to-working-app.md). The index is [`docs/magnesium/README.md`](docs/magnesium/README.md).
-- **The UX target** is the owner's mock canvas (D9). Every board is rendered, with notes, in [`docs/magnesium/mockups.md`](docs/magnesium/mockups.md). Compare your screens with those boards, and ask the owner for the live canvas link when you need to click through.
+- **The UX target** is the owner's mock canvas (D9). Every board is rendered, with notes, in [`docs/magnesium/mockups.md`](docs/magnesium/mockups.md). Compare your screens with those boards. The canvas itself is in the repo, [`docs/magnesium/mockups/canvas/`](docs/magnesium/mockups/canvas/): `vp run mocks` serves it to click through, and a goal that adds a board adds it there.
 
 ## Where upstream's AGENTS.md doesn't apply
 

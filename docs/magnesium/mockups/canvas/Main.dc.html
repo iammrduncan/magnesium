@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+.t3{--canvas:#fcfcfc;--sidebar:#fafafa;--surface:#ffffff;--fg:#27272a;--fg-strong:#18181b;--muted:#71717b;--subtle:#a1a1aa;--border:#e4e4e7;--hover:#f4f4f5;--primary:#1b4ed8;--on-primary:#ffffff;--warn:#b45309;--warn-wash:#fef3c7;--input:#4f46e5;--info:#2563eb;--ok:#15803d;--err:#dc2626;--plan:#7c3aed;--shadow:0 1px 2px rgba(0,0,0,.04),0 10px 30px rgba(0,0,0,.07);color-scheme:light}
+.t3.dark{--canvas:#0a0a0a;--sidebar:#000000;--surface:#111111;--fg:#f5f5f5;--fg-strong:#ffffff;--muted:#8a8a8a;--subtle:#5c5c5c;--border:#1f1f1f;--hover:#171717;--primary:#346bf1;--on-primary:#ffffff;--warn:#fbbf24;--warn-wash:#2a1f05;--input:#a5b4fc;--info:#60a5fa;--ok:#4ade80;--err:#f87171;--plan:#c4b5fd;--shadow:0 10px 30px rgba(0,0,0,.5);color-scheme:dark}
+.t3 button{font:inherit;color:inherit;cursor:pointer}
+.t3 input{font:inherit;color:inherit}
+.hov:hover{background:var(--hover)}
+.pri:hover{filter:brightness(1.08)}
+.t3 :focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+</style>
+</helmet>
+<div class="t3 {{themeClass}}" style="display: flex; flex-wrap: wrap; min-height: 100vh; padding-bottom: 30px; box-sizing: border-box; background: var(--canvas); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5">
+
+  <aside style="flex: 0 0 256px; box-sizing: border-box; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 0 8px 12px; min-width: 0">
+    <div style="height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 6px">
+      <div style="display: flex; align-items: center; gap: 8px">
+        <span style="width: 22px; height: 22px; border-radius: 6px; background: var(--fg-strong); color: var(--canvas); display: grid; place-items: center; font-size: 10px; font-weight: 700; letter-spacing: -0.02em">Mg</span>
+        <span style="font-weight: 600; font-size: 15px; color: var(--fg-strong); letter-spacing: -0.01em">Magnesium</span>
+      </div>
+      <button type="button" class="hov" aria-label="Collapse sidebar" style="width: 28px; height: 28px; border: 0; background: transparent; border-radius: 8px; display: grid; place-items: center; color: var(--muted)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M9 4v16"></path></svg>
+      </button>
+    </div>
+
+    <div style="display: flex; gap: 6px; padding: 0 2px 8px">
+      <label for="side-search" style="flex: 1; display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--muted)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+        <input id="side-search" type="search" placeholder="Search" style="border: 0; outline: 0; background: transparent; width: 100%; font-size: 13px">
+      </label>
+      <a href="Session.dc.html" class="hov" aria-label="New thread" style="width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 8px; display: grid; place-items: center; color: var(--fg); background: var(--surface)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+      </a>
+    </div>
+
+    <nav aria-label="Places" style="display: flex; flex-direction: column; gap: 1px; padding: 4px 0 10px; border-bottom: 1px solid var(--border)">
+      <a href="Main.dc.html" aria-current="page" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; background: var(--hover); color: var(--fg-strong); font-weight: 500; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>
+        <span style="flex: 1">Home</span>
+        <span style="min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--warn); color: var(--canvas); font-size: 11px; font-weight: 600; display: grid; place-items: center">{{needCount}}</span>
+      </a>
+      <a href="Room.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"></path></svg>
+        <span style="flex: 1">Rooms</span>
+        <span style="font-size: 11px; color: var(--muted)">3</span>
+      </a>
+      <a href="Fleet.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="1.5"></rect><rect x="3" y="13" width="18" height="7" rx="1.5"></rect><path d="M7 7.5h.01M7 16.5h.01"></path></svg>
+        <span style="flex: 1">Fleet</span>
+        <span style="width: 7px; height: 7px; border-radius: 2px; background: var(--err)" title="One machine offline"></span>
+      </a>
+      <button type="button" class="hov" title="Not mocked yet" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px; border: 0; background: transparent; text-align: left">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+        <span style="flex: 1">Schedule</span>
+        <span style="font-size: 11px; color: var(--err); font-weight: 600">1 failed</span>
+      </button>
+      <a href="Apps.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+        <span style="flex: 1">Apps</span>
+        <span style="font-size: 11px; color: var(--muted)">4 pinned</span>
+      </a>
+      <a href="Brain.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5a3 3 0 0 0-5.8 1A3 3 0 0 0 4 11a3 3 0 0 0 2 5 3 3 0 0 0 6 1Z"></path><path d="M12 5a3 3 0 0 1 5.8 1A3 3 0 0 1 20 11a3 3 0 0 1-2 5 3 3 0 0 1-6 1Z"></path></svg>
+        <span style="flex: 1">Brain</span>
+      </a>
+    </nav>
+
+    <div style="display: flex; align-items: center; gap: 6px; margin: 14px 4px 4px 8px">
+      <p style="margin: 0; flex: 1; font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase">Projects</p>
+      <div role="group" aria-label="Row density" style="display: inline-flex; padding: 2px; border-radius: 7px; background: var(--hover)">
+        <button type="button" aria-pressed="{{comfyPressed}}" onClick="{{setComfy}}" title="Comfy rows" aria-label="Comfy rows" style="{{comfyStyle}}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="16" height="6" rx="1.5"></rect><rect x="4" y="14" width="16" height="6" rx="1.5"></rect></svg>
+        </button>
+        <button type="button" aria-pressed="{{compactPressed}}" onClick="{{setCompact}}" title="Compact rows" aria-label="Compact rows" style="{{compactStyle}}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+        </button>
+      </div>
+    </div>
+
+    <sc-for list="{{projects}}" as="p" hint-placeholder-count="5">
+      <div style="display: flex; flex-direction: column">
+        <button type="button" class="hov" onClick="{{p.toggle}}" aria-expanded="{{p.expanded}}" style="display: flex; align-items: center; gap: 7px; height: 32px; padding: 0 8px 0 4px; border: 0; background: transparent; border-radius: 8px; font-size: 13px; text-align: left; min-width: 0">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="{{p.chevStyle}}"><path d="m9 6 6 6-6 6"></path></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2.5h8.5A1.5 1.5 0 0 1 21 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5Z"></path></svg>
+          <span style="{{p.nameStyle}}">{{p.name}}</span>
+          <span style="{{p.rollStyle}}"><span style="{{p.glyph}}"></span>{{p.rollLabel}}</span>
+        </button>
+        <sc-if value="{{p.open}}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column; margin: 0 0 4px 13px; padding-left: 6px; border-left: 1px solid var(--border)">
+            <sc-for list="{{p.threads}}" as="t" hint-placeholder-count="2">
+              <a href="{{t.href}}" class="hov" style="{{t.rowStyle}}">
+                <sc-if value="{{isComfy}}" hint-placeholder-val="{{ true }}">
+                  <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted)">
+                      <span style="{{t.avStyle}}">{{t.initials}}</span>
+                      <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{t.profile}}</span>
+                      <span style="{{t.statusStyle}}"><span style="{{t.glyph}}"></span>{{t.label}}</span>
+                    </div>
+                    <div style="{{t.titleStyle}}">{{t.title}}</div>
+                    <sc-if value="{{t.hasMeta}}" hint-placeholder-val="{{ false }}">
+                      <div style="display: flex; gap: 8px; align-items: center; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11px; color: var(--muted)">
+                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{t.branch}}</span>
+                        <sc-if value="{{t.pr}}" hint-placeholder-val="{{ false }}"><span style="border: 1px solid var(--border); border-radius: 5px; padding: 0 4px">PR {{t.pr}}</span></sc-if>
+                        <span style="color: var(--ok)">{{t.add}}</span><span style="color: var(--err)">{{t.del}}</span>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-if>
+                <sc-if value="{{isCompact}}" hint-placeholder-val="{{ false }}">
+                  <div style="display: flex; align-items: center; gap: 8px; height: 30px; min-width: 0">
+                    <span style="{{t.glyph}}"></span>
+                    <span style="{{t.compactTitleStyle}}">{{t.title}}</span>
+                    <span style="{{t.compactLabelStyle}}">{{t.shortLabel}}</span>
+                  </div>
+                </sc-if>
+              </a>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+
+    <p style="margin: 14px 8px 4px; font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase">Threads</p>
+    <sc-for list="{{standalone}}" as="t" hint-placeholder-count="3">
+      <a href="{{t.href}}" class="hov" style="{{t.rowStyle}}">
+        <sc-if value="{{isComfy}}" hint-placeholder-val="{{ true }}">
+          <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted)">
+              <span style="{{t.avStyle}}">{{t.initials}}</span>
+              <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{t.profile}}</span>
+              <span style="{{t.statusStyle}}"><span style="{{t.glyph}}"></span>{{t.label}}</span>
+            </div>
+            <div style="{{t.titleStyle}}">{{t.title}}</div>
+          </div>
+        </sc-if>
+        <sc-if value="{{isCompact}}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; align-items: center; gap: 8px; height: 30px; min-width: 0">
+            <span style="{{t.glyph}}"></span>
+            <span style="{{t.compactTitleStyle}}">{{t.title}}</span>
+            <span style="{{t.compactLabelStyle}}">{{t.shortLabel}}</span>
+          </div>
+        </sc-if>
+      </a>
+    </sc-for>
+
+    <div style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 6px; display: flex; flex-direction: column; gap: 1px">
+      <button type="button" class="hov" style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; border: 0; background: transparent; border-radius: 8px; font-size: 12.5px; color: var(--muted); text-align: left">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+        <span style="flex: 1">Snoozed</span><span>1</span>
+      </button>
+      <button type="button" class="hov" style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; border: 0; background: transparent; border-radius: 8px; font-size: 12.5px; color: var(--muted); text-align: left">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+        <span style="flex: 1">Settled</span><span>14</span>
+      </button>
+    </div>
+    <div style="margin-top: auto; padding: 12px 8px 0; display: flex; gap: 14px; font-size: 12px; color: var(--muted)">
+      <span>Settings</span><span>Usage</span><span>Pull requests</span>
+    </div>
+  </aside>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="min-height: 52px; box-sizing: border-box; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 8px 20px">
+      <div style="display: flex; align-items: baseline; gap: 10px; flex: 1; min-width: 200px">
+        <h1 style="margin: 0; font-size: 14px; font-weight: 600; color: var(--fg-strong)">Home</h1>
+        <span style="font-size: 12.5px; color: var(--muted)">{{headline}}</span>
+      </div>
+      <div role="group" aria-label="Zoom level" style="display: inline-flex; padding: 2px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface)">
+        <sc-for list="{{zooms}}" as="z" hint-placeholder-count="3">
+          <button type="button" aria-pressed="{{z.pressed}}" onClick="{{z.pick}}" style="{{z.style}}">{{z.label}}</button>
+        </sc-for>
+      </div>
+      <button type="button" class="hov" style="height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px">
+        Group: need
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+      </button>
+    </header>
+
+    <div style="padding: 24px 20px 64px; display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; max-width: 1180px; box-sizing: border-box; width: 100%">
+
+      <section style="flex: 3 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 10px" aria-labelledby="needs-h">
+        <div style="display: flex; align-items: center; gap: 8px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2.5 20h19Z"></path><path d="M12 10v4M12 17h.01"></path></svg>
+          <h2 id="needs-h" style="margin: 0; font-size: 13px; font-weight: 600; color: var(--fg-strong)">Needs you</h2>
+          <span style="font-size: 12px; color: var(--muted)">{{needCount}}</span>
+          <span style="margin-left: auto; font-size: 12px; color: var(--muted)">Oldest wait first</span>
+        </div>
+
+        <sc-if value="{{noNeeds}}" hint-placeholder-val="{{ false }}">
+          <div style="border: 1px dashed var(--border); border-radius: 14px; padding: 28px; text-align: center; color: var(--muted); font-size: 13px">Nothing needs you. Agents are working.</div>
+        </sc-if>
+
+        <sc-for list="{{needs}}" as="n" hint-placeholder-count="5">
+          <article style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); flex-wrap: wrap">
+              <span style="{{n.avStyle}}">{{n.initials}}</span>
+              <span style="font-weight: 600; color: var(--fg)">{{n.profile}}</span>
+              <a href="{{n.href}}" style="flex: 1; min-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px">{{n.thread}}</a>
+              <span>{{n.machine}} · {{n.wait}}</span>
+            </div>
+            <div style="{{n.kindStyle}}">
+              <sc-if value="{{n.isApproval}}" hint-placeholder-val="{{ true }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2.5 20h19Z"></path><path d="M12 10v4M12 17h.01"></path></svg></sc-if>
+              <sc-if value="{{n.isInput}}" hint-placeholder-val="{{ false }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"></path></svg></sc-if>
+              <sc-if value="{{n.isPlan}}" hint-placeholder-val="{{ false }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="3" width="15" height="18" rx="2"></rect><path d="m9 12 2 2 4-4"></path></svg></sc-if>
+              <sc-if value="{{n.isFailed}}" hint-placeholder-val="{{ false }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="m9 9 6 6M15 9l-6 6"></path></svg></sc-if>
+              <sc-if value="{{n.isRoom}}" hint-placeholder-val="{{ false }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"></path></svg></sc-if>
+              <span>{{n.kindLabel}}</span>
+              <sc-if value="{{isGlance}}" hint-placeholder-val="{{ false }}"><span style="font-weight: 400; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0">{{n.oneLine}}</span></sc-if>
+            </div>
+
+            <sc-if value="{{showBody}}" hint-placeholder-val="{{ true }}">
+              <sc-if value="{{n.isApproval}}" hint-placeholder-val="{{ true }}">
+                <pre style="margin: 0; padding: 8px 10px; background: var(--hover); border-radius: 8px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--fg)">{{n.command}}</pre>
+              </sc-if>
+              <sc-if value="{{n.isInput}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; flex-direction: column; gap: 8px">
+                  <p style="margin: 0; font-size: 14px; color: var(--fg-strong)">{{n.question}}</p>
+                  <sc-for list="{{n.options}}" as="o" hint-placeholder-count="3">
+                    <button type="button" class="hov" onClick="{{o.pick}}" style="text-align: left; border: 1px solid var(--border); background: transparent; border-radius: 10px; padding: 8px 12px; display: flex; flex-direction: column; gap: 1px">
+                      <span style="font-size: 13px; font-weight: 500; color: var(--fg-strong)">{{o.label}}</span>
+                      <span style="font-size: 12px; color: var(--muted)">{{o.desc}}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{n.isPlan}}" hint-placeholder-val="{{ false }}">
+                <ol style="margin: 0; padding-left: 20px; font-size: 13px; color: var(--fg); display: flex; flex-direction: column; gap: 3px">
+                  <sc-for list="{{n.steps}}" as="s" hint-placeholder-count="3"><li>{{s.text}}</li></sc-for>
+                </ol>
+              </sc-if>
+              <sc-if value="{{n.isFailed}}" hint-placeholder-val="{{ false }}">
+                <p style="margin: 0; font-size: 13px">{{n.summary}}</p>
+              </sc-if>
+              <sc-if value="{{n.isRoom}}" hint-placeholder-val="{{ false }}">
+                <p style="margin: 0; font-size: 13px; padding-left: 10px; border-left: 2px solid var(--border)">{{n.quote}}</p>
+              </sc-if>
+            </sc-if>
+
+            <sc-if value="{{isDetail}}" hint-placeholder-val="{{ false }}">
+              <div style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11.5px; color: var(--muted); white-space: pre-wrap; border-top: 1px dashed var(--border); padding-top: 8px">{{n.detail}}</div>
+            </sc-if>
+
+            <sc-if value="{{n.hasActions}}" hint-placeholder-val="{{ true }}">
+              <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap">
+                <sc-if value="{{n.secondary}}" hint-placeholder-val="{{ true }}">
+                  <button type="button" class="hov" onClick="{{n.onSecondary}}" style="height: 32px; padding: 0 12px; border: 1px solid var(--border); background: var(--surface); border-radius: 8px; font-size: 13px">{{n.secondary}}</button>
+                </sc-if>
+                <sc-if value="{{n.primaryIsLink}}" hint-placeholder-val="{{ false }}">
+                  <a href="{{n.href}}" class="pri" style="height: 32px; padding: 0 14px; border-radius: 8px; background: var(--primary); color: var(--on-primary); font-size: 13px; font-weight: 500; display: inline-flex; align-items: center">{{n.primary}}</a>
+                </sc-if>
+                <sc-if value="{{n.primaryIsButton}}" hint-placeholder-val="{{ true }}">
+                  <button type="button" class="pri" onClick="{{n.onPrimary}}" style="height: 32px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--primary); color: var(--on-primary); font-size: 13px; font-weight: 500">{{n.primary}}</button>
+                </sc-if>
+              </div>
+            </sc-if>
+          </article>
+        </sc-for>
+
+        <div style="display: flex; align-items: center; gap: 8px; margin-top: 18px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 3.5a8.5 8.5 0 0 1 0 17Z" fill="var(--info)"></path></svg>
+          <h2 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--fg-strong)">Running</h2>
+          <span style="font-size: 12px; color: var(--muted)">{{runningCount}}</span>
+        </div>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden">
+          <sc-for list="{{running}}" as="r" hint-placeholder-count="5">
+            <a href="Session.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: {{r.border}}; opacity: 0.85">
+              <span style="{{r.avStyle}}">{{r.initials}}</span>
+              <div style="flex: 1; min-width: 0">
+                <div style="font-size: 13px; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{r.title}}</div>
+                <sc-if value="{{notGlance}}" hint-placeholder-val="{{ true }}">
+                  <div style="font-size: 12px; color: var(--muted)">{{r.profile}} · {{r.machine}} · {{r.last}}</div>
+                </sc-if>
+                <sc-if value="{{isDetail}}" hint-placeholder-val="{{ false }}">
+                  <div style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11.5px; color: var(--muted); margin-top: 2px">{{r.tool}}</div>
+                </sc-if>
+              </div>
+              <span style="font-size: 12px; color: var(--info); font-variant-numeric: tabular-nums">{{r.time}}</span>
+            </a>
+          </sc-for>
+        </div>
+      </section>
+
+      <aside style="flex: 2 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 22px">
+        <section aria-labelledby="runs-h" style="display: flex; flex-direction: column; gap: 8px">
+          <div style="display: flex; align-items: center; gap: 8px">
+            <h2 id="runs-h" style="margin: 0; font-size: 13px; font-weight: 600; color: var(--fg-strong)">Next scheduled runs</h2>
+            <span style="margin-left: auto; font-size: 12px; color: var(--muted)">Today</span>
+          </div>
+          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px">
+            <sc-for list="{{runs}}" as="s" hint-placeholder-count="4">
+              <div style="display: flex; gap: 12px; align-items: baseline; padding: 9px 14px; border-top: {{s.border}}">
+                <span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; width: 40px; flex: none">{{s.time}}</span>
+                <div style="flex: 1; min-width: 0">
+                  <div style="font-size: 13px">{{s.name}}</div>
+                  <sc-if value="{{notGlance}}" hint-placeholder-val="{{ true }}"><div style="font-size: 12px; color: var(--muted)">{{s.target}}</div></sc-if>
+                </div>
+                <span style="{{s.lastStyle}}">{{s.last}}</span>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+
+        <section aria-labelledby="fleet-h" style="display: flex; flex-direction: column; gap: 8px">
+          <div style="display: flex; align-items: center; gap: 8px">
+            <h2 id="fleet-h" style="margin: 0; font-size: 13px; font-weight: 600; color: var(--fg-strong)">Fleet</h2>
+            <a href="Fleet.dc.html" style="margin-left: auto; font-size: 12px; color: var(--primary)">Open fleet</a>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+            <sc-for list="{{machines}}" as="m" hint-placeholder-count="4">
+              <a href="Fleet.dc.html" class="hov" style="{{m.tileStyle}}">
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--fg-strong)">
+                  <span style="{{m.dotStyle}}"></span>{{m.name}}
+                </div>
+                <div style="font-size: 12px; color: var(--muted)">{{m.line}}</div>
+                <sc-if value="{{m.hasBar}}" hint-placeholder-val="{{ false }}">
+                  <div style="height: 4px; border-radius: 2px; background: var(--hover); overflow: hidden"><div style="{{m.barStyle}}"></div></div>
+                </sc-if>
+              </a>
+            </sc-for>
+          </div>
+        </section>
+
+        <section aria-labelledby="brain-h" style="display: flex; flex-direction: column; gap: 8px">
+          <h2 id="brain-h" style="margin: 0; font-size: 13px; font-weight: 600; color: var(--fg-strong)">Brain today</h2>
+          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13px">
+            <div style="display: flex; justify-content: space-between"><span>Pages ingested</span><span style="font-variant-numeric: tabular-nums; color: var(--muted)">41</span></div>
+            <div style="display: flex; justify-content: space-between"><span>Memories proposed</span><span style="font-variant-numeric: tabular-nums; color: var(--muted)">6 to review</span></div>
+            <div style="display: flex; justify-content: space-between"><span>Sessions shipped</span><span style="font-variant-numeric: tabular-nums; color: var(--muted)">23</span></div>
+            <div style="display: flex; justify-content: space-between"><span>Dream cycle</span><span style="color: var(--err); font-weight: 500">Failed 02:04</span></div>
+          </div>
+        </section>
+        <p style="margin: 0; font-size: 11.5px; color: var(--subtle)">Example data. No backend.</p>
+      </aside>
+    </div>
+
+    <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+      <div role="status" style="position: fixed; left: 272px; bottom: 46px; display: flex; align-items: center; gap: 14px; padding: 10px 12px 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); font-size: 13px">
+        <span>{{toastText}}</span>
+        <button type="button" class="hov" onClick="{{undo}}" style="height: 28px; padding: 0 10px; border: 1px solid var(--border); background: transparent; border-radius: 7px; font-size: 12.5px">Undo</button>
+      </div>
+    </sc-if>
+  </main>
+  <dc-import name="Footer" theme="{{themeName}}" hint-size="100%,30px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"density":{"editor":"enum","options":["comfy","compact"],"default":"comfy"},"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  componentWillUnmount() { if (this._t) clearTimeout(this._t); }
+
+  st() {
+    return Object.assign({ zoom: 'card', resolved: {}, toast: null, expanded: { infra: true }, density: null }, this.state || {});
+  }
+
+  resolve(id, text) {
+    const s = this.st();
+    const resolved = Object.assign({}, s.resolved);
+    resolved[id] = true;
+    this.setState({ resolved: resolved, toast: { id: id, text: text } });
+    if (this._t) clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({ toast: null }), 5000);
+  }
+
+  undo() {
+    const s = this.st();
+    if (!s.toast) return;
+    const resolved = Object.assign({}, s.resolved);
+    delete resolved[s.toast.id];
+    this.setState({ resolved: resolved, toast: null });
+  }
+
+  renderVals() {
+    const s = this.st();
+    const dark = (this.props.theme ?? 'light') === 'dark';
+    const profiles = {
+      serving: { initials: 'SE', color: '#c2410c' },
+      research: { initials: 'RE', color: '#0e7490' },
+      ops: { initials: 'OP', color: '#4d7c0f' },
+      scribe: { initials: 'SC', color: '#be185d' },
+      reviewer: { initials: 'RV', color: '#475569' }
+    };
+    const av = (p, size) => 'flex: none; width: ' + size + 'px; height: ' + size + 'px; border-radius: ' + (size > 18 ? 7 : 5) + 'px; background: ' + profiles[p].color + '; color: #ffffff; display: grid; place-items: center; font-size: ' + (size > 18 ? 10 : 8.5) + 'px; font-weight: 700; letter-spacing: 0.02em';
+    const statusColor = { approval: 'var(--warn)', input: 'var(--input)', working: 'var(--info)', plan: 'var(--plan)', done: 'var(--ok)', failed: 'var(--err)', idle: 'var(--muted)' };
+
+    const needDefs = [
+      { id: 'n1', thread: 't1', kind: 'approval', profile: 'serving', title: 'Draft the serving deployment', machine: 'gpu-a', wait: '6m', kindLabel: 'Command approval',
+        command: 'kubectl apply -f deploy/serving.yaml -n inference', oneLine: 'kubectl apply -f deploy/serving.yaml', secondary: 'Decline', primary: 'Approve',
+        done: 'Approved · serving resumes', declined: 'Declined · serving was told', detail: 'tool Bash · turn 4 · sandbox container · supervised\nrequested 13:41 · thread seq 1,284', href: 'Session.dc.html' },
+      { id: 'n2', thread: 't2', kind: 'input', profile: 'research', title: 'Which eval set for the long-context run?', machine: 'workstation', wait: '14m', kindLabel: 'Question',
+        question: 'Which eval set should the long-context run use?', oneLine: 'Which eval set should the long-context run use?',
+        options: [ { label: 'Long-context suite A', desc: 'Recommended. Covers 8k to 128k.' }, { label: 'Needle tests only', desc: 'Fast, about 20 minutes.' }, { label: 'Both, smaller samples', desc: 'About 1 hour.' } ],
+        detail: 'AskUserQuestion · turn 2 · async: still answerable after the turn ends', href: 'Session.dc.html' },
+      { id: 'n3', thread: 't3', kind: 'plan', profile: 'ops', title: 'Rotate KB backups to the new pool', machine: 'enclave-1', wait: '22m', kindLabel: 'Plan ready',
+        oneLine: '3 steps · rotate KB backups', steps: [ { text: 'Snapshot the KB database and verify the checksum' }, { text: 'Point the backup job at the new pool' }, { text: 'Run one restore test, then retire the old target' } ],
+        secondary: 'Refine', primary: 'Implement', done: 'Implementing · ops started a run', declined: 'Sent back for refinement', detail: 'plan mode · 3 steps · no files changed yet', href: 'Session.dc.html' },
+      { id: 'n4', thread: 'none', kind: 'failed', profile: 'scribe', title: 'Scheduled: nightly dream cycle', machine: 'kb-host', wait: '11h', kindLabel: 'Scheduled run failed',
+        oneLine: 'Dream cycle · exit 1 after 4m 12s', summary: 'Exit 1 after 4m 12s. The embedder timed out on 3 of 3 retries.',
+        secondary: 'Open log', primary: 'Retry now', done: 'Retrying · dream cycle started', declined: 'Opened the log', detail: '02:04:11 embed batch 17/40\n02:06:41 embedder: request timed out (30s)\n02:08:23 giving up after 3 retries', href: 'Session.dc.html' },
+      { id: 'n5', thread: 'none', kind: 'room', profile: 'serving', title: '#serving-plan', machine: 'room', wait: '3m', kindLabel: 'Mentioned in #serving-plan',
+        oneLine: 'serving: approve the namespace?', quote: 'I can draft the deployment once you approve the inference namespace.',
+        secondary: 'Mute room', primary: 'Open room', primaryIsLink: true, done: 'Muted #serving-plan for 1 hour', detail: 'routed to owner · rule: asks the owner to decide · hop 1 of 3', href: 'Room.dc.html' }
+    ];
+
+    const resolvedThreads = {};
+    needDefs.forEach((n) => { if (s.resolved[n.id]) resolvedThreads[n.thread] = true; });
+
+    const needs = needDefs.filter((n) => !s.resolved[n.id]).map((n) => {
+      const isInput = n.kind === 'input';
+      return Object.assign({}, n, {
+        initials: profiles[n.profile].initials,
+        avStyle: av(n.profile, 20),
+        isApproval: n.kind === 'approval', isInput: isInput, isPlan: n.kind === 'plan', isFailed: n.kind === 'failed', isRoom: n.kind === 'room',
+        kindStyle: 'display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; min-width: 0; color: ' + statusColor[n.kind === 'room' ? 'input' : n.kind],
+        hasActions: !isInput,
+        secondary: n.secondary || '',
+        primaryIsLink: !!n.primaryIsLink,
+        primaryIsButton: !n.primaryIsLink && !isInput,
+        onPrimary: () => this.resolve(n.id, n.done),
+        onSecondary: () => this.resolve(n.id, n.declined || n.done),
+        options: (n.options || []).map((o) => Object.assign({}, o, { pick: () => this.resolve(n.id, 'Answered: ' + o.label + ' · research resumes') })),
+        steps: n.steps || [],
+        thread: n.title
+      });
+    });
+
+    const compact = (s.density || this.props.density || 'comfy') === 'compact';
+    const projectDefs = [
+      { name: 'infra', threads: [
+        { id: 't1', profile: 'serving', title: 'Draft the serving deployment', status: 'approval', time: '6m', branch: 'harness/serving', add: '+38', del: '−0' },
+        { id: 't8', profile: 'ops', title: 'Check certificate expiry across hosts', status: 'working', time: '2m' } ] },
+      { name: 'evals', threads: [
+        { id: 't2', profile: 'research', title: 'Which eval set for the long-context run?', status: 'input', time: '14m' },
+        { id: 't7', profile: 'research', title: 'Compare tokenizer throughput', status: 'idle', time: '2h' } ] },
+      { name: 'kb', threads: [
+        { id: 't3', profile: 'ops', title: 'Rotate KB backups to the new pool', status: 'plan', time: '22m' } ] },
+      { name: 'harness', threads: [
+        { id: 't4', profile: 'reviewer', title: 'Review PR #48: room router', status: 'working', time: '3m', branch: 'room-router', pr: '#48', add: '+212', del: '−40' } ] },
+      { name: 'brain', threads: [
+        { id: 't5', profile: 'scribe', title: 'Index the October papers', status: 'working', time: '12m' },
+        { id: 't6', profile: 'scribe', title: "Summarise yesterday's sessions", status: 'done', time: '1h' } ] }
+    ];
+    const standaloneDefs = [
+      { id: 's1', profile: 'research', title: 'What changed in the DRA driver this month?', status: 'done', time: '3h' },
+      { id: 's2', profile: 'scribe', title: 'Draft a note for #lab-ops', status: 'working', time: '1m' },
+      { id: 's3', profile: 'serving', title: 'GPU prices this quarter', status: 'idle', time: '1d' }
+    ];
+    const labelFor = { approval: 'Approval', input: 'Input', plan: 'Plan ready', done: 'Done', failed: 'Failed' };
+    const needsHuman = { approval: true, input: true, plan: true, failed: true };
+    const rank = { approval: 6, input: 5, failed: 4, plan: 3, working: 2, done: 1, idle: 0 };
+    const glyph = (status, size) => {
+      const c = statusColor[status];
+      const b = 'flex: none; display: inline-block; width: ' + size + 'px; height: ' + size + 'px; ';
+      if (status === 'approval') return b + 'background: ' + c + '; clip-path: polygon(50% 6%, 100% 94%, 0 94%)';
+      if (status === 'input') return b + 'background: ' + c + '; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%)';
+      if (status === 'working') return b + 'border-radius: 50%; background: linear-gradient(90deg, transparent 50%, ' + c + ' 50%); box-shadow: inset 0 0 0 1.5px ' + c;
+      if (status === 'plan') return b + 'border-radius: 3px; box-shadow: inset 0 0 0 1.75px ' + c;
+      if (status === 'done') return b + 'border-radius: 50%; background: ' + c;
+      if (status === 'failed') return b + 'border-radius: 2px; background: ' + c;
+      return b + 'border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--subtle)';
+    };
+    const thread = (t) => {
+      const status = resolvedThreads[t.id] ? 'working' : t.status;
+      const working = status === 'working';
+      const label = working ? 'Working' + (t.time && !resolvedThreads[t.id] ? ' ' + t.time : '') : status === 'idle' ? t.time : labelFor[status];
+      const recede = working || status === 'idle';
+      return Object.assign({}, t, {
+        status: status,
+        href: 'Session.dc.html',
+        initials: profiles[t.profile].initials,
+        avStyle: av(t.profile, 16),
+        label: label,
+        shortLabel: needsHuman[status] ? labelFor[status] : (resolvedThreads[t.id] ? 'now' : t.time),
+        glyph: glyph(status, 9),
+        statusStyle: 'flex: none; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: ' + (needsHuman[status] ? 600 : 500) + '; color: ' + statusColor[status],
+        rowStyle: compact
+          ? 'display: block; padding: 0 8px; border-radius: 8px; min-width: 0; opacity: ' + (recede ? 0.7 : 1)
+          : 'display: block; padding: 8px 8px 9px; border-radius: 10px; margin-bottom: 2px; min-width: 0; opacity: ' + (recede ? 0.7 : 1),
+        titleStyle: 'font-size: 13px; line-height: 1.35; color: var(--fg-strong); font-weight: ' + (needsHuman[status] ? 600 : 400) + '; overflow: hidden; text-overflow: ellipsis; white-space: nowrap',
+        compactTitleStyle: 'flex: 1; min-width: 0; font-size: 13px; color: var(--fg-strong); font-weight: ' + (needsHuman[status] ? 600 : 400) + '; overflow: hidden; text-overflow: ellipsis; white-space: nowrap',
+        compactLabelStyle: 'flex: none; font-size: 11.5px; font-variant-numeric: tabular-nums; ' + (needsHuman[status] ? 'font-weight: 600; color: ' + statusColor[status] : 'color: var(--muted)'),
+        hasMeta: !!t.branch,
+        pr: t.pr || '', branch: t.branch || '', add: t.add || '', del: t.del || ''
+      });
+    };
+    const projects = projectDefs.map((p) => {
+      const threads = p.threads.map(thread);
+      const top = threads.slice().sort((a, b) => rank[b.status] - rank[a.status])[0];
+      const working = threads.filter((t) => t.status === 'working').length;
+      const human = needsHuman[top.status];
+      const open = !!s.expanded[p.name];
+      return {
+        name: p.name, threads: threads, open: open, expanded: String(open),
+        toggle: () => { const e = Object.assign({}, this.st().expanded); e[p.name] = !open; this.setState({ expanded: e }); },
+        chevStyle: 'flex: none; transition: transform .12s; transform: rotate(' + (open ? 90 : 0) + 'deg)',
+        nameStyle: 'flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-strong); font-weight: ' + (human ? 600 : 500),
+        glyph: glyph(top.status, 8),
+        rollLabel: human ? labelFor[top.status] : working ? working + ' working' : String(threads.length),
+        rollStyle: 'flex: none; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; ' + (human ? 'font-weight: 600; color: ' + statusColor[top.status] : 'color: var(--muted)')
+      };
+    });
+    const segStyle = (on) => 'width: 24px; height: 20px; border: 0; border-radius: 5px; display: grid; place-items: center; padding: 0; ' + (on ? 'background: var(--surface); color: var(--fg-strong); box-shadow: 0 1px 2px rgba(0,0,0,.1)' : 'background: transparent; color: var(--muted)');
+
+    const running = [
+      { profile: 'reviewer', title: 'Review PR #48: room router', machine: 'workstation', last: 'Ran 4 commands, read 9 files', tool: 'pnpm test --filter harness/server · exit 0 · 41 s', time: '3m' },
+      { profile: 'scribe', title: 'Index the October papers', machine: 'kb-host', last: 'Ingested 31 of 58', tool: 'kb_run_job ingest-papers · page 31/58', time: '12m' },
+      { profile: 'research', title: 'KV-cache sweep, batch 4', machine: 'gpu-a', last: 'Step 620 of 1,000', tool: 'python sweep.py --batch 4 · 62% · eta 18m', time: '41m' },
+      { profile: 'ops', title: 'Check certificate expiry across hosts', machine: 'enclave-1', last: 'Checked 5 of 7 hosts', tool: 'ssh check-certs · 5/7 ok', time: '2m' }
+    ].concat(Object.keys(resolvedThreads).length ? [{ profile: 'serving', title: 'Draft the serving deployment', machine: 'gpu-a', last: 'Resumed after your answer', tool: 'kubectl apply -f deploy/serving.yaml · running', time: '0s' }] : [])
+      .map((r, i) => Object.assign({}, r, { initials: profiles[r.profile].initials, avStyle: av(r.profile, 22), border: i === 0 ? '0' : '1px solid var(--border)' }));
+
+    const runs = [
+      { time: '14:00', name: 'Repo crawl and mirror', target: 'scribe · kb-host · container', last: 'ok', ok: true },
+      { time: '15:30', name: 'Social feeds sync', target: 'scribe · kb-host · container', last: 'ok', ok: true },
+      { time: '18:00', name: 'Weekly eval report', target: 'research · workstation · container', last: 'ok', ok: true },
+      { time: '02:00', name: 'Nightly dream cycle', target: 'scribe · kb-host · container', last: 'failed', ok: false }
+    ].map((r, i) => Object.assign({}, r, { border: i === 0 ? '0' : '1px solid var(--border)', lastStyle: 'font-size: 11.5px; font-weight: 500; color: ' + (r.ok ? 'var(--muted)' : 'var(--err)') }));
+
+    const machines = [
+      { name: 'workstation', line: '3 threads · CPU 31%', state: 'ok' },
+      { name: 'gpu-a', line: 'GPU 78% · sweep 62%', state: 'ok', bar: 62 },
+      { name: 'enclave-1', line: '4 bots · 2 threads', state: 'ok' },
+      { name: 'kb-host', line: '1 failed task · CPU 12%', state: 'warn' },
+      { name: 'nas', line: 'Offline for 12m', state: 'off' },
+      { name: 'gpu-b', line: 'Idle · 4 GPUs free', state: 'ok' }
+    ].map((m) => Object.assign({}, m, {
+      hasBar: !!m.bar,
+      barStyle: 'height: 4px; width: ' + (m.bar || 0) + '%; background: var(--info)',
+      dotStyle: 'width: 7px; height: 7px; flex: none; border-radius: ' + (m.state === 'off' ? '2px' : '50%') + '; background: ' + (m.state === 'ok' ? 'var(--ok)' : m.state === 'warn' ? 'var(--warn)' : 'var(--err)'),
+      tileStyle: 'display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); opacity: ' + (m.state === 'off' ? 0.6 : 1)
+    }));
+
+    const zoomDefs = [ { id: 'glance', label: 'Glance' }, { id: 'card', label: 'Cards' }, { id: 'detail', label: 'Detail' } ];
+    const zooms = zoomDefs.map((z) => ({
+      label: z.label,
+      pressed: String(s.zoom === z.id),
+      pick: () => this.setState({ zoom: z.id }),
+      style: 'height: 26px; padding: 0 10px; border: 0; border-radius: 7px; font-size: 12.5px; ' + (s.zoom === z.id ? 'background: var(--fg-strong); color: var(--canvas); font-weight: 500' : 'background: transparent; color: var(--muted)')
+    }));
+
+    const needCount = needs.length;
+    return {
+      themeClass: dark ? 'dark' : '',
+      themeName: dark ? 'dark' : 'light',
+      zooms: zooms,
+      isGlance: s.zoom === 'glance', notGlance: s.zoom !== 'glance', isDetail: s.zoom === 'detail', showBody: s.zoom !== 'glance',
+      needs: needs, needCount: needCount, noNeeds: needCount === 0,
+      headline: needCount + ' need you · ' + running.length + ' running · next run 14:00',
+      projects: projects,
+      standalone: standaloneDefs.map(thread),
+      isComfy: !compact, isCompact: compact,
+      comfyPressed: String(!compact), compactPressed: String(compact),
+      comfyStyle: segStyle(!compact), compactStyle: segStyle(compact),
+      setComfy: () => this.setState({ density: 'comfy' }), setCompact: () => this.setState({ density: 'compact' }),
+      running: running, runningCount: running.length,
+      runs: runs, machines: machines,
+      hasToast: !!s.toast, toastText: s.toast ? s.toast.text : '',
+      undo: () => this.undo()
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Room</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+.t3{--canvas:#fcfcfc;--sidebar:#fafafa;--surface:#ffffff;--fg:#27272a;--fg-strong:#18181b;--muted:#71717b;--subtle:#a1a1aa;--border:#e4e4e7;--hover:#f4f4f5;--primary:#1b4ed8;--primary-wash:#eef2ff;--on-primary:#ffffff;--warn:#b45309;--warn-wash:#fffbeb;--input:#4f46e5;--info:#2563eb;--ok:#15803d;--err:#dc2626;--plan:#7c3aed;--glass:rgba(255,255,255,.82);--shadow:0 1px 2px rgba(0,0,0,.04),0 10px 30px rgba(0,0,0,.07);color-scheme:light}
+.t3.dark{--canvas:#0a0a0a;--sidebar:#000000;--surface:#111111;--fg:#f5f5f5;--fg-strong:#ffffff;--muted:#8a8a8a;--subtle:#5c5c5c;--border:#1f1f1f;--hover:#171717;--primary:#346bf1;--primary-wash:#0f1a33;--on-primary:#ffffff;--warn:#fbbf24;--warn-wash:#1f1705;--input:#a5b4fc;--info:#60a5fa;--ok:#4ade80;--err:#f87171;--plan:#c4b5fd;--glass:rgba(17,17,17,.82);--shadow:0 10px 30px rgba(0,0,0,.5);color-scheme:dark}
+.t3 button{font:inherit;color:inherit;cursor:pointer}
+.t3 textarea{font:inherit;color:inherit}
+.hov:hover{background:var(--hover)}
+.pri:hover{filter:brightness(1.08)}
+.msg .wake{opacity:0}.msg:hover .wake,.msg .wake:focus-visible,.msg .wake[aria-expanded="true"]{opacity:1}
+.t3 :focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+</style>
+</helmet>
+<div class="t3 {{themeClass}}" style="display: flex; flex-wrap: wrap; min-height: 100vh; padding-bottom: 30px; box-sizing: border-box; background: var(--canvas); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5">
+
+  <aside style="flex: 0 0 256px; box-sizing: border-box; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 0 8px 12px; min-width: 0">
+    <div style="height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 6px">
+      <span style="width: 22px; height: 22px; border-radius: 6px; background: var(--fg-strong); color: var(--canvas); display: grid; place-items: center; font-size: 10px; font-weight: 700; letter-spacing: -0.02em">Mg</span>
+      <span style="font-weight: 600; font-size: 15px; color: var(--fg-strong); letter-spacing: -0.01em">Magnesium</span>
+    </div>
+    <nav aria-label="Places" style="display: flex; flex-direction: column; gap: 1px; padding: 0 0 10px; border-bottom: 1px solid var(--border)">
+      <a href="Main.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>
+        <span style="flex: 1">Home</span>
+        <span style="min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--warn); color: var(--canvas); font-size: 11px; font-weight: 600; display: grid; place-items: center">5</span>
+      </a>
+      <a href="Room.dc.html" aria-current="page" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px; background: var(--hover); color: var(--fg-strong); font-weight: 500">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"></path></svg>
+        <span style="flex: 1">Rooms</span>
+      </a>
+      <a href="Fleet.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="1.5"></rect><rect x="3" y="13" width="18" height="7" rx="1.5"></rect><path d="M7 7.5h.01M7 16.5h.01"></path></svg>
+        <span style="flex: 1">Fleet</span>
+      </a>
+      <a href="Apps.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+        <span style="flex: 1">Apps</span>
+      </a>
+      <a href="Brain.dc.html" class="hov" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5a3 3 0 0 0-5.8 1A3 3 0 0 0 4 11a3 3 0 0 0 2 5 3 3 0 0 0 6 1Z"></path><path d="M12 5a3 3 0 0 1 5.8 1A3 3 0 0 1 20 11a3 3 0 0 1-2 5 3 3 0 0 1-6 1Z"></path></svg>
+        <span style="flex: 1">Brain</span>
+      </a>
+    </nav>
+    <p style="margin: 14px 8px 6px; font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase">Channels</p>
+    <a href="Room.dc.html" style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: 8px; background: var(--hover); color: var(--fg-strong); font-size: 13px; font-weight: 600">
+      <span style="color: var(--muted)">#</span><span style="flex: 1">serving-plan</span>
+      <span style="width: 7px; height: 7px; border-radius: 50%; background: var(--warn)" title="Needs you"></span>
+    </a>
+    <a href="Room.dc.html" class="hov" style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px; font-weight: 600">
+      <span style="color: var(--muted)">#</span><span style="flex: 1">research-desk</span><span style="font-size: 11px; color: var(--muted); font-weight: 500">2</span>
+    </a>
+    <a href="Room.dc.html" class="hov" style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px; color: var(--muted)">
+      <span>#</span><span style="flex: 1">lab-ops</span>
+    </a>
+    <p style="margin: 14px 8px 6px; font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase">Direct</p>
+    <a href="Session.dc.html" class="hov" style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+      <span style="flex: none; width: 16px; height: 16px; border-radius: 5px; background: #0e7490; color: #ffffff; display: grid; place-items: center; font-size: 8.5px; font-weight: 700">RE</span><span style="flex: 1">research</span>
+    </a>
+    <a href="Session.dc.html" class="hov" style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px">
+      <span style="flex: none; width: 16px; height: 16px; border-radius: 5px; background: #4d7c0f; color: #ffffff; display: grid; place-items: center; font-size: 8.5px; font-weight: 700">OP</span><span style="flex: 1">ops</span>
+    </a>
+  </aside>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="min-height: 52px; box-sizing: border-box; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 8px 16px">
+      <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 220px">
+        <h1 style="margin: 0; font-size: 14px; font-weight: 600; color: var(--fg-strong)"># serving-plan</h1>
+        <div style="display: flex">
+          <span style="width: 20px; height: 20px; border-radius: 6px; background: #c2410c; color: #ffffff; display: grid; place-items: center; font-size: 8.5px; font-weight: 700; box-shadow: 0 0 0 2px var(--canvas)">SE</span>
+          <span style="width: 20px; height: 20px; border-radius: 6px; background: #0e7490; color: #ffffff; display: grid; place-items: center; font-size: 8.5px; font-weight: 700; box-shadow: 0 0 0 2px var(--canvas); margin-left: -4px">RE</span>
+          <span style="width: 20px; height: 20px; border-radius: 6px; background: #4d7c0f; color: #ffffff; display: grid; place-items: center; font-size: 8.5px; font-weight: 700; box-shadow: 0 0 0 2px var(--canvas); margin-left: -4px">OP</span>
+        </div>
+        <span style="font-size: 12.5px; color: var(--muted)">Lead: serving · {{hopText}} · {{budgetText}}</span>
+      </div>
+      <div role="group" aria-label="Routing detail" style="display: inline-flex; padding: 2px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface)">
+        <button type="button" aria-pressed="{{chipsPressed}}" onClick="{{showChips}}" style="{{chipsStyle}}">Chips</button>
+        <button type="button" aria-pressed="{{logPressed}}" onClick="{{showLog}}" style="{{logStyle}}">Decision log</button>
+      </div>
+    </header>
+
+    <div style="display: flex; flex: 1; flex-wrap: wrap; min-height: 0">
+      <div style="flex: 999 1 480px; min-width: 0; display: flex; flex-direction: column">
+        <div style="flex: 1; padding: 20px 20px 16px">
+          <div style="max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 4px">
+            <div style="align-self: center; font-size: 12px; color: var(--muted); padding: 4px 0 12px">Room log · earlier messages are in the KB</div>
+            <sc-for list="{{msgs}}" as="m" hint-placeholder-count="4">
+              <sc-if value="{{m.isSystem}}" hint-placeholder-val="{{ false }}">
+                <div style="{{m.sysStyle}}">
+                  <span>{{m.text}}</span>
+                  <sc-if value="{{m.hasLink}}" hint-placeholder-val="{{ false }}"><a href="Session.dc.html" style="color: var(--primary); font-weight: 500">{{m.linkText}}</a></sc-if>
+                </div>
+              </sc-if>
+              <sc-if value="{{m.isMsg}}" hint-placeholder-val="{{ true }}">
+                <div class="msg" style="display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; padding: 10px 10px; border-radius: 12px; position: relative">
+                  <span style="{{m.avStyle}}">{{m.initials}}</span>
+                  <div style="min-width: 0; display: flex; flex-direction: column; gap: 4px">
+                    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap">
+                      <span style="font-size: 13px; font-weight: 600; color: var(--fg-strong)">{{m.who}}</span>
+                      <sc-if value="{{m.isBot}}" hint-placeholder-val="{{ true }}"><span style="font-size: 10.5px; color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px">bot</span></sc-if>
+                      <span style="font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums">{{m.time}}</span>
+                      <sc-if value="{{isLog}}" hint-placeholder-val="{{ false }}"><span style="font-size: 11px; color: var(--subtle); font-family: ui-monospace, 'SF Mono', Menlo, monospace">seq {{m.seq}} · hop {{m.hop}}</span></sc-if>
+                      <div style="margin-left: auto; position: relative">
+                        <button type="button" class="hov wake" onClick="{{m.toggleWake}}" aria-expanded="{{m.wakeExpanded}}" style="height: 24px; padding: 0 8px; border: 1px solid var(--border); background: var(--surface); border-radius: 6px; font-size: 11.5px; color: var(--muted)">Wake…</button>
+                        <sc-if value="{{m.wakeOpen}}" hint-placeholder-val="{{ false }}">
+                          <div role="menu" style="position: absolute; right: 0; top: 28px; z-index: 4; min-width: 180px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); padding: 4px; display: flex; flex-direction: column">
+                            <span style="padding: 6px 8px 2px; font-size: 11px; color: var(--muted)">Make a bot see this</span>
+                            <sc-for list="{{m.wakeOptions}}" as="w" hint-placeholder-count="2">
+                              <button type="button" role="menuitem" class="hov" onClick="{{w.pick}}" style="text-align: left; border: 0; background: transparent; border-radius: 7px; padding: 7px 8px; font-size: 13px">{{w.name}}</button>
+                            </sc-for>
+                          </div>
+                        </sc-if>
+                      </div>
+                    </div>
+                    <p style="margin: 0; color: var(--fg); white-space: pre-wrap">{{m.text}}</p>
+                    <sc-if value="{{notLog}}" hint-placeholder-val="{{ true }}">
+                      <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px">
+                        <sc-for list="{{m.chips}}" as="c" hint-placeholder-count="3">
+                          <span style="{{c.style}}">{{c.text}}</span>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{isLog}}" hint-placeholder-val="{{ false }}">
+                      <div style="margin-top: 4px; border: 1px solid var(--border); border-radius: 10px; overflow-x: auto; background: var(--surface)">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 12px; min-width: 460px">
+                          <thead><tr style="color: var(--muted); text-align: left"><th style="padding: 6px 10px; font-weight: 500">Bot</th><th style="padding: 6px 10px; font-weight: 500">Stage</th><th style="padding: 6px 10px; font-weight: 500">Score</th><th style="padding: 6px 10px; font-weight: 500">Action</th><th style="padding: 6px 10px; font-weight: 500">Why</th></tr></thead>
+                          <tbody>
+                            <sc-for list="{{m.routes}}" as="r" hint-placeholder-count="3">
+                              <tr style="border-top: 1px solid var(--border)">
+                                <td style="padding: 6px 10px; font-weight: 500">{{r.bot}}</td>
+                                <td style="padding: 6px 10px; color: var(--muted)">{{r.stage}}</td>
+                                <td style="padding: 6px 10px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-variant-numeric: tabular-nums">{{r.scoreText}}</td>
+                                <td style="padding: 6px 10px"><span style="{{r.actionStyle}}">{{r.actionText}}</span></td>
+                                <td style="padding: 6px 10px; color: var(--muted)">{{r.reason}}</td>
+                              </tr>
+                            </sc-for>
+                          </tbody>
+                        </table>
+                      </div>
+                    </sc-if>
+                  </div>
+                </div>
+              </sc-if>
+            </sc-for>
+            <sc-if value="{{hasTyping}}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; align-items: center; gap: 8px; padding: 6px 52px; font-size: 12.5px; color: var(--info)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 3.5a8.5 8.5 0 0 1 0 17Z" fill="currentColor"></path></svg>
+                {{typingText}}
+              </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <div style="position: sticky; bottom: 30px; padding: 0 20px 16px; background: linear-gradient(to bottom, transparent, var(--canvas) 28px)">
+          <div style="max-width: 760px; margin: 0 auto">
+            <div style="border: 1px solid var(--border); border-radius: 22px; background: var(--glass); backdrop-filter: blur(12px) saturate(1.14); -webkit-backdrop-filter: blur(12px) saturate(1.14); box-shadow: var(--shadow); padding: 10px 12px 8px; display: flex; flex-direction: column; gap: 6px">
+              <label for="room-compose" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Message #serving-plan</label>
+              <textarea id="room-compose" rows="2" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onKey}}" placeholder="Message #serving-plan · @name to wake a bot, or the lead answers" style="border: 0; outline: 0; resize: none; background: transparent; font-size: 14px; line-height: 1.5; padding: 2px 4px; min-height: 42px"></textarea>
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap">
+                <sc-for list="{{mentionButtons}}" as="b" hint-placeholder-count="3">
+                  <button type="button" class="hov" onClick="{{b.add}}" style="height: 26px; padding: 0 8px; border: 1px solid var(--border); background: transparent; border-radius: 13px; font-size: 12px; color: var(--muted)">@{{b.name}}</button>
+                </sc-for>
+                <span style="margin-left: auto; font-size: 11.5px; color: var(--muted)">{{routeHint}}</span>
+                <button type="button" onClick="{{onSend}}" aria-label="Send" style="{{sendStyle}}">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
+                </button>
+              </div>
+            </div>
+            <div style="padding: 6px 14px 0; font-size: 11.5px; color: var(--muted)">Room messages reach bots as data, never as instructions from you. Example data · no backend.</div>
+          </div>
+        </div>
+      </div>
+
+      <aside aria-label="Room settings" style="flex: 1 1 300px; max-width: 360px; min-width: 0; border-left: 1px solid var(--border); background: var(--surface); padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px">
+        <section style="display: flex; flex-direction: column; gap: 8px">
+          <h2 style="margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Members</h2>
+          <sc-for list="{{members}}" as="p" hint-placeholder-count="3">
+            <div style="display: flex; align-items: center; gap: 10px">
+              <span style="{{p.avStyle}}">{{p.initials}}</span>
+              <div style="flex: 1; min-width: 0">
+                <div style="font-size: 13px; font-weight: 500; color: var(--fg-strong)">{{p.name}} <span style="font-weight: 400; color: var(--muted)">{{p.role}}</span></div>
+                <div style="font-size: 11.5px; color: var(--muted)">{{p.desc}}</div>
+              </div>
+              <a href="Session.dc.html" style="font-size: 12px; color: var(--primary)">Seat</a>
+            </div>
+          </sc-for>
+        </section>
+
+        <section style="display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--border); padding-top: 16px">
+          <h2 style="margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Router</h2>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <span style="font-size: 13px">Decision model</span>
+            <div role="group" aria-label="Model routing mode" style="display: inline-flex; padding: 2px; border-radius: 8px; background: var(--hover); align-self: flex-start">
+              <button type="button" aria-pressed="{{shadowPressed}}" onClick="{{setShadow}}" style="{{shadowStyle}}">Shadow</button>
+              <button type="button" aria-pressed="{{livePressed}}" onClick="{{setLive}}" style="{{liveStyle}}">Live</button>
+            </div>
+            <span style="font-size: 12px; color: var(--muted)">{{modeHint}}</span>
+          </div>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+            <label for="digest" style="font-size: 13px">Observe digests<br><span style="font-size: 12px; color: var(--muted)">Bots that only observe get a summary with their next turn</span></label>
+            <button id="digest" type="button" role="switch" aria-checked="{{digestOn}}" onClick="{{toggleDigest}}" style="{{switchStyle}}"><span style="{{knobStyle}}"></span></button>
+          </div>
+          <dl style="margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 12.5px">
+            <dt style="color: var(--muted)">Hop cap</dt><dd style="margin: 0">3 bot-to-bot turns</dd>
+            <dt style="color: var(--muted)">Budget</dt><dd style="margin: 0">40 messages a round</dd>
+            <dt style="color: var(--muted)">Cooldown</dt><dd style="margin: 0">30 s per bot</dd>
+            <dt style="color: var(--muted)">Model</dt><dd style="margin: 0; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px">router-small · local</dd>
+            <dt style="color: var(--muted)">If it fails</dt><dd style="margin: 0">Rules only, never wake all</dd>
+          </dl>
+        </section>
+
+        <section style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border); padding-top: 16px">
+          <h2 style="margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Today</h2>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; text-align: center">
+            <div style="border: 1px solid var(--border); border-radius: 10px; padding: 8px 4px"><div style="font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums">{{stats.msgs}}</div><div style="font-size: 11px; color: var(--muted)">messages</div></div>
+            <div style="border: 1px solid var(--border); border-radius: 10px; padding: 8px 4px"><div style="font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--primary)">{{stats.wakes}}</div><div style="font-size: 11px; color: var(--muted)">wakes</div></div>
+            <div style="border: 1px solid var(--border); border-radius: 10px; padding: 8px 4px"><div style="font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums">{{stats.observes}}</div><div style="font-size: 11px; color: var(--muted)">observe</div></div>
+            <div style="border: 1px solid var(--border); border-radius: 10px; padding: 8px 4px"><div style="font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted)">{{stats.ignores}}</div><div style="font-size: 11px; color: var(--muted)">ignore</div></div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+  <dc-import name="Footer" theme="{{themeName}}" hint-size="100%,30px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  componentWillUnmount() { (this._timers || []).forEach((t) => clearTimeout(t)); }
+
+  later(ms, fn) { this._timers = this._timers || []; this._timers.push(setTimeout(fn, ms)); }
+
+  st() {
+    return Object.assign({ msgs: this.initial(), view: 'chips', mode: 'shadow', digest: true, draft: '', wakeMenu: null, typing: null, hop: 1, seq: 43, clock: 45 }, this.state || {});
+  }
+
+  initial() {
+    return [
+      { kind: 'msg', seq: 41, hop: 0, who: 'owner', time: '09:41', text: 'Can the new model fit on our two 48 GB cards? @research pull the numbers.', routes: [
+        { bot: 'research', stage: 'rules', action: 'respond', reason: '@mention' },
+        { bot: 'serving', stage: 'model', score: 0.71, action: 'observe', reason: 'about serving capacity, not addressed' },
+        { bot: 'ops', stage: 'model', score: 0.08, action: 'ignore', reason: 'not about ops' } ] },
+      { kind: 'msg', seq: 42, hop: 1, who: 'research', time: '09:43', text: 'Weights are 70 GB at 8-bit. That leaves about 26 GB for KV cache across both cards. @serving that is enough for 16k context at batch 2.', routes: [
+        { bot: 'serving', stage: 'rules', action: 'respond', reason: '@mention · hop 1 of 3' },
+        { bot: 'ops', stage: 'model', score: 0.12, action: 'ignore', reason: 'not about ops' } ] },
+      { kind: 'msg', seq: 43, hop: 1, who: 'serving', time: '09:44', text: 'Then one replica fits. I can draft the deployment once you approve the inference namespace.', routes: [
+        { bot: 'owner', stage: 'rules', action: 'needs', reason: 'asks the owner to decide' },
+        { bot: 'ops', stage: 'model', score: 0.52, action: 'observe', reason: 'a new namespace touches backups and certs' },
+        { bot: 'research', stage: 'model', score: 0.19, action: 'ignore', reason: 'its question is answered' } ] },
+      { kind: 'system', text: 'serving opened a thread in its seat: ', link: 'Draft the serving deployment →' }
+    ];
+  }
+
+  members() {
+    return {
+      serving: { initials: 'SE', color: '#c2410c', role: 'lead', desc: 'Claude Code · container · seat: Draft the serving deployment' },
+      research: { initials: 'RE', color: '#0e7490', role: '', desc: 'Claude Code · container · seat: research-desk' },
+      ops: { initials: 'OP', color: '#4d7c0f', role: '', desc: 'Codex · microvm · seat: lab-ops' }
+    };
+  }
+
+  scoreFor(bot, text) {
+    const t = text.toLowerCase();
+    const kw = {
+      research: ['measure', 'benchmark', 'eval', 'paper', 'numbers', 'latency', 'throughput', 'test', 'compare'],
+      serving: ['deploy', 'replica', 'serve', 'serving', 'context', 'batch', 'model', 'gpu'],
+      ops: ['backup', 'cert', 'namespace', 'host', 'cluster', 'disk', 'network', 'firewall', 'restore']
+    }[bot];
+    const hits = kw.filter((k) => t.indexOf(k) >= 0).length;
+    return Math.min(0.96, 0.1 + hits * 0.38);
+  }
+
+  route(text, author, hop, mode) {
+    const M = this.members();
+    const mentioned = Object.keys(M).filter((b) => b !== author && new RegExp('@' + b + '\\b', 'i').test(text));
+    const routes = [];
+    Object.keys(M).filter((b) => b !== author).forEach((b) => {
+      if (mentioned.indexOf(b) >= 0) {
+        if (author !== 'owner' && hop >= 3) routes.push({ bot: b, stage: 'rules', action: 'held', reason: 'hop cap reached' });
+        else routes.push({ bot: b, stage: 'rules', action: 'respond', reason: author === 'owner' ? '@mention' : '@mention · hop ' + hop + ' of 3' });
+        return;
+      }
+      if (author === 'owner' && mentioned.length === 0 && b === 'serving') { routes.push({ bot: b, stage: 'rules', action: 'respond', reason: 'lead answers unaddressed messages' }); return; }
+      const score = Math.round(this.scoreFor(b, text) * 100) / 100;
+      const action = score >= 0.75 ? 'respond' : score >= 0.4 ? 'observe' : 'ignore';
+      routes.push({ bot: b, stage: 'model', score: score, action: action, shadow: mode === 'shadow' && action === 'respond', reason: action === 'respond' ? 'looks addressed to its role' : action === 'observe' ? 'relevant, not addressed' : 'not for this bot' });
+    });
+    if (author !== 'owner') routes.unshift({ bot: 'owner', stage: 'rules', action: 'reply', reason: 'reply in the room' });
+    return routes;
+  }
+
+  replyFor(bot, text, hop) {
+    const r = {
+      research: hop < 2 ? 'I can measure that. 200 prompts at 16k takes about 15 minutes on both cards. @serving want me to start it before you deploy?' : 'Running it now. I will post the numbers here.',
+      serving: hop < 2 ? 'I will fold that into the deployment thread and ask you before anything is applied. @research a quick latency check first would help.' : 'Noted. It is in the deployment thread.',
+      ops: 'If the namespace is created I will add it to the backup and certificate checks tonight.'
+    };
+    return r[bot];
+  }
+
+  post(author, text, hop) {
+    const s = this.st();
+    const seq = s.seq + 1;
+    const clock = s.clock + 1;
+    const routes = this.route(text, author, hop, s.mode);
+    const msg = { kind: 'msg', seq: seq, hop: hop, who: author, time: '09:' + String(clock).padStart(2, '0'), text: text, routes: routes };
+    const extra = [];
+    if (author !== 'owner' && routes.some((r) => r.action === 'held')) extra.push({ kind: 'system', text: 'Hop cap reached (3 of 3). The room waits for you.', warn: true });
+    this.setState({ msgs: s.msgs.concat([msg]).concat(extra), seq: seq, clock: clock, hop: hop });
+    const woken = routes.filter((r) => r.bot !== 'owner' && r.action === 'respond' && !r.shadow).map((r) => r.bot);
+    woken.forEach((b, i) => {
+      this.later(900 + i * 1400, () => this.setState({ typing: b }));
+      this.later(1900 + i * 1400, () => {
+        this.setState({ typing: null });
+        const nextHop = /@(serving|research|ops)\b/i.test(this.replyFor(b, text, hop + 1)) ? hop + 1 : hop;
+        this.post(b, this.replyFor(b, text, hop + 1), nextHop);
+      });
+    });
+  }
+
+  send() {
+    const s = this.st();
+    const text = (s.draft || '').trim();
+    if (!text) return;
+    this.setState({ draft: '' });
+    this.post('owner', text, 0);
+  }
+
+  forceWake(index, bot) {
+    const s = this.st();
+    const msgs = s.msgs.map((m, i) => i !== index ? m : Object.assign({}, m, { routes: m.routes.map((r) => r.bot === bot ? Object.assign({}, r, { stage: 'owner', action: 'respond', shadow: false, score: undefined, reason: 'woken by you' }) : r) }));
+    this.setState({ msgs: msgs, wakeMenu: null });
+    const m = s.msgs[index];
+    this.later(700, () => this.setState({ typing: bot }));
+    this.later(1700, () => { this.setState({ typing: null }); this.post(bot, this.replyFor(bot, m.text, 2), m.hop); });
+  }
+
+  renderVals() {
+    const s = this.st();
+    const dark = (this.props.theme ?? 'light') === 'dark';
+    const M = this.members();
+    const av = (who, size) => {
+      const c = who === 'owner' ? 'var(--fg-strong)' : M[who].color;
+      return 'width: ' + size + 'px; height: ' + size + 'px; border-radius: ' + (size > 24 ? 9 : 6) + 'px; background: ' + c + '; color: ' + (who === 'owner' ? 'var(--canvas)' : '#ffffff') + '; display: grid; place-items: center; font-size: ' + (size > 24 ? 11 : 9) + 'px; font-weight: 700; flex: none';
+    };
+    const chipBase = 'font-size: 11.5px; line-height: 1; padding: 5px 8px; border-radius: 999px; border: 1px solid ';
+    const chip = (r) => {
+      if (r.action === 'needs') return { text: '→ you · needs you', style: chipBase + 'transparent; background: var(--warn-wash); color: var(--warn); font-weight: 600' };
+      if (r.action === 'reply') return null;
+      if (r.action === 'respond' && !r.shadow) return { text: '→ ' + r.bot + ' · ' + (r.stage === 'model' ? 'model ' + r.score.toFixed(2) : r.reason), style: chipBase + 'transparent; background: var(--primary-wash); color: var(--primary); font-weight: 600' };
+      if (r.shadow) return { text: r.bot + ' · would respond ' + r.score.toFixed(2) + ' · shadow', style: chipBase + 'var(--border); border-style: dashed; color: var(--muted)' };
+      if (r.action === 'held') return { text: r.bot + ' · held · hop cap', style: chipBase + 'transparent; background: var(--warn-wash); color: var(--warn)' };
+      if (r.action === 'observe') return { text: r.bot + ' · observe ' + r.score.toFixed(2), style: chipBase + 'var(--border); color: var(--muted)' };
+      return { text: r.bot + ' · ignore', style: chipBase + 'var(--border); color: var(--subtle)' };
+    };
+    const actionColor = { respond: 'var(--primary)', needs: 'var(--warn)', held: 'var(--warn)', observe: 'var(--fg)', ignore: 'var(--subtle)', reply: 'var(--muted)' };
+    let wakes = 9, observes = 22, ignores = 10;
+    const msgs = s.msgs.map((m, i) => {
+      if (m.kind === 'system') return { isSystem: true, isMsg: false, text: m.text, hasLink: !!m.link, linkText: m.link || '', sysStyle: 'align-self: center; display: flex; gap: 4px; font-size: 12px; padding: 6px 12px; margin: 6px 0; border-radius: 999px; ' + (m.warn ? 'background: var(--warn-wash); color: var(--warn); font-weight: 500' : 'color: var(--muted); border: 1px solid var(--border)') };
+      m.routes.forEach((r) => { if (r.action === 'respond' && !r.shadow) wakes++; else if (r.action === 'observe') observes++; else if (r.action === 'ignore') ignores++; });
+      const notWoken = Object.keys(M).filter((b) => b !== m.who && !m.routes.some((r) => r.bot === b && r.action === 'respond' && !r.shadow));
+      return {
+        isSystem: false, isMsg: true, seq: m.seq, hop: m.hop, time: m.time, text: m.text,
+        who: m.who === 'owner' ? 'You' : m.who, isBot: m.who !== 'owner',
+        initials: m.who === 'owner' ? 'YOU' : M[m.who].initials, avStyle: av(m.who, 32),
+        chips: m.routes.map(chip).filter(Boolean),
+        routes: m.routes.map((r) => ({
+          bot: r.bot === 'owner' ? 'you' : r.bot, stage: r.stage, reason: r.reason,
+          scoreText: typeof r.score === 'number' ? r.score.toFixed(2) : '—',
+          actionText: r.shadow ? 'respond (shadow)' : r.action === 'needs' ? 'needs you' : r.action,
+          actionStyle: 'font-weight: 600; color: ' + (r.shadow ? 'var(--muted)' : actionColor[r.action])
+        })),
+        wakeOpen: s.wakeMenu === i, wakeExpanded: String(s.wakeMenu === i),
+        toggleWake: () => this.setState({ wakeMenu: this.st().wakeMenu === i ? null : i }),
+        wakeOptions: notWoken.map((b) => ({ name: b, pick: () => this.forceWake(i, b) }))
+      };
+    });
+
+    const seg = (on) => 'height: 26px; padding: 0 10px; border: 0; border-radius: 7px; font-size: 12.5px; ' + (on ? 'background: var(--fg-strong); color: var(--canvas); font-weight: 500' : 'background: transparent; color: var(--muted)');
+    const seg2 = (on) => 'height: 26px; padding: 0 10px; border: 0; border-radius: 6px; font-size: 12px; ' + (on ? 'background: var(--surface); color: var(--fg-strong); font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,.08)' : 'background: transparent; color: var(--muted)');
+    const draft = s.draft || '';
+    const mentions = Object.keys(M).filter((b) => new RegExp('@' + b + '\\b', 'i').test(draft));
+    const routeHint = !draft.trim() ? 'Rules first, then the model' : mentions.length ? 'Wakes ' + mentions.join(', ') : 'No @mention: serving (lead) answers';
+    const msgCount = s.msgs.filter((m) => m.kind === 'msg').length;
+
+    return {
+      themeClass: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light',
+      msgs: msgs,
+      isLog: s.view === 'log', notLog: s.view !== 'log',
+      chipsPressed: String(s.view !== 'log'), logPressed: String(s.view === 'log'),
+      chipsStyle: seg(s.view !== 'log'), logStyle: seg(s.view === 'log'),
+      showChips: () => this.setState({ view: 'chips' }), showLog: () => this.setState({ view: 'log' }),
+      hopText: 'hop ' + s.hop + ' of 3',
+      budgetText: (11 + msgCount) + ' of 40 messages',
+      hasTyping: !!s.typing, typingText: s.typing ? s.typing + ' is replying in its seat…' : '',
+      draft: draft,
+      onDraft: (e) => this.setState({ draft: e.target.value }),
+      onKey: (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.send(); } },
+      onSend: () => this.send(),
+      sendStyle: 'width: 32px; height: 32px; border: 0; border-radius: 16px; display: grid; place-items: center; ' + (draft.trim() ? 'background: var(--fg-strong); color: var(--canvas)' : 'background: var(--hover); color: var(--subtle)'),
+      mentionButtons: Object.keys(M).map((b) => ({ name: b, add: () => this.setState({ draft: (this.st().draft || '').replace(/\s*$/, '') + (this.st().draft ? ' ' : '') + '@' + b + ' ' }) })),
+      routeHint: routeHint,
+      members: Object.keys(M).map((b) => ({ name: b, initials: M[b].initials, role: M[b].role ? '· ' + M[b].role : '', desc: M[b].desc, avStyle: av(b, 28) })),
+      shadowPressed: String(s.mode === 'shadow'), livePressed: String(s.mode === 'live'),
+      shadowStyle: seg2(s.mode === 'shadow'), liveStyle: seg2(s.mode === 'live'),
+      setShadow: () => this.setState({ mode: 'shadow' }), setLive: () => this.setState({ mode: 'live' }),
+      modeHint: s.mode === 'shadow' ? 'Logs what the model would do. Only rules wake bots.' : 'The model can wake a bot it is confident about.',
+      digestOn: String(s.digest), toggleDigest: () => this.setState({ digest: !this.st().digest }),
+      switchStyle: 'flex: none; width: 36px; height: 22px; border-radius: 11px; border: 0; padding: 2px; display: flex; ' + (s.digest ? 'background: var(--primary); justify-content: flex-end' : 'background: var(--border); justify-content: flex-start'),
+      knobStyle: 'width: 18px; height: 18px; border-radius: 9px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,.2)',
+      stats: { msgs: 30 + msgCount, wakes: wakes, observes: observes, ignores: ignores }
+    };
+  }
+}
+</script>
+</body>
+</html>

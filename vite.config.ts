@@ -98,6 +98,9 @@ export default defineConfig({
       "apps/mobile/ios/**",
       "apps/mobile/uniwind-types.d.ts",
       "*.icon/**",
+      // magnesium: the mock canvas's boards stay as written; reformatting their
+      // markup moves text inside pre-wrap elements onto lines of its own.
+      "docs/magnesium/mockups/canvas/*.dc.html",
     ],
     sortPackageJson: {},
     overrides: [
