@@ -9,7 +9,7 @@ import {
   watchHome,
 } from "@magnesium/web";
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { useComposerDraftStore } from "../../composerDraftStore";
 
@@ -67,4 +67,17 @@ export const answerHold = createAnswerHold({
 
 export function useHeldAnswers(): ReadonlyMap<string, HeldAnswer> {
   return useSyncExternalStore(answerHold.subscribe, answerHold.current);
+}
+
+/**
+ * The clock for wait times and the Undo countdown: once a second while an
+ * answer is held, else twice a minute. Text only, so nothing repaints between.
+ */
+export function useNow(fast: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), fast ? 1_000 : 30_000);
+    return () => window.clearInterval(timer);
+  }, [fast]);
+  return now;
 }

@@ -11,6 +11,7 @@ import {
   type ProfileDetail,
   type ProfileEnvironment,
   ProfileError,
+  type ProfileIssue,
   type ProfileHarness,
   type ProfileMcpServer,
   type ProfilePushStatus,
@@ -89,6 +90,12 @@ export class ProfileStore extends Context.Service<
     ) => Effect.Effect<ProfileSaveResult, ProfileError>;
     /** Ask the hub to deliver to its machines now rather than on its next tick. */
     readonly sendNow: Effect.Effect<void>;
+    /** What the check would say of a change, without writing it. */
+    readonly check: (
+      change: ProfileChange,
+    ) => Effect.Effect<ReadonlyArray<ProfileIssue>, ProfileError>;
+    /** Whether profiles change here, rather than come from the hub. */
+    readonly editable: Effect.Effect<boolean>;
     /** Which of the profile's variables each machine it runs on has, asked of each. */
     readonly environment: (name: string) => Effect.Effect<ProfileEnvironment, ProfileError>;
   }
@@ -827,7 +834,32 @@ export const make = Effect.gen(function* () {
       return { names, machines: [...here, ...elsewhere] } satisfies ProfileEnvironment;
     });
 
+  const check = (change: ProfileChange) =>
+    io(
+      Effect.gen(function* () {
+        yield* requireProfile(change.name);
+        yield* validateChange(change);
+        return yield* checkCopy(change.name, (dir) =>
+          Effect.gen(function* () {
+            yield* applyFiles(dir, change.files ?? []);
+            if (change.settings !== undefined) {
+              const meta = path.join(dir, FILES.meta);
+              const text = (yield* readOptional(meta)) ?? "";
+              yield* fs.writeFileString(meta, applySettings(text, change.settings));
+            }
+          }),
+        );
+      }),
+    );
+
+  const editable = withServices(isPushManaged(root)).pipe(
+    Effect.map((managed) => !managed),
+    Effect.orElseSucceed(() => false),
+  );
+
   return ProfileStore.of({
+    check,
+    editable,
     detail,
     save,
     create,

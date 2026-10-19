@@ -3,18 +3,25 @@ import type { ProfileDetail, ProfileSummary } from "@magnesium/contracts";
 import {
   createProfile,
   deleteProfile,
+  describeProfileAsk,
   fleetRows,
+  type HeldAnswer,
+  type ProfileAsk,
+  profileAsks,
   profileListLine,
   profileNameProblem,
   restoreProfile,
+  waitedFor,
 } from "@magnesium/web";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { PlusIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { isElectron } from "../../env";
 import { cn } from "../../lib/utils";
 import { useFleetView } from "../fleet/fleetStore";
+import { HeldBanner } from "../home/HomeCard";
+import { answerHold, useHeldAnswers, useHomeView, useNow } from "../home/homeStore";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -253,6 +260,47 @@ function DeleteProfileDialog({
   );
 }
 
+/** An agent's ask, answered here or on Home: the same card, with the same Undo. */
+function ProfileAskBanner({
+  ask,
+  held,
+  now,
+}: {
+  readonly ask: ProfileAsk;
+  readonly held: HeldAnswer | undefined;
+  readonly now: number;
+}) {
+  const locked = !ask.reachable || held !== undefined;
+  const respond = (approve: boolean) =>
+    answerHold.hold(
+      ask.key,
+      { _tag: "profile-request", requestId: ask.body.requestId, approve },
+      approve ? "Approving" : "Rejecting",
+    );
+  return (
+    <Alert variant="warning">
+      <AlertTitle>{describeProfileAsk(ask.body)}</AlertTitle>
+      <AlertDescription>
+        <span>
+          {ask.body.summary} · {ask.machine.label} · {waitedFor(ask.since, now)} · also on Home
+        </span>
+        <pre className="max-h-60 overflow-auto rounded-lg bg-background px-3 py-2 font-mono text-xs whitespace-pre-wrap text-foreground">
+          {ask.body.preview}
+        </pre>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button size="sm" variant="outline" disabled={locked} onClick={() => respond(false)}>
+            Reject
+          </Button>
+          <Button size="sm" disabled={locked} onClick={() => respond(true)}>
+            Approve
+          </Button>
+        </div>
+        {held !== undefined ? <HeldBanner itemKey={ask.key} held={held} now={now} /> : null}
+      </AlertDescription>
+    </Alert>
+  );
+}
+
 function ProfileView({
   detail,
   machines,
@@ -261,6 +309,7 @@ function ProfileView({
   onChanged,
   onDuplicate,
   onDelete,
+  asks,
 }: {
   readonly detail: ProfileDetail;
   readonly machines: ReadonlyArray<string>;
@@ -269,6 +318,8 @@ function ProfileView({
   readonly onChanged: () => void;
   readonly onDuplicate: () => void;
   readonly onDelete: () => void;
+  /** Agents' asks about this profile, as banners. */
+  readonly asks: ReactNode;
 }) {
   const profile = detail.summary;
   const refused = profile.status === "refused";
@@ -323,6 +374,7 @@ function ProfileView({
           </AlertDescription>
         </Alert>
       ) : null}
+      {asks}
       {refused ? (
         <Alert variant="error">
           <AlertTitle>Refused</AlertTitle>
@@ -400,6 +452,14 @@ export function ProfilesPage() {
   );
   const [dialog, setDialog] = useState<"new" | "copy" | "delete" | null>(null);
   const selected = profiles.find((profile) => profile.name === selectedName) ?? null;
+  const homeItems = useHomeView().items;
+  const asks = useMemo(() => profileAsks(homeItems), [homeItems]);
+  const held = useHeldAnswers();
+  const now = useNow([...held.values()].some((answer) => answer.state === "holding"));
+  // Asks to create a profile have none to sit on yet: they show above whichever is open.
+  const shownAsks = asks.filter(
+    (ask) => ask.body.target === selectedName || ask.body.kind === "create",
+  );
 
   const select = (name: string, nextTab: ProfileTab = tab) =>
     void navigate({ search: { name, tab: nextTab }, replace: true });
@@ -407,6 +467,17 @@ export function ProfilesPage() {
     void refresh();
     void refreshDetail();
   };
+  // An ask that leaves Home was answered: read the profiles again, so an approved change shows.
+  const askKeys = asks.map((ask) => ask.key).join(" ");
+  const lastAskKeys = useRef(askKeys);
+  useEffect(() => {
+    const current = new Set(askKeys.split(" "));
+    const gone = lastAskKeys.current.split(" ").some((key) => key !== "" && !current.has(key));
+    lastAskKeys.current = askKeys;
+    if (!gone) return;
+    void refresh();
+    void refreshDetail();
+  }, [askKeys, refresh, refreshDetail]);
 
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none isolate">
@@ -464,7 +535,7 @@ export function ProfilesPage() {
                         onClick={() => select(profile.name)}
                       >
                         <ProfileAvatar profile={profile} size="sm" />
-                        <span className="flex min-w-0 flex-col items-start">
+                        <span className="flex min-w-0 flex-1 flex-col items-start">
                           <span className="truncate text-sm text-foreground">
                             {profile.displayName}
                           </span>
@@ -472,6 +543,13 @@ export function ProfilesPage() {
                             {line.text}
                           </span>
                         </span>
+                        {asks.some((ask) => ask.body.target === profile.name) ? (
+                          <span
+                            role="img"
+                            aria-label="An agent asks to change it"
+                            className="size-2 shrink-0 rounded-full bg-warning"
+                          />
+                        ) : null}
                       </Button>
                     </li>
                   );
@@ -534,6 +612,9 @@ export function ProfilesPage() {
                   onChanged={changed}
                   onDuplicate={() => setDialog("copy")}
                   onDelete={() => setDialog("delete")}
+                  asks={shownAsks.map((ask) => (
+                    <ProfileAskBanner key={ask.key} ask={ask} held={held.get(ask.key)} now={now} />
+                  ))}
                 />
               ) : detailError !== null ? (
                 <p className="text-sm text-destructive-foreground">{detailError}</p>

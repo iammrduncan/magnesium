@@ -298,6 +298,9 @@ export const commandsForAnswer = (input: {
     // The scheduler runs the task again first (see `LocalHome`); the failed run is then done with.
     case "retry":
       return [{ type: "thread.settle", commandId: context.commandId(), threadId: view.id }];
+    // Profile requests are decided by `ProfileRequests`, not by the thread (goal 34).
+    case "profile-request":
+      return [];
   }
 };
 
@@ -314,8 +317,13 @@ export const answeredKey = (threadId: string, answer: HomeAnswer): string => {
     case "settle":
     case "retry":
       return `${threadId}:failure`;
+    case "profile-request":
+      return profileRequestKey(answer.requestId);
   }
 };
+
+/** An agent's profile request on Home: its own key, whichever thread asked (goal 34). */
+export const profileRequestKey = (requestId: string) => `profile-request:${requestId}`;
 
 /** A failure left by a scheduled task's run names the task, so its card can retry it. */
 export const withRetryTask = (

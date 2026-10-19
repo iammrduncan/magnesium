@@ -4,6 +4,7 @@ import {
   type HomeDetail,
   type HomeItem,
   homeItemKey,
+  type HomeProfileRequest,
   type HomeSummary,
   homeSummaryKey,
   isHomeNeed,
@@ -260,7 +261,30 @@ export function describeNeed(item: HomeItem): string {
       return "Working";
     case "scheduled":
       return "Scheduled";
+    case "profile-request":
+      return PROFILE_ASK_KIND[item.body.kind];
   }
+}
+
+const PROFILE_ASK_KIND: Record<HomeProfileRequest["kind"], string> = {
+  update: "Profile change",
+  create: "New profile",
+  delete: "Profile deletion",
+};
+
+/** An agent's ask to create, change or delete a profile, waiting on Home (goal 34, D65). */
+export type ProfileAsk = HomeItem & { readonly body: HomeProfileRequest };
+
+/** The agents' asks waiting on the owner, oldest first. */
+export function profileAsks(items: LiveTableState<HomeItem>): ReadonlyArray<ProfileAsk> {
+  return [...items.rows.values()]
+    .filter((item): item is ProfileAsk => item.body._tag === "profile-request")
+    .toSorted((left, right) => left.since.localeCompare(right.since));
+}
+
+/** "research asks to change serving", as the card and the Profiles page put it. */
+export function describeProfileAsk(body: HomeProfileRequest): string {
+  return `${body.requestedBy} asks to ${body.kind === "update" ? "change" : body.kind} ${body.target}`;
 }
 
 // ── The hold before an answer is sent (goal 06: Undo) ──

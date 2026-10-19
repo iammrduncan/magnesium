@@ -384,8 +384,121 @@ export const ProfileEnvironment = Schema.Struct({
 });
 export type ProfileEnvironment = typeof ProfileEnvironment.Type;
 
+/**
+ * A change an agent asks for (D65). It waits on the server the agent runs on,
+ * shows on Home, and is applied by the hub only when the owner approves it.
+ */
+export const PROFILE_REQUEST_KINDS = ["update", "create", "delete"] as const;
+export const ProfileRequestKind = Schema.Literals(PROFILE_REQUEST_KINDS);
+export type ProfileRequestKind = typeof ProfileRequestKind.Type;
+
+/** What an agent asks: change, create or delete a profile, saying why. */
+export const ProfileRequestInput = Schema.Struct({
+  kind: ProfileRequestKind,
+  name: ProfileName,
+  /** One line for the owner and the profile's history. */
+  summary: Schema.String,
+  files: Schema.optionalKey(ProfileChange.fields.files),
+  settings: Schema.optionalKey(ProfileSettingsChange),
+  description: Schema.optionalKey(Schema.String),
+  copyOf: Schema.optionalKey(ProfileName),
+});
+export type ProfileRequestInput = typeof ProfileRequestInput.Type;
+
+export const ProfileRequest = Schema.Struct({
+  id: Schema.String,
+  /** The thread whose agent asked, when it asked from one. */
+  threadId: Schema.NullOr(Schema.String),
+  /** The asking agent's profile, or its harness when it runs on none. */
+  requestedBy: Schema.String,
+  input: ProfileRequestInput,
+  createdAt: Schema.String,
+  decision: Schema.NullOr(Schema.Literals(["approved", "rejected"])),
+  /** Why it was turned down, or what the check said. */
+  note: Schema.NullOr(Schema.String),
+});
+export type ProfileRequest = typeof ProfileRequest.Type;
+
+/** A request's id, for asking after it. */
+export const ProfileRequestIdInput = Schema.Struct({ id: Schema.String });
+export type ProfileRequestIdInput = typeof ProfileRequestIdInput.Type;
+
+/** What `create_profile` asks for: an empty profile, or a copy of another. */
+export const CreateProfileAsk = Schema.Struct({
+  name: ProfileName,
+  summary: Schema.String,
+  description: Schema.optionalKey(Schema.String),
+  copyOf: Schema.optionalKey(ProfileName),
+});
+export type CreateProfileAsk = typeof CreateProfileAsk.Type;
+
+/** What `update_profile` asks for: files written whole, and settings. */
+export const UpdateProfileAsk = Schema.Struct({
+  name: ProfileName,
+  summary: Schema.String,
+  files: Schema.optionalKey(ProfileChange.fields.files),
+  settings: Schema.optionalKey(ProfileSettingsChange),
+});
+export type UpdateProfileAsk = typeof UpdateProfileAsk.Type;
+
+export const DeleteProfileAsk = Schema.Struct({ name: ProfileName, summary: Schema.String });
+export type DeleteProfileAsk = typeof DeleteProfileAsk.Type;
+
+/** Where the hub's delivery stands after `send_profile_now`. */
+export const ProfileSendResult = Schema.Struct({ pushes: Schema.Array(ProfilePushStatus) });
+export type ProfileSendResult = typeof ProfileSendResult.Type;
+
 /** How long a deleted profile can be restored. */
 export const PROFILE_TRASH_DAYS = 30;
+
+const ASKS_FIRST =
+  "Nothing changes until the owner approves it on Home. Say in summary what it is for. Returns the request: follow it with profile_request_status.";
+
+/**
+ * Magnesium's own tools for agents (goal 34), the same in every thread's MCP
+ * server and in the agents API: `about` for the Profiles page, `description`
+ * for agents.
+ */
+export const MAGNESIUM_AGENT_TOOLS = {
+  list_profiles: {
+    about: "Profiles and where they run",
+    description:
+      "Every Magnesium profile on this server: display name, harness, default sandbox, the machines it goes to, whether it runs here and as which provider instances, and any issues. On the hub it also says what each machine holds.",
+  },
+  get_profile: {
+    about: "One profile, whole, with its delivery",
+    description:
+      "One Magnesium profile, whole: its files (instructions, skills, MCP servers, hooks), its settings, each MCP tool's permission, the environment variables it names (names only), its versions, and on the hub what each machine holds.",
+  },
+  check_profiles: {
+    about: "Check profiles without running anything",
+    description:
+      "Check profiles without running anything, as profile sync and every machine do. Refuses permission flags in launch args, native as a default sandbox, secrets written into files, and unpinned images. ok is false when any profile has an error.",
+  },
+  create_profile: {
+    about: "Ask to create a profile",
+    description: `Ask the owner to create a Magnesium profile, empty or as a copy of another (copyOf). ${ASKS_FIRST}`,
+  },
+  update_profile: {
+    about: "Ask to change a profile",
+    description: `Ask the owner to change a Magnesium profile. files are written whole, and content null removes one: Markdown instructions at the profile's top, mcp.json, hooks.json, or skills/<skill>/... ; profile.yaml changes only through settings. The change is checked as it arrives. ${ASKS_FIRST}`,
+  },
+  delete_profile: {
+    about: "Ask to delete a profile",
+    description: `Ask the owner to delete a Magnesium profile; it can be restored for ${PROFILE_TRASH_DAYS} days. ${ASKS_FIRST}`,
+  },
+  profile_request_status: {
+    about: "How an ask went",
+    description:
+      "How a profile request went: decision is null while it waits, approved once the hub applied it, or rejected, with a note saying why when there is one.",
+  },
+  send_profile_now: {
+    about: "Deliver profiles to the machines now",
+    description:
+      "Have the hub deliver profiles to its machines now rather than at its next check, and say what each machine holds. Changes no profile; on a machine other than the hub there is nothing to deliver.",
+  },
+} as const;
+export type MagnesiumAgentToolName = keyof typeof MAGNESIUM_AGENT_TOOLS;
 
 export const DeletedProfile = Schema.Struct({
   name: ProfileName,

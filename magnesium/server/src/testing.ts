@@ -7,7 +7,7 @@ import * as NodePath from "node:path";
 
 import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { type FleetMachine, MAGNESIUM_WS_PATH } from "@magnesium/contracts";
+import { type FleetMachine, type LiveTableItem, MAGNESIUM_WS_PATH } from "@magnesium/contracts";
 import {
   AuthAdministrativeScopes,
   AuthOrchestrationReadScope,
@@ -36,6 +36,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as PubSub from "effect/PubSub";
+import * as Queue from "effect/Queue";
 import * as Stream from "effect/Stream";
 import {
   FetchHttpClient,
@@ -588,4 +589,39 @@ export const startTestServer = (
       wsUrl: (ticket?: string) =>
         `ws://127.0.0.1:${address.port}${MAGNESIUM_WS_PATH}${ticket ? `?wsTicket=${ticket}` : ""}`,
     };
+  });
+
+/** A browser's copy of a live table on the hub, kept from its stream. */
+export const watchTable = <Row, E>(
+  stream: Stream.Stream<LiveTableItem<Row>, E>,
+  key: (row: Row) => string,
+) =>
+  Effect.gen(function* () {
+    const rows = new Map<string, Row>();
+    const changed = yield* Queue.unbounded<void>();
+    yield* Effect.forkScoped(
+      stream.pipe(
+        Stream.runForEach((item) =>
+          Effect.sync(() => {
+            if (item._tag === "snapshot") rows.clear();
+            for (const row of item._tag === "snapshot" ? item.rows : item.upserts) {
+              rows.set(key(row), row);
+            }
+            if (item._tag === "changes") for (const removed of item.removals) rows.delete(removed);
+          }).pipe(Effect.andThen(Queue.offer(changed, undefined))),
+        ),
+      ),
+    );
+    /** Waits for the rows to satisfy `check`, as the stream delivers them. */
+    const until = (check: () => boolean) =>
+      Effect.gen(function* () {
+        while (!check()) yield* Queue.take(changed);
+      }).pipe(
+        Effect.timeoutOrElse({
+          duration: "15 seconds",
+          orElse: () =>
+            Effect.die(new Error(`Never got there: ${JSON.stringify([...rows.values()])}`)),
+        }),
+      );
+    return { rows, until };
   });

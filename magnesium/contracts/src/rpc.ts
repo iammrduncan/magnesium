@@ -41,6 +41,8 @@ import {
   ProfilePush,
   ProfilePushResult,
   ProfilePutBackInput,
+  ProfileRequest,
+  ProfileRequestIdInput,
   ProfileRevision,
   ProfileSaveResult,
   SandboxList,
@@ -102,6 +104,7 @@ export const MAGNESIUM_WS_METHODS = {
   profileSendNow: "magnesium.profiles.sendNow",
   profileEnvironment: "magnesium.profiles.environment",
   envPresence: "magnesium.profiles.envPresence",
+  profileRequestGet: "magnesium.profiles.request",
   needsLocal: "magnesium.needs.local",
   needsAnswer: "magnesium.needs.answer",
   needsDetail: "magnesium.needs.detail",
@@ -265,6 +268,12 @@ const ProfileEnvironmentRpc = Rpc.make(MAGNESIUM_WS_METHODS.profileEnvironment, 
   success: ProfileEnvironment,
   error: ProfileError,
 }).annotate(RequiredScope, AuthOrchestrationReadScope);
+/** The hub reads a request whole from the server it waits on, to apply it when approved. */
+const ProfileRequestGetRpc = Rpc.make(MAGNESIUM_WS_METHODS.profileRequestGet, {
+  payload: ProfileRequestIdInput,
+  success: ProfileRequest,
+  error: ProfileError,
+}).annotate(RequiredScope, AuthOrchestrationOperateScope);
 /** A machine says which variable names its server has set, never their values. */
 const EnvPresenceRpc = Rpc.make(MAGNESIUM_WS_METHODS.envPresence, {
   payload: EnvPresenceInput,
@@ -447,6 +456,7 @@ export const MagnesiumRpcGroup = RpcGroup.make(
   ProfileSendNowRpc,
   ProfileEnvironmentRpc,
   EnvPresenceRpc,
+  ProfileRequestGetRpc,
   NeedsLocalRpc,
   NeedsAnswerRpc,
   NeedsDetailRpc,

@@ -5,6 +5,7 @@ import {
   type LocalAnswerInput,
   type LocalHomeItem,
   localHomeItemKey,
+  type ProfileRequest,
 } from "@magnesium/contracts";
 import type { ThreadId } from "@t3tools/contracts";
 import * as Context from "effect/Context";
@@ -23,6 +24,8 @@ import * as Stream from "effect/Stream";
 export interface MachineCalls {
   readonly answer: (input: LocalAnswerInput) => Effect.Effect<void, HomeAnswerError>;
   readonly detail: (threadId: ThreadId) => Effect.Effect<HomeDetail, HomeAnswerError>;
+  /** A profile request whole, for the hub to apply when approved (goal 34). */
+  readonly profileRequest: (id: string) => Effect.Effect<ProfileRequest, HomeAnswerError>;
 }
 
 export interface MachineHome {

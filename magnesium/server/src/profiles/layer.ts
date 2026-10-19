@@ -4,12 +4,14 @@ import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
 import { HttpClient, HttpRouter } from "effect/http";
 
+import type { MagnesiumAgentTools } from "../agents/MagnesiumAgentTools.ts";
 import { agentsRoutesLayer } from "../agents/routes.ts";
 import { HubMachines } from "../hub/HubMachines.ts";
 import { machineSandboxesRoute } from "./hubRoutes.ts";
 import { ServerPorts } from "../ports.ts";
 import { InstanceSource, ProfilesConfig } from "./catalog.ts";
 import * as HubProfilePusher from "./HubProfilePusher.ts";
+import * as ProfileRequests from "./ProfileRequests.ts";
 import * as ProfileStore from "./ProfileStore.ts";
 import * as ProfileSync from "./ProfileSync.ts";
 import { detectSetup, wrapperCandidates } from "./setup.ts";
@@ -52,10 +54,11 @@ const instanceSourceLayer = Layer.effect(
 );
 
 /**
- * The profile services: config, sync, the hub's push, and the store the app
- * changes profiles through. Needs `ServerPorts`, `HubMachines` and `Fleet`.
+ * The profile services: config, sync, the hub's push, the store the app
+ * changes profiles through, and the requests agents make. Needs `ServerPorts`, `HubMachines` and `Fleet`.
  */
-export const profileServicesLayer = ProfileStore.layer.pipe(
+export const profileServicesLayer = ProfileRequests.layer.pipe(
+  Layer.provideMerge(ProfileStore.layer),
   Layer.provideMerge(Layer.mergeAll(ProfileSync.layer, HubProfilePusher.layer)),
   Layer.provideMerge(Layer.merge(configLayer, instanceSourceLayer)),
 );
@@ -70,6 +73,7 @@ const routesLayer = Layer.unwrap(
       | ServerPorts
       | HubMachines
       | HttpClient.HttpClient
+      | MagnesiumAgentTools
     >();
     return Layer.merge(agentsRoutesLayer, machineSandboxesRoute).pipe(
       HttpRouter.provideRequest(Layer.succeedContext(context)),
@@ -77,7 +81,7 @@ const routesLayer = Layer.unwrap(
   }),
 );
 
-/** The agents API's routes, profile sync and the hub's push. Needs the profile services. */
+/** The agents API's routes, profile sync and the hub's push. Needs the profile services and the agent tools. */
 export const profilesLayer = Layer.mergeAll(
   routesLayer,
   ProfileSync.workerLayer,

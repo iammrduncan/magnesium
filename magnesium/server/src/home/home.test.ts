@@ -12,10 +12,8 @@ import { EnvironmentId } from "@t3tools/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
-import * as Queue from "effect/Queue";
 import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
-import * as Stream from "effect/Stream";
 
 import { HUB_MACHINES_CONFIG_FILE } from "../hub/HubMachines.ts";
 import { connect } from "../rpc/client.ts";
@@ -32,6 +30,7 @@ import {
   testThread,
   testThreadRequests,
   testTicketRoute,
+  watchTable,
 } from "../testing.ts";
 import { buildHome } from "./Home.ts";
 
@@ -102,41 +101,6 @@ describe("building Home", () => {
     });
   });
 });
-
-/** A browser's copy of a live table on the hub, kept from its stream. */
-const watchTable = <Row, E>(
-  stream: Stream.Stream<LiveTableItem<Row>, E>,
-  key: (row: Row) => string,
-) =>
-  Effect.gen(function* () {
-    const rows = new Map<string, Row>();
-    const changed = yield* Queue.unbounded<void>();
-    yield* Effect.forkScoped(
-      stream.pipe(
-        Stream.runForEach((item) =>
-          Effect.sync(() => {
-            if (item._tag === "snapshot") rows.clear();
-            for (const row of item._tag === "snapshot" ? item.rows : item.upserts) {
-              rows.set(key(row), row);
-            }
-            if (item._tag === "changes") for (const removed of item.removals) rows.delete(removed);
-          }).pipe(Effect.andThen(Queue.offer(changed, undefined))),
-        ),
-      ),
-    );
-    /** Waits for the rows to satisfy `check`, as the stream delivers them. */
-    const until = (check: () => boolean) =>
-      Effect.gen(function* () {
-        while (!check()) yield* Queue.take(changed);
-      }).pipe(
-        Effect.timeoutOrElse({
-          duration: "15 seconds",
-          orElse: () =>
-            Effect.die(new Error(`Never got there: ${JSON.stringify([...rows.values()])}`)),
-        }),
-      );
-    return { rows, until };
-  });
 
 const APPROVAL_KEY = "cpu-host-1/deploy:approval:apply";
 const QUESTION_KEY = "@self/notes:question:which";

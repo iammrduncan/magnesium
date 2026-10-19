@@ -67,6 +67,7 @@ import * as PreviewAutomationBroker from "./mcp/PreviewAutomationBroker.ts";
 import * as DeviceService from "./device/DeviceService.ts";
 import * as DeviceHubProxy from "./device/DeviceHubProxy.ts";
 import { magnesiumRoutesLayer } from "./magnesiumRoutes.ts"; // magnesium: our routes (doc 11)
+import * as MagnesiumMcpRegistration from "./mcp/toolkits/magnesium/registration.ts"; // magnesium: goal 34
 import * as PreviewManager from "./preview/Manager.ts";
 import * as PortScanner from "./preview/PortScanner.ts";
 import * as ServerBrowser from "./preview/ServerBrowser.ts";
@@ -725,7 +726,14 @@ const layerMakeRoutes = Layer.mergeAll(
   // delegation targets through the same live adapter facade the V2
   // orchestrator uses, so MCP capability reporting can never drift from
   // what dispatch can actually serve.
-  McpHttpServer.layer.pipe(
+  Layer.merge(
+    McpHttpServer.layer,
+    // magnesium: Magnesium's profile tools join /mcp, served by the routes above (goal 34)
+    MagnesiumMcpRegistration.layer.pipe(
+      Layer.provide(McpHttpServer.layerMcpTransport),
+      Layer.provide(magnesiumRoutesLayer),
+    ),
+  ).pipe(
     Layer.provide(ProviderAdapterRegistry.layerFromProviderInstanceRegistry),
     Layer.provide(McpOAuth.layerMcpClientAuthenticator),
   ),

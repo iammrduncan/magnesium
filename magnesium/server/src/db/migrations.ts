@@ -39,7 +39,24 @@ const homePins = Effect.gen(function* () {
     )`;
 });
 
+/** Profiles (goal 34): changes agents asked for, waiting on the owner, and how each went. */
+const profileRequests = Effect.gen(function* () {
+  const sql = yield* SqlClient.SqlClient;
+  yield* sql`
+    CREATE TABLE profile_requests (
+      id TEXT PRIMARY KEY,
+      thread_id TEXT,
+      requested_by TEXT NOT NULL,
+      input TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      decision TEXT,
+      note TEXT,
+      decided_at TEXT
+    )`;
+});
+
 export const migrations = Migrator.fromRecord({
   "1_Fleet": fleet,
   "2_HomePins": homePins,
+  "3_ProfileRequests": profileRequests,
 });

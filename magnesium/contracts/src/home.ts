@@ -102,6 +102,24 @@ export const HomeScheduledFailure = Schema.TaggedStruct("scheduled-failure", {
 });
 export type HomeScheduledFailure = typeof HomeScheduledFailure.Type;
 
+/**
+ * An agent asks to change a profile (goal 34, D65). The item carries a short
+ * preview; the hub reads the whole change from the request's server when it is
+ * approved, and applies it to its own profiles.
+ */
+export const HomeProfileRequest = Schema.TaggedStruct("profile-request", {
+  requestId: Schema.String,
+  kind: Schema.Literals(["update", "create", "delete"]),
+  /** The profile to change. */
+  target: Schema.String,
+  /** The asking agent's profile, or its harness. */
+  requestedBy: Schema.String,
+  summary: Schema.String,
+  /** The change, clipped to show on a card. */
+  preview: Schema.String,
+});
+export type HomeProfileRequest = typeof HomeProfileRequest.Type;
+
 /** Not a need: the thread is working right now ("Running now"). */
 export const HomeRunning = Schema.TaggedStruct("running", {});
 export type HomeRunning = typeof HomeRunning.Type;
@@ -116,6 +134,7 @@ export type HomeScheduled = typeof HomeScheduled.Type;
 
 export const HomeItemBody = Schema.Union([
   HomeApproval,
+  HomeProfileRequest,
   HomeQuestion,
   HomePlan,
   HomeFailure,
@@ -215,6 +234,11 @@ export const HomeAnswer = Schema.Union([
    * thread of a run that failed, which is then settled.
    */
   Schema.TaggedStruct("retry", { taskId: Schema.String }),
+  /** Approve or turn down an agent's change to a profile (goal 34). */
+  Schema.TaggedStruct("profile-request", {
+    requestId: Schema.String,
+    approve: Schema.Boolean,
+  }),
 ]);
 export type HomeAnswer = typeof HomeAnswer.Type;
 
@@ -283,6 +307,9 @@ export const homeNeedKind = (body: HomeItemBody): HomeNeedKind | null => {
       return null;
     case "scheduled-failure":
       return "failure";
+    // An agent's change to a profile waits on your approval like a command does.
+    case "profile-request":
+      return "approval";
     default:
       return body._tag;
   }

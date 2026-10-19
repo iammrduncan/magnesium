@@ -1,6 +1,7 @@
 // magnesium: the Profiles page's sections, one tab each (goal 34, D65, D67)
 import {
   AGENTS_MCP_PATH,
+  MAGNESIUM_AGENT_TOOLS,
   MAGNESIUM_MCP_SERVER,
   type ProfileDelivery,
   type ProfileDetail,
@@ -444,12 +445,10 @@ const PERMISSIONS: ReadonlyArray<{ value: ProfileToolPermission; label: string }
 ];
 
 /** Magnesium's own tools an agent has, and what they do. */
-const OWN_TOOLS: ReadonlyArray<{ readonly name: string; readonly about: string }> = [
-  { name: "list_profiles", about: "Profiles and where they run" },
-  { name: "get_profile", about: "One profile, whole" },
-  { name: "check_profiles", about: "Check profiles without running anything" },
-  { name: "request_profile_change", about: "Ask to change a profile; you approve every change" },
-];
+const OWN_TOOLS = Object.entries(MAGNESIUM_AGENT_TOOLS).map(([name, tool]) => ({
+  name,
+  about: tool.about,
+}));
 
 function ServerRow({
   server,

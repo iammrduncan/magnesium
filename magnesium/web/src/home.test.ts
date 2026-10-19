@@ -7,10 +7,13 @@ import {
   createAnswerHold,
   describeHome,
   describeNeed,
+  describeProfileAsk,
   homeNeeds,
   homeNeedsByMachine,
   homeNextRuns,
   homeRunning,
+  type ProfileAsk,
+  profileAsks,
   runTime,
   waitedFor,
 } from "./home.ts";
@@ -252,5 +255,38 @@ describe("the hold before an answer is sent", () => {
     });
     hold.dismiss("a");
     expect(hold.current().has("a")).toBe(false);
+  });
+});
+
+describe("an agent's ask on Home (goal 34)", () => {
+  const ask = (key: string, kind: "update" | "create" | "delete", since: string) =>
+    item(
+      key,
+      {
+        _tag: "profile-request",
+        requestId: key,
+        kind,
+        target: "serving",
+        requestedBy: "research",
+        summary: "Watch rollouts",
+        preview: "+ skills/rollout-watch/SKILL.md",
+      },
+      since,
+    ) as ProfileAsk;
+
+  it("is an approval among the needs, and says who asks to do what", () => {
+    const update = ask("change", "update", "2026-10-16T02:00:00.000Z");
+    const items = tableOf([
+      update,
+      ask("remove", "delete", "2026-10-16T01:00:00.000Z"),
+      item("approval", approval, "2026-10-16T03:00:00.000Z"),
+    ]);
+    expect(profileAsks(items).map((need) => need.key)).toEqual(["remove", "change"]);
+    expect(homeNeeds(items)).toHaveLength(3);
+    expect(describeNeed(update)).toBe("Profile change");
+    expect(describeProfileAsk(update.body)).toBe("research asks to change serving");
+    expect(describeProfileAsk(ask("new", "create", "2026-10-16T00:00:00.000Z").body)).toBe(
+      "research asks to create serving",
+    );
   });
 });

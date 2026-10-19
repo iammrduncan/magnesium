@@ -9,7 +9,7 @@ import {
   waitedFor,
 } from "@magnesium/web";
 import * as Schema from "effect/Schema";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { isElectron } from "../../env";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
@@ -22,25 +22,12 @@ import { WorkspaceBreadcrumb, WorkspaceBreadcrumbItem } from "../WorkspaceBreadc
 import { WorkspacePageContainer } from "../WorkspacePageContainer";
 import { WorkspacePageHeader } from "../WorkspacePageHeader";
 import { HomeCard, HomeGlanceRow, type HomeZoom, ThreadLink } from "./HomeCard";
-import { useHeldAnswers, useHomeView } from "./homeStore";
+import { useHeldAnswers, useHomeView, useNow } from "./homeStore";
 
 const ZOOM_STORAGE_KEY = "magnesium:home-zoom";
 /** Next runs beside the feed; the Schedule page (goal 11) lists them all. */
 const NEXT_RUNS_SHOWN = 5;
 const HomeZoomSchema = Schema.Literals(["glance", "cards", "detail"]);
-
-/**
- * The clock for wait times and the Undo countdown: once a second while an
- * answer is held, else twice a minute. Text only, so nothing repaints between.
- */
-function useNow(fast: boolean): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), fast ? 1_000 : 30_000);
-    return () => window.clearInterval(timer);
-  }, [fast]);
-  return now;
-}
 
 function RunningRow({ item, now }: { item: HomeItem; now: number }) {
   return (

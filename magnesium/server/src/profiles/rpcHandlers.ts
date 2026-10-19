@@ -4,6 +4,7 @@ import * as Layer from "effect/Layer";
 
 import { pushStatuses } from "../agents/operations.ts";
 import { checkProfiles, listProfiles, listSandboxes } from "./catalog.ts";
+import { ProfileRequests } from "./ProfileRequests.ts";
 import { presentHere, ProfileStore } from "./ProfileStore.ts";
 import { ProfileSync } from "./ProfileSync.ts";
 import { readRevision, receivePush } from "./receive.ts";
@@ -148,8 +149,18 @@ const environmentHandler = MagnesiumRpcGroup.toLayerHandler(
   }),
 );
 
+/** The hub reads a request whole from here, to apply it when the owner approves it. */
+const requestGetHandler = MagnesiumRpcGroup.toLayerHandler(
+  MAGNESIUM_WS_METHODS.profileRequestGet,
+  Effect.gen(function* () {
+    const requests = yield* ProfileRequests;
+    return (input) => requests.get(input.id);
+  }),
+);
+
 export const profileRpcHandlersLayer = Layer.mergeAll(
   storeHandlers,
+  requestGetHandler,
   envPresenceHandler,
   environmentHandler,
   listProfilesHandler,

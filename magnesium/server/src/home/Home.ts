@@ -31,6 +31,8 @@ import * as Stream from "effect/Stream";
 
 import { Fleet } from "../fleet/Fleet.ts";
 import { ServerPorts } from "../ports.ts";
+import { ProfileRequests } from "../profiles/ProfileRequests.ts";
+import { ProfileStore } from "../profiles/ProfileStore.ts";
 import * as LiveTable from "../stream/LiveTable.ts";
 import { LocalHome } from "./LocalHome.ts";
 import { makePinStore } from "./pins.ts";
@@ -139,6 +141,9 @@ export const make = Effect.gen(function* () {
   const local = yield* LocalHome;
   const relay = yield* HomeRelay;
   const fleet = yield* Fleet;
+  // The hub keeps the profiles: it applies an agent's change you approve (goal 34).
+  const profileStore = yield* Effect.serviceOption(ProfileStore);
+  const profileRequests = yield* Effect.serviceOption(ProfileRequests);
   const pinStore = yield* makePinStore;
   const descriptor = yield* ports.environment;
 
@@ -263,6 +268,70 @@ export const make = Effect.gen(function* () {
       } as const;
     });
 
+  /**
+   * Applies an approved profile request to the hub's profiles, read whole from
+   * the server it waits on. A change the check refuses fails here, with why, and
+   * the request keeps waiting.
+   */
+  const applyRequest = (item: HomeItem, requestId: string) =>
+    Effect.gen(function* () {
+      if (Option.isNone(profileStore)) {
+        return yield* answerError("This server doesn't keep profiles.");
+      }
+      const store = profileStore.value;
+      const request =
+        item.machine.name === null
+          ? Option.isNone(profileRequests)
+            ? yield* answerError("This server takes no profile requests.")
+            : yield* profileRequests.value
+                .get(requestId)
+                .pipe(Effect.mapError((error) => answerError(error.detail)))
+          : yield* (
+              relay.machines().get(item.machine.name)?.calls?.profileRequest(requestId) ??
+                answerError(`${item.machine.label} is offline. Answer it when it's back.`)
+            );
+      if (request.decision !== null) return yield* answerError("That request was already decided.");
+      const { input } = request;
+      const by = `${request.requestedBy}, approved by you`;
+      const refused = (
+        issues: ReadonlyArray<{ readonly level: string; readonly message: string }>,
+      ) =>
+        answerError(
+          `The check refuses it: ${issues
+            .filter((issue) => issue.level === "error")
+            .map((issue) => issue.message)
+            .join(" ")}`,
+        );
+      const toAnswer = (error: { readonly detail: string }) => answerError(error.detail);
+      if (input.kind === "delete") {
+        return yield* store.remove(input.name, by).pipe(Effect.mapError(toAnswer));
+      }
+      const result =
+        input.kind === "create"
+          ? yield* store
+              .create(
+                {
+                  name: input.name,
+                  ...(input.description === undefined ? {} : { description: input.description }),
+                  ...(input.copyOf === undefined ? {} : { copyOf: input.copyOf }),
+                },
+                by,
+              )
+              .pipe(Effect.mapError(toAnswer))
+          : yield* store
+              .save(
+                {
+                  name: input.name,
+                  summary: input.summary,
+                  ...(input.files === undefined ? {} : { files: input.files }),
+                  ...(input.settings === undefined ? {} : { settings: input.settings }),
+                },
+                by,
+              )
+              .pipe(Effect.mapError(toAnswer));
+      if (!result.saved) return yield* refused(result.issues);
+    });
+
   return Home.of({
     subscribeNeeds: (input) =>
       Stream.unwrap(RcRef.get(follow).pipe(Effect.as(itemsTable.subscribe(input)))),
@@ -271,6 +340,11 @@ export const make = Effect.gen(function* () {
     answer: ({ key, answer }) =>
       followed(
         route(key).pipe(
+          Effect.tap(({ item }) =>
+            answer._tag === "profile-request" && answer.approve
+              ? applyRequest(item, answer.requestId)
+              : Effect.void,
+          ),
           Effect.flatMap(({ item, calls }) => calls.answer({ threadId: item.threadId, answer })),
         ),
       ),

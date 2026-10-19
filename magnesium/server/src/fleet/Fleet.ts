@@ -220,6 +220,14 @@ export const make = (
             client[MAGNESIUM_WS_METHODS.needsDetail]({ threadId }).pipe(
               Effect.mapError(toAnswerError),
             ),
+          profileRequest: (id) =>
+            client[MAGNESIUM_WS_METHODS.profileRequestGet]({ id }).pipe(
+              Effect.mapError((error) =>
+                error._tag === "ProfileError"
+                  ? new HomeAnswerError({ detail: error.detail })
+                  : new HomeAnswerError({ detail: `${name} did not answer.` }),
+              ),
+            ),
         })
         .pipe(
           Effect.andThen(

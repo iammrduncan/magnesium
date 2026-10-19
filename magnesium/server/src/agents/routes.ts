@@ -7,13 +7,22 @@ import * as Schema from "effect/Schema";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 
 import { ServerPorts } from "../ports.ts";
-import { findOperation, operations } from "./operations.ts";
+import { MagnesiumAgentTools } from "./MagnesiumAgentTools.ts";
+import { type AgentOperation, type AgentServices, operations } from "./operations.ts";
+import { profileOperations } from "./profileOperations.ts";
 
 /**
  * The agents API over HTTP: REST and MCP, for agents and tools outside the web
  * UI (which uses `/api/magnesium/ws`). Any signed-in session with the
- * operation's scope may call it; every operation here only reads.
+ * operation's scope may call it. The operations that change something only
+ * ask: the owner approves each change on Home.
  */
+
+const served: ReadonlyArray<AgentOperation<AgentServices | MagnesiumAgentTools>> = [
+  ...operations,
+  ...profileOperations,
+];
+const findOperation = (name: string) => served.find((operation) => operation.name === name);
 
 const jsonError = (status: number, error: string) =>
   HttpServerResponse.jsonUnsafe({ error }, { status });
@@ -37,22 +46,25 @@ const withScope = <E, R>(
     return yield* onAllowed;
   });
 
-/** REST: one GET route per agents-API operation. */
-const restRoutes = operations
+/** REST: one route per agents-API operation. */
+const restRoutes = served
   .map((operation) =>
     HttpRouter.add(
-      "GET",
+      operation.method ?? "GET",
       `${AGENTS_API_PATH}${operation.path}`,
       withScope(
         operation.scope,
         Effect.gen(function* () {
           const request = yield* HttpServerRequest.HttpServerRequest;
-          const query = new URL(request.url, "http://local").searchParams;
-          return yield* operation.run(operation.fromQuery(query)).pipe(
+          const input =
+            operation.method === "POST"
+              ? yield* request.json.pipe(Effect.orElseSucceed(() => undefined))
+              : operation.fromQuery(new URL(request.url, "http://local").searchParams);
+          return yield* operation.run(input).pipe(
             Effect.map((result) => HttpServerResponse.jsonUnsafe(result)),
-            Effect.catchTag("AgentInputError", (error) =>
-              Effect.succeed(jsonError(400, error.message)),
-            ),
+            Effect.catchTags({
+              AgentInputError: (error) => Effect.succeed(jsonError(400, error.message)),
+            }),
           );
         }),
       ),
@@ -121,7 +133,7 @@ const mcpRoute = HttpRouter.add(
         return reply({});
       case "tools/list":
         return reply({
-          tools: operations
+          tools: served
             .filter((operation) => scopes.value.includes(operation.scope))
             .map(({ name, description, inputSchema }) => ({ name, description, inputSchema })),
         });
@@ -145,11 +157,12 @@ const mcpRoute = HttpRouter.add(
               isError: false,
             }),
           ),
-          Effect.catchTag("AgentInputError", (error) =>
-            Effect.succeed(
-              reply({ content: [{ type: "text", text: error.message }], isError: true }),
-            ),
-          ),
+          Effect.catchTags({
+            AgentInputError: (error) =>
+              Effect.succeed(
+                reply({ content: [{ type: "text", text: error.message }], isError: true }),
+              ),
+          }),
         );
       }
       default:

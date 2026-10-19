@@ -5,10 +5,11 @@ import type {
   HomeApproval,
   HomeItem,
   HomePlan,
+  HomeProfileRequest,
   HomeQuestion,
   Question,
 } from "@magnesium/contracts";
-import { describeNeed, type HeldAnswer, waitedFor } from "@magnesium/web";
+import { describeNeed, describeProfileAsk, type HeldAnswer, waitedFor } from "@magnesium/web";
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { ScheduledTaskId } from "@t3tools/contracts";
 import { Link } from "@tanstack/react-router";
@@ -33,6 +34,7 @@ const SHAPE: Record<HomeItem["body"]["_tag"], StatusShapeKind> = {
   "scheduled-failure": "failed",
   running: "working",
   scheduled: "idle",
+  "profile-request": "approval",
 };
 
 /** The scheduled task an item is about, if any (goal 24). */
@@ -164,6 +166,8 @@ export function HomeCard({
           locked={locked}
           onAnswer={answer}
         />
+      ) : item.body._tag === "profile-request" ? (
+        <ProfileAskBody body={item.body} locked={locked} onAnswer={answer} />
       ) : null}
       {!item.reachable ? (
         <p className="text-sm text-muted-foreground">
@@ -176,7 +180,16 @@ export function HomeCard({
   );
 }
 
-function HeldBanner({ itemKey, held, now }: { itemKey: string; held: HeldAnswer; now: number }) {
+/** An answer's hold, with Undo; the Profiles page shows it under an agent's ask too. */
+export function HeldBanner({
+  itemKey,
+  held,
+  now,
+}: {
+  itemKey: string;
+  held: HeldAnswer;
+  now: number;
+}) {
   if (held.state === "holding") {
     const seconds = Math.max(1, Math.ceil((held.sendsAt - now) / 1000));
     return (
@@ -271,6 +284,48 @@ function ApprovalBody({
             </Button>
           </>
         )}
+      </Actions>
+    </>
+  );
+}
+
+/** An agent asks to create, change or delete a profile; Approve applies it on the hub (goal 34). */
+export function ProfileAskBody({
+  body,
+  locked,
+  onAnswer,
+}: {
+  body: HomeProfileRequest;
+  locked: boolean;
+  onAnswer: (answer: HomeAnswer, label: string) => void;
+}) {
+  const respond = (approve: boolean) =>
+    onAnswer(
+      { _tag: "profile-request", requestId: body.requestId, approve },
+      approve ? "Approving" : "Rejecting",
+    );
+  return (
+    <>
+      <p className="text-sm text-foreground">{describeProfileAsk(body)}</p>
+      <pre className="max-h-60 overflow-auto rounded-lg bg-muted px-3 py-2 font-mono text-xs whitespace-pre-wrap text-foreground">
+        {body.preview}
+      </pre>
+      <Actions>
+        {body.kind === "create" ? null : (
+          <Button
+            size="sm"
+            variant="ghost"
+            render={<Link to="/profiles" search={{ name: body.target }} />}
+          >
+            Open profile
+          </Button>
+        )}
+        <Button size="sm" variant="outline" disabled={locked} onClick={() => respond(false)}>
+          Reject
+        </Button>
+        <Button size="sm" disabled={locked} onClick={() => respond(true)}>
+          Approve
+        </Button>
       </Actions>
     </>
   );

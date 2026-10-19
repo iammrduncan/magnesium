@@ -11,7 +11,7 @@ import {
   CommandId,
   MessageId,
   type OrchestrationV2ThreadShell,
-  type ThreadId,
+  ThreadId,
 } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
@@ -27,6 +27,7 @@ import * as Schedule from "effect/Schedule";
 import * as Stream from "effect/Stream";
 
 import { ServerPorts } from "../ports.ts";
+import { previewOf, ProfileRequests } from "../profiles/ProfileRequests.ts";
 import * as LiveTable from "../stream/LiveTable.ts";
 import { viewOf } from "../threads.ts";
 import {
@@ -35,6 +36,7 @@ import {
   homeItemsOf,
   needsThreadRequests,
   planMarkdownOf,
+  profileRequestKey,
   recentWorkOf,
   scheduleFailureKey,
   scheduleItemsOf,
@@ -81,6 +83,9 @@ export const layer = Layer.effect(
     });
     const keysByThread = new Map<ThreadId, ReadonlySet<string>>();
     let scheduleKeys: ReadonlySet<string> = new Set();
+    let requestKeys: ReadonlySet<string> = new Set();
+    // Agents' requests to change a profile (goal 34), where profiles are served.
+    const requests = yield* Effect.serviceOption(ProfileRequests);
     let projectTitles = new Map<string, string>();
 
     const loadProjectTitles = ports.threads.projects.pipe(
@@ -139,6 +144,38 @@ export const layer = Layer.effect(
         scheduleKeys = next;
       });
 
+    /** Follows the profile requests waiting on the owner: one item each. */
+    const followRequests = Option.match(requests, {
+      onNone: () => Effect.void,
+      onSome: (service) =>
+        service.pending.pipe(
+          Stream.runForEach((pending) =>
+            Effect.gen(function* () {
+              const items = pending.map((request): LocalHomeItem => ({
+                key: profileRequestKey(request.id),
+                threadId: request.threadId === null ? null : ThreadId.make(request.threadId),
+                title: request.input.summary,
+                projectTitle: null,
+                since: request.createdAt,
+                body: {
+                  _tag: "profile-request",
+                  requestId: request.id,
+                  kind: request.input.kind,
+                  target: request.input.name,
+                  requestedBy: request.requestedBy,
+                  summary: request.input.summary,
+                  preview: previewOf(request.input),
+                },
+              }));
+              const next = new Set(items.map(localHomeItemKey));
+              for (const key of requestKeys) if (!next.has(key)) yield* table.remove(key);
+              for (const item of items) yield* table.set(item);
+              requestKeys = next;
+            }),
+          ),
+        ),
+    });
+
     /** Follows the scheduler: every task's next run, and a run that could not start. */
     const followSchedule = ports.schedule.tasks.pipe(
       Stream.runForEach((tasks) =>
@@ -188,6 +225,7 @@ export const layer = Layer.effect(
         yield* Deferred.succeed(loaded, undefined);
         // The scheduler's own stream sends the list now and after each change.
         yield* Effect.forkScoped(followSchedule);
+        yield* Effect.forkScoped(followRequests);
         yield* readAll.pipe(
           Effect.delay(RESYNC_EVERY),
           Effect.repeat(Schedule.forever),
@@ -220,6 +258,14 @@ export const layer = Layer.effect(
 
     const answer = ({ threadId, answer: given }: LocalAnswerInput) =>
       Effect.gen(function* () {
+        // The hub applied an approved change before sending this; here it is marked decided.
+        if (given._tag === "profile-request") {
+          if (Option.isNone(requests))
+            return yield* answerError("This server takes no profile requests.");
+          return yield* requests.value
+            .decide(given.requestId, given.approve ? "approved" : "rejected", null)
+            .pipe(Effect.mapError((error) => answerError(error.detail)));
+        }
         if (given._tag === "retry" && threadId === null) {
           if (!scheduleKeys.has(scheduleFailureKey(given.taskId))) {
             return yield* answerError("That run already started again, or the task is gone.");

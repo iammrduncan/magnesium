@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import { HttpRouter } from "effect/http";
 
+import * as MagnesiumAgentTools from "./agents/MagnesiumAgentTools.ts";
 import * as MagnesiumDb from "./db/MagnesiumDb.ts";
 import * as Fleet from "./fleet/Fleet.ts";
 import { fleetHandlersLayer } from "./fleet/handlers.ts";
@@ -34,6 +35,22 @@ import * as ServerStatus from "./status/ServerStatus.ts";
 
 export * from "./ports.ts";
 export { agentsCommand } from "./agents/cli.ts";
+export { MagnesiumAgentTools } from "./agents/MagnesiumAgentTools.ts";
+// The schemas upstream's MCP server needs to serve the agent tools above.
+export {
+  CreateProfileAsk,
+  DeleteProfileAsk,
+  MAGNESIUM_AGENT_TOOLS,
+  ProfileCheckResult,
+  ProfileDetail,
+  ProfileError,
+  ProfileList,
+  ProfileNameInput,
+  ProfileRequest,
+  ProfileRequestIdInput,
+  ProfileSendResult,
+  UpdateProfileAsk,
+} from "@magnesium/contracts";
 export { RECENT_WORK_ITEM_TYPES } from "./home/items.ts";
 
 const routeLayers = Layer.unwrap(
@@ -87,22 +104,30 @@ const spokesLayer = Layer.unwrap(
   }),
 );
 
-/** Every Magnesium route, plus its workers. `apps/server` provides `ServerPorts`. */
+/**
+ * Every Magnesium route, plus its workers. `apps/server` provides `ServerPorts`.
+ * It also hands out `MagnesiumAgentTools`, which upstream's per-thread MCP
+ * server serves to agents (goal 34): built here, from the same services.
+ */
 export const routesLayer = Layer.mergeAll(
   routeLayers,
+  MagnesiumAgentTools.layer,
   magnesiumWsRouteLayer.pipe(Layer.provide(rpcHandlersLayer)),
   HubMachines.renewalLayer,
-  profilesLayer,
+  // The agents API serves the same agent tools, built once with the line above.
+  profilesLayer.pipe(Layer.provide(MagnesiumAgentTools.layer)),
   pairingCodeLayer,
 ).pipe(
   Layer.provide(Home.layer),
   // Fleet tells the hub's spokes which machines are gateways, and its push
   // which machines are up and when each started.
   Layer.provide(HubSpokes.layer),
+  // Home shows agents' profile requests, which the profile services keep.
+  Layer.provide(LocalHome.layer),
   Layer.provide(profileServicesLayer),
   // Fleet carries each machine's Home items in the relay that Home reads.
   Layer.provide(Fleet.layer),
-  Layer.provide(Layer.mergeAll(LocalHome.layer, HomeRelay.layer)),
+  Layer.provide(HomeRelay.layer),
   Layer.provide(spokesLayer),
   Layer.provide(Layer.mergeAll(GatewayClient.layer, ModelKeys.layer)),
   Layer.provide(Layer.mergeAll(HubMachines.layer, ServerStatus.layer)),
