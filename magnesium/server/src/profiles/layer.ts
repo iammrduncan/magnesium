@@ -10,6 +10,7 @@ import { machineSandboxesRoute } from "./hubRoutes.ts";
 import { ServerPorts } from "../ports.ts";
 import { InstanceSource, ProfilesConfig } from "./catalog.ts";
 import * as HubProfilePusher from "./HubProfilePusher.ts";
+import * as ProfileStore from "./ProfileStore.ts";
 import * as ProfileSync from "./ProfileSync.ts";
 import { detectSetup, wrapperCandidates } from "./setup.ts";
 
@@ -50,8 +51,12 @@ const instanceSourceLayer = Layer.effect(
   ),
 );
 
-/** The profile services: config, sync and the hub's push. Needs `ServerPorts`, `HubMachines` and `Fleet`. */
-export const profileServicesLayer = Layer.mergeAll(ProfileSync.layer, HubProfilePusher.layer).pipe(
+/**
+ * The profile services: config, sync, the hub's push, and the store the app
+ * changes profiles through. Needs `ServerPorts`, `HubMachines` and `Fleet`.
+ */
+export const profileServicesLayer = ProfileStore.layer.pipe(
+  Layer.provideMerge(Layer.mergeAll(ProfileSync.layer, HubProfilePusher.layer)),
   Layer.provideMerge(Layer.merge(configLayer, instanceSourceLayer)),
 );
 

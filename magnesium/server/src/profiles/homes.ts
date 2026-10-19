@@ -148,12 +148,12 @@ const section = (title: string, text: string | undefined) =>
   text?.trim() ? `\n## ${title}\n\n${text.trim()}\n` : "";
 
 /** The files with a section of their own; any other Markdown file at the top follows them. */
-const ROLE_FILES: ReadonlyArray<string> = [
+const ROLE_FILES: ReadonlySet<string> = new Set([
   FILES.agents,
   FILES.claude,
   FILES.conventions,
   FILES.memories,
-];
+]);
 
 /** The instructions both harnesses read from their home (CLAUDE.md, AGENTS.md). */
 export const renderInstructions = Effect.fn("profiles.renderInstructions")(function* (
@@ -166,7 +166,7 @@ export const renderInstructions = Effect.fn("profiles.renderInstructions")(funct
   const extras = (yield* fs
     .readDirectory(profile.dir)
     .pipe(Effect.orElseSucceed(() => [] as string[])))
-    .filter((entry) => EXTRA_INSTRUCTIONS.test(entry) && !ROLE_FILES.includes(entry))
+    .filter((entry) => EXTRA_INSTRUCTIONS.test(entry) && !ROLE_FILES.has(entry))
     .toSorted();
   let extraSections = "";
   for (const name of extras) extraSections += section(name, yield* read(name));

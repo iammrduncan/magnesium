@@ -15,6 +15,7 @@ import { Argument, Command, Flag } from "effect/cli";
 
 import { InstanceSource, ProfilesConfig } from "../profiles/catalog.ts";
 import { detectSetup, wrapperCandidates } from "../profiles/setup.ts";
+import { profileTemplate } from "../profiles/template.ts";
 import { findOperation } from "./operations.ts";
 
 /**
@@ -35,7 +36,6 @@ export class AgentCommandError extends Schema.TaggedError<AgentCommandError>()(
 
 const decodeSettings = Schema.decodeUnknownEffect(Schema.fromJsonString(ServerSettings));
 const encodeJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown, { space: 2 }));
-const encodeString = Schema.encodeSync(Schema.fromJsonString(Schema.String));
 
 /** This server's profile config and settings, from T3CODE_HOME (the unit sets it). */
 const cliLayer = (baseDir: string | undefined) =>
@@ -192,32 +192,6 @@ const sandboxesCommand = Command.make("sandboxes", { baseDir: baseDirFlag, json:
   ),
 );
 
-const PROFILE_TEMPLATE = (
-  name: string,
-  description: string,
-) => `# A Magnesium profile. Edit it, then run \`magnesium-agents check ${name}\`.
-name: ${name}
-description: ${encodeString(description)}
-
-# Where it runs: machine names the hub pushes it to, or "*" for every one.
-# Leave it empty to run it on this server only.
-machines: []
-
-# claude or codex; add the other to harnesses to offer both.
-harness: claude
-# harnesses: [claude, codex]
-
-# fenced (the default) or container. A thread can still choose native, like full access.
-# sandbox:
-#   level: fenced
-
-# Environment variable NAMES the agent needs. Values come from the server's environment.
-env: []
-
-# display_name: ${name}
-# accent: "#2f80ed"
-`;
-
 const newCommand = Command.make("new", {
   baseDir: baseDirFlag,
   name: Argument.String("name").pipe(
@@ -246,14 +220,9 @@ const newCommand = Command.make("new", {
         return yield* new AgentCommandError({ message: `${dir} already exists.` });
       }
       yield* fs.makeDirectory(dir, { recursive: true, mode: 0o700 });
-      yield* fs.writeFileString(
-        path.join(dir, "profile.yaml"),
-        PROFILE_TEMPLATE(name, description),
-      );
-      yield* fs.writeFileString(
-        path.join(dir, "AGENTS.md"),
-        `# ${name}\n\n${description}\n\nWrite the agent's role and rules here.\n`,
-      );
+      for (const [file, content] of Object.entries(profileTemplate(name, description))) {
+        yield* fs.writeFileString(path.join(dir, file), content);
+      }
       yield* Console.log(
         `Made ${dir}.\nEdit profile.yaml and AGENTS.md, then run: magnesium-agents check ${name}\nIt appears in the picker within a minute.`,
       );

@@ -355,6 +355,15 @@ export type ProfileNameInput = typeof ProfileNameInput.Type;
 export const ProfilePutBackInput = Schema.Struct({ name: ProfileName, version: Schema.Number });
 export type ProfilePutBackInput = typeof ProfilePutBackInput.Type;
 
+/** Why a profile couldn't be read or changed, as one sentence. */
+export class ProfileError extends Schema.TaggedError<ProfileError>()("ProfileError", {
+  detail: Schema.String,
+}) {
+  override get message(): string {
+    return this.detail;
+  }
+}
+
 /** How long a deleted profile can be restored. */
 export const PROFILE_TRASH_DAYS = 30;
 
