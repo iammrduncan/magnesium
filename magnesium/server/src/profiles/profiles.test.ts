@@ -26,6 +26,7 @@ import {
 } from "./catalog.ts";
 import { planProfile, writeHomes } from "./homes.ts";
 import {
+  checkProfile,
   joinLaunchArgs,
   launchArgList,
   loadProfile,
@@ -271,6 +272,74 @@ describe("profile instances", () => {
       expect(launch).toContain(`MG_STATE_HOME='${NodePath.join(root, "state")}'`);
       expect(launch).toContain("MG_FENCE='bwrap'");
       expect(launch).not.toContain("GBRAIN_TOKEN=");
+    }).pipe(Effect.provide(NodeServices.layer)),
+  );
+
+  it.effect("grant each tool on its own in both harnesses, and read every instructions file", () =>
+    Effect.gen(function* () {
+      const root = tempRoot();
+      const config = setupFor(root);
+      writeProfile(config.folder, "serving", {
+        "profile.yaml": [
+          "name: serving",
+          "harnesses: [claude, codex]",
+          "tool_permissions:",
+          "  grafana:",
+          "    default: ask",
+          "    tools: { search_dashboards: allow, delete_dashboard: off }",
+          "  kube:",
+          "    default: off",
+          "    tools: { pod_logs: ask }",
+          "  magnesium:",
+          "    tools: { update_profile: ask, session_launch: off }",
+          "",
+        ].join("\n"),
+        "AGENTS.md": "You serve models.\n",
+        "RUNBOOK.md": "Roll back with kubectl rollout undo.\n",
+        "mcp.json": JSON.stringify({
+          mcpServers: {
+            grafana: { type: "http", url: "https://grafana.example/mcp" },
+            kube: { command: "kube-mcp", args: ["--read-only"] },
+          },
+        }),
+      });
+      const loaded = yield* loadProfile(config.folder, "serving");
+      const profile = resolveProfile(loaded);
+      yield* writeHomes(profile, config.setup);
+      const state = NodePath.join(config.folder, "serving", ".magnesium");
+
+      // Claude Code: deny wins, then ask, then allow. A server whose rest are off,
+      // with one tool on, can't be expressed there: the rest ask first.
+      const settings = JSON.parse(
+        NodeFS.readFileSync(NodePath.join(state, "claude", "settings.json"), "utf8"),
+      ) as { permissions: { allow: string[]; ask: string[]; deny: string[] } };
+      expect(settings.permissions.allow).toEqual(["mcp__grafana__search_dashboards"]);
+      expect(settings.permissions.ask.toSorted()).toEqual([
+        "mcp__kube__pod_logs",
+        "mcp__t3-code__update_profile",
+      ]);
+      expect(settings.permissions.deny.toSorted()).toEqual([
+        "mcp__grafana__delete_dashboard",
+        "mcp__t3-code__session_launch",
+      ]);
+      expect((yield* checkProfile(loaded)).map((issue) => issue.message)).toContainEqual(
+        expect.stringContaining("Claude Code can't turn off the rest"),
+      );
+
+      // Codex: an approval mode per tool, and the rest of a server off exactly.
+      const toml = NodeFS.readFileSync(NodePath.join(state, "codex", "config.toml"), "utf8");
+      expect(toml).toContain('default_tools_approval_mode = "prompt"');
+      expect(toml).toContain('disabled_tools = ["delete_dashboard"]');
+      expect(toml).toContain(
+        '[mcp_servers.grafana.tools.search_dashboards]\napproval_mode = "approve"',
+      );
+      expect(toml).toContain('enabled_tools = ["pod_logs"]');
+      expect(toml).toContain('[mcp_servers.kube.tools.pod_logs]\napproval_mode = "prompt"');
+
+      // A Markdown file of its own joins the instructions, which a fenced agent reads from its home.
+      expect(NodeFS.readFileSync(NodePath.join(state, "claude", "CLAUDE.md"), "utf8")).toContain(
+        "## RUNBOOK.md\n\nRoll back with kubectl rollout undo.",
+      );
     }).pipe(Effect.provide(NodeServices.layer)),
   );
 });

@@ -116,10 +116,12 @@ export const make = Effect.gen(function* () {
   const context = yield* Effect.context<
     Crypto.Crypto | FileSystem.FileSystem | Path.Path | HubMachines | HttpClient.HttpClient
   >();
-  const statuses = yield* Ref.make(new Map<string, ProfilePushStatus>());
+  const statuses = yield* Ref.make(new Map<string, Omit<ProfilePushStatus, "current">>());
   const held = new Map<string, HeldRevision>();
+  /** What each machine should hold, as of the last tick. */
+  const wanted = new Map<string, string>();
 
-  const setStatus = (status: ProfilePushStatus) =>
+  const setStatus = (status: Omit<ProfilePushStatus, "current">) =>
     Ref.update(statuses, (current) => new Map(current).set(status.machine, status));
 
   /** Pushes `profiles` to one machine if it holds another revision; returns what it refused. */
@@ -161,6 +163,7 @@ export const make = Effect.gen(function* () {
         profiles.push(bundle);
       }
       const revision = yield* revisionOf(profiles);
+      wanted.set(name, revision);
       if (machine.link === "no-access") {
         held.delete(name);
         yield* setStatus({
@@ -231,7 +234,14 @@ export const make = Effect.gen(function* () {
     Effect.catch((error) => Effect.logError("Profile push failed.", { error: String(error) })),
     Effect.withSpan("HubProfilePusher.pushNow"),
   );
-  const status = Ref.get(statuses).pipe(Effect.map((current) => [...current.values()]));
+  const status = Ref.get(statuses).pipe(
+    Effect.map((current) =>
+      [...current.values()].map((entry) => ({
+        ...entry,
+        current: entry.revision !== null && entry.revision === wanted.get(entry.machine),
+      })),
+    ),
+  );
   return HubProfilePusher.of({ pushNow, status });
 });
 

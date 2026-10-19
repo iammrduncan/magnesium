@@ -1,3 +1,4 @@
+import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
 import { HUB_MACHINES_PATH } from "./hub.ts";
@@ -129,6 +130,8 @@ export const ProfilePushStatus = Schema.Struct({
   /** Why the last push failed, if it did. */
   error: Schema.NullOr(Schema.String),
   refused: Schema.Array(Schema.String),
+  /** It holds what the hub has for it now; false while a change waits to reach it. */
+  current: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
 });
 export type ProfilePushStatus = typeof ProfilePushStatus.Type;
 
@@ -213,3 +216,153 @@ export type ProfilePushResult = typeof ProfilePushResult.Type;
 
 export const ProfileRevision = Schema.Struct({ revision: Schema.NullOr(Schema.String) });
 export type ProfileRevision = typeof ProfileRevision.Type;
+
+/*
+ * Managing profiles from the app (goal 34, D65, D67). The hub (or a single box)
+ * keeps each profile as a folder; these read it whole, and change it a file or a
+ * setting at a time. Every change is checked first and kept as a version.
+ */
+
+/** What a tool of a profile's MCP server may do: run, ask first, or not be offered. */
+export const PROFILE_TOOL_PERMISSIONS = ["allow", "ask", "off"] as const;
+export const ProfileToolPermission = Schema.Literals(PROFILE_TOOL_PERMISSIONS);
+export type ProfileToolPermission = typeof ProfileToolPermission.Type;
+
+/** A server's tool permissions: the ones named, and the rest. */
+export const ProfileServerPermissions = Schema.Struct({
+  default: ProfileToolPermission,
+  tools: Schema.Record(Schema.String, ProfileToolPermission),
+});
+export type ProfileServerPermissions = typeof ProfileServerPermissions.Type;
+
+/** Magnesium's own MCP server, always offered to a profile; its tools are listed like any other's. */
+export const MAGNESIUM_MCP_SERVER = "magnesium";
+
+/** A text file of a profile, by its path inside the profile's folder. */
+export const ProfileTextFile = Schema.Struct({ path: Schema.String, content: Schema.String });
+export type ProfileTextFile = typeof ProfileTextFile.Type;
+
+export const ProfileMcpServer = Schema.Struct({
+  name: Schema.String,
+  /** `command: …` or the server's URL. */
+  how: Schema.String,
+  /** Environment variable names its configuration uses, as `${NAME}`. */
+  secrets: Schema.Array(Schema.String),
+  permissions: ProfileServerPermissions,
+});
+export type ProfileMcpServer = typeof ProfileMcpServer.Type;
+
+export const ProfileSkill = Schema.Struct({
+  name: Schema.String,
+  /** SKILL.md's description, or its first line. */
+  description: Schema.String,
+  files: Schema.Array(ProfileTextFile),
+});
+export type ProfileSkill = typeof ProfileSkill.Type;
+
+export const ProfileVersion = Schema.Struct({
+  version: Schema.Number,
+  at: Schema.String,
+  /** `You`, an agent's request you approved, the CLI, or a change made on disk. */
+  by: Schema.String,
+  summary: Schema.String,
+});
+export type ProfileVersion = typeof ProfileVersion.Type;
+
+/** Where a machine stands with a profile's current version. */
+export const ProfileDelivery = Schema.Struct({
+  machine: Schema.String,
+  state: Schema.Literals(["current", "behind", "refused", "offline", "no-access"]),
+  /** When the hub last asked the machine. */
+  checkedAt: Schema.NullOr(Schema.String),
+  detail: Schema.NullOr(Schema.String),
+});
+export type ProfileDelivery = typeof ProfileDelivery.Type;
+
+export const ProfileDetail = Schema.Struct({
+  summary: ProfileSummary,
+  harnesses: Schema.Array(ProfileHarness),
+  /** It runs on every machine, new ones included (D67). */
+  everyMachine: Schema.Boolean,
+  /** Environment variable names the agent needs; never values. */
+  env: Schema.Array(Schema.String),
+  launchArgs: Schema.Array(Schema.String),
+  /** Instructions: AGENTS.md and any other Markdown file at the folder's top. */
+  files: Schema.Array(ProfileTextFile),
+  skills: Schema.Array(ProfileSkill),
+  /** mcp.json and hooks.json as written, for editing whole. */
+  mcpJson: Schema.NullOr(Schema.String),
+  hooksJson: Schema.NullOr(Schema.String),
+  /** Its MCP servers, Magnesium's own first. */
+  mcpServers: Schema.Array(ProfileMcpServer),
+  version: Schema.Number,
+  history: Schema.Array(ProfileVersion),
+  deliveries: Schema.Array(ProfileDelivery),
+  /** Profiles are changed where they live: false on a machine the hub fills. */
+  editable: Schema.Boolean,
+});
+export type ProfileDetail = typeof ProfileDetail.Type;
+
+/** profile.yaml's settings to change; a key left out stays as it is. */
+export const ProfileSettingsChange = Schema.Struct({
+  displayName: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  description: Schema.optionalKey(Schema.String),
+  accentColor: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  harnesses: Schema.optionalKey(Schema.Array(ProfileHarness)),
+  sandbox: Schema.optionalKey(Schema.Literals(["fenced", "container"])),
+  /** `["*"]` is every machine. */
+  machines: Schema.optionalKey(Schema.Array(Schema.String)),
+  env: Schema.optionalKey(Schema.Array(Schema.String)),
+  launchArgs: Schema.optionalKey(Schema.Array(Schema.String)),
+  /** Each MCP server's tool permissions; a server set to null goes back to the defaults. */
+  toolPermissions: Schema.optionalKey(
+    Schema.Record(Schema.String, Schema.NullOr(ProfileServerPermissions)),
+  ),
+});
+export type ProfileSettingsChange = typeof ProfileSettingsChange.Type;
+
+export const ProfileChange = Schema.Struct({
+  name: ProfileName,
+  /** Files to write whole, or to remove (`content: null`), by their path in the folder. */
+  files: Schema.optionalKey(
+    Schema.Array(Schema.Struct({ path: Schema.String, content: Schema.NullOr(Schema.String) })),
+  ),
+  settings: Schema.optionalKey(ProfileSettingsChange),
+  /** One line for its history; Magnesium writes one when this is left out. */
+  summary: Schema.optionalKey(Schema.String),
+});
+export type ProfileChange = typeof ProfileChange.Type;
+
+/** A refused change writes nothing and says why; a saved one says its new version. */
+export const ProfileSaveResult = Schema.Struct({
+  saved: Schema.Boolean,
+  version: Schema.Number,
+  issues: Schema.Array(ProfileIssue),
+});
+export type ProfileSaveResult = typeof ProfileSaveResult.Type;
+
+export const ProfileCreateInput = Schema.Struct({
+  name: ProfileName,
+  description: Schema.optionalKey(Schema.String),
+  /** Start as a copy of this profile instead of from the template. */
+  copyOf: Schema.optionalKey(ProfileName),
+});
+export type ProfileCreateInput = typeof ProfileCreateInput.Type;
+
+export const ProfileNameInput = Schema.Struct({ name: ProfileName });
+export type ProfileNameInput = typeof ProfileNameInput.Type;
+
+export const ProfilePutBackInput = Schema.Struct({ name: ProfileName, version: Schema.Number });
+export type ProfilePutBackInput = typeof ProfilePutBackInput.Type;
+
+/** How long a deleted profile can be restored. */
+export const PROFILE_TRASH_DAYS = 30;
+
+export const DeletedProfile = Schema.Struct({
+  name: ProfileName,
+  displayName: Schema.String,
+  deletedAt: Schema.String,
+  /** When it is gone for good. */
+  expiresAt: Schema.String,
+});
+export type DeletedProfile = typeof DeletedProfile.Type;

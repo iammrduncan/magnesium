@@ -2,8 +2,11 @@ import {
   DEFAULT_SANDBOX_LEVEL,
   PROFILE_HARNESSES,
   PROFILE_NAME_PATTERN,
+  PROFILE_TOOL_PERMISSIONS,
   type ProfileHarness,
   type ProfileIssue,
+  type ProfileServerPermissions,
+  type ProfileToolPermission,
   SANDBOX_LEVELS,
   type SandboxLevel,
 } from "@magnesium/contracts";
@@ -19,9 +22,10 @@ import { parse as parseYaml } from "yaml";
  * A profile is a folder in the profile folder layout (D37):
  * `profile.yaml` and `AGENTS.md` are required; `CLAUDE.md`, `CONVENTIONS.md`,
  * `MEMORIES.md`, `mcp.json`, `hooks.json` and `skills/<name>/SKILL.md` are optional.
- * Magnesium adds `display_name`, `accent`, `machines`, `harnesses` and
- * `launch_args`, and `sandbox.level` is `fenced` (the default) or `container`.
- * Generated state lives in the folder's `.magnesium/`.
+ * Magnesium adds `display_name`, `accent`, `machines`, `harnesses`,
+ * `launch_args` and `tool_permissions`, and `sandbox.level` is `fenced` (the
+ * default) or `container`. Any other Markdown file at the folder's top joins the
+ * instructions. Generated state lives in the folder's `.magnesium/`.
  */
 
 export const FILES = {
@@ -40,6 +44,12 @@ export const STATE_DIR = ".magnesium";
 
 const Mount = Schema.Struct({ path: Schema.String, mode: Schema.optionalKey(Schema.String) });
 
+/** One MCP server's tools: the ones named, and a default for the rest (D67). */
+const ServerPermissionsMeta = Schema.Struct({
+  default: Schema.optionalKey(Schema.String),
+  tools: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),
+});
+
 const ProfileMeta = Schema.Struct({
   name: Schema.optionalKey(Schema.String),
   description: Schema.optionalKey(Schema.String),
@@ -52,6 +62,7 @@ const ProfileMeta = Schema.Struct({
   /** A command-line string, or a YAML list with one argument per item. */
   launch_args: Schema.optionalKey(Schema.Union([Schema.String, Schema.Array(Schema.String)])),
   native_memory: Schema.optionalKey(Schema.Boolean),
+  tool_permissions: Schema.optionalKey(Schema.Record(Schema.String, ServerPermissionsMeta)),
   sandbox: Schema.optionalKey(
     Schema.Struct({
       level: Schema.optionalKey(Schema.String),
@@ -105,7 +116,18 @@ export interface ResolvedProfile {
   readonly image: string | undefined;
   readonly network: "internet" | "none";
   readonly mounts: ReadonlyArray<{ readonly path: string; readonly mode: "ro" | "rw" }>;
+  /** Tool permissions by MCP server; a server not named asks before each tool. */
+  readonly toolPermissions: Readonly<Record<string, ProfileServerPermissions>>;
 }
+
+/** A tool of a server with no permissions set asks first (D67). */
+export const DEFAULT_TOOL_PERMISSION: ProfileToolPermission = "ask";
+
+const isPermission = (value: unknown): value is ProfileToolPermission =>
+  PROFILE_TOOL_PERMISSIONS.includes(value as ProfileToolPermission);
+
+/** Any Markdown file at a profile's top, besides AGENTS.md and the ones with a role of their own. */
+export const EXTRA_INSTRUCTIONS = /^[A-Za-z0-9][A-Za-z0-9._-]*\.md$/;
 
 export const ENV_NAME_PATTERN = /^[A-Z_][A-Z0-9_]*$/;
 const MACHINE_PATTERN = /^(\*|[a-z0-9][a-z0-9-]{0,62})$/;
@@ -214,6 +236,17 @@ export const resolveProfile = (profile: Profile): ResolvedProfile => {
       path: mount.path,
       mode: mount.mode === "rw" ? "rw" : "ro",
     })),
+    toolPermissions: Object.fromEntries(
+      Object.entries(meta.tool_permissions ?? {}).map(([server, value]) => [
+        server,
+        {
+          default: isPermission(value.default) ? value.default : DEFAULT_TOOL_PERMISSION,
+          tools: Object.fromEntries(
+            Object.entries(value.tools ?? {}).filter(([, permission]) => isPermission(permission)),
+          ) as Record<string, ProfileToolPermission>,
+        },
+      ]),
+    ),
   };
 };
 
@@ -381,6 +414,27 @@ export const checkProfile = Effect.fn("profiles.checkProfile")(function* (profil
   }
   if (meta.accent !== undefined && !ACCENT_PATTERN.test(meta.accent)) {
     add("error", FILES.meta, "accent must be a colour like #2f80ed.");
+  }
+  for (const [server, value] of Object.entries(meta.tool_permissions ?? {})) {
+    const wrong = [value.default, ...Object.values(value.tools ?? {})].filter(
+      (permission) => permission !== undefined && !isPermission(permission),
+    );
+    if (wrong.length > 0) {
+      add(
+        "error",
+        FILES.meta,
+        `tool_permissions.${server}: each tool is allow, ask or off, not ${wrong.map((w) => `"${w}"`).join(", ")}.`,
+      );
+    }
+    const onClaude = [meta.harness ?? "claude", ...(meta.harnesses ?? [])].includes("claude");
+    const someOn = Object.values(value.tools ?? {}).some((p) => p === "allow" || p === "ask");
+    if (onClaude && value.default === "off" && someOn) {
+      add(
+        "warn",
+        FILES.meta,
+        `tool_permissions.${server}: Claude Code can't turn off the rest while some tools are on; its other tools ask first there.`,
+      );
+    }
   }
   if (!(yield* fs.exists(file(FILES.agents)).pipe(Effect.orElseSucceed(() => false)))) {
     add("error", FILES.agents, "Missing; it holds the agent's role and rules.");

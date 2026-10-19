@@ -1,5 +1,8 @@
 import {
+  MAGNESIUM_MCP_SERVER,
   type ProfileHarness,
+  type ProfileServerPermissions,
+  type ProfileToolPermission,
   type ProfileIssue,
   profileInstanceId,
   type SandboxLevel,
@@ -19,6 +22,7 @@ import * as Schema from "effect/Schema";
 import {
   decodeHooksFile,
   decodeMcpFile,
+  EXTRA_INSTRUCTIONS,
   FILES,
   joinLaunchArgs,
   readOptional,
@@ -143,12 +147,29 @@ export const planProfile = (
 const section = (title: string, text: string | undefined) =>
   text?.trim() ? `\n## ${title}\n\n${text.trim()}\n` : "";
 
+/** The files with a section of their own; any other Markdown file at the top follows them. */
+const ROLE_FILES: ReadonlyArray<string> = [
+  FILES.agents,
+  FILES.claude,
+  FILES.conventions,
+  FILES.memories,
+];
+
 /** The instructions both harnesses read from their home (CLAUDE.md, AGENTS.md). */
 export const renderInstructions = Effect.fn("profiles.renderInstructions")(function* (
   profile: ResolvedProfile,
 ) {
+  const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const read = (name: string) => readOptional(path.join(profile.dir, name));
+  // Read here, not linked: a fenced agent can't see the profile folder.
+  const extras = (yield* fs
+    .readDirectory(profile.dir)
+    .pipe(Effect.orElseSucceed(() => [] as string[])))
+    .filter((entry) => EXTRA_INSTRUCTIONS.test(entry) && !ROLE_FILES.includes(entry))
+    .toSorted();
+  let extraSections = "";
+  for (const name of extras) extraSections += section(name, yield* read(name));
   const about = profile.description ? `: ${profile.description.replace(/[.!?]\s*$/, "")}` : "";
   return [
     `# Magnesium profile: ${profile.displayName}`,
@@ -160,6 +181,7 @@ export const renderInstructions = Effect.fn("profiles.renderInstructions")(funct
       section(`Rules (${FILES.claude})`, yield* read(FILES.claude)) +
       section(`Conventions (${FILES.conventions})`, yield* read(FILES.conventions)) +
       section(`What you remember (${FILES.memories})`, yield* read(FILES.memories)) +
+      extraSections +
       section(
         "Memory",
         "Save what will matter in a later session through your knowledge-base tools, if you have them, never in the profile folder. Never write secrets.",
@@ -222,8 +244,47 @@ const claudeSettings = Effect.fn("profiles.claudeSettings")(function* (profile: 
   return {
     ...(hooks && Object.keys(hooks).length > 0 ? { hooks } : {}),
     ...(profile.nativeMemory ? {} : { autoMemoryEnabled: false }),
+    ...claudePermissions(profile.toolPermissions),
   };
 });
+
+/** Upstream gives every thread its MCP server under this name; Magnesium's own tools are among its tools. */
+const UPSTREAM_MCP_SERVER = "t3-code";
+
+/**
+ * A profile's tool permissions (D67) as Claude Code's rules, where deny wins,
+ * then ask, then allow. Claude Code can't turn off the rest of a server's
+ * tools while allowing some, so the rest ask first then (the check warns).
+ */
+export const claudePermissions = (
+  permissions: Readonly<Record<string, ProfileServerPermissions>>,
+) => {
+  const allow: string[] = [];
+  const ask: string[] = [];
+  const deny: string[] = [];
+  for (const [server, value] of Object.entries(permissions)) {
+    // Magnesium's own tools share upstream's server: only they are named, never the rest of it.
+    const own = server === MAGNESIUM_MCP_SERVER;
+    const prefix = `mcp__${own ? UPSTREAM_MCP_SERVER : server}`;
+    const named = Object.entries(value.tools);
+    for (const [tool, permission] of named) {
+      (permission === "allow" ? allow : permission === "ask" ? ask : deny).push(
+        `${prefix}__${tool}`,
+      );
+    }
+    if (own) continue;
+    if (value.default === "allow") allow.push(prefix);
+    if (value.default === "off" && named.every(([, permission]) => permission === "off")) {
+      deny.push(prefix);
+    }
+  }
+  return allow.length + ask.length + deny.length === 0 ? {} : { permissions: { allow, ask, deny } };
+};
+
+const CODEX_APPROVAL: Record<Exclude<ProfileToolPermission, "off">, string> = {
+  allow: "approve",
+  ask: "prompt",
+};
 
 const tomlString = (value: string) => encodeJson(value);
 const tomlKey = (key: string) => (/^[A-Za-z0-9_-]+$/.test(key) ? key : tomlString(key));
@@ -235,7 +296,10 @@ const BEARER = /^Bearer \$\{([A-Za-z_][A-Za-z0-9_]*)\}$/;
  * passed by name (`env_vars`, `bearer_token_env_var`) or not at all: anything
  * else would put a secret on disk.
  */
-export const mcpToCodexToml = (servers: Record<string, unknown>) => {
+export const mcpToCodexToml = (
+  servers: Record<string, unknown>,
+  permissions: Readonly<Record<string, ProfileServerPermissions>> = {},
+) => {
   const warnings: string[] = [];
   const tables: string[] = [];
   for (const [name, server] of Object.entries(servers)) {
@@ -274,7 +338,27 @@ export const mcpToCodexToml = (servers: Record<string, unknown>) => {
       warnings.push(`${name}: needs a command or a url; skipped.`);
       continue;
     }
-    tables.push(lines.join("\n"));
+    // The tools' permissions (D67): Codex asks per tool, and turns off the rest exactly.
+    const granted = permissions[name];
+    const toolTables: string[] = [];
+    if (granted !== undefined) {
+      const named = Object.entries(granted.tools);
+      const off = named.filter(([, permission]) => permission === "off").map(([tool]) => tool);
+      if (granted.default === "off") {
+        const on = named.filter(([, permission]) => permission !== "off").map(([tool]) => tool);
+        lines.push(`enabled_tools = [${on.map(tomlString).join(", ")}]`);
+      } else {
+        lines.push(`default_tools_approval_mode = ${tomlString(CODEX_APPROVAL[granted.default])}`);
+      }
+      if (off.length > 0) lines.push(`disabled_tools = [${off.map(tomlString).join(", ")}]`);
+      for (const [tool, permission] of named) {
+        if (permission === "off") continue;
+        toolTables.push(
+          `[mcp_servers.${tomlKey(name)}.tools.${tomlKey(tool)}]\napproval_mode = ${tomlString(CODEX_APPROVAL[permission])}`,
+        );
+      }
+    }
+    tables.push([lines.join("\n"), ...toolTables].join("\n\n"));
   }
   return { toml: tables.join("\n\n"), warnings };
 };
@@ -383,7 +467,7 @@ export const writeHomes = Effect.fn("profiles.writeHomes")(function* (
   if (profile.harnesses.includes("codex")) {
     const home = path.join(state, "codex");
     yield* writeIfChanged(path.join(home, "AGENTS.md"), instructions);
-    const { toml, warnings: mcpWarnings } = mcpToCodexToml(servers);
+    const { toml, warnings: mcpWarnings } = mcpToCodexToml(servers, profile.toolPermissions);
     warnings.push(...mcpWarnings);
     const configFile = path.join(home, "config.toml");
     yield* writeIfChanged(
