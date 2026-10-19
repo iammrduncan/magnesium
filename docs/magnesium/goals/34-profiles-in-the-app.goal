@@ -1,0 +1,106 @@
+---
+id: mg-profiles-app
+kind: feature
+depends_on: [mg-profiles, mg-home]
+phase: 2
+boards: ["Profiles · desktop and phone (drawn in this goal)", "Session · desktop (picker)"]
+decisions: [D39, D40, D41, D46, D65]
+---
+# Profiles in the app: create and manage them, with their tools and knowledge
+
+Goal 03 built profiles: an agent's instructions, skills, tools and sandbox, kept on the hub and delivered to the machines it names (D39). But the only way to make or change one is a terminal on the hub: `magnesium-agents new`, then editing files. Nothing in the app lists profiles, says what's wrong with one, or shows which machines hold it. This goal makes profiles something you create and manage in the app, on desktop and phone. Agents can manage them too, through Magnesium, and every change an agent makes asks you first (D65).
+
+## Owner gates
+
+1. **The board.** No board shows profiles yet (mockups.md lists the Profile page as not mocked). Draw Profiles at desktop and phone width, in the style of the other boards. The owner approves it before the build starts.
+2. **Goal 03's board differences.** The owner accepts or rejects the three differences goal 03's test 7 found on the Session board; rejected ones are fixed here.
+
+## Build
+
+1. **A Profiles page.** Where it lives, a place in the sidebar or in Settings, follows the approved board. Each profile shows:
+   - its avatar, name and description;
+   - its harnesses and default sandbox;
+   - the machines it runs on;
+   - whether it's ready or refused, with the number of issues;
+   - whether every machine it names holds its current version.
+2. **Create a profile:** blank, or as a copy of another. You give it:
+   - a name and description;
+   - its harnesses and default sandbox;
+   - its machines: picked from the fleet, every machine, or the hub alone;
+   - an avatar and accent.
+
+   It writes the same folder `magnesium-agents new` does, so the CLI and the app stay interchangeable.
+3. **Edit a profile, in sections.** Each section saves and is checked at once:
+   - **Instructions:** `AGENTS.md`, `CLAUDE.md`, `CONVENTIONS.md` and `MEMORIES.md`, in a Markdown editor.
+   - **Skills:** add, edit and remove `skills/<name>/`, with its `SKILL.md` and scripts.
+   - **Tools:** the profile's MCP servers (`mcp.json`) as a list you add to (a command or a URL), edit and remove. A server's secrets are environment variable names, never values.
+   - **Hooks:** `hooks.json`.
+   - **Environment:** the variable names the agent needs. For each machine the profile runs on, it shows whether that name is set there, never the value.
+   - **Where and how it runs:** machines, harnesses, default sandbox and launch arguments, with the same refusals as `magnesium-agents check`: no permission flags and no `native` default.
+
+   A profile's name is fixed, because its threads are tied to it; its display name, avatar and accent can change.
+4. **Problems show where they are.** Every save runs the check. An issue shows beside the field or file it's about. A refused profile says so on its row and in the picker, and its machines keep running its last good version.
+5. **Delivery you can see.** For each profile, every machine it names:
+   - the version it holds and when it was checked;
+   - whether it refused the profile, and why;
+   - whether the machine isn't connected.
+
+   Send now asks the hub to deliver at once.
+6. **History.** Every save, by you or by an agent, is kept as a version of that profile. The page lists recent changes, shows what each changed, and can put an earlier version back.
+7. **Delete and restore.** Delete asks first and names the threads that use the profile; those threads keep their history and can move to another profile. A deleted profile can be restored, with its history, for 30 days.
+8. **Knowledge.** The profile's page says what it may read and write in the Brain.
+   - Until the Magnesium Brain exists (goal 29), a profile reaches a knowledge base only as an MCP server under Tools.
+   - Goal 29 then adds each Brain section's read and write access to this page: the same setting Settings → Brain shows from the other side.
+9. **Agents manage profiles through Magnesium.** The same operations are tools in MCP and the agents API:
+   - `list_profiles`, `get_profile` and `check_profiles` read freely;
+   - `create_profile`, `update_profile` and `delete_profile` ask you first: each is a Needs you card on Home showing the change, applied only when you approve it (D65);
+   - `send_profile_now` and the delivery status are there for a bot or a scheduled check.
+
+   The CLI keeps working, on the same service.
+10. **From the thread.** The picker's profile entry has Edit profile. With no profiles, the picker offers Create a profile.
+11. **Phone.** The list, delivery, history and approving an agent's change all work at phone width. Editing long files is desktop-first but works.
+12. **Single box.** On a hub with no machines, profiles run on the hub, and everything above works.
+
+## Test it
+
+1. **Against the board.** Compare Profiles with its approved board, in light and dark, at desktop and phone width.
+2. **Create in the app.** Create `scratch-b` from the app, naming two machines, with a `CLAUDE.md` rule: "End every reply with the word `ok-b`."
+   - Within a minute it's in the picker on both machines.
+   - A thread on it ends its replies with `ok-b`.
+   - No terminal is used.
+3. **Edit.** Change the rule to `ok-c`. Delivery shows the new version on both machines, and the next thread follows it.
+4. **Refused, not broken.** Add `--dangerously-skip-permissions` to its launch arguments.
+   - The save is refused, with the reason beside the field.
+   - The machines keep the last good version, and existing threads keep working.
+5. **Tools.** Add an MCP server that needs a secret, by its variable name.
+   - A thread on the profile lists the server's tools and calls one.
+   - The secret's value appears in no profile file, delivery, log or process argument.
+6. **Environment.** Name a variable that one machine has and the other lacks. The page says which, and shows no value.
+7. **Skills.** Add a skill; a thread on the profile uses it.
+8. **An agent asks.** In a thread, an agent calls `update_profile`.
+   - Home shows a card with the change.
+   - Reject leaves the profile as it was.
+   - Asked again, Approve applies the change and delivers it.
+9. **History.** Put back the version from before test 3. The rule is `ok-b` again everywhere.
+10. **Delete and restore.**
+    - Delete `scratch-b`. Delete names its threads, and they say the profile is gone and offer another.
+    - Restore it: it comes back with its history, and its threads run again.
+11. **Delivery.** Take a machine offline: its row says it isn't connected. When it's back, it holds the current version. Send now delivers within seconds.
+12. **Phone.** On the phone, find a refused profile, see why, and approve an agent's change.
+13. **Single box.** On a hub with no machines, create a profile and run a thread on it.
+
+## Not in this goal
+
+- The Brain, and access to its sections (goal 29).
+- Memory notes and skill proposals learned from sessions (goal 14).
+- Profiles that launch and steer other agents (goal 18).
+- More harnesses and sandbox kinds (goal 19).
+- Accounts: profiles use the machine's active account (goal 30).
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+1. Draw the Profiles board and get the owner's approval.

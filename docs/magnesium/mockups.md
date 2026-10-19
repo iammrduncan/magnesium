@@ -25,7 +25,7 @@ These are the 16 boards of the owner's mock canvas (D9), rendered on 2026-10-14 
 | [Footer](#footer)                                | 05 (core items), 16 (app items)                         | 2, 6  |
 | [Footer · popover open](#footer--popover-open)   | 16                                                      | 6     |
 
-Not mocked yet: **Schedule** (goal 11 mocks it), a **Profile** page, and the **desktop pill** (goal 20 mocks it). What it takes to build each screen, piece by piece, is in [doc 13](13-mocks-to-working-app.md).
+Not mocked yet: **Schedule** (goal 11 mocks it), the **Profiles** page (goal 34 mocks it), and the **desktop pill** (goal 20 mocks it). What it takes to build each screen, piece by piece, is in [doc 13](13-mocks-to-working-app.md).
 
 ## Desktop
 
