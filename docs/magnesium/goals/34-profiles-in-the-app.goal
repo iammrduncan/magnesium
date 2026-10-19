@@ -114,7 +114,7 @@ Goal 03 built profiles: an agent's instructions, skills, tools and sandbox, kept
 - **The page:** Profiles in the sidebar with a count of asks, each tab of the board, Copy MCP URL (the hub's MCP server), Edit profile and Create a profile in the picker, Open profiles and New profile in the palette, and Delete naming the profile's threads.
 - **Where a command runs:** approval cards, in the thread and on Home, say "Runs on <machine> in the <level> sandbox".
 - **Docs:** the user guide's profiles page covers the app, agents' asks and connecting an outside agent; doc 13 has the screen's status.
-- **Tests passed:** the profile store, RPC and request tests, including an agent on a machine whose ask the hub applies, and the MCP registration test (the profile tools sit on the same `/mcp` server as upstream's). The full typecheck passes. The full test run: see Next steps.
+- **Tests passed:** the profile store, RPC and request tests, including an agent on a machine whose ask the hub applies, and the MCP registration test (the profile tools sit on the same `/mcp` server as upstream's). A scratch server, built as it ships, served all nine agent tools; an outside agent's `update_profile` reached Home, and Approve made version 2 in the agent's name and yours. The full typecheck passes. The full test run: see Next steps.
 - **Merge cost:** 271 `magnesium:` markers in 87 upstream files. This goal edits `apps/server/src/server.ts`, the command palette, the composer, its approval panel and the model picker. A rehearsal against upstream's latest stable tag (v0.1.0) is clean, since main already has it; against upstream's main, 27 files conflict in 48 hunks, `server.ts` and the composer among them with one hunk each.
 
 ## Next steps
