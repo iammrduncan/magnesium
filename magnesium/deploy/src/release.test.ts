@@ -341,6 +341,52 @@ describe("magnesium-release", () => {
     expect(release.run("restore", "../userdata").status).not.toBe(0);
   });
 
+  it("goes on as its own unit when started inside the server's, which a restore stops", () => {
+    const release = makeRoot();
+    NodeFS.mkdirSync(NodePath.join(release.home, "userdata"), { recursive: true });
+    NodeFS.writeFileSync(NodePath.join(release.home, "userdata/settings.json"), "{}");
+    expect(release.run("backup").status).toBe(0);
+    const [name = ""] = NodeFS.readdirSync(NodePath.join(release.home, "backups"));
+    // A Fleet terminal's shell runs in the server's unit; systemd-run records how it was asked.
+    const bin = NodePath.join(release.root, "bin");
+    NodeFS.mkdirSync(bin);
+    const asked = NodePath.join(release.root, "systemd-run.args");
+    NodeFS.writeFileSync(
+      NodePath.join(bin, "systemd-run"),
+      `#!/bin/sh\nprintf '%s\\n' "$@" > ${JSON.stringify(asked)}\n`,
+      { mode: 0o755 },
+    );
+    const cgroup = NodePath.join(release.root, "cgroup");
+    NodeFS.writeFileSync(cgroup, "0::/user.slice/user@1000.service/app.slice/magnesium.service\n");
+    const inUnit = (...args: Array<string>) =>
+      NodeChildProcess.spawnSync("bash", [script, ...args], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${bin}:${process.env.PATH}`,
+          MAGNESIUM_ROOT: release.root,
+          MAGNESIUM_HOME: release.home,
+          MAGNESIUM_CGROUP_FILE: cgroup,
+        },
+      });
+
+    const result = inUnit("restore", name);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("journalctl --user -u magnesium-restore-");
+    const args = NodeFS.readFileSync(asked, "utf8").trim().split("\n");
+    expect(args).toContain("--setenv=MAGNESIUM_OUTSIDE_UNIT=1");
+    expect(args).toContain(`--setenv=MAGNESIUM_HOME=${release.home}`);
+    expect(args.slice(-2)).toEqual(["restore", name]);
+    // Nothing was restored here: only the new unit restores, with a backup of what it replaces.
+    expect(NodeFS.readdirSync(NodePath.join(release.home, "backups"))).toHaveLength(1);
+
+    // Outside the unit, it runs where it is.
+    NodeFS.writeFileSync(cgroup, "0::/user.slice/user@1000.service/app.slice/other.scope\n");
+    NodeFS.rmSync(asked);
+    expect(inUnit("rollback").stderr).toContain("there is no previous release");
+    expect(NodeFS.existsSync(asked)).toBe(false);
+  });
+
   it("backs up the state before switching releases", () => {
     const release = makeRoot();
     release.run("activate", "a");

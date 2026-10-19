@@ -33,6 +33,10 @@
 #
 # Backups live in $MAGNESIUM_HOME/backups; the newest $MAGNESIUM_BACKUP_KEEP
 # (default 7) are kept. A restore first backs up the state it replaces.
+#
+# activate, rollback and restore stop or restart the unit, which ends every
+# process in it, a Fleet terminal's shell included. Started there, they go on
+# as a transient unit of their own and say how to follow it.
 set -euo pipefail
 
 ROOT="${MAGNESIUM_ROOT:-$HOME/.local/share/magnesium}"
@@ -80,6 +84,27 @@ unit_ctl() {
   else
     echo "$UNIT is not installed; $1 the server yourself."
   fi
+}
+
+# Re-runs this command as its own transient unit when it runs inside the
+# server's unit, which stopping the server would end halfway.
+outlive_unit() {
+  [ "${MAGNESIUM_RESTART:-1}" != "0" ] && [ -z "${MAGNESIUM_OUTSIDE_UNIT:-}" ] || return 0
+  grep -qs "/$UNIT\$" "${MAGNESIUM_CGROUP_FILE:-/proc/self/cgroup}" || return 0
+  local name self
+  name="magnesium-$1-$(date -u +%Y%m%dT%H%M%SZ)"
+  self="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+  local env=(--setenv=MAGNESIUM_OUTSIDE_UNIT=1 "--setenv=MAGNESIUM_ROOT=$ROOT" "--setenv=MAGNESIUM_HOME=$STATE_HOME")
+  local var
+  for var in PATH MAGNESIUM_BACKUP_KEEP MAGNESIUM_RELEASE_KEEP MAGNESIUM_PNPM MAGNESIUM_VP; do
+    if [ -n "${!var:-}" ]; then env+=("--setenv=$var=${!var}"); fi
+  done
+  # Said first: once the server stops, this shell may be gone.
+  echo "This shell runs inside $UNIT, which $1 stops, so it goes on as $name."
+  echo "Follow it with: journalctl --user -u $name -f"
+  systemd-run --user --collect --quiet --unit "$name" "${env[@]}" "$self" "$@" ||
+    die "could not start $name; run this from a shell outside $UNIT"
+  exit 0
 }
 
 seed_settings() {
@@ -201,6 +226,7 @@ restore() {
   local name="$1"
   local from="$STATE_HOME/backups/$name"
   [[ "$name" =~ $BACKUP_NAME ]] && [ -d "$from" ] || die "no backup named $name in $STATE_HOME/backups"
+  outlive_unit restore "$name"
   local userdata="$STATE_HOME/userdata"
   unit_ctl stop
   # Keep the state being replaced, so a restore can be undone. Don't prune:
@@ -372,11 +398,13 @@ case "${1:-}" in
     ;;
   activate)
     [ $# -eq 2 ] || die "usage: magnesium-release activate <sha>"
+    outlive_unit "$@"
     switch_to "$2"
     ;;
   rollback)
     previous="$(readlink "$ROOT/previous" 2> /dev/null || true)"
     [ -n "$previous" ] || die "there is no previous release"
+    outlive_unit "$@"
     switch_to "${previous#releases/}"
     ;;
   status)
