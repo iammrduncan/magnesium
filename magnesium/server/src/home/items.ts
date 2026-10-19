@@ -3,6 +3,7 @@ import {
   type HomeActivity,
   type HomeAnswer,
   type LocalHomeItem,
+  instanceSandbox,
 } from "@magnesium/contracts";
 import { derivePendingThreadRequests } from "@t3tools/client-runtime/state/thread-requests";
 import {
@@ -119,6 +120,8 @@ export const homeItemsOf = (input: {
   readonly requests: ThreadRequestRecords | null;
   readonly projectTitle: string | null;
   readonly now: string;
+  /** This server's provider instances, which say the sandbox an approval's command runs in. */
+  readonly instanceIds?: ReadonlyArray<string>;
 }): ReadonlyArray<LocalHomeItem> => {
   const { view, requests, now } = input;
   const base = { threadId: view.id, title: view.title, projectTitle: input.projectTitle };
@@ -128,6 +131,7 @@ export const homeItemsOf = (input: {
       ? derivePendingThreadRequests(requests)
       : { approvals: [], userInputs: [] };
 
+  const sandbox = instanceSandbox(view.providerInstanceId, input.instanceIds ?? [])?.level;
   // A request that can no longer be answered (its session is gone) is left to the thread.
   for (const approval of pending.approvals) {
     if (approval.responseCapability !== "live") continue;
@@ -145,6 +149,7 @@ export const homeItemsOf = (input: {
           label: option.label,
           warning: option.warning ?? null,
         })),
+        ...(sandbox === undefined ? {} : { sandbox }),
       },
     });
   }

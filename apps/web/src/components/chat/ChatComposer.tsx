@@ -277,6 +277,7 @@ import { useEnvironmentQuery } from "~/state/query";
 import { useDebouncedValue } from "~/state/queries";
 import { ProviderModelPicker } from "./ProviderModelPicker";
 import { SandboxChip } from "../magnesium/SandboxChip"; // magnesium: goal 03
+import { useApprovalWhere } from "../magnesium/useApprovalWhere"; // magnesium: goal 34
 import { resolveModelPickerSelectedModel } from "./ModelPickerContent";
 import {
   type ComposerCommandItem,
@@ -2204,6 +2205,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   );
   const selectedInstanceId =
     selectedProviderEntry?.instanceId ?? NO_PROVIDER_MODEL_SELECTION.instanceId;
+  // magnesium: where the thread's commands run, for its approval card (goal 34)
+  const approvalWhere = useApprovalWhere(
+    environmentId,
+    activeThread?.runtime?.providerInstanceId ?? selectedInstanceId,
+    providerInstanceEntries,
+  );
   const noProviderAvailable =
     selectedProviderEntry === undefined && multipleModelSelections === null;
   // Before the catalog arrives, every thread resolves to "no provider". Send
@@ -6728,6 +6735,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       <ComposerPendingApprovalPanel
                         approval={activePendingApproval}
                         pendingCount={pendingApprovals.length}
+                        {...(approvalWhere === undefined ? {} : { where: approvalWhere })}
                       />
                     </ComposerBanner.Content>
                     <ComposerBanner.Actions>

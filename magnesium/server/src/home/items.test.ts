@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { CommandId, MessageId, RuntimeRequestId } from "@t3tools/contracts";
+import { CommandId, MessageId, ProviderInstanceId, RuntimeRequestId } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 
 import {
@@ -104,6 +104,31 @@ describe("a thread's Home items", () => {
     });
     // A thread waiting on you is not also "working".
     expect(items.some((item) => item.body._tag === "running")).toBe(false);
+  });
+
+  it("says which sandbox an approval's command runs in (goal 34)", () => {
+    const requests = testThreadRequests(
+      approvalRequest("deploy", "apply", "2026-10-16T01:10:00.000Z", "kubectl apply"),
+    );
+    const sandboxOf = (providerInstanceId: string, instanceIds: ReadonlyArray<string>) => {
+      const view = viewOf(
+        testThread(
+          "deploy",
+          { run: "running", approval: true },
+          {
+            providerInstanceId: ProviderInstanceId.make(providerInstanceId),
+          },
+        ),
+      );
+      const [approval] = homeItemsOf({ view, requests, projectTitle: null, now: NOW, instanceIds });
+      return approval?.body._tag === "approval" ? approval.body.sandbox : "not an approval";
+    };
+    // A profile's instance says its level; a stock one is fenced once sync gave it a native twin.
+    expect(sandboxOf("mg-claude-container-serving", [])).toBe("container");
+    expect(sandboxOf("codex", ["codex", "mg_native_codex"])).toBe("fenced");
+    expect(sandboxOf("mg_native_codex", ["codex", "mg_native_codex"])).toBe("native");
+    // An instance Magnesium doesn't manage: it doesn't say.
+    expect(sandboxOf("codex", ["codex"])).toBeUndefined();
   });
 
   it("leaves a request whose session is gone to the thread", () => {

@@ -2,6 +2,7 @@ import { EnvironmentId, IsoDateTime, NonNegativeInt, ThreadId } from "@t3tools/c
 import * as Schema from "effect/Schema";
 
 import { HubMachineName } from "./hub.ts";
+import { SandboxLevel } from "./profiles.ts";
 
 /**
  * Home (goal 06): what needs you on every server, answered where you see it.
@@ -44,6 +45,8 @@ export const HomeApproval = Schema.TaggedStruct("approval", {
   detail: Schema.NullOr(Schema.String),
   /** The provider's own choices; empty means the standard ones. */
   choices: Schema.Array(ApprovalChoice),
+  /** The sandbox the thread's agent runs in (goal 34); absent when its machine doesn't say. */
+  sandbox: Schema.optionalKey(SandboxLevel),
 });
 export type HomeApproval = typeof HomeApproval.Type;
 

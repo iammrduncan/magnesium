@@ -83,6 +83,35 @@ export const parseNativeTwinInstanceId = (instanceId: string): string | null =>
 export const isManagedInstanceId = (instanceId: string): boolean =>
   parseProfileInstanceId(instanceId) !== null || parseNativeTwinInstanceId(instanceId) !== null;
 
+export interface InstanceSandbox {
+  readonly level: SandboxLevel;
+  /** Instances a thread can switch between: one profile and harness, or one stock instance. */
+  readonly group: string;
+  /** The profile's name, or null for a stock instance. */
+  readonly profile: string | null;
+}
+
+/** The level and group of an instance, from its id and its siblings' ids. Null: not one of ours. */
+export function instanceSandbox(
+  instanceId: string,
+  allInstanceIds: ReadonlyArray<string>,
+): InstanceSandbox | null {
+  const profile = parseProfileInstanceId(instanceId);
+  if (profile !== null) {
+    return {
+      level: profile.level,
+      group: `profile:${profile.profile}:${profile.harness}`,
+      profile: profile.profile,
+    };
+  }
+  const twinOf = parseNativeTwinInstanceId(instanceId);
+  if (twinOf !== null) return { level: "native", group: twinOf, profile: null };
+  // Profile sync fences a stock instance and gives it a native twin.
+  return allInstanceIds.includes(nativeTwinInstanceId(instanceId))
+    ? { level: "fenced", group: instanceId, profile: null }
+    : null;
+}
+
 export const ProfileIssue = Schema.Struct({
   level: Schema.Literals(["error", "warn"]),
   /** The file in the profile folder the issue is about. */

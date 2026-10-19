@@ -1,5 +1,10 @@
 // magnesium: Profiles, made and managed in the app (goal 34, D65, D67)
-import type { ProfileDetail, ProfileSummary } from "@magnesium/contracts";
+import {
+  parseProfileInstanceId,
+  PROFILE_TRASH_DAYS,
+  type ProfileDetail,
+  type ProfileSummary,
+} from "@magnesium/contracts";
 import {
   createProfile,
   deleteProfile,
@@ -19,6 +24,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { isElectron } from "../../env";
 import { cn } from "../../lib/utils";
+import { useThreadShells } from "../../state/entities";
 import { useFleetView } from "../fleet/fleetStore";
 import { HeldBanner } from "../home/HomeCard";
 import { answerHold, useHeldAnswers, useHomeView, useNow } from "../home/homeStore";
@@ -221,14 +227,24 @@ function DeleteProfileDialog({
   readonly onDeleted: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  // Its threads, on every machine; read only while the dialog is open.
+  const threads = useThreadShells(open).filter(
+    (shell) =>
+      shell.archivedAt === null &&
+      parseProfileInstanceId(shell.providerInstanceId)?.profile === profile.name,
+  );
+  const named = threads.slice(0, 5).map((shell) => shell.title);
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogPopup>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete {profile.displayName}?</AlertDialogTitle>
           <AlertDialogDescription>
-            Its machines stop offering it. Threads on it keep their history and can move to another
-            profile. You can restore it, with its history, for 30 days.
+            Its machines stop offering it.{" "}
+            {threads.length === 0
+              ? "No thread runs on it."
+              : `${threads.length === 1 ? "1 thread runs" : `${threads.length} threads run`} on it: ${named.join(", ")}${threads.length > named.length ? `, and ${threads.length - named.length} more` : ""}. They keep their history and can move to another profile.`}{" "}
+            You can restore it, with its history, for {PROFILE_TRASH_DAYS} days.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

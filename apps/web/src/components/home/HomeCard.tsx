@@ -9,7 +9,13 @@ import type {
   HomeQuestion,
   Question,
 } from "@magnesium/contracts";
-import { describeNeed, describeProfileAsk, type HeldAnswer, waitedFor } from "@magnesium/web";
+import {
+  describeNeed,
+  describeProfileAsk,
+  type HeldAnswer,
+  waitedFor,
+  whereItRuns,
+} from "@magnesium/web";
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { ScheduledTaskId } from "@t3tools/contracts";
 import { Link } from "@tanstack/react-router";
@@ -145,7 +151,12 @@ export function HomeCard({
       </header>
       <KindLabel item={item} />
       {item.body._tag === "approval" ? (
-        <ApprovalBody body={item.body} locked={locked} onAnswer={answer} />
+        <ApprovalBody
+          body={item.body}
+          where={whereItRuns(item.machine.label, item.body.sandbox)}
+          locked={locked}
+          onAnswer={answer}
+        />
       ) : item.body._tag === "question" ? (
         <QuestionBody body={item.body} locked={locked} onAnswer={answer} />
       ) : item.body._tag === "plan" ? (
@@ -226,10 +237,13 @@ function Actions({ children }: { children: ReactNode }) {
 
 function ApprovalBody({
   body,
+  where,
   locked,
   onAnswer,
 }: {
   body: HomeApproval;
+  /** Its machine and sandbox, as the Session board's card says them (goal 34). */
+  where: string;
   locked: boolean;
   onAnswer: (answer: HomeAnswer, label: string) => void;
 }) {
@@ -244,6 +258,7 @@ function ApprovalBody({
       ) : (
         <p className="text-sm text-muted-foreground">The agent sent no details.</p>
       )}
+      <p className="text-xs text-muted-foreground">{where}</p>
       <Actions>
         {body.choices.length > 0 ? (
           // The board's order: the rest outlined, the plain approve last and filled.

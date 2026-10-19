@@ -6,12 +6,15 @@ interface ComposerPendingApprovalPanelProps {
   approval: PendingApproval;
   pendingCount: number;
   className?: string;
+  /** magnesium: the command's machine and sandbox (goal 34) */
+  where?: string;
 }
 
 export const ComposerPendingApprovalPanel = memo(function ComposerPendingApprovalPanel({
   approval,
   pendingCount,
   className,
+  where,
 }: ComposerPendingApprovalPanelProps) {
   const Detail = approval.requestKind === "mcp-elicitation" ? "span" : "code";
   const fallbackLabel =
@@ -63,6 +66,8 @@ export const ComposerPendingApprovalPanel = memo(function ComposerPendingApprova
           ? "Provider process is gone — interrupt or restart the run to respond."
           : approval.detail || fallbackLabel}
       </Detail>
+      {/* magnesium: where the command runs, as the Session board's card says it (goal 34) */}
+      {where ? <span className="text-2xs text-muted-foreground">{where}</span> : null}
     </span>
   );
 });

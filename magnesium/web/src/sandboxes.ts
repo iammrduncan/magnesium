@@ -2,11 +2,10 @@ import {
   AGENTS_API_PATH,
   HUB_ENVIRONMENT_ROUTE_PREFIX,
   hubMachineSandboxesPath,
-  parseNativeTwinInstanceId,
-  parseProfileInstanceId,
+  instanceSandbox,
+  type InstanceSandbox,
   type SandboxLevel,
   SandboxList,
-  nativeTwinInstanceId,
 } from "@magnesium/contracts";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
@@ -24,33 +23,16 @@ import { hubMachineNameOf } from "./hubMachines.ts";
  * and how to add it) loads when the chip opens.
  */
 
-export interface InstanceSandbox {
-  readonly level: SandboxLevel;
-  /** Instances a thread can switch between: one profile and harness, or one stock instance. */
-  readonly group: string;
-  /** The profile's name, or null for a stock instance. */
-  readonly profile: string | null;
-}
+// The level an instance runs at lives in the contracts, where Home's server reads it too.
+export { instanceSandbox, type InstanceSandbox };
 
-/** The level and group of an instance, from its id and its siblings' ids. Null: not one of ours. */
-export function instanceSandbox(
-  instanceId: string,
-  allInstanceIds: ReadonlyArray<string>,
-): InstanceSandbox | null {
-  const profile = parseProfileInstanceId(instanceId);
-  if (profile !== null) {
-    return {
-      level: profile.level,
-      group: `profile:${profile.profile}:${profile.harness}`,
-      profile: profile.profile,
-    };
-  }
-  const twinOf = parseNativeTwinInstanceId(instanceId);
-  if (twinOf !== null) return { level: "native", group: twinOf, profile: null };
-  // Profile sync fences a stock instance and gives it a native twin.
-  return allInstanceIds.includes(nativeTwinInstanceId(instanceId))
-    ? { level: "fenced", group: instanceId, profile: null }
-    : null;
+/**
+ * Where an approval's command runs, as its card says it (goal 34): "Runs on
+ * cpu-host-1 in the container sandbox", or only the machine when its level
+ * isn't known.
+ */
+export function whereItRuns(machine: string, level: SandboxLevel | null | undefined): string {
+  return level == null ? `Runs on ${machine}` : `Runs on ${machine} in the ${level} sandbox`;
 }
 
 export interface SandboxSibling {

@@ -28,6 +28,7 @@ import { useComposerMenuProps } from "./composerEventScope";
 import { parseProfileInstanceId } from "@magnesium/contracts"; // magnesium: goal 03
 import { profileDisplayName } from "@magnesium/web"; // magnesium: goal 03
 import { ProfileAvatar } from "../magnesium/ProfileAvatar"; // magnesium: goal 03
+import { ProfilePickerLinks } from "../magnesium/ProfilePickerLinks"; // magnesium: goal 34
 import { shortcutLabelForCommand } from "../../keybindings";
 
 export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
@@ -337,6 +338,16 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
         />
         {props.selectedModels === undefined ? (
           <ChatGptSharingControl provider={activeEntry?.snapshot ?? null} />
+        ) : null}
+        {/* magnesium: Edit profile, or Create a profile while there are none (goal 34) */}
+        {props.selectedModels === undefined ? (
+          <ProfilePickerLinks
+            profile={activeProfile?.profile ?? null}
+            hasProfiles={props.instanceEntries.some(
+              (entry) => parseProfileInstanceId(entry.instanceId) !== null,
+            )}
+            onNavigate={() => setIsMenuOpen(false)}
+          />
         ) : null}
       </PopoverPopup>
     </Popover>

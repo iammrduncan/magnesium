@@ -107,11 +107,20 @@ export const layer = Layer.effect(
         const requests = needsThreadRequests(view)
           ? Option.getOrNull(yield* ports.threads.requests(shell.id))
           : null;
+        // Read only for a thread that asks: they say where its commands run.
+        const instanceIds =
+          requests === null
+            ? []
+            : yield* ports.getSettings.pipe(
+                Effect.map((settings) => Object.keys(settings.providerInstances)),
+                Effect.orElseSucceed((): ReadonlyArray<string> => []),
+              );
         const items = homeItemsOf({
           view,
           requests,
           projectTitle: yield* projectTitleOf(shell.projectId),
           now: DateTime.formatIso(yield* DateTime.now),
+          instanceIds,
         });
         // Only a failure on show is worth reading its run for; settled ones stay failed.
         if (shell.latestRunId === null || !items.some((item) => item.body._tag === "failure")) {
