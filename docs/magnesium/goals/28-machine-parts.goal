@@ -1,6 +1,5 @@
 ---
 id: mg-machine-parts
-status: PLANNED
 kind: feature
 depends_on: [mg-apps, mg-fleet, mg-profiles, mg-spokes-k8s]
 phase: 6

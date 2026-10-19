@@ -1,6 +1,5 @@
 ---
 id: mg-rooms
-status: PLANNED
 kind: feature
 depends_on: [mg-profiles, mg-home]
 phase: 3

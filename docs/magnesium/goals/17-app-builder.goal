@@ -1,6 +1,5 @@
 ---
 id: mg-app-builder
-status: PLANNED
 kind: feature
 depends_on: [mg-apps, mg-design-system, mg-machine-parts, mg-agent-control]
 phase: 6

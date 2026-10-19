@@ -1,6 +1,5 @@
 ---
 id: mg-projects
-status: PLANNED
 kind: feature
 depends_on: [mg-shell, mg-home, mg-upstream-v2]
 phase: 2

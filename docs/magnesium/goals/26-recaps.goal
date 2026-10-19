@@ -1,6 +1,5 @@
 ---
 id: mg-recaps
-status: PLANNED
 kind: feature
 depends_on: [mg-home, mg-upstream-v2]
 phase: 2

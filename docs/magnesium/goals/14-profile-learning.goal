@@ -1,6 +1,5 @@
 ---
 id: mg-learning
-status: PLANNED
 kind: feature
 depends_on: [mg-profiles, mg-memories]
 phase: 5

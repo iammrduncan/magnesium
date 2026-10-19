@@ -1,6 +1,5 @@
 ---
 id: mg-provider-accounts
-status: PLANNED
 kind: feature
 depends_on: [mg-profiles, mg-upstream-v2, mg-spokes-k8s]
 phase: 2

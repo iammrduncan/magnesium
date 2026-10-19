@@ -1,6 +1,5 @@
 ---
 id: mg-fork
-status: VERIFIED
 kind: foundation
 depends_on: []
 phase: 0

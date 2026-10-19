@@ -1,6 +1,5 @@
 ---
 id: mg-upstream-v2
-status: VERIFIED
 kind: maintenance
 depends_on: [mg-home, mg-spokes-k8s]
 phase: 2

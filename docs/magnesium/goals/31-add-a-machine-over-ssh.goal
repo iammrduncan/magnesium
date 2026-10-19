@@ -1,6 +1,5 @@
 ---
 id: mg-add-machine-ssh
-status: PLANNED
 kind: feature
 depends_on: [mg-spokes-k8s, mg-provider-accounts]
 phase: 2

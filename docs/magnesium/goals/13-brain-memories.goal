@@ -1,6 +1,5 @@
 ---
 id: mg-memories
-status: PLANNED
 kind: feature
 depends_on: [mg-brain]
 phase: 5

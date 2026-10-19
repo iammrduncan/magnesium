@@ -1,6 +1,5 @@
 ---
 id: mg-schedule
-status: PLANNED
 kind: feature
 depends_on: [mg-home, mg-fleet]
 phase: 4

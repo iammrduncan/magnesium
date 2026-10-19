@@ -1,6 +1,5 @@
 ---
 id: mg-magnesium-brain
-status: PLANNED
 kind: feature
 depends_on: [mg-hub-link, mg-profiles]
 phase: 5

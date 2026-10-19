@@ -1,6 +1,5 @@
 ---
 id: mg-brain
-status: PLANNED
 kind: feature
 depends_on: [mg-shell, mg-magnesium-brain]
 phase: 5

@@ -1,6 +1,5 @@
 ---
 id: mg-deploy
-status: VERIFIED
 kind: deploy
 depends_on: [mg-fork]
 phase: 0

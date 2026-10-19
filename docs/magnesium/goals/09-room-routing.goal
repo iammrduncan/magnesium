@@ -1,6 +1,5 @@
 ---
 id: mg-room-routing
-status: PLANNED
 kind: feature
 depends_on: [mg-rooms]
 phase: 3

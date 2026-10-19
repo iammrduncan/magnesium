@@ -1,6 +1,5 @@
 ---
 id: mg-agent-control
-status: PLANNED
 kind: feature
 depends_on: [mg-profiles, mg-fleet]
 phase: 4

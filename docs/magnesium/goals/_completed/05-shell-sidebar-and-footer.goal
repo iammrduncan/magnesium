@@ -1,6 +1,5 @@
 ---
 id: mg-shell
-status: VERIFIED
 kind: feature
 depends_on: [mg-hub-link]
 phase: 2

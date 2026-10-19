@@ -1,6 +1,5 @@
 ---
 id: mg-release
-status: PLANNED
 kind: milestone
 depends_on: [mg-fork, mg-deploy, mg-profiles, mg-hub-link, mg-shell, mg-home, mg-phone, mg-rooms, mg-room-routing, mg-fleet, mg-schedule, mg-brain, mg-memories, mg-learning, mg-projects, mg-apps, mg-app-builder, mg-agent-control, mg-harnesses, mg-pill, mg-hermes-moves]
 phase: 7

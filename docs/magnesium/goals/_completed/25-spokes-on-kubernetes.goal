@@ -1,6 +1,5 @@
 ---
 id: mg-spokes-k8s
-status: VERIFIED
 kind: deploy
 depends_on: [mg-home]
 phase: 2

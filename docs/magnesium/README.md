@@ -24,7 +24,7 @@ These docs moved here from the owner's earlier toolkit on 2026-10-14 (D29). The 
 | [mockups.md](mockups.md)                                                       | The 16 mock boards as images, with what each shows, the goals that build it, and what changed since it was drawn                                                    | Rendered 2026-10-14                        |
 | [14-apps-and-footer-extension-model.md](14-apps-and-footer-extension-model.md) | How apps and footer items extend Magnesium: Hermes Desktop and DeepSeek Harness compared, and a proposed manifest, isolation and approval flow; plus the name check | Proposal                                   |
 | [15-magnesium-as-a-product.md](15-magnesium-as-a-product.md)                   | What Magnesium needs from any lab (four interfaces), and who owns what between the product and a lab's infrastructure                                               | Decided (D57, D59)                         |
-| [goals/](goals/README.md)                                                      | The build plan as goal files, each ending in something the owner can test, from the fork to daily use on a hub and its machines                                     | Goal 01 verified; the rest planned         |
+| [goals/](goals/README.md)                                                      | The build plan as goal files, each ending in something the owner can test, from the fork to daily use on a hub and its machines                                     | In [TRACKER.md](../../TRACKER.md)          |
 
 ## Source of truth
 

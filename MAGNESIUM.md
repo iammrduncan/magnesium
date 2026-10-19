@@ -6,6 +6,7 @@ This file is for agents working in this repo. **Where it disagrees with upstream
 
 ## Start here
 
+- **What's next and where each goal stands:** [`TRACKER.md`](TRACKER.md), the one tracker.
 - **To work on a goal:**
   1. Open its file in [`docs/magnesium/goals/`](docs/magnesium/goals/).
   2. Read the goals [README](docs/magnesium/goals/README.md): "Done means" and "Rules for every goal".
@@ -59,10 +60,10 @@ The Magnesium Brain is Magnesium's own knowledge base, a GBrain engine Magnesium
 
 At the end of a goal, and also when it stops early:
 
-- Set its `status` (`IN_PROGRESS`, `VERIFIED` or `BLOCKED`), and write its dated **Goal summary** and **Next steps** in the goal file. Write them about the product: what works and which tests passed, never the owner's lab or deployments (those notes go in `.internal/`).
+- Set its status in [`TRACKER.md`](TRACKER.md) (`In progress`, `Verified`, or `Blocked` with the reason), and write its dated **Goal summary** and **Next steps** in the goal file. Write them about the product: what works and which tests passed, never the owner's lab or deployments (those notes go in `.internal/`).
 - Put both in your final reply.
 - Update the screen status in doc 13, and the decisions and open questions in doc 09, when they change.
-- Move a `VERIFIED` goal to `docs/magnesium/goals/_completed/`.
+- Move a `Verified` goal to `docs/magnesium/goals/_completed/`.
 
 ## Git
 

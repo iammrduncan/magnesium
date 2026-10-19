@@ -1,6 +1,5 @@
 ---
 id: mg-apps
-status: PLANNED
 kind: feature
 depends_on: [mg-home, mg-fleet, mg-design-system]
 phase: 6

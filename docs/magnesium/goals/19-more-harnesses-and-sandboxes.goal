@@ -1,6 +1,5 @@
 ---
 id: mg-harnesses
-status: PLANNED
 kind: feature
 depends_on: [mg-profiles, mg-fleet]
 phase: 1

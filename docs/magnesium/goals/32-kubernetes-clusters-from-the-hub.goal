@@ -1,6 +1,5 @@
 ---
 id: mg-k8s-clusters
-status: PLANNED
 kind: feature
 depends_on: [mg-spokes-k8s, mg-add-machine-ssh]
 phase: 2

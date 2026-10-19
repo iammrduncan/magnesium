@@ -1,6 +1,5 @@
 ---
 id: mg-profiles
-status: BLOCKED
 kind: feature
 depends_on: [mg-deploy]
 phase: 1

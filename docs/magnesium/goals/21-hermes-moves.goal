@@ -1,6 +1,5 @@
 ---
 id: mg-hermes-moves
-status: PLANNED
 kind: migration
 depends_on: [mg-phone, mg-room-routing, mg-memories, mg-agent-control]
 phase: 7

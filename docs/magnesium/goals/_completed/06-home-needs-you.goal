@@ -1,6 +1,5 @@
 ---
 id: mg-home
-status: VERIFIED
 kind: feature
 depends_on: [mg-shell]
 phase: 2

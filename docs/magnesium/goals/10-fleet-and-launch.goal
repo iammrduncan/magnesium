@@ -1,6 +1,5 @@
 ---
 id: mg-fleet
-status: PLANNED
 kind: feature
 depends_on: [mg-profiles, mg-hub-link]
 phase: 4

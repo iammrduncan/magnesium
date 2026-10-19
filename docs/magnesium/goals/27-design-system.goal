@@ -1,6 +1,5 @@
 ---
 id: mg-design-system
-status: PLANNED
 kind: feature
 depends_on: [mg-shell, mg-home]
 phase: 6

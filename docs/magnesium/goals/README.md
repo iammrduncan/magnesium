@@ -1,6 +1,6 @@
 # Magnesium build goals
 
-**Status: goals 01, 02, 04, 05, 06 and 25 VERIFIED; 03 BLOCKED on one test; 24 IN_PROGRESS; the rest PLANNED.** Thirty-three goals take Magnesium from a fork of T3 Code to the app in the mocks. At the end it runs on a hub and a fleet of agent machines, on bare metal, in VMs or inside Kubernetes workloads. Each goal ends in something the owner can test by hand.
+**The order goals are built in, and where each stands, is in [TRACKER.md](../../../TRACKER.md).** Thirty-three goals take Magnesium from a fork of T3 Code to the app in the mocks. At the end it runs on a hub and a fleet of agent machines, on bare metal, in VMs or inside Kubernetes workloads. Each goal ends in something the owner can test by hand.
 
 Read first: [doc 11](../11-fork-plan.md) (the fork plan), [doc 13](../13-mocks-to-working-app.md) (mocks to a working app), [doc 09](../09-decisions-and-open-questions.md) (the decisions), [doc 12](../12-channel-chat-and-events.md) (rooms) and [doc 14](../14-apps-and-footer-extension-model.md) (apps and the footer).
 
@@ -8,7 +8,9 @@ Read first: [doc 11](../11-fork-plan.md) (the fork plan), [doc 13](../13-mocks-t
 
 Goals are tested by hand on a real fleet: a hub and at least two machines, one of them with a GPU and one running in Kubernetes, plus a desktop and a phone with the installed PWA. Goals name them by role ("the hub", "a machine", "a machine with a GPU"), never by host.
 
-## Order
+## Goals and what they need
+
+The build order and each goal's status are in [TRACKER.md](../../../TRACKER.md). This table says what each goal makes testable and what it builds on; the picture below it shows the tracks.
 
 | #   | Goal                                                                         | What you can test at the end                                                                                                           | Needs          | Boards made real                                                        |
 | --- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------------- |
@@ -114,7 +116,7 @@ Requirement IDs are from [doc 01](../01-requirements.md).
 
 ## Goal file format
 
-Front matter (`id`, `status`, `kind`, `depends_on`, `phase`, `boards`), then **Owner gates**, **Build**, **Test it**, **Not in this goal**, **Goal summary** and **Next steps**. `phase` is the phase in docs 11 and 13. `status` moves from `PLANNED` to `IN_PROGRESS` to `VERIFIED`, or to `BLOCKED` with the reason. A `VERIFIED` goal moves to `_completed/`.
+Front matter (`id`, `kind`, `depends_on`, `phase`, `boards`), then **Owner gates**, **Build**, **Test it**, **Not in this goal**, **Goal summary** and **Next steps**. `phase` is the phase in docs 11 and 13. A goal's status lives only in [TRACKER.md](../../../TRACKER.md): `Planned`, then `In progress`, then `Verified`, or `Blocked` with the reason. A `Verified` goal moves to `_completed/`.
 
 ## Done means, for every goal
 
@@ -124,7 +126,7 @@ Front matter (`id`, `status`, `kind`, `depends_on`, `phase`, `boards`), then **O
 4. **Merge cost is recorded:** the list of edits to upstream files (every `magnesium:` marker) and the per-file conflict report from a merge rehearsal against upstream's latest stable tag.
 5. **Deployed and reversible.** The change is rolled out with the Ansible roles from goal 02, and the previous build can be restored with one command.
 6. **Docs are updated.** The matching research doc says what is built and verified. [Doc 13](../13-mocks-to-working-app.md) gets a status for each screen.
-7. **Goal summary and next steps** are written into the goal file and included in the final report, even when the goal is blocked.
+7. **Goal summary and next steps** are written into the goal file and included in the final report, even when the goal is blocked, and its row in [TRACKER.md](../../../TRACKER.md) says where it stands.
 
 ## Rules for every goal
 
