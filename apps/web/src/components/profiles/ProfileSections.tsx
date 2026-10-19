@@ -1,6 +1,5 @@
 // magnesium: the Profiles page's sections, one tab each (goal 34, D65, D67)
 import {
-  AGENTS_MCP_PATH,
   MAGNESIUM_AGENT_TOOLS,
   MAGNESIUM_MCP_SERVER,
   type ProfileDelivery,
@@ -586,7 +585,8 @@ export function ToolsSection({ detail, onChanged }: Section) {
   const [copied, setCopied] = useState(false);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ server: "", url: "", command: "", secret: "" });
-  const mcpUrl = new URL(AGENTS_MCP_PATH, window.location.href).toString();
+  // The hub's MCP server, where an agent signs in once (see the outside-agents guide).
+  const mcpUrl = new URL("/mcp", window.location.href).toString();
   const servers = useMemo((): Record<string, unknown> => {
     try {
       return detail.mcpJson === null
@@ -654,8 +654,8 @@ export function ToolsSection({ detail, onChanged }: Section) {
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border px-3 py-2">
         <span className="min-w-60 flex-1 text-sm">
-          Magnesium's own tools are an MCP server too. Agents outside Magnesium reach them at this
-          address.
+          Magnesium's own tools are on the hub's MCP server. Point an agent outside Magnesium at
+          this address: it signs in once, and you choose what it may do.
         </span>
         <code className="text-xs text-muted-foreground">{mcpUrl}</code>
         <Button

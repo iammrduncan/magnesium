@@ -1,4 +1,4 @@
-<!-- magnesium: profiles and sandbox levels (goal 03) -->
+<!-- magnesium: profiles and sandbox levels (goals 03 and 34) -->
 
 # Profiles and sandboxes
 
@@ -38,47 +38,92 @@ folders in it (`~/.cache`, your projects) work as usual. Install bubblewrap
 (`sudo apt install bubblewrap`) to lift that. **Settings → Connections →
 Sandboxes** shows which one each machine uses.
 
-## Add a profile
+## Make a profile
 
 Profiles live on the hub, or on your one machine if you run Magnesium on a
-single box. On that machine, run:
+single box. Open **Profiles** in the sidebar and choose **+**, or **Create a
+profile** in the model picker while you have none. Give it a name (it can't
+change later, because its threads are tied to it) and a line about what it
+does. A new profile runs on every machine, on Claude Code, fenced.
+
+Each tab changes one part of it, and every save is checked first:
+
+- **Instructions**: who the agent is and its rules, in `AGENTS.md`, with
+  `CLAUDE.md` and any other Markdown file you add beside it.
+- **Skills**: one folder each, with its `SKILL.md`.
+- **Tools**: the agent's MCP servers, and for each server whether its tools
+  run without asking, ask first, or are off, one tool at a time. A server
+  that needs a secret takes the variable's name, never its value. Claude Code
+  can't turn off the rest of a server's tools while some stay on; the page
+  says so where that matters.
+- **Environment**: the variables it needs, by name, and which machines have
+  each one. Values never leave the machine.
+- **Runs on**: every machine, or the ones you tick; its harness and sandbox
+  level.
+- **History**: every version, by you or by an agent you approved, with what it
+  changed. **Put back** restores an earlier one.
+
+The panel beside the tabs shows what each machine holds: the version and when
+it was checked, whether it refused the profile and why, or that it isn't
+connected. **Send now** delivers at once; otherwise a change reaches its
+machines within a minute, with no restart.
+
+**Delete** names the threads on the profile; they keep their history and can
+move to another profile. A deleted profile can be restored, with its history,
+for 30 days.
+
+In a thread, the model picker's **Edit profile** opens the profile the thread
+runs.
+
+## Agents change profiles too
+
+Agents have Magnesium's profile tools in every thread: `list_profiles`,
+`get_profile` and `check_profiles` read; `create_profile`, `update_profile` and
+`delete_profile` ask you first. An ask is a **Profile change** card on Home,
+and on the profile's page, showing the change. **Approve** applies it in the
+agent's name and yours; **Reject** leaves the profile as it was. The agent can
+follow its ask with `profile_request_status`, and `send_profile_now` has the
+hub deliver at once.
+
+## Connect an agent outside Magnesium
+
+The **Tools** tab shows the hub's MCP address, with **Copy MCP URL**. Point an
+agent outside Magnesium at it, such as Claude Code in your own terminal: it
+signs in once, and you choose whether it may only read or may also ask for
+changes. See [Outside agents](./outside-agents.md) for each agent's steps.
+
+## From a terminal
+
+On the hub, `magnesium-agents` makes and checks profiles without the app:
 
 ```bash
 magnesium-agents new reviewer --description "Reviews pull requests."
-```
-
-It makes `~/.magnesium/profiles/reviewer/` with two files to edit:
-
-- **`AGENTS.md`**: who the agent is and its rules. A `CLAUDE.md` beside it is
-  read too.
-- **`profile.yaml`**: where it runs and how. The main settings:
-
-  ```yaml
-  machines: [build-box] # machines it goes to; "*" for all; empty for this server only
-  harness: claude # or codex; harnesses: [claude, codex] offers both
-  sandbox:
-    level: fenced # or container
-  env: [KB_TOKEN] # names of environment variables it needs, never their values
-  launch_args: [--add-dir, /data] # extra arguments for the CLI; a list, or one string
-  display_name: Reviewer
-  accent: "#2f80ed"
-  ```
-
-Optional: `mcp.json` for the agent's MCP servers (write `${KB_TOKEN}`, never
-the token), `hooks.json`, `CONVENTIONS.md`, `MEMORIES.md`, and
-`skills/<name>/SKILL.md`. To give agents your knowledge base, add its MCP
-server to `mcp.json` at whatever URL you run it.
-
-Check it, then wait. The hub sends it to its machines, and it appears in the
-picker on each within a minute, with no restart:
-
-```bash
 magnesium-agents check reviewer
 magnesium-agents list
 ```
 
-To change a profile, edit its files. To remove it, delete its folder; each
-machine keeps the agent's past sessions.
+A profile is a folder in `~/.magnesium/profiles/`, and the app edits the same
+files. The main settings in its `profile.yaml`:
+
+```yaml
+machines: ["*"] # machines it goes to; "*" for all; empty for this server only
+harness: claude # or codex; harnesses: [claude, codex] offers both
+sandbox:
+  level: fenced # or container
+env: [KB_TOKEN] # names of environment variables it needs, never their values
+launch_args: [--add-dir, /data] # extra arguments for the CLI; a list, or one string
+display_name: Reviewer
+accent: "#2f80ed"
+tool_permissions: # per MCP server: allow, ask or off, and per tool
+  kb:
+    default: ask
+    tools: { search: allow, delete_page: off }
+```
+
+Optional files: `mcp.json` for the agent's MCP servers (write `${KB_TOKEN}`,
+never the token), `hooks.json`, more Markdown instructions, and
+`skills/<name>/SKILL.md`. To give agents your knowledge base, add its MCP
+server at whatever URL you run it.
 
 Environment variables a profile names come from the Magnesium service's
 environment on each machine. Put secrets in an env file only the service can
@@ -94,4 +139,6 @@ Magnesium refuses a profile that would weaken your control, and says why:
 - a secret written into `mcp.json` or `hooks.json`;
 - a container image that isn't pinned by digest.
 
-The other profiles keep working. `magnesium-agents check` lists every problem.
+The other profiles keep working, and a refused profile's machines keep its last
+version that passed. The page shows each problem beside the field or file it's
+about; `magnesium-agents check` lists them too.
