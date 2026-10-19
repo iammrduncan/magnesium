@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Profiles on the phone</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+.ph{--screen:#fcfcfc;--card:#ffffff;--fg:#27272a;--fg-strong:#18181b;--muted:#71717b;--subtle:#a1a1aa;--border:#e4e4e7;--hover:#f4f4f5;--primary:#1b4ed8;--on-primary:#ffffff;--warn:#b45309;--warn-wash:#fffbeb;--info:#2563eb;--ok:#15803d;--err:#dc2626;--err-wash:#fef2f2;--glass:rgba(252,252,252,.86);--shadow:0 8px 28px rgba(0,0,0,.10);color-scheme:light}
+.ph.dark{--screen:#0a0a0a;--card:#111111;--fg:#f5f5f5;--fg-strong:#ffffff;--muted:#8a8a8a;--subtle:#5c5c5c;--border:#1f1f1f;--hover:#161616;--primary:#346bf1;--on-primary:#ffffff;--warn:#fbbf24;--warn-wash:#1f1705;--info:#60a5fa;--ok:#4ade80;--err:#f87171;--err-wash:#2a0f0f;--glass:rgba(10,10,10,.86);--shadow:0 8px 28px rgba(0,0,0,.6);color-scheme:dark}
+.ph button{font:inherit;color:inherit;cursor:pointer}
+.ph :focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+</style>
+</helmet>
+<div class="ph {{themeClass}}" style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: var(--screen); color: var(--fg); font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.45">
+
+  <sc-if value="{{onList}}" hint-placeholder-val="{{ true }}">
+    <div style="height: 100%; overflow-y: auto; padding: 54px 16px 40px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: flex-end; gap: 10px">
+        <a href="Phone.dc.html" aria-label="Back to Home" style="width: 44px; height: 44px; margin-left: -12px; display: grid; place-items: center; color: var(--primary)">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>
+        </a>
+      </div>
+      <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px">
+        <div>
+          <h1 style="margin: 0; font-size: 32px; line-height: 1.1; font-weight: 700; color: var(--fg-strong); letter-spacing: -0.02em">Profiles</h1>
+          <p style="margin: 4px 0 0; font-size: 14px; color: var(--muted)">{{subtitle}}</p>
+        </div>
+        <button type="button" aria-label="New profile" style="width: 44px; height: 44px; border-radius: 22px; background: var(--card); border: 1px solid var(--border); display: grid; place-items: center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+        </button>
+      </div>
+
+      <sc-if value="{{askPending}}" hint-placeholder-val="{{ true }}">
+        <article style="background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; align-items: center; gap: 8px">
+            <span style="width: 36px; height: 36px; border-radius: 11px; background: #0e7490; color: #ffffff; display: grid; place-items: center; font-size: 12px; font-weight: 700">RE</span>
+            <div style="flex: 1; min-width: 0">
+              <div style="font-size: 14px; font-weight: 700; color: var(--fg-strong)">research</div>
+              <div style="font-size: 12.5px; color: var(--muted)">asks to change Serving · 4m</div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--warn)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path></svg>
+            Profile change
+          </div>
+          <pre style="margin: 0; padding: 10px 12px; background: var(--hover); border-radius: 12px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--fg-strong)">+ skills/rollout-watch/SKILL.md
++ Watch a rollout until every pod is ready; say which one is stuck and why.</pre>
+          <div style="display: flex; gap: 8px">
+            <button type="button" onClick="{{reject}}" style="flex: 1; height: 44px; border: 1px solid var(--border); background: var(--card); border-radius: 12px; font-size: 15px; font-weight: 500">Reject</button>
+            <button type="button" onClick="{{approve}}" style="flex: 1; height: 44px; border: 0; background: var(--primary); color: var(--on-primary); border-radius: 12px; font-size: 15px; font-weight: 700">Approve</button>
+          </div>
+        </article>
+      </sc-if>
+
+      <div style="background: var(--card); border: 1px solid var(--border); border-radius: 20px; overflow: hidden">
+        <sc-for list="{{profiles}}" as="p" hint-placeholder-count="5">
+          <button type="button" onClick="{{p.open}}" style="{{p.rowStyle}}">
+            <span style="{{p.avStyle}}">{{p.initials}}</span>
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; text-align: left">
+              <span style="font-size: 16px; font-weight: 700; color: var(--fg-strong)">{{p.display}}</span>
+              <span style="{{p.subStyle}}">{{p.sub}}</span>
+            </span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--subtle)" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+          </button>
+        </sc-for>
+      </div>
+      <p style="margin: 0; font-size: 12px; color: var(--subtle); text-align: center">Example data · no backend</p>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{onDetail}}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; left: 0; right: 0; top: 0; z-index: 2; padding: 50px 8px 8px; display: flex; align-items: center; gap: 4px; background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--border)">
+      <button type="button" onClick="{{back}}" aria-label="Back to Profiles" style="width: 44px; height: 44px; border: 0; background: transparent; display: grid; place-items: center; color: var(--primary)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>
+      </button>
+      <div style="flex: 1; min-width: 0; text-align: center">
+        <div style="font-size: 16px; font-weight: 700; color: var(--fg-strong)">{{sel.display}}</div>
+        <div style="font-size: 12px; color: var(--muted)">{{sel.line}}</div>
+      </div>
+      <span style="width: 44px; height: 44px; display: grid; place-items: center"><span style="{{sel.avStyle}}">{{sel.initials}}</span></span>
+    </div>
+    <div style="height: 100%; overflow-y: auto; padding: 124px 16px 40px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px">
+      <sc-if value="{{sel.refused}}" hint-placeholder-val="{{ false }}">
+        <div role="alert" style="border-radius: 18px; background: var(--err-wash); padding: 12px 14px; color: var(--fg-strong); font-size: 14px"><b style="color: var(--err)">Refused.</b> Launch arguments hold a permission flag; full access is a choice per thread. Its machine keeps running v7.</div>
+      </sc-if>
+      <p style="margin: 0; color: var(--muted)">{{sel.desc}}</p>
+      <div style="background: var(--card); border: 1px solid var(--border); border-radius: 20px; overflow: hidden">
+        <sc-for list="{{sections}}" as="x" hint-placeholder-count="7">
+          <button type="button" style="{{x.rowStyle}}">
+            <span style="flex: 1; text-align: left; font-size: 15px; color: var(--fg-strong)">{{x.name}}</span>
+            <span style="{{x.noteStyle}}">{{x.note}}</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--subtle)" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+          </button>
+        </sc-for>
+      </div>
+      <h2 style="margin: 6px 4px 0; font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: 0.02em">DELIVERY</h2>
+      <div style="background: var(--card); border: 1px solid var(--border); border-radius: 20px; overflow: hidden">
+        <sc-for list="{{delivery}}" as="d" hint-placeholder-count="3">
+          <div style="display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 14px; border-top: {{d.border}}">
+            <span style="{{d.dot}}"></span>
+            <div style="flex: 1; min-width: 0"><div style="font-size: 15px; color: var(--fg-strong)">{{d.name}}</div><div style="font-size: 12.5px; color: var(--muted)">{{d.detail}}</div></div>
+            <span style="{{d.stateStyle}}">{{d.state}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <button type="button" onClick="{{sendNow}}" style="height: 48px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); font-size: 15px; font-weight: 500">{{sendLabel}}</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+    <div role="status" style="position: absolute; left: 16px; right: 16px; bottom: 28px; display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 16px; border-radius: 16px; background: var(--fg-strong); color: var(--screen); font-size: 14px; box-shadow: var(--shadow)">
+      <span style="flex: 1">{{toastText}}</span>
+      <button type="button" onClick="{{undo}}" style="height: 36px; padding: 0 14px; border: 0; border-radius: 10px; background: transparent; color: var(--screen); font-weight: 700">Undo</button>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  componentWillUnmount() { if (this._t) clearTimeout(this._t); }
+  st() { return Object.assign({ view: 'list', sel: 'serving', ask: 'pending', toast: null, sent: false }, this.state || {}); }
+
+  toast(text) {
+    this.setState({ toast: text });
+    if (this._t) clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({ toast: null }), 5000);
+  }
+
+  renderVals() {
+    const s = this.st();
+    const dark = (this.props.theme ?? 'light') === 'dark';
+    const P = {
+      serving: { initials: 'SE', color: '#c2410c', display: 'Serving', desc: 'Deploys and serves models on the GPU machines.', line: 'Claude Code · container', v: 14, machines: [['gpu-a', 'Current'], ['gpu-b', 'Current'], ['workstation', 'Current']], skills: 6, tools: 3, env: '1 missing on workstation' },
+      research: { initials: 'RE', color: '#0e7490', display: 'Research', desc: 'Runs evals and reads papers.', line: 'Claude Code and Codex · container', v: 9, machines: [['gpu-a', 'Current'], ['workstation', 'Current'], ['kb-host', 'Behind']], skills: 2, tools: 1, env: 'All set' },
+      ops: { initials: 'OP', color: '#4d7c0f', display: 'Ops', desc: 'Keeps services, backups and certificates healthy.', line: 'Codex · container', v: 6, machines: [['enclave-1', 'Current'], ['kb-host', 'Current'], ['nas', 'Not connected']], skills: 2, tools: 0, env: 'None' },
+      scribe: { initials: 'SC', color: '#be185d', display: 'Scribe', desc: 'Indexes documents and writes notes.', line: 'Claude Code · fenced', v: 8, refused: true, machines: [['kb-host', 'Kept v7']], skills: 1, tools: 0, env: 'None' },
+      reviewer: { initials: 'RV', color: '#475569', display: 'Reviewer', desc: 'Reviews pull requests.', line: 'Codex · fenced', v: 3, machines: [['workstation', 'Current']], skills: 0, tools: 0, env: 'None' }
+    };
+    const v = (n) => P[n].v + (n === 'serving' && s.ask === 'approved' ? 1 : 0);
+    const av = (q, size) => 'flex: none; width: ' + size + 'px; height: ' + size + 'px; border-radius: ' + Math.round(size / 3.2) + 'px; background: ' + q.color + '; color: #ffffff; display: grid; place-items: center; font-size: ' + (size > 30 ? 12 : 10) + 'px; font-weight: 700';
+    const names = Object.keys(P);
+    const profiles = names.map((n, i) => {
+      const q = P[n];
+      const behind = q.machines.some((m) => m[1] === 'Behind');
+      const off = q.machines.some((m) => m[1] === 'Not connected');
+      const sub = q.refused ? 'Refused · 1 issue' : n === 'serving' && s.ask === 'pending' ? 'v' + v(n) + ' · research asks a change' : behind ? 'v' + v(n) + ' · 1 machine behind' : off ? 'v' + v(n) + ' · 1 machine offline' : 'v' + v(n) + ' · on ' + q.machines.length + (q.machines.length === 1 ? ' machine' : ' machines');
+      return {
+        initials: q.initials, display: q.display, sub: sub, avStyle: av(q, 36),
+        subStyle: 'font-size: 13px; color: ' + (q.refused ? 'var(--err)' : (n === 'serving' && s.ask === 'pending') || behind ? 'var(--warn)' : 'var(--muted)'),
+        rowStyle: 'width: 100%; display: flex; align-items: center; gap: 12px; min-height: 68px; padding: 10px 14px; border: 0; border-top: ' + (i === 0 ? '0' : '1px solid var(--border)') + '; background: transparent; text-align: left',
+        open: () => this.setState({ view: 'detail', sel: n, sent: false })
+      };
+    });
+    const p = P[s.sel];
+    const row = (i) => 'width: 100%; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 14px; border: 0; border-top: ' + (i === 0 ? '0' : '1px solid var(--border)') + '; background: transparent';
+    const sections = [['Instructions', '4 files'], ['Skills', String(p.skills)], ['Tools', String(p.tools)], ['Environment', p.env], ['Runs on', p.machines.length + (p.machines.length === 1 ? ' machine' : ' machines')], ['Knowledge', 'Team memory, its own'], ['History', 'v' + v(s.sel)]].map((x, i) => ({
+      name: x[0], note: x[1], rowStyle: row(i), noteStyle: 'font-size: 13px; color: ' + (x[0] === 'Environment' && /missing/.test(x[1]) ? 'var(--warn)' : 'var(--muted)')
+    }));
+    const delivery = p.machines.map((m, i) => {
+      const state = m[1];
+      const color = state === 'Current' ? 'var(--ok)' : state === 'Behind' ? 'var(--warn)' : state === 'Not connected' ? 'var(--muted)' : 'var(--err)';
+      return {
+        name: m[0], state: state, border: i === 0 ? '0' : '1px solid var(--border)',
+        detail: state === 'Current' ? 'v' + v(s.sel) + ' · checked ' + (s.sent ? 'just now' : (i + 1) * 3 + 'm ago') : state === 'Behind' ? 'Holds v' + (v(s.sel) - 1) + ' · machine degraded' : state === 'Not connected' ? 'Gets v' + v(s.sel) + ' when it’s back' : 'Refused v' + v(s.sel),
+        dot: 'flex: none; width: 10px; height: 10px; border-radius: ' + (state === 'Not connected' ? '3px' : '50%') + '; background: ' + color,
+        stateStyle: 'font-size: 13px; font-weight: 700; color: ' + color
+      };
+    });
+    const asks = s.ask === 'pending' ? 1 : 0;
+    return {
+      themeClass: dark ? 'dark' : '',
+      onList: s.view === 'list', onDetail: s.view === 'detail',
+      subtitle: names.length + ' profiles · ' + (asks ? '1 asks you · ' : '') + '1 refused',
+      askPending: s.ask === 'pending',
+      approve: () => { this.setState({ ask: 'approved' }); this.toast('Approved · Serving is v15, on its way'); },
+      reject: () => { this.setState({ ask: 'rejected' }); this.toast('Rejected · research hears why'); },
+      profiles: profiles,
+      sel: { initials: p.initials, display: p.display, desc: p.desc, line: p.line, avStyle: av(p, 26), refused: !!p.refused },
+      sections: sections, delivery: delivery,
+      back: () => this.setState({ view: 'list' }),
+      sendLabel: s.sent ? 'Sent to every machine that is up' : 'Send now',
+      sendNow: () => this.setState({ sent: true }),
+      hasToast: !!s.toast, toastText: s.toast || '',
+      undo: () => this.setState({ ask: 'pending', toast: null })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Magnesium mockups
 
-These are the 16 boards of the owner's mock canvas (D9), in their default state and light theme. The canvas lives in the repo, in [`mockups/canvas/`](mockups/canvas/): one `.dc.html` file per board, laid out by `canvas.json`. Run `vp run mocks` and open the printed address to click through every board, in light or dark; `vp run mocks:render` writes the images on this page from it. They are **the UX target** for the build: each goal says which boards it makes real, and a goal is checked against its boards before it is done ([goals](goals/README.md), "Done means" 2).
+These are the 18 boards of the owner's mock canvas (D9), in their default state and light theme. The canvas lives in the repo, in [`mockups/canvas/`](mockups/canvas/): one `.dc.html` file per board, laid out by `canvas.json`. Run `vp run mocks` and open the printed address to click through every board, in light or dark; `vp run mocks:render` writes the images on this page from it. They are **the UX target** for the build: each goal says which boards it makes real, and a goal is checked against its boards before it is done ([goals](goals/README.md), "Done means" 2).
 
 **The boards are the target, not the code.** Components are built in the fork, on T3 Code's tokens ([doc 07](07-t3code-ux.md)), and compared with these images. Every number, name, machine, bot and project on the boards is invented **example data**.
 
@@ -14,6 +14,7 @@ These are the 16 boards of the owner's mock canvas (D9), in their default state 
 | [Brain · desktop](#brain--desktop)               | 12 (reader), 13 (memories, dream cycle), 14 (skills)    | 5     |
 | [Brain · document open](#brain--document-open)   | 12                                                      | 5     |
 | [Project · desktop](#project--desktop)           | 15                                                      | 5     |
+| [Profiles · desktop](#profiles--desktop)         | 34                                                      | 2     |
 | [Fleet · desktop](#fleet--desktop)               | 04 (first list), 10 (fleet and launch), 18 (started by) | 4     |
 | [Apps · desktop](#apps--desktop)                 | 16 (app host), 17 (New app)                             | 6     |
 | [Selected app · desktop](#selected-app--desktop) | 16                                                      | 6     |
@@ -21,11 +22,12 @@ These are the 16 boards of the owner's mock canvas (D9), in their default state 
 | [Session · phone](#session--phone)               | 07                                                      | 7     |
 | [Room · phone](#room--phone)                     | 08                                                      | 7     |
 | [Fleet · phone](#fleet--phone)                   | 10                                                      | 7     |
+| [Profiles · phone](#profiles--phone)             | 34                                                      | 2     |
 | [App · phone](#app--phone)                       | 16                                                      | 7     |
 | [Footer](#footer)                                | 05 (core items), 16 (app items)                         | 2, 6  |
 | [Footer · popover open](#footer--popover-open)   | 16                                                      | 6     |
 
-Not mocked yet: **Schedule** (goal 11 mocks it), the **Profiles** page (goal 34 mocks it), and the **desktop pill** (goal 20 mocks it). What it takes to build each screen, piece by piece, is in [doc 13](13-mocks-to-working-app.md).
+Not mocked yet: **Schedule** (goal 11 mocks it) and the **desktop pill** (goal 20 mocks it). What it takes to build each screen, piece by piece, is in [doc 13](13-mocks-to-working-app.md).
 
 ## Desktop
 
@@ -147,6 +149,20 @@ Not mocked yet: **Schedule** (goal 11 mocks it), the **Profiles** page (goal 34 
 
 **Built in:** goal 15 (the project across machines, its threads and what needs you in it), right after Home; goal 23 (its docs and project brain). Project docs live in the brain, tied to the project (D23).
 
+### Profiles · desktop
+
+![Profiles](mockups/profiles-desktop.png)
+
+**What it shows**
+
+- **Profiles is a place,** listed under the places like Fleet's machines, each with its version and anything wrong: a refused profile, a machine behind, an agent asking for a change.
+- **An agent's change waits for you:** research asks to add a skill to Serving; the diff, with Reject and Approve, here and on Home.
+- **Every part of a profile in tabs:** its instructions files in an editor that checks on save, skills, MCP tools with the address of Magnesium's own, environment variable names set or missing on each machine, harnesses, default sandbox, machines and launch arguments, Brain access per section, and history with Put back.
+- **Delivery:** which version each machine holds, with Send now, and the threads that use the profile.
+- **New, Duplicate and Delete,** and Deleted profiles restored within 30 days.
+
+**Built in:** goal 34 (D65). The Knowledge tab's access is edited here once the Brain exists (goal 29).
+
 ### Fleet · desktop
 
 ![Fleet on the desktop](mockups/fleet-desktop.png)
@@ -218,6 +234,12 @@ The same web UI, installed as an app on the phone (D10). Goal 07 adds web push, 
 ![Fleet on the phone](mockups/fleet-phone.png)
 
 **What it shows:** each machine's load and what needs you there, with All, Needs you and GPU filters. **Built in:** goal 10.
+
+### Profiles · phone
+
+![Profiles on the phone](mockups/profiles-phone.png)
+
+**What it shows:** the profiles with what needs a look, and an agent's change to approve with one thumb. A profile opens its sections and which version each machine holds, with Send now. **Built in:** goal 34.
 
 ### App · phone
 

@@ -167,6 +167,26 @@
       "expand": "fill",
       "is_interactive": true,
       "png": "project-desktop.png"
+    },
+    "Profiles.dc.html": {
+      "x": 9120,
+      "y": 0,
+      "w": 1440,
+      "h": 960,
+      "title": "Profiles · desktop",
+      "expand": "fill",
+      "is_interactive": true,
+      "png": "profiles-desktop.png"
+    },
+    "PhoneProfiles.dc.html": {
+      "x": 3950,
+      "y": 2800,
+      "w": 390,
+      "h": 844,
+      "title": "Profiles · phone",
+      "is_interactive": true,
+      "radius": 44,
+      "png": "profiles-phone.png"
     }
   },
   "order": [
@@ -176,6 +196,7 @@
     "Brain.dc.html",
     "BrainDoc.dc.html",
     "Project.dc.html",
+    "Profiles.dc.html",
     "Fleet.dc.html",
     "Apps.dc.html",
     "AppView.dc.html",
@@ -184,6 +205,7 @@
     "PhoneRoom.dc.html",
     "PhoneFleet.dc.html",
     "PhoneApp.dc.html",
+    "PhoneProfiles.dc.html",
     "Footer.dc.html",
     "FooterOpen.dc.html"
   ],
@@ -193,7 +215,7 @@
       "y": -300,
       "text": "Desktop: T3 Code's shell with Magnesium's places",
       "kind": "title1",
-      "maxW": 9040
+      "maxW": 10560
     },
     "rowFleet": {
       "x": 0,

@@ -101,8 +101,10 @@ Goal 03 built profiles: an agent's instructions, skills, tools and sandbox, kept
 
 ## Goal summary
 
-Not started.
+**2026-10-19, in progress: the boards are drawn and wait for the owner's approval (gate 1).** Profiles · desktop and Profiles · phone are on the mock canvas, which now lives in the repo (`docs/magnesium/mockups/canvas/`, `vp run mocks`). Every tab, the agent's change, a refused profile, Delete, Restore and New work on the desktop board. Nothing is built yet.
 
 ## Next steps
 
-1. Draw the Profiles board and get the owner's approval.
+1. The owner approves the Profiles boards, or says what to change (gate 1), and accepts or rejects goal 03's board differences (gate 2).
+2. Once approved, every board's sidebar gains the Profiles place.
+3. Build: the profile service and its agent operations first, then the page.
