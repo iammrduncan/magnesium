@@ -27,11 +27,19 @@ import {
   LocalHomeItem,
 } from "./home.ts";
 import {
+  DeletedProfile,
+  ProfileChange,
   ProfileCheckResult,
+  ProfileCreateInput,
+  ProfileDetail,
+  ProfileError,
   ProfileList,
+  ProfileNameInput,
   ProfilePush,
   ProfilePushResult,
+  ProfilePutBackInput,
   ProfileRevision,
+  ProfileSaveResult,
   SandboxList,
 } from "./profiles.ts";
 import {
@@ -81,6 +89,14 @@ export const MAGNESIUM_WS_METHODS = {
   listSandboxes: "magnesium.sandboxes.list",
   profileRevision: "magnesium.profiles.revision",
   pushProfiles: "magnesium.profiles.push",
+  profileDetail: "magnesium.profiles.detail",
+  profileSave: "magnesium.profiles.save",
+  profileCreate: "magnesium.profiles.create",
+  profileRemove: "magnesium.profiles.remove",
+  profileDeleted: "magnesium.profiles.deleted",
+  profileRestore: "magnesium.profiles.restore",
+  profilePutBack: "magnesium.profiles.putBack",
+  profileSendNow: "magnesium.profiles.sendNow",
   needsLocal: "magnesium.needs.local",
   needsAnswer: "magnesium.needs.answer",
   needsDetail: "magnesium.needs.detail",
@@ -197,6 +213,46 @@ const ProfileRevisionRpc = Rpc.make(MAGNESIUM_WS_METHODS.profileRevision, {
 const PushProfilesRpc = Rpc.make(MAGNESIUM_WS_METHODS.pushProfiles, {
   payload: ProfilePush,
   success: ProfilePushResult,
+}).annotate(RequiredScope, AuthOrchestrationOperateScope);
+
+// Profiles managed from the app (goal 34): read one whole, change it a file or a
+// setting at a time, its history, and the trash. A change decides what agents run
+// with, so it takes the scope a push does.
+const ProfileDetailRpc = Rpc.make(MAGNESIUM_WS_METHODS.profileDetail, {
+  payload: ProfileNameInput,
+  success: ProfileDetail,
+  error: ProfileError,
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
+const ProfileSaveRpc = Rpc.make(MAGNESIUM_WS_METHODS.profileSave, {
+  payload: ProfileChange,
+  success: ProfileSaveResult,
+  error: ProfileError,
+}).annotate(RequiredScope, AuthOrchestrationOperateScope);
+const ProfileCreateRpc = Rpc.make(MAGNESIUM_WS_METHODS.profileCreate, {
+  payload: ProfileCreateInput,
+  success: ProfileSaveResult,
+  error: ProfileError,
+}).annotate(RequiredScope, AuthOrchestrationOperateScope);
+const ProfileRemoveRpc = Rpc.make(MAGNESIUM_WS_METHODS.profileRemove, {
+  payload: ProfileNameInput,
+  error: ProfileError,
+}).annotate(RequiredScope, AuthOrchestrationOperateScope);
+const ProfileDeletedRpc = Rpc.make(MAGNESIUM_WS_METHODS.profileDeleted, {
+  payload: Schema.Struct({}),
+  success: Schema.Array(DeletedProfile),
+  error: ProfileError,
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
+const ProfileRestoreRpc = Rpc.make(MAGNESIUM_WS_METHODS.profileRestore, {
+  payload: ProfileNameInput,
+  error: ProfileError,
+}).annotate(RequiredScope, AuthOrchestrationOperateScope);
+const ProfilePutBackRpc = Rpc.make(MAGNESIUM_WS_METHODS.profilePutBack, {
+  payload: ProfilePutBackInput,
+  success: ProfileSaveResult,
+  error: ProfileError,
+}).annotate(RequiredScope, AuthOrchestrationOperateScope);
+const ProfileSendNowRpc = Rpc.make(MAGNESIUM_WS_METHODS.profileSendNow, {
+  payload: Schema.Struct({}),
 }).annotate(RequiredScope, AuthOrchestrationOperateScope);
 
 // Home (goal 06). Each server's own items, which the hub follows on every machine,
@@ -365,6 +421,14 @@ export const MagnesiumRpcGroup = RpcGroup.make(
   ListSandboxesRpc,
   ProfileRevisionRpc,
   PushProfilesRpc,
+  ProfileDetailRpc,
+  ProfileSaveRpc,
+  ProfileCreateRpc,
+  ProfileRemoveRpc,
+  ProfileDeletedRpc,
+  ProfileRestoreRpc,
+  ProfilePutBackRpc,
+  ProfileSendNowRpc,
   NeedsLocalRpc,
   NeedsAnswerRpc,
   NeedsDetailRpc,

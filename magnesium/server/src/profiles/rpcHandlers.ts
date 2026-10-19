@@ -4,6 +4,7 @@ import * as Layer from "effect/Layer";
 
 import { pushStatuses } from "../agents/operations.ts";
 import { checkProfiles, listProfiles, listSandboxes } from "./catalog.ts";
+import { ProfileStore } from "./ProfileStore.ts";
 import { ProfileSync } from "./ProfileSync.ts";
 import { readRevision, receivePush } from "./receive.ts";
 
@@ -66,7 +67,73 @@ const pushProfilesHandler = MagnesiumRpcGroup.toLayerHandler(
   }),
 );
 
+/**
+ * Profiles changed from the app (goal 34). The browser speaks for the owner, so
+ * its changes are "You" in a profile's history.
+ */
+const OWNER = "You";
+
+const storeHandlers = Layer.mergeAll(
+  MagnesiumRpcGroup.toLayerHandler(
+    MAGNESIUM_WS_METHODS.profileDetail,
+    Effect.gen(function* () {
+      const store = yield* ProfileStore;
+      return (input) => store.detail(input.name);
+    }),
+  ),
+  MagnesiumRpcGroup.toLayerHandler(
+    MAGNESIUM_WS_METHODS.profileSave,
+    Effect.gen(function* () {
+      const store = yield* ProfileStore;
+      return (change) => store.save(change, OWNER);
+    }),
+  ),
+  MagnesiumRpcGroup.toLayerHandler(
+    MAGNESIUM_WS_METHODS.profileCreate,
+    Effect.gen(function* () {
+      const store = yield* ProfileStore;
+      return (input) => store.create(input, OWNER);
+    }),
+  ),
+  MagnesiumRpcGroup.toLayerHandler(
+    MAGNESIUM_WS_METHODS.profileRemove,
+    Effect.gen(function* () {
+      const store = yield* ProfileStore;
+      return (input) => store.remove(input.name, OWNER);
+    }),
+  ),
+  MagnesiumRpcGroup.toLayerHandler(
+    MAGNESIUM_WS_METHODS.profileDeleted,
+    Effect.gen(function* () {
+      const store = yield* ProfileStore;
+      return () => store.deleted;
+    }),
+  ),
+  MagnesiumRpcGroup.toLayerHandler(
+    MAGNESIUM_WS_METHODS.profileRestore,
+    Effect.gen(function* () {
+      const store = yield* ProfileStore;
+      return (input) => store.restore(input.name, OWNER);
+    }),
+  ),
+  MagnesiumRpcGroup.toLayerHandler(
+    MAGNESIUM_WS_METHODS.profilePutBack,
+    Effect.gen(function* () {
+      const store = yield* ProfileStore;
+      return (input) => store.putBack(input, OWNER);
+    }),
+  ),
+  MagnesiumRpcGroup.toLayerHandler(
+    MAGNESIUM_WS_METHODS.profileSendNow,
+    Effect.gen(function* () {
+      const store = yield* ProfileStore;
+      return () => store.sendNow;
+    }),
+  ),
+);
+
 export const profileRpcHandlersLayer = Layer.mergeAll(
+  storeHandlers,
   listProfilesHandler,
   checkProfilesHandler,
   listSandboxesHandler,
