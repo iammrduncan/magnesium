@@ -10,7 +10,7 @@ Goals are tested by hand on a real fleet: a hub and at least two machines, one o
 
 ## Goals and what they need
 
-The build order and each goal's status are in [TRACKER.md](../../../TRACKER.md). This table says what each goal makes testable and what it builds on; the picture below it shows the tracks.
+The build order and each goal's status are in [TRACKER.md](../../../TRACKER.md). This table says what each goal makes testable and what it builds on; the tracker draws how the goals depend on each other, and which can run side by side.
 
 | #   | Goal                                                                         | What you can test at the end                                                                                                                           | Needs          | Boards made real                                                        |
 | --- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------- | ----------------------------------------------------------------------- |
@@ -51,27 +51,7 @@ The build order and each goal's status are in [TRACKER.md](../../../TRACKER.md).
 | 35  | [Run the fleet from the app](35-run-the-fleet-from-the-app.goal)             | Update, roll back and back up any server from Fleet, the hub included; add, forget and edit machines and pods; see each server's backups and time zone | 04, 06, 25     | Fleet · desktop, Fleet · phone                                          |
 | 36  | [Brain sources](36-brain-sources.goal)                                       | Add, sync, pause, fix and remove what feeds the Brain; the old collectors move in; each new item says why it matters                                   | 29             | Brain · desktop (sources)                                               |
 
-```text
-01 ─► 02 ─┬─► 03 ──────────────────────────────────────┐
-          └─► 04 ─► 05 ─► 06 ─► 25 k8s ─► 24 V2 ─► 34 profiles ─► 35 fleet ops ─► 33 waiting ─► 15 projects ─► 07
-                     │     │                           │
-     after 24, beside 15:  26 recaps, 30 accounts      │
-                           30 ─► 31 add over SSH ─► 32 clusters
-     after 07, in parallel:                            │
-       rooms   08 ─► 09                (needs 03)
-       fleet   10 ─► 11 schedule       (needs 03)
-               10 ─► 18 agent control
-               10 ─► 19 harnesses and sandboxes
-       apps    27 design ─► 16 apps ─► 28 machine parts ─► 17 builder
-                            (16 and 28 need 10; 17 needs 18)
-       brain   29 Magnesium Brain ─► 12 ─► 13 ─► 14 learning
-               29 ─► 36 sources
-                                     12 ─► 23 project knowledge (needs 15)
-       pill    20
-     then      21 Hermes moves (07, 09, 13, 18) ─► 22 release
-```
-
-Goals in different tracks can run at the same time; see [Running goals in parallel](#running-goals-in-parallel).
+Goals in the same stage of [the tracker's graph](../../../TRACKER.md#what-runs-in-parallel) can run at the same time; see [Running goals in parallel](#running-goals-in-parallel) for how.
 
 ## Running goals in parallel
 

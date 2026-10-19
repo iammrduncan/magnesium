@@ -44,3 +44,91 @@ The one place for the order goals are built in and where each one stands. Each g
 | [20](docs/magnesium/goals/20-desktop-pill.goal)                        | 34    | **Desktop pill.** A small desktop pill shows who needs you and approves in one click.                                                                                                                                                                           | Planned  |
 | [21](docs/magnesium/goals/21-hermes-moves.goal)                        | 35    | **Hermes moves.** Bots import from Hermes Agent one at a time, with a trial window, until Hermes can be retired.                                                                                                                                                | Planned  |
 | [22](docs/magnesium/goals/22-release.goal)                             | 36    | **Release.** A day of daily use, and upgrade, rollback and restore drills pass.                                                                                                                                                                                 | Planned  |
+
+## What runs in parallel
+
+Drawn from each goal's `depends_on`. Goals in the same stage don't depend on each other and can run side by side; an arrow means the lower goal waits for the upper one. **Order** in the table above picks which ready goal goes first. Redraw this when a goal's `depends_on` changes or a goal is verified.
+
+```mermaid
+flowchart TD
+  built(["Built: 01–06, 24, 25"])
+  subgraph S1["Stage 1: ready now"]
+    g34["34 Profiles in the app"]
+    g35["35 Run the fleet from the app"]
+    g33["33 Waiting on you"]
+    g15["15 Projects"]
+    g30["30 Accounts and model access"]
+    g26["26 Recaps"]
+    g07["07 Phone and push"]
+    g08["08 Rooms"]
+    g10["10 Fleet and launch"]
+    g29["29 Magnesium Brain"]
+    g27["27 Design system"]
+    g20["20 Desktop pill"]
+  end
+  subgraph S2["Stage 2"]
+    g31["31 Add a machine over SSH"]
+    g09["09 Room routing"]
+    g11["11 Schedule"]
+    g18["18 Agent control"]
+    g36["36 Brain sources"]
+    g12["12 Brain reader"]
+    g16["16 App host"]
+  end
+  subgraph S3["Stage 3"]
+    g32["32 Kubernetes clusters from the hub"]
+    g13["13 Brain memories"]
+    g23["23 Project knowledge"]
+    g28["28 Machine parts"]
+  end
+  subgraph S4["Stage 4"]
+    g19["19 More harnesses and sandboxes"]
+    g14["14 Profile learning"]
+    g17["17 App builder"]
+    g21["21 Hermes moves"]
+  end
+  subgraph S5["Stage 5: after every other goal"]
+    g22["22 Release"]
+  end
+  built --> S1
+  g30 --> g31
+  g08 --> g09
+  g10 --> g11
+  g10 --> g18
+  g29 --> g36
+  g29 --> g12
+  g10 --> g16
+  g27 --> g16
+  g31 --> g32
+  g12 --> g13
+  g12 --> g23
+  g15 --> g23
+  g16 --> g28
+  g10 --> g19
+  g32 --> g19
+  g13 --> g14
+  g18 --> g17
+  g28 --> g17
+  g30 --> g17
+  g07 --> g21
+  g09 --> g21
+  g13 --> g21
+  g18 --> g21
+  S4 ~~~ S5
+  classDef next stroke-width:3px
+  class g34 next
+```
+
+| Stage | These can run side by side                                                                                                                                                                                                              | Each one waits on                                                 |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| 1     | 34 Profiles in the app, 35 Run the fleet from the app, 33 Waiting on you, 15 Projects, 30 Accounts and model access, 26 Recaps, 07 Phone and push, 08 Rooms, 10 Fleet and launch, 29 Magnesium Brain, 27 Design system, 20 Desktop pill | Only what's built                                                 |
+| 2     | 31 Add a machine over SSH, 09 Room routing, 11 Schedule, 18 Agent control, 36 Brain sources, 12 Brain reader, 16 App host                                                                                                               | 31 ← 30; 09 ← 08; 11 ← 10; 18 ← 10; 36 ← 29; 12 ← 29; 16 ← 10, 27 |
+| 3     | 32 Kubernetes clusters from the hub, 13 Brain memories, 23 Project knowledge, 28 Machine parts                                                                                                                                          | 32 ← 31; 13 ← 12; 23 ← 12, 15; 28 ← 16                            |
+| 4     | 19 More harnesses and sandboxes, 14 Profile learning, 17 App builder, 21 Hermes moves                                                                                                                                                   | 19 ← 10, 32; 14 ← 13; 17 ← 18, 28, 30; 21 ← 07, 09, 13, 18        |
+| 5     | 22 Release                                                                                                                                                                                                                              | Every other goal                                                  |
+
+The longest serial chains, each four goals before Release:
+
+- 30 Accounts → 31 Add over SSH → 32 Clusters → 19 Harnesses and sandboxes
+- 29 Magnesium Brain → 12 Brain reader → 13 Brain memories → 14 Profile learning, or → 21 Hermes moves
+- 10 Fleet and 27 Design system → 16 App host → 28 Machine parts → 17 App builder
