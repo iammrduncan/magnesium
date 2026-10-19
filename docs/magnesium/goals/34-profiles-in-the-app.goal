@@ -115,6 +115,13 @@ Goal 03 built profiles: an agent's instructions, skills, tools and sandbox, kept
 - **Where a command runs:** approval cards, in the thread and on Home, say "Runs on <machine> in the <level> sandbox".
 - **Docs:** the user guide's profiles page covers the app, agents' asks and connecting an outside agent; doc 13 has the screen's status.
 - **Tests passed:** the profile store, RPC and request tests, including an agent on a machine whose ask the hub applies, and the MCP registration test (the profile tools sit on the same `/mcp` server as upstream's). A scratch server, built as it ships, served all nine agent tools; an outside agent's `update_profile` reached Home, and Approve made version 2 in the agent's name and yours. The full typecheck passes. The full test run: see Next steps.
+- **Compared with the boards** on a scratch server, in light and dark, at desktop width and in a 390-pixel frame. The ask's banner, the warning dot and count, Tools with Allow, Ask or Off per tool, History, and Home's Profile change card match. Differences for the owner to accept or reject:
+  1. The profile list sits on the page beside the profile, not in the app sidebar under the places.
+  2. Delivery wraps below the tabs where the page is narrow, rather than keeping its own right-hand column, and there is no "Used by" list of the profile's threads (Delete names them).
+  3. There is no New thread button in the profile's header.
+  4. A list row says where the profile runs ("Every machine"), without its version or "1 machine behind".
+  5. On the phone the list sits above the open profile, rather than a list screen with "N profiles · N asks you · N refused", the asks on top and each profile on its own screen.
+- **Fixed along the way:** Magnesium's own sockets, browser to hub and hub to each machine, dropped and redialled every 10 seconds (Effect's ping timeout allowed one interval), so Home flashed "Lost the hub. Reconnecting..." and the footer flickered Offline. They now allow 15 seconds, as upstream's clients do.
 - **Merge cost:** 271 `magnesium:` markers in 87 upstream files. This goal edits `apps/server/src/server.ts`, the command palette, the composer, its approval panel and the model picker. A rehearsal against upstream's latest stable tag (v0.1.0) is clean, since main already has it; against upstream's main, 27 files conflict in 48 hunks, `server.ts` and the composer among them with one hunk each.
 
 ## Next steps
