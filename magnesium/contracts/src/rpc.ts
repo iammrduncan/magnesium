@@ -81,6 +81,14 @@ import {
  */
 export const MAGNESIUM_WS_PATH = "/api/magnesium/ws";
 
+/**
+ * How long a client waits for any frame before it drops the socket. Effect's
+ * client pings every 5 seconds and by default allows only one interval, so on
+ * a fast link it drops a healthy socket every 10 seconds; upstream's clients
+ * allow 15 seconds for the same reason.
+ */
+export const MAGNESIUM_PING_TIMEOUT = "15 seconds";
+
 export const MAGNESIUM_WS_METHODS = {
   ping: "magnesium.ping",
   serverStatus: "magnesium.server.status",

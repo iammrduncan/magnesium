@@ -1,4 +1,4 @@
-import { MAGNESIUM_WS_PATH, MagnesiumRpcGroup } from "@magnesium/contracts";
+import { MAGNESIUM_PING_TIMEOUT, MAGNESIUM_WS_PATH, MagnesiumRpcGroup } from "@magnesium/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schedule from "effect/Schedule";
@@ -35,6 +35,7 @@ export const connectMagnesium = (url: string) =>
       Layer.effect(
         RpcClient.Protocol,
         RpcClient.makeProtocolSocket({
+          pingTimeout: MAGNESIUM_PING_TIMEOUT,
           retryTransientErrors: false,
           retryPolicy: Schedule.recurs(0),
         }),
