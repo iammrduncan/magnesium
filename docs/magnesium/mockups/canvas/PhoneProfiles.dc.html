@@ -138,7 +138,7 @@ class Component extends DCLogic {
     const dark = (this.props.theme ?? 'light') === 'dark';
     const P = {
       serving: { initials: 'SE', color: '#c2410c', display: 'Serving', desc: 'Deploys and serves models on the GPU machines.', line: 'Claude Code · container', v: 14, machines: [['gpu-a', 'Current'], ['gpu-b', 'Current'], ['workstation', 'Current']], skills: 6, tools: 3, env: '1 missing on workstation' },
-      research: { initials: 'RE', color: '#0e7490', display: 'Research', desc: 'Runs evals and reads papers.', line: 'Claude Code and Codex · container', v: 9, machines: [['gpu-a', 'Current'], ['workstation', 'Current'], ['kb-host', 'Behind']], skills: 2, tools: 1, env: 'All set' },
+      research: { initials: 'RE', color: '#0e7490', display: 'Research', desc: 'Runs evals and reads papers.', line: 'Claude Code and Codex · container', v: 9, every: true, machines: [['workstation', 'Current'], ['gpu-a', 'Current'], ['gpu-b', 'Current'], ['enclave-1', 'Current'], ['kb-host', 'Behind'], ['nas', 'Not connected']], skills: 2, tools: 1, env: 'All set' },
       ops: { initials: 'OP', color: '#4d7c0f', display: 'Ops', desc: 'Keeps services, backups and certificates healthy.', line: 'Codex · container', v: 6, machines: [['enclave-1', 'Current'], ['kb-host', 'Current'], ['nas', 'Not connected']], skills: 2, tools: 0, env: 'None' },
       scribe: { initials: 'SC', color: '#be185d', display: 'Scribe', desc: 'Indexes documents and writes notes.', line: 'Claude Code · fenced', v: 8, refused: true, machines: [['kb-host', 'Kept v7']], skills: 1, tools: 0, env: 'None' },
       reviewer: { initials: 'RV', color: '#475569', display: 'Reviewer', desc: 'Reviews pull requests.', line: 'Codex · fenced', v: 3, machines: [['workstation', 'Current']], skills: 0, tools: 0, env: 'None' }
@@ -150,7 +150,7 @@ class Component extends DCLogic {
       const q = P[n];
       const behind = q.machines.some((m) => m[1] === 'Behind');
       const off = q.machines.some((m) => m[1] === 'Not connected');
-      const sub = q.refused ? 'Refused · 1 issue' : n === 'serving' && s.ask === 'pending' ? 'v' + v(n) + ' · research asks a change' : behind ? 'v' + v(n) + ' · 1 machine behind' : off ? 'v' + v(n) + ' · 1 machine offline' : 'v' + v(n) + ' · on ' + q.machines.length + (q.machines.length === 1 ? ' machine' : ' machines');
+      const sub = q.refused ? 'Refused · 1 issue' : n === 'serving' && s.ask === 'pending' ? 'v' + v(n) + ' · research asks a change' : behind ? 'v' + v(n) + ' · 1 machine behind' : off ? 'v' + v(n) + ' · 1 machine offline' : 'v' + v(n) + ' · ' + (q.every ? 'every machine' : 'on ' + q.machines.length + (q.machines.length === 1 ? ' machine' : ' machines'));
       return {
         initials: q.initials, display: q.display, sub: sub, avStyle: av(q, 36),
         subStyle: 'font-size: 13px; color: ' + (q.refused ? 'var(--err)' : (n === 'serving' && s.ask === 'pending') || behind ? 'var(--warn)' : 'var(--muted)'),
@@ -160,7 +160,7 @@ class Component extends DCLogic {
     });
     const p = P[s.sel];
     const row = (i) => 'width: 100%; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 14px; border: 0; border-top: ' + (i === 0 ? '0' : '1px solid var(--border)') + '; background: transparent';
-    const sections = [['Instructions', '4 files'], ['Skills', String(p.skills)], ['Tools', String(p.tools)], ['Environment', p.env], ['Runs on', p.machines.length + (p.machines.length === 1 ? ' machine' : ' machines')], ['Knowledge', 'Team memory, its own'], ['History', 'v' + v(s.sel)]].map((x, i) => ({
+    const sections = [['Instructions', '4 files'], ['Skills', String(p.skills)], ['Tools', String(p.tools)], ['Environment', p.env], ['Runs on', p.every ? 'Every machine' : p.machines.length + (p.machines.length === 1 ? ' machine' : ' machines')], ['Brain', 'Team memory, its own section'], ['History', 'v' + v(s.sel)]].map((x, i) => ({
       name: x[0], note: x[1], rowStyle: row(i), noteStyle: 'font-size: 13px; color: ' + (x[0] === 'Environment' && /missing/.test(x[1]) ? 'var(--warn)' : 'var(--muted)')
     }));
     const delivery = p.machines.map((m, i) => {

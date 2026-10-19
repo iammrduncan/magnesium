@@ -157,7 +157,7 @@ Not mocked yet: **Schedule** (goal 11 mocks it) and the **desktop pill** (goal 2
 
 - **Profiles is a place,** listed under the places like Fleet's machines, each with its version and anything wrong: a refused profile, a machine behind, an agent asking for a change.
 - **An agent's change waits for you:** research asks to add a skill to Serving; the diff, with Reject and Approve, here and on Home.
-- **Every part of a profile in tabs:** its instructions files in an editor that checks on save, skills, MCP tools with the address of Magnesium's own, environment variable names set or missing on each machine, harnesses, default sandbox, machines and launch arguments, Brain access per section, and history with Put back.
+- **Every part of a profile in tabs:** its instructions files, with Add a file, in an editor that checks on save; skills; MCP servers, Magnesium's own among them, each tool Allowed, Asking first or Off; environment variable names set or missing on each machine; where it runs, every machine by default or the ones you tick, with its harnesses, default sandbox and launch arguments; what it may read and write in the Brain; and history with Put back.
 - **Delivery:** which version each machine holds, with Send now, and the threads that use the profile.
 - **New, Duplicate and Delete,** and Deleted profiles restored within 30 days.
 

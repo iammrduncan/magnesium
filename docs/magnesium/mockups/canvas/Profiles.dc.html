@@ -137,20 +137,39 @@ a{color:inherit;text-decoration:none}a:hover{color:inherit}
 
         <sc-if value="{{onInstructions}}" hint-placeholder-val="{{ true }}">
           <div style="display: flex; gap: 14px; flex-wrap: wrap; min-height: 0">
-            <div role="list" style="flex: 0 0 170px; display: flex; flex-direction: column; gap: 2px">
-              <sc-for list="{{files}}" as="f" hint-placeholder-count="4">
-                <button type="button" role="listitem" onClick="{{f.pick}}" style="{{f.style}}">
-                  <code style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12.5px">{{f.name}}</code>
-                  <span style="font-size: 11.5px; color: var(--muted)">{{f.note}}</span>
-                </button>
-              </sc-for>
+            <div style="flex: 0 0 180px; display: flex; flex-direction: column; gap: 2px">
+              <div role="list" style="display: flex; flex-direction: column; gap: 2px">
+                <sc-for list="{{files}}" as="f" hint-placeholder-count="3">
+                  <button type="button" role="listitem" onClick="{{f.pick}}" style="{{f.style}}">
+                    <code style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12.5px">{{f.name}}</code>
+                    <span style="font-size: 11.5px; color: var(--muted)">{{f.note}}</span>
+                  </button>
+                </sc-for>
+              </div>
+              <sc-if value="{{addingFile}}" hint-placeholder-val="{{ false }}">
+                <form onSubmit="{{addFile}}" style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px; padding: 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface)">
+                  <label for="pf-newfile" style="font-size: 12px; color: var(--muted)">File name</label>
+                  <input id="pf-newfile" type="text" value="{{newFile}}" onChange="{{onNewFile}}" placeholder="RUNBOOK.md" style="height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--canvas); font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12.5px; color: var(--fg)">
+                  <div style="display: flex; flex-wrap: wrap; gap: 4px">
+                    <sc-for list="{{fileSuggestions}}" as="g" hint-placeholder-count="2"><button type="button" onClick="{{g.pick}}" title="{{g.title}}" style="height: 24px; padding: 0 8px; border: 1px solid var(--border); border-radius: 999px; background: transparent; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11.5px; color: var(--muted)">{{g.name}}</button></sc-for>
+                  </div>
+                  <div style="display: flex; gap: 6px; justify-content: flex-end">
+                    <button type="button" class="hov" onClick="{{cancelAddFile}}" style="height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); font-size: 12.5px">Cancel</button>
+                    <button type="submit" style="{{addFileStyle}}">Add</button>
+                  </div>
+                </form>
+              </sc-if>
+              <sc-if value="{{notAddingFile}}" hint-placeholder-val="{{ true }}">
+                <button type="button" class="hov" onClick="{{startAddFile}}" style="margin-top: 6px; height: 30px; border: 1px dashed var(--border); border-radius: 8px; background: transparent; font-size: 12.5px; color: var(--muted)">Add a file</button>
+              </sc-if>
             </div>
             <div style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 8px">
               <label for="pf-editor" style="font-size: 12px; color: var(--muted)">{{fileHint}}</label>
               <textarea id="pf-editor" rows="11" value="{{fileText}}" onChange="{{onEdit}}" spellcheck="false" style="width: 100%; box-sizing: border-box; resize: vertical; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 10px 12px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12.5px; line-height: 1.55"></textarea>
-              <div style="display: flex; align-items: center; gap: 10px">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
                 <span style="{{checkStyle}}">{{checkText}}</span>
                 <span style="flex: 1"></span>
+                <sc-if value="{{canRemoveFile}}" hint-placeholder-val="{{ true }}"><button type="button" class="hov" onClick="{{removeFile}}" style="height: 30px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 13px; color: var(--err)">Remove file</button></sc-if>
                 <button type="button" class="hov" onClick="{{revertEdit}}" style="{{revertStyle}}">Revert</button>
                 <button type="button" class="pri" onClick="{{saveEdit}}" style="{{saveStyle}}">Save</button>
               </div>
@@ -174,23 +193,46 @@ a{color:inherit;text-decoration:none}a:hover{color:inherit}
 
         <sc-if value="{{onTools}}" hint-placeholder-val="{{ false }}">
           <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); flex-wrap: wrap">
-            <span style="flex: 1; min-width: 260px; font-size: 13px">Magnesium's own tools reach every thread on this profile. Other agents use the same address.</span>
+            <span style="flex: 1; min-width: 260px; font-size: 13px">Magnesium's own tools are an MCP server too. Other agents reach them at the same address.</span>
             <code style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--muted)">https://hub.example/api/magnesium/agents/mcp</code>
             <button type="button" class="hov" onClick="{{copyMcp}}" style="height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); font-size: 12.5px">{{copyLabel}}</button>
           </div>
           <div style="border: 1px solid var(--border); border-radius: 12px; background: var(--surface); overflow: hidden">
-            <sc-for list="{{tools}}" as="m" hint-placeholder-count="3">
-              <div style="display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 14px; border-top: {{m.border}}; flex-wrap: wrap">
-                <div style="flex: 1; min-width: 220px"><div style="color: var(--fg-strong); font-weight: 500">{{m.name}}</div><code style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--muted)">{{m.how}}</code></div>
-                <sc-for list="{{m.secrets}}" as="s" hint-placeholder-count="1"><span style="{{s.style}}">{{s.text}}</span></sc-for>
-                <button type="button" class="hov" style="height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); font-size: 12.5px">Edit</button>
-                <button type="button" class="hov" onClick="{{m.remove}}" aria-label="Remove {{m.name}}" style="height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); font-size: 12.5px">Remove</button>
+            <sc-for list="{{tools}}" as="m" hint-placeholder-count="4">
+              <div style="border-top: {{m.border}}">
+                <div style="display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 14px 8px 8px; flex-wrap: wrap">
+                  <button type="button" class="hov" onClick="{{m.toggle}}" aria-expanded="{{m.expanded}}" aria-label="{{m.toggleLabel}}" style="width: 30px; height: 30px; border: 0; border-radius: 7px; background: transparent; display: grid; place-items: center; color: var(--muted)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="{{m.chev}}"><path d="m9 6 6 6-6 6"></path></svg>
+                  </button>
+                  <div style="flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 3px">
+                    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap"><span style="color: var(--fg-strong); font-weight: 500">{{m.name}}</span><span style="font-size: 12px; color: var(--muted)">{{m.summary}}</span></div>
+                    <code style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--muted)">{{m.how}}</code>
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap"><sc-for list="{{m.secrets}}" as="s" hint-placeholder-count="1"><span style="{{s.style}}">{{s.text}}</span></sc-for></div>
+                  </div>
+                  <sc-if value="{{m.removable}}" hint-placeholder-val="{{ true }}">
+                    <button type="button" class="hov" style="height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); font-size: 12.5px">Edit</button>
+                    <button type="button" class="hov" onClick="{{m.remove}}" aria-label="Remove {{m.name}}" style="height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); font-size: 12.5px">Remove</button>
+                  </sc-if>
+                </div>
+                <sc-if value="{{m.open}}" hint-placeholder-val="{{ false }}">
+                  <div style="display: flex; flex-direction: column; padding: 0 14px 8px 48px">
+                    <sc-for list="{{m.items}}" as="t" hint-placeholder-count="4">
+                      <div style="display: flex; align-items: center; gap: 10px; min-height: 42px; border-top: 1px solid var(--border); flex-wrap: wrap">
+                        <code style="flex: 0 0 170px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12.5px; color: var(--fg-strong)">{{t.name}}</code>
+                        <span style="flex: 1; min-width: 160px; font-size: 12.5px; color: var(--muted)">{{t.desc}}</span>
+                        <div role="group" aria-label="{{t.name}}" style="display: inline-flex; padding: 2px; border-radius: 9px; background: var(--hover)">
+                          <sc-for list="{{t.options}}" as="o" hint-placeholder-count="3"><button type="button" aria-pressed="{{o.pressed}}" onClick="{{o.pick}}" style="{{o.style}}">{{o.name}}</button></sc-for>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
               </div>
             </sc-for>
           </div>
           <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
             <button type="button" class="hov" style="height: 32px; padding: 0 12px; border: 1px dashed var(--border); border-radius: 8px; background: transparent; font-size: 13px; color: var(--muted)">Add an MCP server</button>
-            <span style="font-size: 12.5px; color: var(--muted)">A server's secrets are variable names; each machine supplies the values.</span>
+            <span style="font-size: 12.5px; color: var(--muted)">Each tool is Allowed, Asks first, or Off. A new server's tools ask first until you allow them. Secrets are variable names; each machine supplies the values.</span>
           </div>
         </sc-if>
 
@@ -229,9 +271,11 @@ a{color:inherit;text-decoration:none}a:hover{color:inherit}
           </div>
           <fieldset style="margin: 0; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px">
             <legend style="padding: 0 4px; font-size: 12px; color: var(--muted)">Machines</legend>
-            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 12px">
+            <label style="display: flex; align-items: center; gap: 8px; min-height: 30px; color: var(--fg-strong); font-weight: 500"><input type="checkbox" checked="{{everyMachine}}" onChange="{{toggleEvery}}"> Every machine, new ones included</label>
+            <span style="font-size: 12.5px; color: var(--muted)">{{everyNote}}</span>
+            <div style="{{pickGridStyle}}">
               <sc-for list="{{machinePicks}}" as="m" hint-placeholder-count="6">
-                <label style="display: flex; align-items: center; gap: 8px; min-height: 30px"><input type="checkbox" checked="{{m.on}}" onChange="{{m.toggle}}"> {{m.name}} <span style="font-size: 12px; color: var(--muted)">{{m.kind}}</span></label>
+                <label style="display: flex; align-items: center; gap: 8px; min-height: 30px"><input type="checkbox" checked="{{m.on}}" disabled="{{everyMachine}}" onChange="{{m.toggle}}"> {{m.name}} <span style="font-size: 12px; color: var(--muted)">{{m.kind}}</span></label>
               </sc-for>
             </div>
           </fieldset>
@@ -242,7 +286,10 @@ a{color:inherit;text-decoration:none}a:hover{color:inherit}
         </sc-if>
 
         <sc-if value="{{onKnowledge}}" hint-placeholder-val="{{ false }}">
-          <p style="margin: 0; color: var(--muted); font-size: 13px">What {{sel.display}} may read and write in the Brain. Each thread gets a short-lived pass for these sections; none is kept in the profile.</p>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+            <p style="margin: 0; flex: 1; min-width: 300px; color: var(--muted); font-size: 13px">What {{sel.display}} may read and write in the Brain. Each thread gets a short-lived pass for these sections; none is kept in the profile. The Brain's own settings, its sections and sources, are in the Brain.</p>
+            <a href="Brain.dc.html" class="hov" style="height: 30px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 13px; display: inline-flex; align-items: center">Brain settings</a>
+          </div>
           <div style="border: 1px solid var(--border); border-radius: 12px; background: var(--surface); overflow: hidden">
             <sc-for list="{{knowledge}}" as="k" hint-placeholder-count="4">
               <div style="display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 6px 14px; border-top: {{k.border}}; flex-wrap: wrap">
@@ -328,7 +375,7 @@ a{color:inherit;text-decoration:none}a:hover{color:inherit}
           <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted)">What it does
             <input type="text" value="{{newDesc}}" onChange="{{onNewDesc}}" placeholder="One line" style="height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); font-size: 14px; color: var(--fg)">
           </label>
-          <div style="font-size: 12.5px; color: var(--muted)">Runs on Claude Code, fenced, on workstation. Change any of it once it exists.</div>
+          <div style="font-size: 12.5px; color: var(--muted)">Runs on every machine, on Claude Code, fenced. Narrow any of it once it exists.</div>
           <span style="{{newCheckStyle}}">{{newCheck}}</span>
           <div style="display: flex; gap: 8px; justify-content: flex-end">
             <button type="button" class="hov" onClick="{{closeDialog}}" style="height: 32px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface)">Cancel</button>
@@ -350,7 +397,8 @@ class Component extends DCLogic {
     return Object.assign({
       sel: 'serving', tab: 'instructions', file: 'CLAUDE.md', edits: {}, saved: {}, ask: 'pending', dialog: null,
       deleted: ['drafts'], gone: {}, created: [], toast: null, newName: '', newDesc: '', start: 'blank', copied: false,
-      sent: false, harness: {}, level: {}, machines: {}, args: {}, access: {}, version: {}, removedTools: {}
+      sent: false, harness: {}, level: {}, machines: {}, every: {}, args: {}, access: {}, version: {}, removedTools: {},
+      addedFiles: {}, removedFiles: {}, addingFile: false, newFile: '', openTools: { grafana: true }, perms: {}
     }, this.state || {});
   }
 
@@ -363,30 +411,30 @@ class Component extends DCLogic {
   data() {
     return {
       serving: { initials: 'SE', color: '#c2410c', display: 'Serving', desc: 'Deploys and serves models on the GPU machines', harness: ['claude'], level: 'container', machines: ['gpu-a', 'gpu-b', 'workstation'], version: 14,
-        files: { 'AGENTS.md': '# serving\nYou deploy and serve models on the GPU machines.\n\n- Read deploy/README.md before you change a manifest.\n- Never apply anything to a cluster without an approval.\n- Prefer one replica across both cards to two that don’t fit.', 'CLAUDE.md': 'End every change with the kubectl diff it makes.', 'CONVENTIONS.md': 'Manifests live in deploy/, one file per service.\nNamespaces are named after the workload.', 'MEMORIES.md': '' },
+        files: { 'AGENTS.md': '# serving\nYou deploy and serve models on the GPU machines.\n\n- Read deploy/README.md before you change a manifest.\n- Never apply anything to a cluster without an approval.\n- Prefer one replica across both cards to two that don’t fit.', 'CLAUDE.md': 'End every change with the kubectl diff it makes.', 'CONVENTIONS.md': 'Manifests live in deploy/, one file per service.\nNamespaces are named after the workload.' },
         skills: [['k8s-manifests', 'Write and check Kubernetes manifests', 3], ['gpu-budget', 'Work out what fits in GPU memory', 2], ['vllm-tuning', 'Pick batch size and context for the GPUs at hand', 2], ['rollout-watch', 'Watch a rollout until it is ready', 1], ['grafana-panels', 'Read the serving dashboards', 1], ['incident-notes', 'Write up what broke and why', 1]],
-        tools: [['grafana', 'https://grafana.example/mcp', ['GRAFANA_TOKEN']], ['kubernetes', 'command: kube-mcp --read-only', ['KUBECONFIG']], ['huggingface', 'https://huggingface.example/mcp', ['HF_TOKEN']]],
+        tools: [['grafana', 'https://grafana.example/mcp', ['GRAFANA_TOKEN'], [['search_dashboards', 'Find dashboards by name or tag', 'allow'], ['query_panel', 'Read a panel\u2019s data', 'allow'], ['create_annotation', 'Mark a deploy on a dashboard', 'ask'], ['delete_dashboard', 'Delete a dashboard', 'off']]], ['kubernetes', 'command: kube-mcp --read-only', ['KUBECONFIG'], [['get_resources', 'List pods, services and deployments', 'allow'], ['pod_logs', 'Read a pod\u2019s logs', 'allow'], ['apply_manifest', 'Apply a manifest', 'ask'], ['delete_resource', 'Delete a resource', 'off']]], ['huggingface', 'https://huggingface.example/mcp', ['HF_TOKEN'], [['search_models', 'Search the model hub', 'allow'], ['download_model', 'Download weights to this machine', 'ask']]]],
         env: [['HF_TOKEN', 'huggingface tools', ['gpu-a', 'gpu-b', 'workstation']], ['GRAFANA_TOKEN', 'grafana tools', ['gpu-a', 'gpu-b']], ['KUBECONFIG', 'kubernetes tools', ['gpu-a', 'gpu-b', 'workstation']]],
         threads: [['Draft the serving deployment', 'gpu-a'], ['Seat in #serving-plan', 'gpu-a']] },
-      research: { initials: 'RE', color: '#0e7490', display: 'Research', desc: 'Runs evals and reads papers', harness: ['claude', 'codex'], level: 'container', machines: ['gpu-a', 'workstation', 'kb-host'], version: 9, behind: 'kb-host',
-        files: { 'AGENTS.md': '# research\nYou run evaluations and summarize papers.\n\n- Report numbers with the command that produced them.', 'CLAUDE.md': '', 'CONVENTIONS.md': '', 'MEMORIES.md': '' },
+      research: { initials: 'RE', color: '#0e7490', display: 'Research', desc: 'Runs evals and reads papers', harness: ['claude', 'codex'], level: 'container', machines: '*', version: 9, behind: 'kb-host',
+        files: { 'AGENTS.md': '# research\nYou run evaluations and summarize papers.\n\n- Report numbers with the command that produced them.' },
         skills: [['eval-runner', 'Run an eval suite and collect results', 4], ['paper-notes', 'Summarize a paper into the Brain', 1]],
-        tools: [['huggingface', 'https://huggingface.example/mcp', ['HF_TOKEN']]],
-        env: [['HF_TOKEN', 'huggingface tools', ['gpu-a', 'workstation', 'kb-host']]],
+        tools: [['huggingface', 'https://huggingface.example/mcp', ['HF_TOKEN'], [['search_models', 'Search the model hub', 'allow'], ['download_model', 'Download weights to this machine', 'ask']]]],
+        env: [['HF_TOKEN', 'huggingface tools', ['workstation', 'gpu-a', 'gpu-b', 'enclave-1', 'kb-host']]],
         threads: [['Long-context eval run', 'workstation'], ['KV-cache sweep, batch 4', 'gpu-a']] },
       ops: { initials: 'OP', color: '#4d7c0f', display: 'Ops', desc: 'Keeps services, backups and certificates healthy', harness: ['codex'], level: 'container', machines: ['enclave-1', 'kb-host', 'nas'], version: 6,
-        files: { 'AGENTS.md': '# ops\nYou keep services, backups and certificates healthy.', 'CLAUDE.md': '', 'CONVENTIONS.md': '', 'MEMORIES.md': '' },
+        files: { 'AGENTS.md': '# ops\nYou keep services, backups and certificates healthy.' },
         skills: [['backup-check', 'Verify last night’s backups', 2], ['cert-expiry', 'List certificates that expire soon', 1]],
         tools: [], env: [], threads: [['Rotate KB backups to the new pool', 'enclave-1'], ['Check certificate expiry', 'enclave-1']] },
       scribe: { initials: 'SC', color: '#be185d', display: 'Scribe', desc: 'Indexes documents and writes notes', harness: ['claude'], level: 'fenced', machines: ['kb-host'], version: 8, refused: true, lastGood: 'v7',
         issue: 'Launch arguments hold --dangerously-skip-permissions: full access is a choice per thread, never a profile setting.',
-        files: { 'AGENTS.md': '# scribe\nYou index documents and write notes.', 'CLAUDE.md': '', 'CONVENTIONS.md': '', 'MEMORIES.md': '' },
+        files: { 'AGENTS.md': '# scribe\nYou index documents and write notes.' },
         skills: [['index-papers', 'Add papers to the Brain', 2]], tools: [], env: [], threads: [['Index the October papers', 'kb-host']] },
       reviewer: { initials: 'RV', color: '#475569', display: 'Reviewer', desc: 'Reviews pull requests', harness: ['codex'], level: 'fenced', machines: ['workstation'], version: 3,
-        files: { 'AGENTS.md': '# reviewer\nYou review pull requests and say what to change.', 'CLAUDE.md': '', 'CONVENTIONS.md': '', 'MEMORIES.md': '' },
+        files: { 'AGENTS.md': '# reviewer\nYou review pull requests and say what to change.' },
         skills: [], tools: [], env: [], threads: [['Review PR #48: room router', 'workstation']] },
       drafts: { initials: 'DR', color: '#6d28d9', display: 'Drafts', desc: 'Drafted notes', harness: ['claude'], level: 'fenced', machines: ['workstation'], version: 2,
-        files: { 'AGENTS.md': '# drafts', 'CLAUDE.md': '', 'CONVENTIONS.md': '', 'MEMORIES.md': '' }, skills: [], tools: [], env: [], threads: [] }
+        files: { 'AGENTS.md': '# drafts' }, skills: [], tools: [], env: [], threads: [] }
     };
   }
 
@@ -401,7 +449,8 @@ class Component extends DCLogic {
     const selName = order.indexOf(s.sel) >= 0 ? s.sel : order[0];
     const p = D[selName];
     const av = (q, size) => 'flex: none; width: ' + size + 'px; height: ' + size + 'px; border-radius: ' + Math.round(size / 3.6) + 'px; background: ' + q.color + '; color: #ffffff; display: grid; place-items: center; font-size: ' + (size > 30 ? 12.5 : 10) + 'px; font-weight: 700';
-    const machinesOf = (n) => s.machines[n] || D[n].machines;
+    const everyOf = (n) => s.every[n] !== undefined ? s.every[n] : D[n].machines === '*';
+    const machinesOf = (n) => everyOf(n) ? machines.map((m) => m[0]) : (s.machines[n] || (D[n].machines === '*' ? machines.map((m) => m[0]) : D[n].machines));
     const versionOf = (n) => s.version[n] || D[n].version;
     const askPending = s.ask === 'pending' && order.indexOf('serving') >= 0;
 
@@ -409,7 +458,8 @@ class Component extends DCLogic {
       const q = D[n];
       const refused = !!q.refused;
       const behind = !!q.behind;
-      const sub = refused ? 'Refused · 1 issue' : behind ? 'v' + versionOf(n) + ' · 1 machine behind' : 'v' + versionOf(n) + ' · ' + machinesOf(n).length + (machinesOf(n).length === 1 ? ' machine' : ' machines');
+      const where = everyOf(n) ? 'every machine' : machinesOf(n).length + (machinesOf(n).length === 1 ? ' machine' : ' machines');
+      const sub = refused ? 'Refused · 1 issue' : behind ? 'v' + versionOf(n) + ' · 1 machine behind' : 'v' + versionOf(n) + ' · ' + where;
       return {
         initials: q.initials, display: q.display, sub: sub, hasAsk: n === 'serving' && askPending, current: String(n === selName),
         avStyle: av(q, 24),
@@ -423,22 +473,33 @@ class Component extends DCLogic {
       restore: () => { this.setState({ deleted: this.st().deleted.filter((x) => x !== n), sel: n }); this.toast(D[n].display + ' is back, with its history.'); }
     }));
 
-    const tabDefs = [['instructions', 'Instructions'], ['skills', 'Skills', p.skills.length], ['tools', 'Tools', p.tools.filter((t) => !s.removedTools[selName + t[0]]).length], ['env', 'Environment', p.env.length], ['runs', 'Runs on'], ['knowledge', 'Knowledge'], ['history', 'History']];
+    const seg = (on) => 'height: 28px; padding: 0 12px; border: 0; border-radius: 7px; font-size: 12.5px; ' + (on ? 'background: var(--surface); color: var(--fg-strong); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08)' : 'background: transparent; color: var(--muted)');
+    const tabDefs = [['instructions', 'Instructions'], ['skills', 'Skills', p.skills.length], ['tools', 'Tools', p.tools.filter((t) => !s.removedTools[selName + t[0]]).length], ['env', 'Environment', p.env.length], ['runs', 'Runs on'], ['knowledge', 'Brain'], ['history', 'History']];
     const tabs = tabDefs.map((t) => ({
       label: t[1], count: t[2] === undefined ? '' : String(t[2]), hasCount: t[2] !== undefined, selected: String(s.tab === t[0]),
       pick: () => this.setState({ tab: t[0] }),
       style: 'flex: none; height: 38px; padding: 0 12px; border: 0; background: transparent; font-size: 13px; margin-bottom: -1px; ' + (s.tab === t[0] ? 'color: var(--fg-strong); font-weight: 600; border-bottom: 2px solid var(--fg-strong)' : 'color: var(--muted); border-bottom: 2px solid transparent')
     }));
 
-    const fileKey = selName + '/' + s.file;
-    const base = s.saved[fileKey] !== undefined ? s.saved[fileKey] : p.files[s.file];
+    const added = s.addedFiles[selName] || {};
+    const fileNames = Object.keys(p.files).concat(Object.keys(added)).filter((f) => !s.removedFiles[selName + '/' + f]);
+    const file = fileNames.indexOf(s.file) >= 0 ? s.file : 'AGENTS.md';
+    const fileKey = selName + '/' + file;
+    const savedText = (f) => s.saved[selName + '/' + f] !== undefined ? s.saved[selName + '/' + f] : (p.files[f] !== undefined ? p.files[f] : (added[f] || ''));
+    const base = savedText(file);
     const text = s.edits[fileKey] !== undefined ? s.edits[fileKey] : base;
     const dirty = text !== base;
-    const files = Object.keys(p.files).map((f) => ({
-      name: f, note: f === 'AGENTS.md' ? 'Required' : (s.edits[selName + '/' + f] !== undefined && s.edits[selName + '/' + f] !== (s.saved[selName + '/' + f] !== undefined ? s.saved[selName + '/' + f] : p.files[f])) ? 'Unsaved' : (p.files[f] ? '' : 'Empty'),
-      pick: () => this.setState({ file: f }),
-      style: 'display: flex; flex-direction: column; align-items: flex-start; gap: 0; width: 100%; padding: 6px 10px; border: 0; border-radius: 8px; text-align: left; ' + (s.file === f ? 'background: var(--hover); color: var(--fg-strong)' : 'background: transparent; color: var(--fg)')
-    }));
+    const known = { 'AGENTS.md': 'Required', 'CLAUDE.md': 'Claude Code reads it', 'CONVENTIONS.md': 'House rules', 'MEMORIES.md': 'Kept between sessions' };
+    const files = fileNames.map((f) => {
+      const unsaved = s.edits[selName + '/' + f] !== undefined && s.edits[selName + '/' + f] !== savedText(f);
+      return {
+        name: f, note: unsaved ? 'Unsaved' : (known[f] || 'Named in AGENTS.md'),
+        pick: () => this.setState({ file: f }),
+        style: 'display: flex; flex-direction: column; align-items: flex-start; gap: 0; width: 100%; padding: 6px 10px; border: 0; border-radius: 8px; text-align: left; ' + (file === f ? 'background: var(--hover); color: var(--fg-strong)' : 'background: transparent; color: var(--fg)')
+      };
+    });
+    const newFile = (s.newFile || '').trim();
+    const validFile = /^[A-Za-z0-9][A-Za-z0-9._-]*\.md$/.test(newFile) && fileNames.indexOf(newFile) < 0;
     const permission = /dangerously|--yolo|bypass/i.test(text);
 
     const argsOf = s.args[selName] !== undefined ? s.args[selName] : (p.refused ? '--dangerously-skip-permissions' : '');
@@ -453,15 +514,32 @@ class Component extends DCLogic {
       })
     }));
 
-    const tools = p.tools.filter((t) => !s.removedTools[selName + t[0]]).map((t, i) => ({
-      name: t[0], how: t[1], border: i === 0 ? '0' : '1px solid var(--border)',
-      secrets: t[2].map((v) => {
-        const row = p.env.filter((e) => e[0] === v)[0];
-        const missing = row ? machinesOf(selName).filter((m) => row[2].indexOf(m) < 0) : [];
-        return { text: v + (missing.length ? ' · missing on ' + missing.join(', ') : ''), style: 'font-family: ui-monospace, \'SF Mono\', Menlo, monospace; font-size: 11.5px; padding: 3px 8px; border-radius: 999px; ' + (missing.length ? 'background: var(--warn-wash); color: var(--warn)' : 'background: var(--hover); color: var(--muted)') };
-      }),
-      remove: () => { const r = Object.assign({}, this.st().removedTools); r[selName + t[0]] = true; this.setState({ removedTools: r }); this.toast(t[0] + ' removed from ' + p.display + '.', () => { const back = Object.assign({}, this.st().removedTools); delete back[selName + t[0]]; this.setState({ removedTools: back }); }); }
-    }));
+    const builtIn = ['magnesium', 'built in · the hub\u2019s agents API', [], [['list_needs', 'What needs you, on every machine', 'allow'], ['list_machines', 'The fleet\u2019s machines and their state', 'allow'], ['list_profiles', 'Profiles and where they run', 'allow'], ['update_profile', 'Change a profile; you approve every change', 'ask'], ['session_launch', 'Start a thread on another machine (goal 18)', 'off']]];
+    const permNames = [['allow', 'Allow'], ['ask', 'Ask'], ['off', 'Off']];
+    const tools = [builtIn].concat(p.tools.filter((t) => !s.removedTools[selName + t[0]])).map((t, i) => {
+      const open = !!s.openTools[t[0]];
+      const items = t[3].map((x) => {
+        const key = selName + '/' + t[0] + '/' + x[0];
+        const cur = s.perms[key] || x[2];
+        return { name: x[0], desc: x[1], cur: cur,
+          options: permNames.map((o) => ({ name: o[1], pressed: String(cur === o[0]), style: seg(cur === o[0]), pick: () => { const all = Object.assign({}, this.st().perms); all[key] = o[0]; this.setState({ perms: all }); } })) };
+      });
+      const count = (state) => items.filter((x) => x.cur === state).length;
+      return {
+        name: t[0], how: t[1], border: i === 0 ? '0' : '1px solid var(--border)', removable: i > 0,
+        open: open, expanded: String(open), toggleLabel: (open ? 'Hide ' : 'Show ') + t[0] + '\u2019s tools',
+        chev: 'transition: transform .12s; transform: rotate(' + (open ? 90 : 0) + 'deg)',
+        toggle: () => { const all = Object.assign({}, this.st().openTools); all[t[0]] = !open; this.setState({ openTools: all }); },
+        summary: items.length + ' tools · ' + count('allow') + ' allowed · ' + count('ask') + ' ask · ' + count('off') + ' off',
+        items: items,
+        secrets: t[2].map((name) => {
+          const row = p.env.filter((e) => e[0] === name)[0];
+          const missing = row ? machinesOf(selName).filter((m) => row[2].indexOf(m) < 0 && online[m] !== false) : [];
+          return { text: name + (missing.length ? ' · missing on ' + missing.join(', ') : ''), style: 'font-family: ui-monospace, \'SF Mono\', Menlo, monospace; font-size: 11.5px; padding: 3px 8px; border-radius: 999px; ' + (missing.length ? 'background: var(--warn-wash); color: var(--warn)' : 'background: var(--hover); color: var(--muted)') };
+        }),
+        remove: () => { const r = Object.assign({}, this.st().removedTools); r[selName + t[0]] = true; this.setState({ removedTools: r }); this.toast(t[0] + ' removed from ' + p.display + '.', () => { const back = Object.assign({}, this.st().removedTools); delete back[selName + t[0]]; this.setState({ removedTools: back }); }); }
+      };
+    });
 
     const skills = p.skills.map((k, i) => ({ name: k[0], desc: k[1], files: k[2] + (k[2] === 1 ? ' file' : ' files'), border: i === 0 ? '0' : '1px solid var(--border)' }));
 
@@ -471,15 +549,15 @@ class Component extends DCLogic {
       toggle: () => { const cur = (this.st().harness[selName] || p.harness).slice(); const i = cur.indexOf(h[0]); if (i >= 0) { if (cur.length > 1) cur.splice(i, 1); } else cur.push(h[0]); const all = Object.assign({}, this.st().harness); all[selName] = cur; this.setState({ harness: all }); }
     }));
     const level = s.level[selName] || p.level;
-    const seg = (on) => 'height: 28px; padding: 0 12px; border: 0; border-radius: 7px; font-size: 12.5px; ' + (on ? 'background: var(--surface); color: var(--fg-strong); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08)' : 'background: transparent; color: var(--muted)');
     const levels = ['fenced', 'container'].map((l) => ({ name: l, pressed: String(level === l), style: seg(level === l), pick: () => { const all = Object.assign({}, this.st().level); all[selName] = l; this.setState({ level: all }); } }));
+    const every = everyOf(selName);
     const machinePicks = machines.map((m) => ({
       name: m[0], kind: m[1], on: machinesOf(selName).indexOf(m[0]) >= 0,
-      toggle: () => { const cur = machinesOf(selName).slice(); const i = cur.indexOf(m[0]); if (i >= 0) cur.splice(i, 1); else cur.push(m[0]); const all = Object.assign({}, this.st().machines); all[selName] = cur; this.setState({ machines: all }); }
+      toggle: () => { if (everyOf(selName)) return; const cur = machinesOf(selName).slice(); const i = cur.indexOf(m[0]); if (i >= 0) cur.splice(i, 1); else cur.push(m[0]); const all = Object.assign({}, this.st().machines); all[selName] = cur; this.setState({ machines: all }); }
     }));
 
-    const accessDefaults = { serving: ['read', 'write', 'read', 'none'], research: ['read', 'none', 'read', 'write'], ops: ['read', 'none', 'none', 'none'], scribe: ['read', 'none', 'read', 'read'], reviewer: ['read', 'none', 'read', 'none'] };
-    const sections = [['Team memory', 'Shared facts every agent may need'], [p.display + '’s section', 'Its own notes and memories'], ['projects/infra', 'The infra project’s documents'], ['research’s section', 'Another profile’s notes']];
+    const accessDefaults = { serving: ['read', 'write', 'read', 'none'], research: ['read', 'write', 'read', 'none'], ops: ['read', 'none', 'none', 'none'], scribe: ['read', 'none', 'read', 'read'], reviewer: ['read', 'none', 'read', 'none'] };
+    const sections = [['Team memory', 'Shared facts every agent may need'], [p.display + '’s section', 'Its own notes and memories'], ['projects/infra', 'The infra project’s documents'], [(selName === 'research' ? 'serving' : 'research') + '’s section', 'Another profile’s notes']];
     const knowledge = sections.map((k, i) => {
       const key = selName + i;
       const cur = s.access[key] || (accessDefaults[selName] || ['read', 'write', 'none', 'none'])[i];
@@ -535,18 +613,53 @@ class Component extends DCLogic {
       gotoIssue: () => this.setState({ tab: 'runs' }),
       tabs: tabs,
       onInstructions: s.tab === 'instructions', onSkills: s.tab === 'skills', onTools: s.tab === 'tools', onEnv: s.tab === 'env', onRuns: s.tab === 'runs', onKnowledge: s.tab === 'knowledge', onHistory: s.tab === 'history',
-      files: files, fileText: text || '', fileHint: s.file + (s.file === 'AGENTS.md' ? ' · every harness reads it' : s.file === 'CLAUDE.md' ? ' · Claude Code reads it after AGENTS.md' : s.file === 'MEMORIES.md' ? ' · notes it keeps between sessions' : ' · house rules'),
+      files: files, fileText: text || '',
+      fileHint: file + (file === 'AGENTS.md' ? ' · every harness reads it' : file === 'CLAUDE.md' ? ' · Claude Code reads it after AGENTS.md' : file === 'MEMORIES.md' ? ' · notes it keeps between sessions' : file === 'CONVENTIONS.md' ? ' · house rules' : ' · goes to every machine with the profile; name it in AGENTS.md so agents read it'),
+      addingFile: s.addingFile, notAddingFile: !s.addingFile,
+      startAddFile: () => this.setState({ addingFile: true, newFile: '' }),
+      cancelAddFile: () => this.setState({ addingFile: false, newFile: '' }),
+      newFile: s.newFile, onNewFile: (e) => this.setState({ newFile: e.target.value }),
+      fileSuggestions: ['CLAUDE.md', 'CONVENTIONS.md', 'MEMORIES.md'].filter((f) => fileNames.indexOf(f) < 0).map((f) => ({ name: f, title: known[f], pick: () => this.setState({ newFile: f }) })),
+      addFileStyle: 'height: 28px; padding: 0 12px; border: 0; border-radius: 7px; font-size: 12.5px; font-weight: 500; ' + (validFile ? 'background: var(--primary); color: var(--on-primary)' : 'background: var(--hover); color: var(--subtle)'),
+      addFile: (e) => {
+        e.preventDefault();
+        if (!validFile) return;
+        const all = Object.assign({}, this.st().addedFiles);
+        all[selName] = Object.assign({}, all[selName] || {});
+        all[selName][newFile] = newFile === 'MEMORIES.md' ? '' : '# ' + newFile.replace(/\.md$/, '') + '\n';
+        const removed = Object.assign({}, this.st().removedFiles);
+        delete removed[selName + '/' + newFile];
+        this.setState({ addedFiles: all, removedFiles: removed, addingFile: false, newFile: '', file: newFile });
+        this.toast(newFile + ' added to ' + p.display + '. Write it, then Save.');
+      },
+      canRemoveFile: file !== 'AGENTS.md',
+      removeFile: () => {
+        const removed = Object.assign({}, this.st().removedFiles);
+        removed[fileKey] = true;
+        this.setState({ removedFiles: removed, file: 'AGENTS.md' });
+        this.toast(file + ' removed from ' + p.display + ', saved as v' + (v + 1) + '.', () => { const back = Object.assign({}, this.st().removedFiles); delete back[fileKey]; this.setState({ removedFiles: back, file: file }); });
+      },
       onEdit: (e) => { const all = Object.assign({}, this.st().edits); all[fileKey] = e.target.value; this.setState({ edits: all }); },
       checkText: permission ? 'Refused: a permission flag can’t go in a profile.' : dirty ? 'Not saved' : 'Checked · no issues',
       checkStyle: 'font-size: 12.5px; color: ' + (permission ? 'var(--err)' : dirty ? 'var(--warn)' : 'var(--ok)'),
       revertEdit: () => { const all = Object.assign({}, this.st().edits); delete all[fileKey]; this.setState({ edits: all }); },
       revertStyle: 'height: 30px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 13px; opacity: ' + (dirty ? 1 : 0.5),
-      saveEdit: () => { if (!dirty || permission) return; const saved = Object.assign({}, this.st().saved); saved[fileKey] = text; const ver = Object.assign({}, this.st().version); ver[selName] = v + 1; this.setState({ saved: saved, version: ver }); this.toast('Saved as v' + (v + 1) + '. Checked; on its way to ' + machinesOf(selName).length + ' machines.', () => { const back = Object.assign({}, this.st().saved); delete back[fileKey]; const vb = Object.assign({}, this.st().version); vb[selName] = v; this.setState({ saved: back, version: vb }); }); },
+      saveEdit: () => { if (!dirty || permission) return; const saved = Object.assign({}, this.st().saved); saved[fileKey] = text; const ver = Object.assign({}, this.st().version); ver[selName] = v + 1; this.setState({ saved: saved, version: ver }); this.toast('Saved as v' + (v + 1) + '. Checked; on its way to ' + (every ? 'every machine' : machinesOf(selName).length + ' machines') + '.', () => { const back = Object.assign({}, this.st().saved); delete back[fileKey]; const vb = Object.assign({}, this.st().version); vb[selName] = v; this.setState({ saved: back, version: vb }); }); },
       saveStyle: 'height: 30px; padding: 0 14px; border: 0; border-radius: 8px; font-size: 13px; font-weight: 500; ' + (dirty && !permission ? 'background: var(--primary); color: var(--on-primary)' : 'background: var(--hover); color: var(--subtle)'),
       skills: skills, tools: tools,
       copyLabel: s.copied ? 'Copied' : 'Copy MCP URL', copyMcp: () => this.setState({ copied: true }),
       env: env, envMachines: envMachines,
       harnesses: harnesses, levels: levels, machinePicks: machinePicks,
+      everyMachine: every,
+      everyNote: every ? 'It goes to every machine the hub has, and to new ones as they join. Untick it to choose machines.' : 'It goes only to the machines ticked here.',
+      pickGridStyle: 'display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 12px; opacity: ' + (every ? 0.55 : 1),
+      toggleEvery: () => {
+        const now = !everyOf(selName);
+        const all = Object.assign({}, this.st().every); all[selName] = now;
+        const picked = Object.assign({}, this.st().machines);
+        if (!now && !picked[selName]) picked[selName] = D[selName].machines === '*' ? machines.map((m) => m[0]) : D[selName].machines.slice();
+        this.setState({ every: all, machines: picked });
+      },
       launchArgs: argsOf, onArgs: (e) => { const all = Object.assign({}, this.st().args); all[selName] = e.target.value; this.setState({ args: all }); },
       argsCheck: argsBad ? 'Refused: full access is a choice per thread, never a profile setting.' : 'Checked · no issues',
       argsCheckStyle: 'font-size: 12.5px; color: ' + (argsBad ? 'var(--err)' : 'var(--ok)'),
@@ -573,10 +686,10 @@ class Component extends DCLogic {
         const cur = this.st();
         if (!/^[a-z][a-z0-9-]{1,30}$/.test(cur.newName) || this.data()[cur.newName] || cur.created.some((c) => c.name === cur.newName)) return;
         const from = cur.start === 'copy' ? D[selName] : null;
-        const made = { name: cur.newName, initials: cur.newName.slice(0, 2).toUpperCase(), color: '#0f766e', display: cur.newName, desc: cur.newDesc || 'A Magnesium agent', harness: from ? from.harness : ['claude'], level: from ? from.level : 'fenced', machines: from ? from.machines : ['workstation'], version: 1,
-          files: from ? from.files : { 'AGENTS.md': '# ' + cur.newName + '\n' + (cur.newDesc || 'A Magnesium agent.'), 'CLAUDE.md': '', 'CONVENTIONS.md': '', 'MEMORIES.md': '' }, skills: from ? from.skills : [], tools: from ? from.tools : [], env: from ? from.env : [], threads: [] };
+        const made = { name: cur.newName, initials: cur.newName.slice(0, 2).toUpperCase(), color: '#0f766e', display: cur.newName, desc: cur.newDesc || 'A Magnesium agent', harness: from ? from.harness : ['claude'], level: from ? from.level : 'fenced', machines: from ? from.machines : '*', version: 1,
+          files: from ? from.files : { 'AGENTS.md': '# ' + cur.newName + '\n' + (cur.newDesc || 'A Magnesium agent.') }, skills: from ? from.skills : [], tools: from ? from.tools : [], env: from ? from.env : [], threads: [] };
         this.setState({ created: cur.created.concat([made]), sel: cur.newName, dialog: null, tab: 'instructions', file: 'AGENTS.md' });
-        this.toast(cur.newName + ' created. Checked; on its way to ' + made.machines.length + (made.machines.length === 1 ? ' machine.' : ' machines.'));
+        this.toast(cur.newName + ' created. Checked; on its way to ' + (made.machines === '*' ? 'every machine.' : made.machines.length + (made.machines.length === 1 ? ' machine.' : ' machines.')));
       },
       hasToast: !!s.toast, toastText: s.toast ? s.toast.text : '', toastUndo: !!(s.toast && s.toast.undo),
       undo: () => { const t = this.st().toast; if (t && t.undo) t.undo(); this.setState({ toast: null }); }

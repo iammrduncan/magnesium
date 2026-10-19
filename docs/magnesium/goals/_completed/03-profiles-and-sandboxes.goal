@@ -119,7 +119,7 @@ Harnesses beyond Claude Code and Codex, and the Kubernetes and microVM levels (g
 ## Next steps
 
 1. **Done:** verified on 2026-10-19; test 8 is goal 29's now.
-2. **Owner: accept or reject test 7's three differences from the Session board** (above), at goal 34's owner gate. A rejected one becomes a web change there.
+2. **Test 7's differences, decided 2026-10-19 at goal 34's gate:** the shared picker and the sandbox chip in the composer stay; the approval card will say where a command runs (goal 34).
 3. **Next merge from upstream:** port this goal's edits to the three files upstream moved (above).
 4. Goals 08, 10 and 18 can start on this; goal 12 now carries test 9.
 
