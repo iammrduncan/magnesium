@@ -104,13 +104,22 @@ Goal 03 built profiles: an agent's instructions, skills, tools and sandbox, kept
 
 ## Goal summary
 
-**2026-10-19, in progress: both owner gates are passed; the build has started.**
+**2026-10-19, in progress: built, with automated tests; the real-machine test, the board comparison and the rollout are next.**
 
-- **Gate 1:** the owner approved Profiles · desktop and Profiles · phone after one round of changes: the Brain tab, every machine by default, Add a file, and Allow, Ask or Off per tool (D67). Every board's sidebar now has the Profiles place.
-- **Gate 2:** goal 03's shared picker and composer sandbox chip stay; the approval card is to say where a command runs (step 14).
-- **The canvas** lives in the repo (`docs/magnesium/mockups/canvas/`); `vp run mocks` serves it.
+- **Gates:** both passed. Gate 1 approved Profiles · desktop and phone after one round of changes (the Brain tab, every machine by default, Add a file, Allow, Ask or Off per tool; D67). Gate 2 kept goal 03's shared picker and composer sandbox chip, and asked the approval card to say where a command runs.
+- **The profile service** on the hub, or a single box, reads a profile whole, creates, saves, deletes and restores it. Every save runs the check on a copy first, so a refused save writes nothing and says why beside the field or file. Each save is a version with who made it; Put back restores one; a deleted profile can be restored for 30 days.
+- **Delivery:** the hub asks a machine only on a change, a restart, a failure or a 10-minute recheck, and each machine's row says the version it holds and whether it is current. Send now delivers at once.
+- **Per-tool permissions (D67)** become Claude Code's allow, ask and deny rules and Codex's per-tool approval settings; the page says where Claude Code can't turn the rest of a server off.
+- **Agents (D65):** every thread's MCP server, and the agents API, have `list_profiles`, `get_profile`, `check_profiles`, `create_profile`, `update_profile`, `delete_profile`, `profile_request_status` and `send_profile_now`. An ask waits where the agent runs, shows as a Profile change card on Home and on the profile, and Approve applies it on the hub in the agent's name and yours. Reject leaves the profile alone; a change that stopped passing stays waiting and says why. A read-only client can't ask.
+- **The page:** Profiles in the sidebar with a count of asks, each tab of the board, Copy MCP URL (the hub's MCP server), Edit profile and Create a profile in the picker, Open profiles and New profile in the palette, and Delete naming the profile's threads.
+- **Where a command runs:** approval cards, in the thread and on Home, say "Runs on <machine> in the <level> sandbox".
+- **Docs:** the user guide's profiles page covers the app, agents' asks and connecting an outside agent; doc 13 has the screen's status.
+- **Tests passed:** the profile store, RPC and request tests, including an agent on a machine whose ask the hub applies, and the MCP registration test (the profile tools sit on the same `/mcp` server as upstream's). The full typecheck passes. The full test run: see Next steps.
+- **Merge cost:** 271 `magnesium:` markers in 87 upstream files. This goal edits `apps/server/src/server.ts`, the command palette, the composer, its approval panel and the model picker. A rehearsal against upstream's latest stable tag (v0.1.0) is clean, since main already has it; against upstream's main, 27 files conflict in 48 hunks, `server.ts` and the composer among them with one hunk each.
 
 ## Next steps
 
-1. Build the profile service on the hub: read, create, change, delete and restore profiles, with the check before every save, history and delivery, and its agent operations, whose changes wait for the owner's approval.
-2. Then the page, at desktop and phone width, the per-tool permissions in each harness's settings, and the approval card's machine and sandbox.
+1. Finish the full test run: provider-opencode's spawned-server tests timed out on the local run (a package this goal doesn't touch), which stopped the packages after it.
+2. Roll out to the machines, and to the hub with the owner's approval.
+3. Run Test it 1 to 16 on the real machines, with OpenCode threads where a thread is needed, and compare the page with its boards in light and dark, at desktop and phone width (ask once before using a browser).
+4. Mark it Verified in TRACKER.md and move this file to `_completed/`.
