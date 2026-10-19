@@ -54,7 +54,7 @@ Moving the fleet to OpenCode 2 (after the merge, one machine at a time).
   - Test 3: the lockstep upgrade, with backups first. Fleet shows every server connected on the new build.
   - Test 4: on the hub, one pairing reaches every machine. An approval, a question and a plan, each from a different machine, showed on Home, in the sidebar and in the footer. The approval and the question were answered from Home, and the cards stayed gone. Fleet → Terminal works, and threads imported from V1 open with their messages.
   - Test 5: a scheduled task's failed run showed on Home as "Scheduled run failed". After the task was fixed, Retry now ran it again from that card: the new run replied, and the failed thread was settled. Next scheduled runs listed tasks from several machines, soonest first, each at the 09:00 it was set for.
-  - Home compared with its board; the differences are under the board in [mockups](../mockups.md).
+  - Home compared with its board; the differences are under the board in [mockups](../../mockups.md).
 - **Found during the tests, fixed:**
   - An open page kept running the old client after the hub updated, and the two refused each other: Home's marks went nowhere until a full reload. A page now offers Reload when the hub serves a new build.
   - On V2 the scheduler counts a run as started once its thread exists, so a run that then failed (a worktree it couldn't make) had no Retry on Home. Its thread's card now names the task, and Retry now runs the task again and settles the failed thread. An end-to-end test covers it.
@@ -72,4 +72,4 @@ Moving the fleet to OpenCode 2 (after the merge, one machine at a time).
 2. Goal 15, Projects.
 3. Small: the hub finds gateways by asking every plain machine to list spokes, so each one logs a refusal at start-up. Skip machines whose status already says they aren't gateways.
 
-Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](../README.md#done-means-for-every-goal)).

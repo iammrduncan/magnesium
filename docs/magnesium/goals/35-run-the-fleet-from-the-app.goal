@@ -1,0 +1,92 @@
+---
+id: mg-fleet-ops
+kind: feature
+depends_on: [mg-hub-link, mg-spokes-k8s, mg-home]
+phase: 2
+boards: ["Fleet · desktop", "Fleet · phone"]
+decisions: [D35, D59, D64, D66]
+---
+# Run the fleet from the app: update, roll back, back up, add and edit servers
+
+Fleet shows every server live, and colours one whose build differs from the hub's. But doing anything about it still takes a shell or a deploy run:
+- updating or rolling back a server means Ansible or `magnesium-release` on the host;
+- backups run on a timer nobody sees, and pods get none at all;
+- adding a machine or dropping a retired one means editing deploy config and rolling out the hub;
+- a pod's OpenCode settings, keys and node are fixed when it's added;
+- no screen shows a server's time zone.
+
+This goal makes Fleet the place you run the fleet from, at desktop and phone width, for every server: the hub, machines installed with Ansible, Magnesium's pods and machines attached in workloads. Agents reach the same operations, and every change they make asks you first (D66).
+
+## Owner gates
+
+1. **The board.** If the Fleet boards have no place for update, roll back, backups and machine actions, add one in their style. The owner approves it before the build starts.
+
+## Build
+
+1. **Update and roll back, from Fleet, on any server.**
+   - Each server's status carries its build and the build before it (`ServerStatus` gains `previousRelease`).
+   - A server whose build differs from the hub's offers Update. One that has a previous build offers Roll back. Both ask first, saying what will restart.
+   - The machine runs either as a service method of its own, detached from the server, so the restart doesn't cut it off. The hub can update or roll itself back the same way.
+   - Fleet shows each one's progress and result, and a failure leaves the server on the build it had.
+   - Pods keep changing build as they do now; Update on a pod changes its build to the hub's.
+   - Goal 31 installs a machine over SSH and gives the machines it installs Update and Roll back. This goal covers every server already running, however it was installed, and goal 31 uses the same machine-side method.
+2. **Backups every server takes for itself.**
+   - Each server backs up its own state daily: bare metal, the hub, Magnesium's pods and attached machines alike. It needs no timer, CronJob or script set up beside it.
+   - The newest backup's time is in each server's status. Fleet shows it, and warns when it's more than two days old.
+   - A failed backup is a Needs you card on Home, with the reason.
+   - Fleet lists a server's backups, with Back up now and Restore…. Restore asks first, takes a backup of the state it replaces, and runs detached from the server, which it stops and starts again.
+3. **Machines the hub knows.**
+   - **Add a machine** by its URL and a pairing code from the machine. No deploy config, no rollout of the hub.
+   - **Forget a machine:** it leaves the hub's list, and the hub's access to it goes.
+   - **Give access again** with a new pairing code, from the app, without a shell on the machine.
+   - The hub keeps its list in its own database, merged with any machines its deploy config names. A machine added in the app survives the next deploy.
+4. **Edit a pod after it's added.**
+   - A Magnesium pod's row gets Edit, with the fields Add has: OpenCode's gateway and models, the model keys it gets, and its node. Saving applies the change through the gateway, as Add does.
+   - Settings → Model keys gets Replace. A new value reaches every pod that uses the key, which restarts to take it.
+5. **Time zone in sight.**
+   - Each server's time zone is in its status and shows in Fleet. A server whose zone differs from the hub's shows a warning, since its scheduled tasks would run at other times (D64).
+   - A scheduled task's time shows its zone.
+6. **Agents and the palette.**
+   - The same operations are tools in MCP and the agents API: `list_machines`, `list_backups`, `update_server`, `rollback_server`, `backup_now`, `restore_backup`, `add_machine`, `forget_machine` and `edit_pod`. Reading is free, and every change is a Needs you card applied only when you approve it.
+   - The command palette has Update, Roll back, Back up now and Add a machine.
+
+## Test it
+
+Run each on the hub, a bare-metal machine, a Magnesium pod and a machine attached in a workload, unless the step says otherwise.
+
+1. **Against the board.** Compare Fleet with its boards, in light and dark, at desktop and phone width.
+2. **Update.** Put the hub on a new build. Each other server shows it's behind; Update brings it to the hub's build, and Fleet shows it Connected on the new build.
+3. **Roll back.** Roll a server back. It returns to its previous build and keeps its threads. Roll the hub back too: the page reconnects on its own.
+4. **A failed update.** Update a server to a build that fails to start. It stays on its old build, and Fleet says why.
+5. **Backups.**
+   - Each server shows a backup from the last day, the pod and the attached machine included.
+   - Make one fail: a card on Home names the server and the reason.
+   - Back up now adds one to the list.
+6. **Restore.** Restore a server from yesterday's backup.
+   - It asks first.
+   - The server comes back with yesterday's threads, and the state it replaced is a backup of its own.
+   - Started from Fleet's terminal, the restore still finishes.
+7. **Add and forget.**
+   - Add a machine by URL and pairing code. It shows in Fleet, Connected, and survives a deploy of the hub.
+   - Forget it. It's gone, and the hub's token no longer works there.
+   - Add it back, with a new code.
+8. **Edit a pod.** Change a pod's OpenCode models and give it a second key. After it restarts, a thread there offers the new models and uses the key.
+9. **Replace a key.** Replace a model key's value on the hub. The pods that use it restart and work with the new value. The value appears in no manifest, setting, log or process argument.
+10. **Time zone.** Put one server in another zone. Fleet warns about it, and a scheduled task there shows its zone.
+11. **An agent asks.** An agent calls `rollback_server`. Home shows the card. Reject leaves the server as it was; Approve rolls it back.
+12. **Phone.** On the phone, see a failed backup, then update a machine.
+
+## Not in this goal
+
+- Installing a new machine over SSH, and its Update and Roll back (goal 31).
+- Managing whole Kubernetes clusters and building images on the hub (goal 32).
+- Live load, GPUs and launching threads from Fleet (goal 10).
+- Moving a machine between bare metal and a pod (goal 25 documents it).
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+1. Check the Fleet boards for room for these actions; draw an update if they need one, and get the owner's approval.

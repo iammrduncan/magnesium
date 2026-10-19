@@ -4,7 +4,7 @@ kind: feature
 depends_on: [mg-profiles, mg-fleet]
 phase: 4
 boards: ["Fleet · desktop (started by)"]
-decisions: [D15, D25, D32, D37]
+decisions: [D15, D25, D32, D37, D65, D66]
 ---
 # Agents launch, message and steer sessions in the fleet, within grants you set
 
@@ -14,7 +14,7 @@ This goal covers A5 (profile X messages profile Y), F3 (chosen agents control, m
 
 1. **A Magnesium MCP entry for profiles.** It is our own, not upstream's `/mcp`, whose OAuth flow needs re-approval every 30 days. Its tools:
    - `fleet_machines` and `sessions_list`;
-   - `session_launch` (machine, profile, sandbox, folder, staged context, prompt);
+   - `session_launch` (machine, profile, sandbox, project or folder, staged context, prompt);
    - `session_message` (queue or steer);
    - `session_read` and `session_wait`;
    - `session_stop`.
@@ -27,7 +27,7 @@ This goal covers A5 (profile X messages profile Y), F3 (chosen agents control, m
    - how many sessions it may run at once;
    - whose sessions it may message or steer.
 
-   **By default a profile has no grants.**
+   **By default a profile has no grants.** Grants are set in a Grants section on the profile's page (goal 34), which lists each grant with Revoke and a log of the launches and steers it allowed. An agent asking for a grant it doesn't have is a Needs you card, applied only when you approve it (D65).
 3. **Parentage.**
    - Every session an agent starts records its parent session.
    - Fleet and the thread show "started by `<profile>`".
@@ -43,7 +43,7 @@ This goal covers A5 (profile X messages profile Y), F3 (chosen agents control, m
 
 ## Test it
 
-1. **Grant.** Give `scratch-a` the right to launch `scratch-b` on machine B, container only.
+1. **Grant.** On `scratch-a`'s profile page, under Grants, give it the right to launch `scratch-b` on machine B, container only.
 2. **Launch and report back.**
    - In a `scratch-a` thread, ask it to launch a worker on machine B that counts the files in `/tmp` and reports back.
    - A thread appears there, marked "started by scratch-a", and `scratch-a` reads the result.
@@ -52,13 +52,14 @@ This goal covers A5 (profile X messages profile Y), F3 (chosen agents control, m
    - launching with sandbox `native`.
 4. **Approvals.** The worker hits an approval. It shows on Home for you, and `scratch-a` cannot answer it.
 5. **Steer.** `scratch-a` steers the worker. The steer is in the worker's log, with its source.
-6. **Revoke.** Revoke the grant. The next call is refused at once.
-7. **Coordinate by name.** In one thread, say "work with `@<name of a second thread>` to coordinate your job here". The two threads exchange messages, each shown in the other with its sender, and both finish the coordinated change.
-8. **Tests.** Magnesium's tests (`vp test run`) cover `prompt_agent` on a Magnesium thread.
+6. **Revoke.** Revoke the grant from `scratch-a`'s Grants section. The next call is refused at once, and the grant's log shows the launch and steer from tests 2 and 5.
+7. **Asking for a grant.** `scratch-a` asks to launch on machine C. A Needs you card shows the request; Reject leaves the grants as they were.
+8. **Coordinate by name.** In one thread, say "work with `@<name of a second thread>` to coordinate your job here". The two threads exchange messages, each shown in the other with its sender, and both finish the coordinated change.
+9. **Tests.** Magnesium's tests (`vp test run`) cover `prompt_agent` on a Magnesium thread.
 
 ## Not in this goal
 
-Agents changing other profiles' settings.
+Agents changing profiles' settings: goal 34 has them ask you first.
 
 ## Goal summary
 

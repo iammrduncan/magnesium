@@ -4,7 +4,7 @@ kind: feature
 depends_on: [mg-hub-link, mg-profiles]
 phase: 5
 boards: []
-decisions: [D22, D23, D50, D56, D57, D58]
+decisions: [D22, D23, D50, D56, D57, D58, D65]
 ---
 # The Magnesium Brain: Magnesium runs its own knowledge base
 
@@ -27,6 +27,7 @@ The Brain is part of the hub application and runs on the hub's own system (D58),
    - Magnesium lays out the Brain's sections: team memory, one per profile, one per project (`projects/<name>`, D50), Magnesium's own sessions, and an inbox.
    - Agents reach the Brain through an MCP endpoint Magnesium serves. For each session it forwards with a short-lived token scoped to the sections that session's profile and project may read and write. No token goes in a profile, a spoke's environment or a log.
    - Settings → Brain shows the engine, its storage and size, its sections, and which profiles may read and write each.
+   - **That access is edited, not only shown,** from both sides: per section in Settings → Brain, and per profile in the Knowledge section of the profile's page (goal 34). An agent asking for more access is a Needs you card (D65).
 3. **Models through Magnesium's model access:** embeddings, the reranker and the dream cycle's model, each a choice in Settings → Brain. A local OpenAI-compatible server works.
 4. **Intake Magnesium owns:**
    - its own threads, from every machine through the hub, redacted, with provenance back to the thread;
@@ -35,7 +36,7 @@ The Brain is part of the hub application and runs on the hub's own system (D58),
 5. **Importing an existing knowledge base.**
    - A one-time import of an existing GBrain, section by section, with provenance, through a read-only grant its owner gives the hub as a whole.
    - Magnesium's agents then use only the Magnesium Brain.
-   - A list of what the old knowledge base still does that the Magnesium Brain doesn't (its collectors and importers), each with where it moves.
+   - A list of what the old knowledge base still does that the Magnesium Brain doesn't (its collectors and importers), each with where it moves; goal 36 builds the sources they move to.
    - Retiring the old knowledge base is the owner's decision, taken after this goal.
 
 ## Test it
@@ -47,6 +48,9 @@ The Brain is part of the hub application and runs on the hub's own system (D58),
 5. **Intake.** A finished Magnesium thread appears in the sessions section, redacted, linked to its thread.
 6. **Backup, restore and upgrade.** A backup restores to a scratch install. An engine upgrade rolls back cleanly.
 7. **With the hub.** The Brain comes back with the hub after the hub's system restarts, and a rollback of the hub leaves it working.
+8. **Profile sessions reach the Brain** (goal 03's test 8, moved here 2026-10-19). A profile thread shows up in the sessions section within its indexing interval; search for a phrase only that thread used, and it is the top result.
+9. **Editing access.** Give a profile read access to team memory on its profile page: Settings → Brain shows the same, and a thread on it now answers from team memory. Take it away in Settings → Brain: the profile page shows that, and the next thread is refused.
+10. **Brain jobs** (moved here from goals 10 and 11). The dream cycle and the session collector show in Fleet's jobs and on the Schedule page with their last run and status, and `list_jobs` returns them.
 
 ## Not in this goal
 

@@ -21,18 +21,19 @@ This goal covers M6: view, create and change scheduled jobs and agent runs. Upst
 3. **The Schedule page** lists every task on every machine, from three sources:
    - upstream's scheduled tasks on each environment;
    - the profiles' own scheduled tasks;
-   - the Magnesium Brain's jobs, through `list_jobs`.
+   - the Magnesium Brain's jobs, through `list_jobs`, once goal 29 runs them (they are checked there).
 
    It shows:
    - a timeline of past and next runs;
    - a failure inbox;
-   - create, edit, pause and run now;
+   - create, edit, pause, run now and delete, which asks first;
    - each webhook task's URL;
    - validation, such as an interval of at least 60 seconds.
-4. **New Magnesium agents-API operations `create_task` and `update_task`**, for the profiles' own scheduled tasks. Each is written once and served by the `magnesium-agents` CLI, REST and MCP, with tests. Magnesium runs these tasks itself; existing tasks come in with the profiles (goal 03). Upstream tasks are edited through the stock RPC.
+4. **New Magnesium agents-API operations `create_task`, `update_task` and `delete_task`**, for the profiles' own scheduled tasks. Each is written once and served by the `magnesium-agents` CLI, REST and MCP, with tests. Magnesium runs these tasks itself; existing tasks come in with the profiles (goal 03). Upstream tasks are edited through the stock RPC.
 5. **Failed runs reach Home** (the failure kind) and push.
 6. **Scheduled runs are never weaker than `container`.** The form refuses a weaker level.
 7. **Home's Next runs** uses the merged list.
+8. **The footer's scheduler item,** as on the Footer board: the number of failed runs not yet retried or dismissed, with a popover listing them; hidden while there are none.
 
 ## Test it
 
@@ -44,9 +45,10 @@ This goal covers M6: view, create and change scheduled jobs and agent runs. Upst
    - Retry it from Home after fixing the folder.
 5. **The sandbox floor.** Try to set sandbox `native` on a scheduled task. The form refuses and says why.
 6. **Profile tasks.** Create a profile's scheduled task from the UI. `magnesium-agents schedule` shows it, and it runs on the next tick.
-7. **Pause.** Pause a task; no run happens. Resume it.
+7. **Pause and delete.** Pause a task; no run happens. Resume it. Delete it: it asks first, then the task is gone from every list, and its history stays.
 8. **Phone.** Edit a task on the phone.
 9. **Against the boards.** Compare with the boards you approved in step 1.
+10. **The footer item.** The failure from test 4 shows in the footer's scheduler item until it is retried.
 
 ## Not in this goal
 

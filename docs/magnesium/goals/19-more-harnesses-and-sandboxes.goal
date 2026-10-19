@@ -1,7 +1,7 @@
 ---
 id: mg-harnesses
 kind: feature
-depends_on: [mg-profiles, mg-fleet]
+depends_on: [mg-profiles, mg-fleet, mg-k8s-clusters]
 phase: 1
 boards: ["Session · desktop (picker shows the harness)"]
 decisions: [D6, D37]
@@ -20,7 +20,7 @@ This goal covers A1 (works with any harness: Claude Code, Codex, OpenCode, Pi, o
    - If it does, run omp as a Pi-driver instance with omp's binary.
    - If not, record what is missing and propose a path, such as ACP. Close O12 in doc 09 either way.
 3. **Sandbox levels.**
-   - **`kubernetes`:** the wrapper runs the CLI in a pod in a Kubernetes cluster, with stdio attached. It needs a namespace and service account the cluster's operator grants.
+   - **`kubernetes`:** the wrapper runs the CLI in a pod in a Kubernetes cluster, with stdio attached. It runs in a namespace and with a service account picked from a cluster on goal 32's Clusters screen (Settings → Connections → Clusters), so nothing is set up by hand; the cluster's operator grants them.
    - **`microvm`:** on machines that support it, through microsandbox (`msb`).
 4. **The picker** shows each profile's harness. List per harness what works (approvals, interrupt, steer, resume) and what doesn't.
 5. **`magnesium-agents check`** covers the new harnesses and levels.

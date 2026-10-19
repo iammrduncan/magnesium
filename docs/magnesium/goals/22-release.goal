@@ -1,7 +1,7 @@
 ---
 id: mg-release
 kind: milestone
-depends_on: [mg-fork, mg-deploy, mg-profiles, mg-hub-link, mg-shell, mg-home, mg-phone, mg-rooms, mg-room-routing, mg-fleet, mg-schedule, mg-brain, mg-memories, mg-learning, mg-projects, mg-apps, mg-app-builder, mg-agent-control, mg-harnesses, mg-pill, mg-hermes-moves]
+depends_on: [mg-fork, mg-deploy, mg-profiles, mg-hub-link, mg-shell, mg-home, mg-phone, mg-rooms, mg-room-routing, mg-fleet, mg-schedule, mg-brain, mg-memories, mg-learning, mg-projects, mg-apps, mg-app-builder, mg-agent-control, mg-harnesses, mg-pill, mg-hermes-moves, mg-project-knowledge, mg-upstream-v2, mg-spokes-k8s, mg-recaps, mg-design-system, mg-machine-parts, mg-magnesium-brain, mg-provider-accounts, mg-add-machine-ssh, mg-k8s-clusters, mg-waiting-on-you, mg-profiles-app, mg-fleet-ops, mg-brain-sources]
 phase: 7
 boards: [all]
 decisions: [D1, D9, D10, D13]

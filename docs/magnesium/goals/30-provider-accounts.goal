@@ -4,11 +4,11 @@ kind: feature
 depends_on: [mg-profiles, mg-upstream-v2, mg-spokes-k8s]
 phase: 2
 boards: []
-decisions: [D39, D41, D57, D59, D61]
+decisions: [D39, D41, D57, D59, D61, D66]
 ---
-# Accounts: sign in once on the hub, and every machine gets your subscriptions
+# Accounts and model access: sign in and add keys once on the hub, and every machine gets them
 
-You may hold several Claude Code subscriptions and several Codex subscriptions. You sign in to each once, on the hub, and the hub ships them to your machines, on bare metal, in their own pods or attached to workloads, new machines included (D61). It shows which account each machine uses and how much of each is left, and swaps the active one on any machine from any device in one action. The agents there use it from their next turn.
+You may hold several Claude Code subscriptions and several Codex subscriptions. You sign in to each once, on the hub, and the hub ships them to your machines, on bare metal, in their own pods or attached to workloads, new machines included (D61). It shows which account each machine uses and how much of each is left, and swaps the active one on any machine from any device in one action. The agents there use it from their next turn. Model access works the same way: the API keys and OpenAI-compatible gateways that OpenCode, recaps, Waiting on you and the Brain use are added, tested and rotated once on the hub, with their model lists, and every machine gets them.
 
 ## What exists already
 
@@ -44,8 +44,14 @@ Build 0 is to confirm both mechanisms against the current CLIs before anything e
 5. **Profiles and stock instances follow the active account,** replacing D41's link to the machine's own login. A machine still signed in on its own keeps working until the hub sends it an account.
 6. **On the hub:** Settings → Accounts lists the accounts with email, plan and what's left in each usage window, and which machines use each. Fleet shows each machine's active accounts beside its name, and so does the footer's machine popover.
 7. **Agents and schedules.** Listing accounts and making one active on a machine are service methods, so they are also agents-API operations and MCP tools: a scheduled task or a bot can move a machine to another account when one runs low. Switching needs the operate scope; adding and removing logins stay with you.
-8. **Fix Sign in for instances with their own folder:** Settings → Providers → Sign in passes the instance, as the welcome wizard does, so a machine-local login still works where you want one.
-9. **Docs:** the user guide on adding accounts on the hub, swapping them, and what happens to running threads.
+8. **Model access.** Settings → Model access grows from goal 25's Model keys section:
+   - add, test, rotate and remove API keys and OpenAI-compatible gateways; Test makes one small call and says what came back;
+   - each gateway's model list, edited there, OpenCode's gateway and models included, replacing the deploy settings and pod fields that set them today;
+   - shipped to machines over the same link as logins, and again when one changes, so a rotated key reaches every machine and pod without a redeploy;
+   - usage recorded per key, per profile and per day, which Settings shows and goal 17's Cost and Usage app reads;
+   - agents can list keys and gateways by name and see usage; adding, rotating and removing stay with you.
+9. **Fix Sign in for instances with their own folder:** Settings → Providers → Sign in passes the instance, as the welcome wizard does, so a machine-local login still works where you want one.
+10. **Docs:** the user guide on adding accounts and model access on the hub, swapping accounts, rotating keys, and what happens to running threads.
 
 ## Test it
 
@@ -63,13 +69,14 @@ On a hub and three machines (one on bare metal, one in its own pod, one attached
 10. **Reverse states.** Remove an account on the hub: every machine drops it and falls back to the default; Remove refuses the last account a machine uses until another is active.
 11. **From an agent.** An MCP call lists the accounts and makes one active on a machine; a read-only session can list but not switch, and no agent can add or remove logins.
 12. **From the phone,** the swap in Settings at phone width.
+13. **Model access.** Add an OpenAI-compatible gateway with its key and two models; Test says it answered. An OpenCode thread on every kind of machine lists those models and runs on one, with no deploy change. Rotate the key: the next turn everywhere uses the new one, and the old one is gone from every machine. Settings shows the day's usage for that key per profile.
 
 ## Not in this goal
 
 - Switching on its own when the active account hits its limit (a schedule or bot can do it with step 7's tools until then).
 - Several accounts active at once on one machine, or one per profile.
-- API keys as accounts with usage: model keys ship the same way (above), but stay plain keys.
-- Other harnesses' accounts (OpenCode, Cursor and the rest).
+- Spending limits per key or per profile: usage is recorded here, and limits come later.
+- Other harnesses' subscription accounts (Cursor and the rest). OpenCode runs on model access (above).
 
 ## Goal summary
 

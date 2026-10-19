@@ -26,7 +26,7 @@ The phone runs the same web UI as an installed PWA (D10). Push goes through the 
    - A push is sent when a new needs-you item arrives.
    - **The payload is a count and a link, nothing else.**
    - Tapping a push opens the item.
-   - Each device can be muted, and pushes are coalesced to at most one every 30 seconds.
+   - Each device can be muted from Settings → Devices, where every device that gets pushes is listed with Mute and Unmute, and pushes are coalesced to at most one every 30 seconds.
 4. **Pairing and revoking devices** through the hub. This replaces the removed hosted sign-in (D13).
    - **Signing back in needs no shell.** A browser loses its sign-in when its site data is cleared, the app is uninstalled or the browser changes. The user signs it in again from another signed-in device, for example by scanning a code with the phone.
    - A shell on the hub (`magnesium-release pair --admin`) stays only as the last resort, when no device is signed in.
@@ -45,7 +45,8 @@ The phone runs the same web UI as an installed PWA (D10). Push goes through the 
 5. **Revoke.** Revoke the phone from Settings on your desktop. The next push doesn't arrive, and the PWA asks you to pair again.
 6. **Sign back in.** Clear the hub's site data in desktop Chrome, then sign it in again from the phone, with no shell on the hub. Remove the dead entry under Authorized clients.
 7. **No content in pushes.** With debug logging on, the hub's log shows that each push payload holds only the count and the link.
-8. **Against the boards.** Compare side by side with Home · phone and Session · phone.
+8. **Mute.** Mute the phone in Settings → Devices from the desktop: a new approval sends it no push, and the desktop still shows the card. Unmute it: the next one pushes again.
+9. **Against the boards.** Compare side by side with Home · phone and Session · phone.
 
 ## Not in this goal
 

@@ -4,7 +4,7 @@ kind: feature
 depends_on: [mg-shell, mg-home, mg-upstream-v2]
 phase: 2
 boards: ["Project · desktop"]
-decisions: [D23, D50]
+decisions: [D23, D50, D66]
 ---
 # Projects: one project across machines, with its own page
 
@@ -23,6 +23,12 @@ This goal covers the session half of M2 (project mode): a project lives on the h
    - the machines the project has folders on, and the repos cloned into them;
    - New thread, on the hub by default or on a machine you pick.
 3. **A folder's name in the sidebar opens the project page.** Its chevron expands to active threads, and its right-click menu gains Open project (goal 05).
+4. **The project's default profile** is on its page. New threads in the project start on it, on every machine it has folders on.
+5. **Rename, archive and delete** (the ways back out):
+   - **Rename** changes its name everywhere; its folders keep their paths, so its threads keep working.
+   - **Archive** hides it and its threads from the sidebar; Unarchive brings both back.
+   - **Delete** asks first and lists what it touches: its threads are archived, not deleted; its folder on each machine is left in place unless you tick that machine's folder to remove, with its size shown; its Brain section (goal 23) is archived, not removed.
+6. **Agents (D66).** New Magnesium agents-API operations `list_projects` and `create_project`, served by the `magnesium-agents` CLI, REST and MCP, with tests. Goal 18's `session_launch` takes a project.
 
 ## Test it
 
@@ -30,6 +36,10 @@ This goal covers the session half of M2 (project mode): a project lives on the h
 2. **A repo on demand.** Ask a thread in the project on another machine to work on a public repo. The machine clones it into the project's folder there, with the fleet's git auth.
 3. **The page.** Click `field-notes` in the sidebar. The page lists all three threads with their machines, and the repo. Have one ask to run a command: it shows under Needs you in this project, and approving it there settles it in the thread on its machine.
 4. **Against the board.** Compare the Threads view side by side with Project · desktop.
+5. **Default profile.** Set `field-notes`'s default profile to `scratch-a`. A new thread in it, on the hub or a machine, starts on `scratch-a`.
+6. **Rename and archive.** Rename `field-notes`: the sidebar, the page and its threads show the new name, and its threads still run. Archive it and unarchive it.
+7. **Delete.** Create and delete a scratch project. It asks first and lists its threads and folders; afterwards its threads are archived and its folders are still there, except the one you ticked.
+8. **Agents.** An agent calls `create_project` and then `list_projects` over MCP; the new project shows in the sidebar.
 
 ## Not in this goal
 

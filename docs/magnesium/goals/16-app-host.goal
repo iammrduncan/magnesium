@@ -21,6 +21,7 @@ This goal covers M5 (app mode: list apps, pin the ones that matter) and the plug
    - One folder per app, `apps/<id>/app.json`, with the manifest from doc 14 (`magnesiumApi`).
    - Versions are git-tracked.
    - Enable and disable; pins; a data scope per app.
+   - **Remove** an app: it asks first, turns the app off, and deletes its folder and its data; its machine parts go with it (goal 28).
 2. **Contribution points.**
    - **A page** under Apps, which can be pinned to the sidebar.
    - **A footer item.** Its label is data, filled by the hub from a read-only tool on a timer or from an app event. Its popover is a small app view; on the phone it becomes a bottom sheet.
@@ -58,6 +59,7 @@ This goal covers M5 (app mode: list apps, pin the ones that matter) and the plug
 3. **Fail closed.** Leave an approval unanswered past its timeout. It ends as `unavailable`, and nothing runs.
 4. **No network.** From inside the app's frame, `fetch('https://example.com')` is blocked, and the console shows the CSP.
 5. **Off means off.** Disable GPU Board; its page, footer item, card and tools are gone. Enabling it again restores them.
+   Remove a scratch app: it asks first, and afterwards it is gone from Apps, its folder and data are gone from the hub, and nothing of it runs.
 6. **Consent for the difference.** Publish a new version that adds one data read. Enabling it asks only about the new read.
 7. **Phone.** The app page works, and the footer popover opens as a bottom sheet.
 8. **Against the boards.** Compare side by side with Apps · desktop, Selected app · desktop, App · phone and both Footer boards.

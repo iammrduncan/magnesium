@@ -4,7 +4,7 @@ kind: feature
 depends_on: [mg-home, mg-upstream-v2]
 phase: 2
 boards: []
-decisions: [D53, D62]
+decisions: [D53, D62, D66]
 ---
 # Waiting on you: a turn that ends asking something shows on Home
 
@@ -21,7 +21,7 @@ Agents often end a turn by asking in plain words: "Should I go ahead?", "Approve
    It counts in the sidebar and the footer's Needs you, and clears on its own when you send the thread a message or a new turn starts.
 4. **In the thread list,** a thread whose turn ended waiting on you is marked as waiting, not as idle.
 5. **Cost guard:** one check per turn, never one for a turn that raised its own approval or question, and a cap per hour shown with the setting. A failed or slow check leaves the turn as it is and never blocks the thread.
-6. **Agents and schedules.** Waiting turns are part of Home's list for MCP and the agents API, so a bot or a scheduled check can see what waits on you.
+6. **Agents and schedules (D66).** A new Magnesium agents-API operation `list_needs` returns everything in Home's Needs you, from every machine: approvals, questions, plans, failures and waiting turns, each with its thread and machine. It is written once and served by the `magnesium-agents` CLI, REST and MCP, with tests, so a bot or a scheduled check can see what waits on you. Answering stays with you, or with goal 18's grants.
 
 ## Test it
 
@@ -33,6 +33,7 @@ Agents often end a turn by asking in plain words: "Should I go ahead?", "Approve
 6. **Not waiting** clears a card that guessed wrong, and the next turn is checked afresh.
 7. **On every kind of machine:** bare metal, a Magnesium pod, and attached in a workload.
 8. **Cost guard.** An hour of short turns stays under the cap; a check that times out leaves no card and no error in the thread.
+9. **`list_needs`.** With an approval on one machine and a waiting turn on another, an agent's `list_needs` call over MCP returns both, each with its thread and machine; a read-only session gets the same list.
 
 ## Not in this goal
 

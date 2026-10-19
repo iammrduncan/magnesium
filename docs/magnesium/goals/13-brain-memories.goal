@@ -4,7 +4,7 @@ kind: feature
 depends_on: [mg-brain]
 phase: 5
 boards: ["Brain · desktop (memories, dream cycle)", "Footer · shared component (dream cycle item)"]
-decisions: [D22, D37]
+decisions: [D22, D37, D66]
 ---
 # Memories you can edit or ask to change, and a dream cycle you can retry
 
@@ -12,7 +12,7 @@ Memory stays automatic, as it works today, with no review gate (D22). This goal 
 
 ## Build
 
-1. **New Magnesium agents-API operations `memory_edit` and `memory_request_change`.**
+1. **New Magnesium agents-API operations `memory_edit`, `memory_request_change`, `memory_add` and `memory_forget`.**
    - Each writes to the Magnesium Brain (goal 29) and records who changed what, when and why.
    - Each is written once and served by the `magnesium-agents` CLI, REST and MCP, with tests.
 2. **A change request goes to the memory's owner,** the profile or job that wrote it, found from its provenance.
@@ -21,6 +21,8 @@ Memory stays automatic, as it works today, with no review gate (D22). This goal 
 3. **Recent memories on the Brain page:** personal, team and profile memories, each with its source and owner.
    - Edit inline.
    - Request a change, with a note.
+   - **Add** a personal or team memory by hand.
+   - **Forget** a wrong or sensitive memory: it stops being recalled at once, and stays in its history, marked forgotten, so it can be brought back.
    - Each memory's history.
 4. **The dream cycle:**
    - the last run's status and a link to its log;
@@ -43,9 +45,10 @@ Memory stays automatic, as it works today, with no review gate (D22). This goal 
    - Use a failed dream run if one exists. If not, use a test job, with your OK.
    - Home shows a failure card, and the footer's Dream cycle item turns red.
    - Retry from the footer's popover runs `run_job` and shows the result.
-5. **The reader stays read-only.** A test shows that goal 12's client cannot write.
-6. **Tests.** Magnesium's tests pass (`vp test run`), with tests for `memory_edit`, `memory_request_change` and `run_job`.
-7. **Against the board.** Compare side by side with Brain · desktop's memories and dream cycle.
+5. **Add and forget.** Add "Magnesium test fact v3" as a team memory: `recall` returns it. Forget it: `recall` no longer returns it, and its history shows it forgotten, with Bring back.
+6. **The reader stays read-only.** A test shows that goal 12's client cannot write.
+7. **Tests.** Magnesium's tests pass (`vp test run`), with tests for `memory_edit`, `memory_request_change`, `memory_add`, `memory_forget` and `run_job`.
+8. **Against the board.** Compare side by side with Brain · desktop's memories and dream cycle.
 
 ## Not in this goal
 

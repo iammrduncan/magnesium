@@ -4,7 +4,7 @@ kind: feature
 depends_on: [mg-profiles, mg-home]
 phase: 2
 boards: ["Profiles · desktop and phone (drawn in this goal)", "Session · desktop (picker)"]
-decisions: [D39, D40, D41, D46, D65]
+decisions: [D39, D40, D41, D46, D65, D66]
 ---
 # Profiles in the app: create and manage them, with their tools and knowledge
 
@@ -50,16 +50,17 @@ Goal 03 built profiles: an agent's instructions, skills, tools and sandbox, kept
 7. **Delete and restore.** Delete asks first and names the threads that use the profile; those threads keep their history and can move to another profile. A deleted profile can be restored, with its history, for 30 days.
 8. **Knowledge.** The profile's page says what it may read and write in the Brain.
    - Until the Magnesium Brain exists (goal 29), a profile reaches a knowledge base only as an MCP server under Tools.
-   - Goal 29 then adds each Brain section's read and write access to this page: the same setting Settings → Brain shows from the other side.
+   - Once goal 29 lands, each Brain section's read and write access is edited here, and the same setting shows in Settings → Brain from the other side; goal 29 builds both.
 9. **Agents manage profiles through Magnesium.** The same operations are tools in MCP and the agents API:
    - `list_profiles`, `get_profile` and `check_profiles` read freely;
    - `create_profile`, `update_profile` and `delete_profile` ask you first: each is a Needs you card on Home showing the change, applied only when you approve it (D65);
    - `send_profile_now` and the delivery status are there for a bot or a scheduled check.
 
-   The CLI keeps working, on the same service.
+   The CLI keeps working, on the same service. The page shows the Magnesium MCP address that serves these tools, with Copy MCP URL, so an agent or tool outside Magnesium can be pointed at it.
 10. **From the thread.** The picker's profile entry has Edit profile. With no profiles, the picker offers Create a profile.
 11. **Phone.** The list, delivery, history and approving an agent's change all work at phone width. Editing long files is desktop-first but works.
 12. **Single box.** On a hub with no machines, profiles run on the hub, and everything above works.
+13. **Docs.** The user guide's profiles page ([`docs/user/profiles-and-sandboxes.md`](../../user/profiles-and-sandboxes.md)) says how to make and manage profiles in the app, and how to connect an agent to the Magnesium MCP address.
 
 ## Test it
 
@@ -88,6 +89,7 @@ Goal 03 built profiles: an agent's instructions, skills, tools and sandbox, kept
 11. **Delivery.** Take a machine offline: its row says it isn't connected. When it's back, it holds the current version. Send now delivers within seconds.
 12. **Phone.** On the phone, find a refused profile, see why, and approve an agent's change.
 13. **Single box.** On a hub with no machines, create a profile and run a thread on it.
+14. **The MCP address.** Copy MCP URL from the page, point an agent outside Magnesium at it, and its `list_profiles` call returns the profiles.
 
 ## Not in this goal
 

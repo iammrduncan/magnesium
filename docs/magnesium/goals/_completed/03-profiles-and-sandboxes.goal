@@ -60,7 +60,7 @@ This goal runs spike S1, then phase 1 (doc 11: "Profiles are provider instances"
    - Other profiles keep working.
 6. **MCP from a sandbox.** An agent in a container calls one of T3's own MCP tools, and the call succeeds.
 7. **Against the board.** Compare with Session · desktop: the picker, avatar, accent and sandbox chip.
-8. **Sessions reach the Brain.** The thread from step 2 shows up in the Brain within its indexing interval. Search for a phrase only that thread used.
+8. **Sessions reach the Brain.** Moved to goal 29's tests by the owner's decision (2026-10-19), since the Brain is built there.
 9. **Threads use the Brain.** In a `scratch-a` thread, ask something only the Brain knows. The agent calls the Brain's tools through Magnesium and answers from them.
 10. **A fenced agent can't read the state home** (D40). On a machine, put a canary file in `~/.magnesium/userdata/` (never the real secrets). In a fenced `scratch-a` thread, approve `cat` of it: it fails. The same in a `native` thread reads it. Remove the canary.
 11. **The stock instances are fenced, and keep working.** On the hub, an existing OpenCode thread answers its next message, now fenced; the sandbox chip says `fenced`, and **Settings → Connections → Sandboxes** lists every machine's levels.
@@ -70,6 +70,8 @@ This goal runs spike S1, then phase 1 (doc 11: "Profiles are provider instances"
 Harnesses beyond Claude Code and Codex, and the Kubernetes and microVM levels (goal 19). Launching from Fleet (goal 10).
 
 ## Goal summary
+
+**2026-10-19: VERIFIED.** By the owner's decision, test 8 (a profile thread's session found in the Brain) moved to goal 29, which builds the Brain; every other test had passed. Making and managing profiles in the app is goal 34.
 
 **2026-10-15: BLOCKED only on test 8, which waits for the Magnesium Brain (goal 29) to index profile sessions; everything else is done and verified.** Deployed with the Ansible roles; `magnesium-release rollback` restores the previous build (Done means 5). CI is green.
 
@@ -116,9 +118,9 @@ Harnesses beyond Claude Code and Codex, and the Kubernetes and microVM levels (g
 
 ## Next steps
 
-1. **Next session, then VERIFIED** (the owner accepted closing this run as BLOCKED, 2026-10-15): once the Magnesium Brain (goal 29) indexes profile sessions, find a profile thread's own session in it by a phrase only that session holds. When it's found, test 8 passes: mark this goal `VERIFIED` and move it to `_completed/`.
-2. **Owner: accept or reject test 7's three differences from the Session board** (above). A rejected one becomes a web change, here or in goal 05's shell work.
+1. **Done:** verified on 2026-10-19; test 8 is goal 29's now.
+2. **Owner: accept or reject test 7's three differences from the Session board** (above), at goal 34's owner gate. A rejected one becomes a web change there.
 3. **Next merge from upstream:** port this goal's edits to the three files upstream moved (above).
 4. Goals 08, 10 and 18 can start on this; goal 12 now carries test 9.
 
-Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](README.md#done-means-for-every-goal)).
+Before handing back, write the dated Goal summary and Next steps here, and include both in the final reply ([README](../README.md#done-means-for-every-goal)).

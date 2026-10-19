@@ -1,0 +1,60 @@
+---
+id: mg-brain-sources
+kind: feature
+depends_on: [mg-magnesium-brain]
+phase: 3
+boards: ["Brain · desktop (sources)"]
+decisions: [D56, D66]
+---
+# Brain sources: add, sync and fix what feeds the Brain
+
+The Brain fills from sources: Magnesium's own threads and documents (goal 29), and outside ones such as mail, chats, repositories, saved links and feeds. Goal 12 shows sources read-only, and goal 29 lists what the old knowledge base's collectors do with where each moves. But no goal lets you add, pause, sync or remove a source, see why one failed, or turn what arrives into something useful. Requirements K2 (sources that collect into the knowledge base) and K4 (ingestion: research, then why it matters to you) have no owner. This goal gives them one (D66).
+
+## Build
+
+1. **A Sources screen** in the Brain. Each source shows:
+   - its kind, name and the Brain section it fills;
+   - its last sync, how much it brought, and its next run;
+   - its state: syncing, paused, or failed with the reason.
+2. **Add a source.** Pick a kind, give it what it needs, and choose the section it fills and how often it syncs.
+   - A source's secrets are names of the hub's secrets, never values in a setting.
+   - A test fetch runs before it's saved, and says what it found or why it failed.
+3. **Run it.** Each source has Sync now, Pause and Resume, Edit and Remove.
+   - Remove asks whether to keep what the source brought, or take it out of the Brain too.
+   - A source that fails twice in a row is a Needs you card on Home.
+4. **The old collectors move in.** Each collector on goal 29's list is now a source here, or is recorded as dropped with the owner's agreement. Each moved one runs from Magnesium and fills the section it filled before, without duplicates.
+5. **Why it matters.** An item that arrives through ingestion (a link, a paper, a model page, a PDF) is researched into a short synthesis. Its page in the Brain shows:
+   - the raw item and the research;
+   - the synthesis;
+   - "why it matters to you", by area and project.
+
+   The model for it is chosen in Settings → Brain, through Magnesium's model access.
+6. **Agents and the palette.**
+   - The same operations are tools in MCP and the agents API: `list_sources`, `add_source`, `sync_source`, `pause_source` and `remove_source`. Reading is free, and every change is a Needs you card applied only when you approve it.
+   - The command palette has Add a source and Sync now.
+
+## Test it
+
+1. **Against the board.** Compare the Sources screen with its board, in light and dark, at desktop and phone width.
+2. **Add a source.** Add a feed with a test fetch. It fills its section; a search finds an item from it, and the item's page says where it came from.
+3. **A secret by name.** Add a source that needs a token, by its secret's name. The value appears in no setting, log or page.
+4. **Failure shows.** Break a source's credentials. It shows failed with the reason, and after a second failure Home has a card. Fix it and Sync now: it's green again.
+5. **Pause and remove.** Pause a source: it doesn't run at its next time. Remove another, taking what it brought: its items are gone from search.
+6. **The old collectors.** Each collector on goal 29's list is a source here or recorded as dropped. A moved one brings new items with no duplicates of what the import brought.
+7. **Why it matters.** Drop in a link to a paper. Its page shows the raw item, the research, a synthesis, and why it matters to a named project.
+8. **An agent asks.** An agent calls `add_source`. Home shows the card; Approve adds it, and it syncs.
+
+## Not in this goal
+
+- Running the Brain, its sections and their access (goal 29).
+- The Brain reader (goal 12) and memories (goal 13).
+- Dropping a document on a project (goal 23), which this goal's ingestion then researches.
+
+## Goal summary
+
+Not started.
+
+## Next steps
+
+1. Draw the Sources part of the Brain board and get the owner's approval.
+2. List the old knowledge base's collectors (goal 29) with the kind each becomes here.

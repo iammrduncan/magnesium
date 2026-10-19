@@ -4,7 +4,7 @@ kind: feature
 depends_on: [mg-profiles, mg-home]
 phase: 3
 boards: ["Room · desktop", "Room · phone"]
-decisions: [D7, D15, D20]
+decisions: [D7, D15, D20, D66]
 ---
 # Rooms: you and several bots in one channel, with routing you can see
 
@@ -50,7 +50,10 @@ This goal covers M1 (bot mode: channels and DMs) and A6 (group chat). The design
    - the room composer.
 6. **Approvals stay out of the room.** A seat's approval shows on Home only. The room shows the bot as "needs you".
 7. **Rooms in the sidebar** (the Rooms place), and room mentions in the Home feed.
-8. **The phone layout**, as on Room · phone.
+   - **New room** and **New DM**, from the Rooms place and the command palette.
+   - **Archive** (read-only, hidden from the list; Unarchive brings it back), **Leave** (you stop getting its mentions), and **Delete**, which asks first and ends the room's seats while keeping each seat thread's history.
+8. **Agents (D66).** New Magnesium agents-API operations `list_rooms`, `create_room`, `room_post` and `room_read` (doc 12), served by the `magnesium-agents` CLI, REST and MCP, with tests. A bot posts and reads only in rooms it is a member of.
+9. **The phone layout**, as on Room · phone.
 
 ## Test it
 
@@ -67,6 +70,8 @@ Make a room with you and three scratch profiles on two machines; A is the lead.
 7. **Approvals.** A seat hits an approval. The card is on Home and not in the room; the room shows B as needs you.
 8. **Restart.** Restart the hub mid-conversation. No message is delivered twice.
 9. **Against the boards.** Compare side by side with Room · desktop and Room · phone.
+10. **The ways out.** Archive the room: it leaves the list and can't be posted to; unarchive it. Delete a scratch room: it asks first, its seats stop, and each seat thread keeps its history.
+11. **Agents.** An agent calls `create_room` with two members, then `room_post` and `room_read`; the room shows the post, routed by the same rules.
 
 ## Not in this goal
 

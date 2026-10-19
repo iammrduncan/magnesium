@@ -13,6 +13,8 @@ Today a Kubernetes cluster needs its operator to bootstrap Magnesium's gateway a
 ## Build
 
 1. **A cluster on the hub.** Settings → Connections → Clusters → Add a cluster: a kubeconfig for one namespace, with the identity the hub may use there. The hub keeps it in its secret store, by name, and shows what that identity may do (`kubectl auth can-i`-style), so a missing permission shows up before a deploy fails.
+   - **Replace the kubeconfig** when its credential changes; the hub checks the new one the same way before it takes over.
+   - **Remove a cluster** asks first and lists what the hub runs there (the gateway, its pods, attached workloads): take them out or leave them running, then the hub forgets the cluster and deletes its kubeconfig from the secret store.
 2. **Deploy the gateway** into that namespace from the hub: the image (built from the hub's own build, or a registry you name), the gateway's role, and its route to the hub. It pairs with the hub on its own, as a spoke does today. Updating a cluster's gateway follows the hub's build.
 3. **Add a machine → In Kubernetes:**
    - **Its own pod:** today's form for a managed spoke (goal 25), now reachable from the same dialog.
@@ -32,6 +34,7 @@ On a cluster where the hub's identity may manage one namespace:
 4. **Attach to a running workload** you pick: the change shown first matches what is applied; the workload restarts once; Magnesium pairs by itself, and its threads see the workload's files and tools.
 5. **Take it out:** the workload runs on as before, and the hub says the machine has gone.
 6. **No secrets leak:** the kubeconfig never appears in settings, logs or any pod.
+7. **Replace and remove.** Replace the kubeconfig with a new credential: the hub keeps working there. Remove the cluster, leaving its pods running: it asks first, lists them, and afterwards the kubeconfig is gone from the hub's secret store.
 
 ## Not in this goal
 

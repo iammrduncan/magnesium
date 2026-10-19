@@ -4,7 +4,7 @@ kind: feature
 depends_on: [mg-profiles, mg-hub-link]
 phase: 4
 boards: ["Fleet · desktop", "Fleet · phone", "Home · desktop (fleet tiles)"]
-decisions: [D21, D25, D37]
+decisions: [D21, D25, D37, D66]
 ---
 # Fleet: every machine's load and GPUs, what runs where, and launch anywhere
 
@@ -24,7 +24,8 @@ This goal covers M4 (every active session and job across the cluster), F1 (launc
    - routes and load balancing, from upstream's settings;
    - Launch.
 3. **Jobs.**
-   - New Magnesium agents-API operations `list_jobs` and `job_history`, covering the profiles' schedules and the Magnesium Brain's jobs, such as the dream cycle and the session collector.
+   - New Magnesium agents-API operations `list_jobs` and `job_history`, covering the profiles' schedules, and the Magnesium Brain's jobs, such as the dream cycle and the session collector, once goal 29 runs them.
+   - `list_machines`: every server the hub carries, with its link, build, load and what runs on it, so a bot or a scheduled check can see which machine is down (D66).
    - Each is written once, served by the `magnesium-agents` CLI, REST and MCP, with tests.
    - Each job shows on its machine.
 4. **Launch.** Pick a machine, profile, sandbox level, project or folder, and a first prompt.
@@ -45,10 +46,11 @@ This goal covers M4 (every active session and job across the cluster), F1 (launc
    - The thread appears in the sidebar and on the machine's card.
    - The reply has that machine's hostname and the branch.
 4. **Outside sessions stay out.** A terminal session started outside Magnesium on the same machine does not appear (D25).
-5. **Jobs.** A Brain job, such as the dream cycle, shows with its last run and status.
+5. **Jobs.** A profile's scheduled task shows on its machine with its last run and status. (Brain jobs are checked in goal 29.)
 6. **Tiles and footer.** Home's tiles and the footer item match the Fleet page.
 7. **Phone.** On Fleet · phone, open a machine's sheet and launch from it.
-8. **Tests.** Magnesium's tests pass (`vp test run`), with tests for `list_jobs` and `job_history`.
+8. **Agents see the fleet.** An agent calls `list_machines` over MCP: it lists every server with its link and build, and a stopped machine shows as offline.
+9. **Tests.** Magnesium's tests pass (`vp test run`), with tests for `list_jobs`, `job_history` and `list_machines`.
 
 ## Not in this goal
 
