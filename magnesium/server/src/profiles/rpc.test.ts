@@ -36,4 +36,31 @@ describe("profiles over the hub's RPC (goal 34)", () => {
       expect(missing).toMatchObject({ _tag: "ProfileError" });
     }).pipe(Effect.scoped),
   );
+
+  it.live("says which of a profile's variables each machine has, by name only", () =>
+    Effect.gen(function* () {
+      process.env.MG_TEST_PRESENT = "a-value-never-sent";
+      yield* Effect.addFinalizer(() => Effect.sync(() => delete process.env.MG_TEST_PRESENT));
+      const server = yield* startTestServer();
+      const operator = yield* connect(server.wsUrl("operator"));
+      yield* operator[MAGNESIUM_WS_METHODS.profileCreate]({ name: "scratch-b" });
+      yield* operator[MAGNESIUM_WS_METHODS.profileSave]({
+        name: "scratch-b",
+        settings: { env: ["MG_TEST_PRESENT", "MG_TEST_ABSENT"] },
+      });
+      const environment = yield* operator[MAGNESIUM_WS_METHODS.profileEnvironment]({
+        name: "scratch-b",
+      });
+      expect(environment).toEqual({
+        names: ["MG_TEST_PRESENT", "MG_TEST_ABSENT"],
+        machines: [{ machine: "hub", reachable: true, set: ["MG_TEST_PRESENT"] }],
+      });
+      // A machine answers the hub with names only.
+      const presence = yield* operator[MAGNESIUM_WS_METHODS.envPresence]({
+        names: ["MG_TEST_PRESENT", "MG_TEST_ABSENT", "not a name"],
+      });
+      expect(presence).toEqual({ set: ["MG_TEST_PRESENT"] });
+      expect(JSON.stringify(presence)).not.toContain("a-value-never-sent");
+    }).pipe(Effect.scoped),
+  );
 });

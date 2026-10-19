@@ -1,6 +1,7 @@
 import {
   type DeletedProfile,
   MAGNESIUM_MCP_SERVER,
+  MAGNESIUM_WS_METHODS,
   PROFILE_NAME_PATTERN,
   PROFILE_TRASH_DAYS,
   type ProfileBundle,
@@ -8,6 +9,7 @@ import {
   type ProfileCreateInput,
   type ProfileDelivery,
   type ProfileDetail,
+  type ProfileEnvironment,
   ProfileError,
   type ProfileHarness,
   type ProfileMcpServer,
@@ -32,15 +34,18 @@ import type { PlatformError } from "effect/PlatformError";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import * as Semaphore from "effect/Semaphore";
+import { HttpClient } from "effect/http";
 import { isMap, parseDocument } from "yaml";
 
 import { HubMachines } from "../hub/HubMachines.ts";
+import { connectMachine } from "../hub/machineRpc.ts";
 import { InstanceSource, isPushManaged, ProfilesConfig, summarize } from "./catalog.ts";
 import { bundleProfile, HubProfilePusher, revisionOf } from "./HubProfilePusher.ts";
 import {
   checkProfile,
   DEFAULT_TOOL_PERMISSION,
   decodeMcpFile,
+  ENV_NAME_PATTERN,
   EXTRA_INSTRUCTIONS,
   FILES,
   hasErrors,
@@ -84,6 +89,8 @@ export class ProfileStore extends Context.Service<
     ) => Effect.Effect<ProfileSaveResult, ProfileError>;
     /** Ask the hub to deliver to its machines now rather than on its next tick. */
     readonly sendNow: Effect.Effect<void>;
+    /** Which of the profile's variables each machine it runs on has, asked of each. */
+    readonly environment: (name: string) => Effect.Effect<ProfileEnvironment, ProfileError>;
   }
 >()("@magnesium/server/profiles/ProfileStore") {}
 
@@ -93,6 +100,14 @@ const TRASH_DIR = ".trash";
 const MAX_FILE_BYTES = 256 * 1024;
 const SKILL_NAME = /^[a-z0-9][a-z0-9-]{0,62}$/;
 const MAX_HISTORY_SHOWN = 50;
+/** A machine that hasn't said which variables it has by then is shown as unreachable. */
+const ENV_CHECK_TIMEOUT = "5 seconds";
+
+/** Which of `names` this server's environment has set, by name only. */
+export const presentHere = (names: ReadonlyArray<string>): string[] =>
+  names.filter(
+    (variable) => ENV_NAME_PATTERN.test(variable) && (process.env[variable] ?? "") !== "",
+  );
 
 /** Magnesium's own tools ask nothing by default: every change they make waits for you anyway. */
 const OWN_SERVER_DEFAULTS = { default: "allow", tools: {} } as const;
@@ -244,6 +259,7 @@ export const make = Effect.gen(function* () {
   const sync = yield* Effect.serviceOption(ProfileSync);
   const pusher = yield* Effect.serviceOption(HubProfilePusher);
   const machines = yield* Effect.serviceOption(HubMachines);
+  const http = yield* Effect.serviceOption(HttpClient.HttpClient);
   const scope = yield* Effect.scope;
   const lock = yield* Semaphore.make(1);
   const root = config.folder;
@@ -775,7 +791,53 @@ export const make = Effect.gen(function* () {
 
   const sendNow = Option.isSome(pusher) ? pusher.value.pushNow : Effect.void;
 
-  return ProfileStore.of({ detail, save, create, remove, deleted, restore, putBack, sendNow });
+  /** Asks one machine which names its server has; unreachable when the hub can't ask it. */
+  const presenceOn = (machine: string, names: ReadonlyArray<string>) =>
+    Option.isNone(machines) || Option.isNone(http)
+      ? Effect.succeed({ machine, reachable: false, set: [] as string[] })
+      : connectMachine(machine).pipe(
+          Effect.flatMap((client) =>
+            client[MAGNESIUM_WS_METHODS.envPresence]({ names: [...names] }),
+          ),
+          Effect.scoped,
+          Effect.timeout(ENV_CHECK_TIMEOUT),
+          Effect.provideService(HubMachines, machines.value),
+          Effect.provideService(HttpClient.HttpClient, http.value),
+          Effect.map((presence) => ({ machine, reachable: true, set: [...presence.set] })),
+          Effect.orElseSucceed(() => ({ machine, reachable: false, set: [] as string[] })),
+        );
+
+  const environment = (name: string) =>
+    Effect.gen(function* () {
+      const profile = yield* detail(name);
+      const names = [
+        ...new Set([...profile.env, ...profile.mcpServers.flatMap((server) => server.secrets)]),
+      ];
+      // The hub runs it too when it names no machines, the hub, or every machine.
+      const here = profile.summary.runsHere
+        ? [{ machine: config.machine, reachable: true, set: presentHere(names) }]
+        : [];
+      const elsewhere = yield* Effect.forEach(
+        profile.deliveries
+          .map((delivery) => delivery.machine)
+          .filter((machine) => machine !== config.machine),
+        (machine) => presenceOn(machine, names),
+        { concurrency: "unbounded" },
+      );
+      return { names, machines: [...here, ...elsewhere] } satisfies ProfileEnvironment;
+    });
+
+  return ProfileStore.of({
+    detail,
+    save,
+    create,
+    remove,
+    deleted,
+    restore,
+    putBack,
+    sendNow,
+    environment,
+  });
 });
 
 export const layer = Layer.effect(ProfileStore, make);

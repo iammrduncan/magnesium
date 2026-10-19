@@ -4,7 +4,7 @@ import * as Layer from "effect/Layer";
 
 import { pushStatuses } from "../agents/operations.ts";
 import { checkProfiles, listProfiles, listSandboxes } from "./catalog.ts";
-import { ProfileStore } from "./ProfileStore.ts";
+import { presentHere, ProfileStore } from "./ProfileStore.ts";
 import { ProfileSync } from "./ProfileSync.ts";
 import { readRevision, receivePush } from "./receive.ts";
 
@@ -132,8 +132,26 @@ const storeHandlers = Layer.mergeAll(
   ),
 );
 
+/** A machine says which variable names its server has, for the hub's Environment tab. */
+const envPresenceHandler = MagnesiumRpcGroup.toLayerHandler(
+  MAGNESIUM_WS_METHODS.envPresence,
+  Effect.succeed((input: { readonly names: ReadonlyArray<string> }) =>
+    Effect.sync(() => ({ set: presentHere(input.names) })),
+  ),
+);
+
+const environmentHandler = MagnesiumRpcGroup.toLayerHandler(
+  MAGNESIUM_WS_METHODS.profileEnvironment,
+  Effect.gen(function* () {
+    const store = yield* ProfileStore;
+    return (input) => store.environment(input.name);
+  }),
+);
+
 export const profileRpcHandlersLayer = Layer.mergeAll(
   storeHandlers,
+  envPresenceHandler,
+  environmentHandler,
   listProfilesHandler,
   checkProfilesHandler,
   listSandboxesHandler,

@@ -28,10 +28,13 @@ import {
 } from "./home.ts";
 import {
   DeletedProfile,
+  EnvPresence,
+  EnvPresenceInput,
   ProfileChange,
   ProfileCheckResult,
   ProfileCreateInput,
   ProfileDetail,
+  ProfileEnvironment,
   ProfileError,
   ProfileList,
   ProfileNameInput,
@@ -97,6 +100,8 @@ export const MAGNESIUM_WS_METHODS = {
   profileRestore: "magnesium.profiles.restore",
   profilePutBack: "magnesium.profiles.putBack",
   profileSendNow: "magnesium.profiles.sendNow",
+  profileEnvironment: "magnesium.profiles.environment",
+  envPresence: "magnesium.profiles.envPresence",
   needsLocal: "magnesium.needs.local",
   needsAnswer: "magnesium.needs.answer",
   needsDetail: "magnesium.needs.detail",
@@ -254,6 +259,17 @@ const ProfilePutBackRpc = Rpc.make(MAGNESIUM_WS_METHODS.profilePutBack, {
 const ProfileSendNowRpc = Rpc.make(MAGNESIUM_WS_METHODS.profileSendNow, {
   payload: Schema.Struct({}),
 }).annotate(RequiredScope, AuthOrchestrationOperateScope);
+/** The hub asks the profile's machines which of its variables they have. */
+const ProfileEnvironmentRpc = Rpc.make(MAGNESIUM_WS_METHODS.profileEnvironment, {
+  payload: ProfileNameInput,
+  success: ProfileEnvironment,
+  error: ProfileError,
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
+/** A machine says which variable names its server has set, never their values. */
+const EnvPresenceRpc = Rpc.make(MAGNESIUM_WS_METHODS.envPresence, {
+  payload: EnvPresenceInput,
+  success: EnvPresence,
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
 
 // Home (goal 06). Each server's own items, which the hub follows on every machine,
 // and the hub's gathered Home the browser shows.
@@ -429,6 +445,8 @@ export const MagnesiumRpcGroup = RpcGroup.make(
   ProfileRestoreRpc,
   ProfilePutBackRpc,
   ProfileSendNowRpc,
+  ProfileEnvironmentRpc,
+  EnvPresenceRpc,
   NeedsLocalRpc,
   NeedsAnswerRpc,
   NeedsDetailRpc,

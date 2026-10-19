@@ -4,6 +4,7 @@ import {
   MAGNESIUM_MCP_SERVER,
   type ProfileDelivery,
   type ProfileDetail,
+  type ProfileEnvironment,
   type ProfileMcpServer,
   type ProfileToolPermission,
 } from "@magnesium/contracts";
@@ -15,13 +16,14 @@ import {
   machinesSetting,
   PERMISSION_LABEL,
   permissionLine,
+  profileEnvironment,
   putBackProfile,
   saveProfile,
   sendProfilesNow,
   withToolPermission,
 } from "@magnesium/web";
 import { ChevronRightIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "../../lib/utils";
 import { Badge } from "../ui/badge";
@@ -764,6 +766,17 @@ export function ToolsSection({ detail, onChanged }: Section) {
 export function EnvironmentSection({ detail, onChanged }: Section) {
   const name = nameOf(detail);
   const [newName, setNewName] = useState("");
+  const [presence, setPresence] = useState<ProfileEnvironment | null>(null);
+  // The page remounts this tab on each new version, so it asks again after a save.
+  useEffect(() => {
+    let current = true;
+    profileEnvironment(window.location.href, name)
+      .then((next) => current && setPresence(next))
+      .catch(() => current && setPresence(null));
+    return () => {
+      current = false;
+    };
+  }, [name]);
   const names = [
     ...new Set([...detail.env, ...detail.mcpServers.flatMap((server) => server.secrets)]),
   ];
@@ -772,46 +785,76 @@ export function EnvironmentSection({ detail, onChanged }: Section) {
     void runChange((url) => saveProfile(url, { name, settings: { env: [...env] } }), done).then(
       (ok) => ok && onChanged(),
     );
+  const machines = presence?.machines ?? [];
   return (
     <div className="flex flex-col gap-3">
       {names.length === 0 ? (
         <p className="text-sm text-muted-foreground">It needs no environment variables.</p>
       ) : (
-        <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
-          {names.map((variable) => {
-            const usedBy = detail.mcpServers
-              .filter((server) => server.secrets.includes(variable))
-              .map((server) => server.name);
-            return (
-              <li key={variable} className="flex flex-wrap items-center gap-3 px-3 py-2">
-                <div className="min-w-48 flex-1">
-                  <code className="text-sm text-foreground">{variable}</code>
-                  <div className="text-xs text-muted-foreground">
-                    {usedBy.length > 0 ? `For ${usedBy.join(", ")}` : "Passed to the agent"}
-                  </div>
-                </div>
-                {detail.editable && detail.env.includes(variable) ? (
-                  <Button
-                    size="xs"
-                    variant="ghost-destructive"
-                    onClick={() =>
-                      setEnv(
-                        detail.env.filter((value) => value !== variable),
-                        `Removed ${variable}`,
-                      )
-                    }
-                  >
-                    Remove
-                  </Button>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full min-w-96 border-collapse text-sm">
+            <thead>
+              <tr className="text-left text-xs text-muted-foreground">
+                <th className="px-3 py-2 font-medium">Variable</th>
+                {machines.map((machine) => (
+                  <th key={machine.machine} className="px-3 py-2 font-medium">
+                    {machine.machine}
+                  </th>
+                ))}
+                <th className="px-3 py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {names.map((variable) => {
+                const usedBy = detail.mcpServers
+                  .filter((server) => server.secrets.includes(variable))
+                  .map((server) => server.name);
+                return (
+                  <tr key={variable} className="border-t border-border">
+                    <td className="px-3 py-2">
+                      <code className="text-foreground">{variable}</code>
+                      <div className="text-xs text-muted-foreground">
+                        {usedBy.length > 0 ? `For ${usedBy.join(", ")}` : "Passed to the agent"}
+                      </div>
+                    </td>
+                    {machines.map((machine) => {
+                      const state = !machine.reachable
+                        ? { text: "Can't ask", tone: "text-muted-foreground" }
+                        : machine.set.includes(variable)
+                          ? { text: "Set", tone: "text-success-foreground" }
+                          : { text: "Missing", tone: "text-warning-foreground font-medium" };
+                      return (
+                        <td key={machine.machine} className={cn("px-3 py-2 text-xs", state.tone)}>
+                          {state.text}
+                        </td>
+                      );
+                    })}
+                    <td className="px-3 py-2 text-right">
+                      {detail.editable && detail.env.includes(variable) ? (
+                        <Button
+                          size="xs"
+                          variant="ghost-destructive"
+                          onClick={() =>
+                            setEnv(
+                              detail.env.filter((value) => value !== variable),
+                              `Removed ${variable}`,
+                            )
+                          }
+                        >
+                          Remove
+                        </Button>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
       <p className="text-xs text-muted-foreground">
-        Only names are kept: a value is never shown, sent or stored here. Set it in each machine's
-        environment.
+        Only names are kept: a value is never shown, sent or stored here. Set a missing one in that
+        machine's environment.
       </p>
       {detail.editable ? (
         <form

@@ -42,6 +42,10 @@ export const restoreProfile = (pageUrl: string, name: string) =>
 export const putBackProfile = (pageUrl: string, name: string, version: number) =>
   callHub(pageUrl, (client) => client[MAGNESIUM_WS_METHODS.profilePutBack]({ name, version }));
 
+/** Which of the profile's variables each of its machines has, asked of each by the hub. */
+export const profileEnvironment = (pageUrl: string, name: string) =>
+  callHub(pageUrl, (client) => client[MAGNESIUM_WS_METHODS.profileEnvironment]({ name }));
+
 export const sendProfilesNow = (pageUrl: string) =>
   callHub(pageUrl, (client) => client[MAGNESIUM_WS_METHODS.profileSendNow]({}));
 

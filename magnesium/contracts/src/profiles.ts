@@ -364,6 +364,26 @@ export class ProfileError extends Schema.TaggedError<ProfileError>()("ProfileErr
   }
 }
 
+/** Which of these variable names a machine's server has set: names in, names out, never values. */
+export const EnvPresenceInput = Schema.Struct({ names: Schema.Array(Schema.String) });
+export type EnvPresenceInput = typeof EnvPresenceInput.Type;
+export const EnvPresence = Schema.Struct({ set: Schema.Array(Schema.String) });
+export type EnvPresence = typeof EnvPresence.Type;
+
+/** A profile's variables on each machine it runs on, as the Environment tab shows them. */
+export const ProfileEnvironment = Schema.Struct({
+  names: Schema.Array(Schema.String),
+  machines: Schema.Array(
+    Schema.Struct({
+      machine: Schema.String,
+      /** False when the hub couldn't ask it. */
+      reachable: Schema.Boolean,
+      set: Schema.Array(Schema.String),
+    }),
+  ),
+});
+export type ProfileEnvironment = typeof ProfileEnvironment.Type;
+
 /** How long a deleted profile can be restored. */
 export const PROFILE_TRASH_DAYS = 30;
 

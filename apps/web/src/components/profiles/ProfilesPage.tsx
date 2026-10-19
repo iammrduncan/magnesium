@@ -360,7 +360,7 @@ function ProfileView({
             <ToolsSection {...section} />
           </TabsPanel>
           <TabsPanel value="environment">
-            <EnvironmentSection {...section} />
+            <EnvironmentSection key={detail.version} {...section} />
           </TabsPanel>
           <TabsPanel value="runs-on">
             {/* Read again after each save: its fields start from what's saved. */}
