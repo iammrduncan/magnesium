@@ -50,7 +50,7 @@ const instanceSourceLayer = Layer.effect(
   ),
 );
 
-/** The profile services: config, sync and the hub's push. Needs `ServerPorts` and `HubMachines`. */
+/** The profile services: config, sync and the hub's push. Needs `ServerPorts`, `HubMachines` and `Fleet`. */
 export const profileServicesLayer = Layer.mergeAll(ProfileSync.layer, HubProfilePusher.layer).pipe(
   Layer.provideMerge(Layer.merge(configLayer, instanceSourceLayer)),
 );

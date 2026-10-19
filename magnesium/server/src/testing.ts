@@ -7,7 +7,7 @@ import * as NodePath from "node:path";
 
 import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { MAGNESIUM_WS_PATH } from "@magnesium/contracts";
+import { type FleetMachine, MAGNESIUM_WS_PATH } from "@magnesium/contracts";
 import {
   AuthAdministrativeScopes,
   AuthOrchestrationReadScope,
@@ -46,6 +46,7 @@ import {
 } from "effect/http";
 import type * as NetAddress from "effect/net/NetAddress";
 
+import { Fleet } from "./fleet/Fleet.ts";
 import { routesLayer } from "./index.ts";
 import {
   CallerUnauthenticatedError,
@@ -482,6 +483,38 @@ export const testHubSecrets =
     });
     return Effect.succeedSome(new TextEncoder().encode(stored));
   };
+
+/** A machine's Fleet row while its link is up, as the link writes it. */
+export const testFleetMachine = (
+  name: string,
+  overrides: Partial<FleetMachine> = {},
+): FleetMachine => ({
+  name,
+  label: name,
+  kind: "machine",
+  link: "connected",
+  environmentId: TEST_ENVIRONMENT_ID,
+  serverVersion: "0.0.45",
+  release: null,
+  deployment: null,
+  node: null,
+  workload: null,
+  startedAt: "2026-01-01T00:00:00.000Z",
+  lastSeenAt: null,
+  threads: null,
+  detail: null,
+  ...overrides,
+});
+
+/** A stand-in for Fleet whose machine rows the test supplies. */
+export const testFleet = (machines: Effect.Effect<ReadonlyArray<FleetMachine>>) =>
+  Fleet.of({
+    subscribeMachines: () => Stream.empty,
+    subscribeEvents: () => Stream.empty,
+    eventHistory: () => Effect.die("unused"),
+    reconnect: () => Effect.void,
+    machines,
+  });
 
 /** `hub-machines.json` for a hub that carries these machines. */
 export const testHubConfig = (machines: Readonly<Record<string, string>>) =>

@@ -20,6 +20,7 @@ import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
 import { HttpClient } from "effect/http";
 
+import { Fleet } from "../fleet/Fleet.ts";
 import { HubMachines } from "../hub/HubMachines.ts";
 import { connectMachine } from "../hub/machineRpc.ts";
 import { loadCatalog, ProfilesConfig } from "./catalog.ts";
@@ -28,10 +29,14 @@ import { FILES } from "./profileFolder.ts";
 /**
  * The hub holds the owner's profiles and pushes each to the machines it names
  * (D39), over its link to each machine's `/api/magnesium/ws`, with the token it
- * already holds. The machines never dial the hub (D35). Each tick the hub asks
- * every machine which revision it holds and pushes only when that differs, so a
- * new or edited profile reaches its machines within PUSH_EVERY, and a wiped
- * machine is filled again.
+ * already holds. The machines never dial the hub (D35). Each tick the hub works
+ * out every machine's revision from its own folder, and asks a machine which
+ * revision it holds only when there is a reason: that revision changed, the
+ * machine's server restarted (Fleet sees a new start), the last ask failed, or
+ * RECHECK_EVERY passed. It pushes only when the answer differs. So a new or
+ * edited profile reaches its machines within PUSH_EVERY, a wiped machine is
+ * filled again when it comes back, and a quiet fleet costs one call per
+ * machine every RECHECK_EVERY.
  *
  * The push needs `orchestration:operate` on the machine: the scope that already
  * edits provider instances through `server.updateSettings`, which is what a
@@ -40,7 +45,27 @@ import { FILES } from "./profileFolder.ts";
  */
 
 const PUSH_EVERY = Duration.seconds(20);
+/** In case a machine's profiles went missing while its server kept running. */
+const RECHECK_EVERY = Duration.minutes(10);
 const CALL_TIMEOUT = Duration.seconds(20);
+
+/** What a machine was last found to hold, under which start of its server, and when. */
+export interface HeldRevision {
+  readonly revision: string;
+  readonly startedAt: string | null;
+  readonly checkedAt: number;
+}
+
+/** Whether to ask a connected machine for its revision now (see above). */
+export const askDue = (
+  held: HeldRevision | undefined,
+  machine: { readonly revision: string; readonly startedAt: string | null },
+  now: number,
+) =>
+  held === undefined ||
+  held.revision !== machine.revision ||
+  held.startedAt !== machine.startedAt ||
+  now - held.checkedAt >= Duration.toMillis(RECHECK_EVERY);
 
 export class HubProfilePusher extends Context.Service<
   HubProfilePusher,
@@ -87,11 +112,12 @@ export const revisionOf = Effect.fn("profiles.revisionOf")(function* (
 
 export const make = Effect.gen(function* () {
   const config = yield* ProfilesConfig;
-  const machines = yield* HubMachines;
+  const fleet = yield* Fleet;
   const context = yield* Effect.context<
     Crypto.Crypto | FileSystem.FileSystem | Path.Path | HubMachines | HttpClient.HttpClient
   >();
   const statuses = yield* Ref.make(new Map<string, ProfilePushStatus>());
+  const held = new Map<string, HeldRevision>();
 
   const setStatus = (status: ProfilePushStatus) =>
     Ref.update(statuses, (current) => new Map(current).set(status.machine, status));
@@ -101,15 +127,15 @@ export const make = Effect.gen(function* () {
     Effect.scoped(
       Effect.gen(function* () {
         const client = yield* connectMachine(name);
-        const held = yield* client[MAGNESIUM_WS_METHODS.profileRevision]({});
-        if (held.revision === push.revision) return undefined;
+        const holding = yield* client[MAGNESIUM_WS_METHODS.profileRevision]({});
+        if (holding.revision === push.revision) return undefined;
         return yield* client[MAGNESIUM_WS_METHODS.pushProfiles](push);
       }),
     ).pipe(Effect.timeout(CALL_TIMEOUT));
 
   const pushOnce = Effect.gen(function* () {
-    const list = yield* machines.list;
-    if (list.machines.length === 0) return;
+    const machines = yield* fleet.machines;
+    if (machines.length === 0) return;
     const path = yield* Path.Path;
     const entries = yield* loadCatalog(config.folder);
     for (const entry of entries.filter((candidate) => !candidate.ready)) {
@@ -119,12 +145,15 @@ export const make = Effect.gen(function* () {
       });
     }
     const bundles = new Map<string, ProfileBundle>();
-    for (const machine of list.machines) {
-      const now = DateTime.formatIso(yield* DateTime.now);
+    for (const machine of machines) {
+      const name = machine.name;
+      if (name === null) continue;
+      const nowAt = yield* DateTime.now;
+      const now = DateTime.formatIso(nowAt);
       const profiles: ProfileBundle[] = [];
       for (const entry of entries) {
         const { machines: names } = entry.resolved;
-        if (!names.includes(machine.name) && !names.includes("*")) continue;
+        if (!names.includes(name) && !names.includes("*")) continue;
         const bundle =
           bundles.get(entry.profile.name) ??
           (yield* bundleProfile(path.join(config.folder, entry.profile.name), entry.profile.name));
@@ -132,9 +161,10 @@ export const make = Effect.gen(function* () {
         profiles.push(bundle);
       }
       const revision = yield* revisionOf(profiles);
-      if (machine.access !== "ready") {
+      if (machine.link === "no-access") {
+        held.delete(name);
         yield* setStatus({
-          machine: machine.name,
+          machine: name,
           revision: null,
           checkedAt: now,
           error: "The hub has no access to this machine.",
@@ -142,10 +172,28 @@ export const make = Effect.gen(function* () {
         });
         continue;
       }
-      const outcome = yield* pushTo(machine.name, { revision, profiles }).pipe(Effect.result);
+      // Offline or still connecting: it is asked once its link is up.
+      if (machine.link !== "connected") {
+        if (!(yield* Ref.get(statuses)).has(name)) {
+          yield* setStatus({
+            machine: name,
+            revision: null,
+            checkedAt: null,
+            error: "The hub isn't connected to this machine.",
+            refused: [],
+          });
+        }
+        continue;
+      }
+      const checkedAt = DateTime.toEpochMillis(nowAt);
+      if (!askDue(held.get(name), { revision, startedAt: machine.startedAt }, checkedAt)) {
+        continue;
+      }
+      const outcome = yield* pushTo(name, { revision, profiles }).pipe(Effect.result);
       if (outcome._tag === "Failure") {
+        held.delete(name);
         yield* setStatus({
-          machine: machine.name,
+          machine: name,
           revision: null,
           checkedAt: now,
           error: `Could not push: ${String(outcome.failure)}`,
@@ -153,19 +201,20 @@ export const make = Effect.gen(function* () {
         });
         continue;
       }
+      held.set(name, { revision, startedAt: machine.startedAt, checkedAt });
       const result = outcome.success;
       if (result !== undefined) {
         yield* Effect.logInfo("Pushed profiles to a machine.", {
-          machine: machine.name,
+          machine: name,
           revision,
           accepted: result.accepted,
           refused: result.refused.map((profile) => profile.name),
           removed: result.removed,
         });
       }
-      const previous = (yield* Ref.get(statuses)).get(machine.name);
+      const previous = (yield* Ref.get(statuses)).get(name);
       yield* setStatus({
-        machine: machine.name,
+        machine: name,
         revision,
         checkedAt: now,
         error: null,

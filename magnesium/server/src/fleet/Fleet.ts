@@ -63,8 +63,8 @@ export class Fleet extends Context.Service<
     readonly eventHistory: (input: StreamHistoryInput) => Effect.Effect<HistoryPage<FleetEvent>>;
     /** Retry a machine's link now instead of waiting out its backoff. */
     readonly reconnect: (name: string) => Effect.Effect<void>;
-    /** The machines connected now whose own status says they are a gateway (goal 25). */
-    readonly gateways: Effect.Effect<ReadonlyArray<string>>;
+    /** Each machine's row as its link last saw it, read without asking any machine. */
+    readonly machines: Effect.Effect<ReadonlyArray<FleetMachine>>;
   }
 >()("@magnesium/server/fleet/Fleet") {}
 
@@ -339,14 +339,8 @@ export const make = (
       subscribeEvents: log.subscribe,
       eventHistory: log.history,
       reconnect,
-      gateways: table.snapshot.pipe(
-        Effect.map(({ rows }) =>
-          rows.flatMap((row) =>
-            row.name !== null && row.kind === "gateway" && row.link === "connected"
-              ? [row.name]
-              : [],
-          ),
-        ),
+      machines: table.snapshot.pipe(
+        Effect.map(({ rows }) => rows.filter((row) => row.name !== null)),
       ),
     });
   });

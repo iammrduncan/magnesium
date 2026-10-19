@@ -248,7 +248,11 @@ export const make = Effect.gen(function* () {
       [...(yield* records), ...(yield* attachedRecords)].map((record) => record.name),
     );
     // Fleet's links already carry each machine's role, so no machine is dialled to ask.
-    return (yield* fleet.gateways).filter((name) => !spokeNames.has(name));
+    return (yield* fleet.machines).flatMap(({ name, kind, link }) =>
+      name !== null && kind === "gateway" && link === "connected" && !spokeNames.has(name)
+        ? [name]
+        : [],
+    );
   });
 
   /** What discovery last found in the way of an attached machine, by name. */

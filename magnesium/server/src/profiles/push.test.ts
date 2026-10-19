@@ -8,6 +8,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
   AGENTS_API_PATH,
   AGENTS_MCP_PATH,
+  type FleetMachine,
   MAGNESIUM_WS_METHODS,
   profileInstanceId,
 } from "@magnesium/contracts";
@@ -18,6 +19,7 @@ import * as Option from "effect/Option";
 import { FetchHttpClient, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import { describe, expect, it } from "@effect/vitest";
 
+import { Fleet } from "../fleet/Fleet.ts";
 import * as HubMachines from "../hub/HubMachines.ts";
 import { connectMachine } from "../hub/machineRpc.ts";
 import { ServerPorts } from "../ports.ts";
@@ -28,6 +30,8 @@ import {
   startTestServer,
   TEST_ENVIRONMENT_ID,
   testDescriptor,
+  testFleet,
+  testFleetMachine,
 } from "../testing.ts";
 import { InstanceSource, ProfilesConfig } from "./catalog.ts";
 import * as HubProfilePusher from "./HubProfilePusher.ts";
@@ -38,25 +42,29 @@ const SCRATCH_A = {
   "CLAUDE.md": "End every reply with the word `ok-a`.\n",
 };
 
-/** Upstream's ticket route on the machine: the hub's token buys a ticket for a standard session. */
-const ticketRoute = HttpRouter.add(
-  "POST",
-  "/api/auth/websocket-ticket",
-  Effect.gen(function* () {
-    const request = yield* HttpServerRequest.HttpServerRequest;
-    if (request.headers.authorization !== "Bearer machine-token") {
-      return HttpServerResponse.jsonUnsafe({ error: "nope" }, { status: 401 });
-    }
-    return HttpServerResponse.jsonUnsafe({
-      ticket: "operator",
-      expiresAt: new Date(Date.now() + 60_000).toISOString(),
-    });
-  }),
-);
-
-/** A machine whose provider-instance writes the test can read back. */
+/**
+ * A machine whose provider-instance writes the test can read back. Upstream's
+ * ticket route on it sells the hub's token a ticket for a standard session, and
+ * counts them: one per connection the hub opens.
+ */
 const startMachine = Effect.gen(function* () {
   let instances: ProviderInstanceConfigMap = {};
+  let tickets = 0;
+  const ticketRoute = HttpRouter.add(
+    "POST",
+    "/api/auth/websocket-ticket",
+    Effect.gen(function* () {
+      const request = yield* HttpServerRequest.HttpServerRequest;
+      if (request.headers.authorization !== "Bearer machine-token") {
+        return HttpServerResponse.jsonUnsafe({ error: "nope" }, { status: 401 });
+      }
+      tickets += 1;
+      return HttpServerResponse.jsonUnsafe({
+        ticket: "operator",
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      });
+    }),
+  );
   const machine = yield* startTestServer({
     routes: ticketRoute,
     ports: {
@@ -67,11 +75,17 @@ const startMachine = Effect.gen(function* () {
       setProviderInstances: (next) => Effect.sync(() => void (instances = next)),
     },
   });
-  return { ...machine, instances: () => instances };
+  return { ...machine, instances: () => instances, tickets: () => tickets };
 });
 
-/** A hub holding the owner's profiles, carrying one machine, `cpu-host-1`. */
-const hubFor = (machineOrigin: string) =>
+/**
+ * A hub holding the owner's profiles, carrying one machine, `cpu-host-1`, whose
+ * Fleet row is `fleetRow()`.
+ */
+const hubFor = (
+  machineOrigin: string,
+  fleetRow: () => FleetMachine = () => testFleetMachine("cpu-host-1"),
+) =>
   Effect.gen(function* () {
     const baseDir = yield* Effect.acquireRelease(
       Effect.promise(() => NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "mg-hub-"))),
@@ -126,15 +140,19 @@ const hubFor = (machineOrigin: string) =>
     });
     const services = Layer.mergeAll(
       Layer.succeed(ServerPorts, ports),
+      Layer.succeed(Fleet, testFleet(Effect.sync(() => [fleetRow()]))),
       Layer.succeed(ProfilesConfig, config),
       Layer.succeed(InstanceSource, InstanceSource.of({ instances: Effect.succeed({}) })),
       FetchHttpClient.layer,
       NodeServices.layer,
     );
-    return HubProfilePusher.layer.pipe(
-      Layer.provideMerge(HubMachines.layer),
-      Layer.provideMerge(services),
-    );
+    return {
+      folder,
+      layer: HubProfilePusher.layer.pipe(
+        Layer.provideMerge(HubMachines.layer),
+        Layer.provideMerge(services),
+      ),
+    };
   });
 
 describe("the hub's push", () => {
@@ -149,7 +167,7 @@ describe("the hub's push", () => {
         }),
       );
       const machine = yield* startMachine;
-      const hub = yield* hubFor(machine.origin);
+      const { layer: hub } = yield* hubFor(machine.origin);
       const status = yield* Effect.gen(function* () {
         const pusher = yield* HubProfilePusher.HubProfilePusher;
         yield* pusher.pushNow;
@@ -199,6 +217,55 @@ describe("the hub's push", () => {
       ]);
     }),
   );
+
+  it.live("asks a machine only when a profile changed or its server restarted", () =>
+    Effect.gen(function* () {
+      const machine = yield* startMachine;
+      let row = testFleetMachine("cpu-host-1");
+      const hub = yield* hubFor(machine.origin, () => row);
+      yield* Effect.gen(function* () {
+        const pusher = yield* HubProfilePusher.HubProfilePusher;
+        yield* pusher.pushNow;
+        expect(machine.tickets()).toBe(1);
+        const [first] = yield* pusher.status;
+
+        // Nothing changed: the next ticks open no connection.
+        yield* pusher.pushNow;
+        yield* pusher.pushNow;
+        expect(machine.tickets()).toBe(1);
+
+        // An edit on the hub's disk goes out on the next tick.
+        NodeFS.writeFileSync(
+          NodePath.join(hub.folder, "scratch-a", "AGENTS.md"),
+          "You help with other work.\n",
+        );
+        yield* pusher.pushNow;
+        expect(machine.tickets()).toBe(2);
+        const [edited] = yield* pusher.status;
+        expect(edited?.revision).not.toBe(first?.revision);
+
+        // Offline, then back on the same start: still nothing to ask.
+        row = { ...row, link: "offline" };
+        yield* pusher.pushNow;
+        row = { ...row, link: "connected" };
+        yield* pusher.pushNow;
+        expect(machine.tickets()).toBe(2);
+
+        // Its server restarted, perhaps on an empty home: asked again.
+        row = { ...row, startedAt: "2026-01-02T00:00:00.000Z" };
+        yield* pusher.pushNow;
+        expect(machine.tickets()).toBe(3);
+      }).pipe(Effect.provide(hub.layer));
+    }),
+  );
+
+  it("asks again after a while even when nothing says it changed", () => {
+    const held = { revision: "r1", startedAt: "s1", checkedAt: 0 };
+    const machine = { revision: "r1", startedAt: "s1" };
+    expect(HubProfilePusher.askDue(held, machine, 9 * 60_000)).toBe(false);
+    expect(HubProfilePusher.askDue(held, machine, 10 * 60_000)).toBe(true);
+    expect(HubProfilePusher.askDue(undefined, machine, 0)).toBe(true);
+  });
 
   it.live("answers nobody who has not signed in", () =>
     Effect.gen(function* () {

@@ -22,7 +22,13 @@ import * as TestClock from "effect/testing/TestClock";
 
 import { Fleet } from "../fleet/Fleet.ts";
 import { ServerPorts } from "../ports.ts";
-import { defaultSettingsPorts, noThreads, testDescriptor } from "../testing.ts";
+import {
+  defaultSettingsPorts,
+  noThreads,
+  testDescriptor,
+  testFleet,
+  testFleetMachine,
+} from "../testing.ts";
 import { GatewayClient } from "./gatewayClient.ts";
 import { HubMachineAccessError, HubMachines } from "./HubMachines.ts";
 import * as HubSpokes from "./HubSpokes.ts";
@@ -189,13 +195,14 @@ const makeHub = (options: {
             Layer.succeed(GatewayClient, gateways),
             Layer.succeed(
               Fleet,
-              Fleet.of({
-                subscribeMachines: () => Stream.empty,
-                subscribeEvents: () => Stream.empty,
-                eventHistory: () => Effect.die("unused"),
-                reconnect: () => Effect.void,
-                gateways: Effect.succeed(options.gateways ?? []),
-              }),
+              testFleet(
+                Effect.succeed([
+                  ...(options.gateways ?? []).map((name) =>
+                    testFleetMachine(name, { kind: "gateway" }),
+                  ),
+                  testFleetMachine("cpu-host-1"),
+                ]),
+              ),
             ),
             NodeServices.layer,
           ),
