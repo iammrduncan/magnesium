@@ -238,6 +238,12 @@ export const make = Effect.gen(function* () {
           `${name} runs inside its workload, whose deploy sets its build, so it can't ${what} from here. Change the Magnesium image in that deploy.`,
         );
       }
+      const row = (yield* fleet.machines).find((machine) => machine.name === name);
+      if (row?.kind === "gateway") {
+        return yield* fail(
+          `${name} is a gateway, whose own deploy sets its build, so it can't ${what} from here.`,
+        );
+      }
     });
 
   const update = (machine: string | null) =>

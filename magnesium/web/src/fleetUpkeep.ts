@@ -93,6 +93,11 @@ export const buildOffers = (
     const reason = "Its workload's deploy sets its build.";
     return { update: not(reason), rollback: not(reason) };
   }
+  // A gateway runs in its namespace from its own manifest, as an attached machine does.
+  if (machine.kind === "gateway") {
+    const reason = "Its own deploy sets a gateway's build.";
+    return { update: not(reason), rollback: not(reason) };
+  }
   const behind =
     machine.name !== null &&
     machine.release !== null &&

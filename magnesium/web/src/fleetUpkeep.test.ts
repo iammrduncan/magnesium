@@ -130,6 +130,20 @@ describe("which of Update, Roll back and Restore a server offers", () => {
     ).toBe(true);
   });
 
+  it("leaves a gateway's build to its own deploy", () => {
+    const gateway = server("gateway", {
+      kind: "gateway",
+      deployment: "pod",
+      launcher: "container",
+      release: "7b2f9e4bbb",
+    });
+    expect(buildOffers(gateway, hub).update).toEqual({
+      offered: false,
+      reason: "Its own deploy sets a gateway's build.",
+    });
+    expect(restoreOffer(gateway).offered).toBe(true);
+  });
+
   it("offers nothing while it is offline or busy", () => {
     const busy = server("gpu-a", {
       release: "7b2f9e4bbb",

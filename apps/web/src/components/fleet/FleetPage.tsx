@@ -195,7 +195,8 @@ function MachineActions({
   const [dialog, setDialog] = useState<"access" | "forget" | "edit" | null>(null);
   if (machine.name === null || machine.deployment === "attached") return null;
   // The hub's pods are added and taken out in Settings → Connections; their settings change here too.
-  if (machine.deployment === "pod") {
+  // A gateway runs as a pod too, but from its own manifest.
+  if (machine.deployment === "pod" && machine.kind !== "gateway") {
     return (
       <>
         <Button size="compact" variant="outline" onClick={() => setDialog("edit")}>
