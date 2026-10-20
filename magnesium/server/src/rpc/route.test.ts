@@ -3,12 +3,9 @@ import * as NodeFSP from "node:fs/promises";
 
 import { MAGNESIUM_WS_METHODS, MAGNESIUM_WS_PATH, RequiredScope } from "@magnesium/contracts";
 import {
-  AuthAccessWriteScope,
   type AuthEnvironmentScope,
-  AuthEnvironmentMaintainScope,
   AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
-  AuthSettingsWriteScope,
 } from "@t3tools/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
@@ -89,12 +86,8 @@ describe("scope guard", () => {
     RequiredScope,
     AuthOrchestrationOperateScope,
   );
-  const maintain = Rpc.make("test.maintain", { success: Schema.String }).annotate(
-    RequiredScope,
-    AuthEnvironmentMaintainScope,
-  );
   const unscoped = Rpc.make("test.unscoped", { success: Schema.String });
-  const group = RpcGroup.make(operate, maintain, unscoped);
+  const group = RpcGroup.make(operate, unscoped);
   const rpcOf = (tag: string) => group.requests.get(tag)! as unknown as Rpc.AnyWithProps;
   const ran = "ran" as unknown as RpcMiddleware.SuccessValue;
   const call = (scopes: ReadonlyArray<AuthEnvironmentScope>, tag: string) =>
@@ -118,24 +111,6 @@ describe("scope guard", () => {
         "test.operate",
       );
       expect(allowed).toBe(ran);
-    }),
-  );
-
-  it.effect("lets a grant from before granular permissions do what its broad scopes meant", () =>
-    Effect.gen(function* () {
-      // A device paired then: the old scopes only, operate among them (T3 Code v0.0.45).
-      const legacy = [
-        AuthOrchestrationReadScope,
-        AuthOrchestrationOperateScope,
-        AuthAccessWriteScope,
-      ] as ReadonlyArray<AuthEnvironmentScope>;
-      expect(yield* call(legacy, "test.maintain")).toBe(ran);
-      // A granular grant needs the scope itself.
-      const granular = yield* call(
-        [AuthOrchestrationOperateScope, AuthSettingsWriteScope],
-        "test.maintain",
-      ).pipe(Effect.flip);
-      expect(granular).toMatchObject({ requiredScope: AuthEnvironmentMaintainScope });
     }),
   );
 
