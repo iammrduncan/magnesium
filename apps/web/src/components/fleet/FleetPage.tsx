@@ -87,7 +87,7 @@ function MachineRow({
   return (
     <li
       className={cn(
-        "grid grid-cols-1 gap-x-4 gap-y-1 border-b border-border px-2 py-3 last:border-b-0 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_auto] sm:items-center",
+        "grid grid-cols-1 gap-x-4 gap-y-1 border-b border-border px-2 py-3 last:border-b-0 sm:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_auto] sm:items-center 2xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_auto]",
         selected && "rounded-md bg-accent/60",
       )}
     >
@@ -126,7 +126,8 @@ function MachineRow({
       </button>
       <span
         className={cn(
-          "truncate text-xs tabular-nums",
+          // The server's panel shows its build; the list keeps room for names until the screen is wide.
+          "truncate text-xs tabular-nums sm:hidden 2xl:block",
           differsFromHub(machine, hubRelease) ? "text-warning-foreground" : "text-muted-foreground",
         )}
       >
@@ -168,10 +169,10 @@ function MachineRow({
         ) : null}
       </div>
       {machine.detail !== null && machine.link !== "connected" ? (
-        <p className="text-xs text-muted-foreground sm:col-span-5">{machine.detail}</p>
+        <p className="text-xs text-muted-foreground sm:col-span-full">{machine.detail}</p>
       ) : null}
       {terminalOpen && environmentId !== null ? (
-        <div className="pt-2 sm:col-span-5">
+        <div className="pt-2 sm:col-span-full">
           <MachineTerminal
             environmentId={environmentId}
             label={machine.label}
