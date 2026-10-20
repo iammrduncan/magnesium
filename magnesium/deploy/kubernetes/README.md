@@ -121,12 +121,12 @@ Provider logins work from inside the pod: Settings → Providers → **Sign in**
 
 ## Day to day
 
-| Change    | How                                                                                                                                                                  |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Upgrade   | Build the new commit's image and change the spoke's build in Settings. The old pod stops before the new one starts; a new release may migrate the database on start. |
-| Roll back | Run the previous image. Restore a backup first if the newer release migrated the database.                                                                           |
-| Back up   | Nothing to set up: the server backs itself up daily into `$HOME/.magnesium/backups` and keeps the newest seven. `magnesium-release backup` takes one now.            |
-| Restore   | Stop the spoke, run `magnesium-release restore <name>` in a one-off pod with the volume, then scale it back to one.                                                  |
-| Pair      | `magnesium-release pair` in the pod.                                                                                                                                 |
+| Change    | How                                                                                                                                                                                     |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Upgrade   | Build the new commit's image; then **Update** in Fleet puts the spoke on the hub's build. The old pod stops before the new one starts; a new release may migrate the database on start. |
+| Roll back | **Roll back** in Fleet runs the previous image. Restore a backup first if the newer release migrated the database.                                                                      |
+| Back up   | Nothing to set up: the server backs itself up daily into `$HOME/.magnesium/backups` and keeps the newest seven. `magnesium-release backup` takes one now.                               |
+| Restore   | **Restore…** in Fleet: the server stops, the pod's entrypoint puts the backup back while it is stopped, and it starts again.                                                            |
+| Pair      | `magnesium-release pair` in the pod.                                                                                                                                                    |
 
 In an attached workload, run the same commands as `/opt/magnesium-portable/bin/magnesium-release` in the workload's container. The bundle's tools work on the server's home (`MAGNESIUM_HOME`), not the workload's, so backups land in `$MAGNESIUM_HOME/.magnesium/backups`.

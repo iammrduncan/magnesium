@@ -58,6 +58,14 @@ Machines the hub carries appear under **Environments** as "Through the hub".
   `~/.local/share/magnesium/bin/magnesium-release pair`, then choose
   **Give access** and enter the code. This needs a device that can manage
   access.
+- **Add a machine:** in **Fleet**, choose **Add a machine** and give its name,
+  its address and a pairing code from it (its **Settings → Connections**, or
+  `magnesium-release pair` there). The hub keeps it in its own list, so a later
+  deploy of the hub doesn't drop it.
+- **Forget a machine:** in **Fleet**, choose it, then **Forget**. It leaves
+  the hub's list, and the hub's access to it ends on the machine too. Add it
+  again with a new pairing code. **Give access again** takes a new code for a
+  machine the hub still lists; the token it replaces stops working.
 
 If a browser had a machine added directly, it hands that access to the hub the
 first time it is signed in with **Manage access**, then forgets its own copy.
@@ -75,6 +83,41 @@ seen, and how many threads are running and waiting on you. A machine that stops
 answering shows Offline within about ten seconds, and comes back on its own when
 its server returns. To try an offline machine now instead of waiting, choose
 **Reconnect**. **Recent** lists when each machine's link came up or went down.
+
+Choose a server to see its panel, beside the list on a wide screen or in a
+sheet on a phone. Each row also notes what needs a look: a build that isn't
+the hub's, a backup that failed or is more than two days old, or a clock on
+another time zone.
+
+- **Update** puts a server on the hub's build. A machine like the hub gets the
+  hub's own build; one on another OS or processor builds that commit from the
+  source it was installed from, which takes a few minutes. A Magnesium pod
+  changes image through its gateway. The server restarts, and if the new build
+  doesn't start, it goes back to the one it had and Fleet says why.
+- **Roll back** restarts a server on the build it ran before. Rolling the hub
+  back reloads this page when the hub is back.
+- **Backups:** every server backs itself up daily and keeps the last seven.
+  **Backups** lists them, with **Back up now** and **Restore…**. A restore
+  stops the server, keeps the state it replaces as a backup of its own, and
+  starts it again; closing the page doesn't stop it. A failed backup is a card
+  on **Home** until one works.
+- **Time zone:** each server's scheduled tasks run on its own clock, so a
+  server on another zone than the hub gets a warning, and a task's schedule
+  names its zone.
+
+A machine attached inside a workload gets its build from that workload's
+deploy, so Fleet shows when it's behind but offers no Update or Roll back
+there. A server with nothing to start it again, such as one run by hand, can't
+update or restore itself from Fleet; use `magnesium-release` on it.
+
+The command palette has the same actions: **Add a machine**, and **Update**,
+**Roll back** and **Back up now** for each server.
+
+Agents can read Fleet too, and ask for any of these changes with Magnesium's
+tools (`list_machines`, `list_backups`, `update_server`, `rollback_server`,
+`backup_now`, `restore_backup`, `add_machine`, `forget_machine` and
+`edit_pod`). Each ask is a **Fleet change** card on Home: **Approve** carries it
+out, **Reject** leaves everything as it was.
 
 Agents and command-line sessions cannot reach the hub's machines, even with an
 admin token: only devices you paired can.

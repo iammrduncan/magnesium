@@ -68,9 +68,9 @@ Check it from a phone or laptop: the machine's `http://<address>:3773/` is refus
 | Roll out the pinned build everywhere     | `ansible-playbook magnesium.yml`                                                                                                                  |
 | Roll out one host, or a different commit | `ansible-playbook magnesium.yml -l <host> -e magnesium_version=<commit>`                                                                          |
 | Settings and units only                  | `ansible-playbook magnesium.yml --tags config`                                                                                                    |
-| Roll back one host                       | on the host: `~/.local/share/magnesium/bin/magnesium-release rollback`                                                                            |
-| Back up a host's state now               | on the host: `~/.local/share/magnesium/bin/magnesium-release backup`                                                                              |
-| Restore a backup                         | on the host: `ls ~/.magnesium/backups`, then `~/.local/share/magnesium/bin/magnesium-release restore <name>`                                      |
+| Update or roll back one host             | **Update** or **Roll back** in Fleet; or on the host: `~/.local/share/magnesium/bin/magnesium-release rollback`                                   |
+| Back up a host's state now               | **Back up now** in Fleet; or on the host: `~/.local/share/magnesium/bin/magnesium-release backup`                                                 |
+| Restore a backup                         | **Restore…** in Fleet; or on the host: `ls ~/.magnesium/backups`, then `~/.local/share/magnesium/bin/magnesium-release restore <name>`            |
 | See what a host runs                     | on the host: `~/.local/share/magnesium/bin/magnesium-release status`                                                                              |
 | Pair a new device with the hub           | in Settings → Connections → Authorized clients, **Create link**, and scan its QR code. The device sees every machine (D38).                       |
 | First admin device (once)                | on the hub: `~/.local/share/magnesium/bin/magnesium-release pair --admin`, then open the link on the desktop                                      |
@@ -85,8 +85,7 @@ The unit drops the server's stdout, so a startup pairing token never reaches the
 1. **Inventory:** add it to `magnesium_servers`, with `magnesium_host` set to the address the hub reaches it on (or leave it empty on a tailnet). If it has no Claude Code or Codex login, also add it to `magnesium_opencode`.
 2. **Model gateway key:** for an OpenCode machine, put the key for your OpenAI-compatible gateway (LiteLLM, say) in `~/.config/magnesium/litellm.env`, as `LITELLM_API_KEY=...`, mode 0600 (D36). This role only checks that the file exists and is private.
 3. **Roll out:** run `ansible-playbook magnesium.yml -l <machine>`, and close its direct path ("Only the hub reaches a machine").
-4. **On the hub:** add `{name, url}` for the machine to `magnesium_hub_machines`, and roll out the hub with `--tags config`. The role writes the hub's machine list; the hub reads it without a restart (doc 11, "The front door").
-5. **Give the hub access:** run `magnesium-release pair` on the machine, then use Settings → Connections → Hub machines → **Give access** with the code. Every device signed in to the hub then sees the machine, and Fleet shows it.
+4. **On the hub:** in Fleet, **Add a machine** with its name, its address and a pairing code from `magnesium-release pair` on it. Every device signed in to the hub then sees the machine. Or list it in `magnesium_hub_machines` and roll out the hub with `--tags config`, then give the hub access from Settings → Connections → Hub machines with the code; a machine added in the app stays through later deploys either way.
 
 ## Hosts that don't build
 

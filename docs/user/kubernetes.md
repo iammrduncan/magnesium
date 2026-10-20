@@ -15,7 +15,9 @@ Every machine is in one list, **Settings → Connections → Environments**, whi
 
 Choose **Add environment → A Magnesium pod**: its gateway, a name, the node it runs on, its home folder and volume size, and OpenCode's gateway and models if it uses OpenCode. The hub pairs with it by itself once it is up.
 
-A Magnesium pod's menu in that list has **Stop its pod** and **Start its pod**, **Change build** (blank runs its gateway's own build), and **Remove its pod**, which keeps its home unless you untick that.
+A Magnesium pod's menu in that list has **Stop its pod** and **Start its pod**, **Edit…**, **Change build** (blank runs its gateway's own build), and **Remove its pod**, which keeps its home unless you untick that. **Edit…**, also **Edit pod** in its **Fleet** panel, changes its node, OpenCode's gateway and models, and the model keys it gets; the pod restarts to take the change, keeping its home and threads.
+
+In **Fleet**, a Magnesium pod's **Update** changes its image to the hub's build through its gateway, and **Roll back** puts back the build it ran before; one that isn't up on its new build within ten minutes goes back on its own. It backs itself up every day into its home, and **Restore** from Fleet restarts the pod on a backup. Replacing a key in **Settings → Model keys** reaches every pod that gets it, and each restarts to take the new value.
 
 **Moving a machine in** keeps its threads and the hub's access: add it with **Start it now** unticked and the same name and home folder it had, copy its home into the volume, then **Start** it. The full steps are in [Moving a machine from bare metal](../../magnesium/deploy/kubernetes/README.md#moving-a-machine-from-bare-metal).
 
@@ -110,7 +112,7 @@ Add the home's PersistentVolumeClaim, and network policies that let the gateway'
 
 **Without the labels,** attach it by hand with **Add environment → Attach a workload's machine**, giving its gateway, name and code.
 
-The machine shows in **Fleet** and in **Environments** as "in notebook on <node>".
+The machine shows in **Fleet** and in **Environments** as "in notebook on <node>". It backs itself up daily into its home, and Fleet can restore it. Its build is the Magnesium image the workload's manifest names, so Fleet shows when it's behind the hub's but leaves updating it to that manifest.
 
 ### Taking it out
 
