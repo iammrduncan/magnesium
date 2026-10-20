@@ -16,6 +16,7 @@ import * as RpcSerialization from "effect/rpc/RpcSerialization";
 import * as RpcServer from "effect/rpc/RpcServer";
 
 import { NOT_PAIRED_DETAIL, ServerPorts } from "../ports.ts";
+import { grantsScope } from "../session/scopes.ts";
 
 /**
  * Serves `MagnesiumRpcGroup` at `MAGNESIUM_WS_PATH`, the way upstream serves
@@ -32,7 +33,7 @@ export const scopeGuard = (scopes: ReadonlyArray<AuthEnvironmentScope>) =>
     if (Option.isNone(required)) {
       return Effect.die(new Error(`${rpc._tag} names no RequiredScope.`));
     }
-    return scopes.includes(required.value)
+    return grantsScope(scopes, required.value)
       ? effect
       : Effect.fail(
           new EnvironmentAuthorizationError({

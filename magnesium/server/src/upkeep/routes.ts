@@ -6,6 +6,7 @@ import * as Schema from "effect/Schema";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 
 import { NOT_PAIRED_DETAIL, ServerPorts } from "../ports.ts";
+import { grantsScope } from "../session/scopes.ts";
 import { Upkeep } from "./Upkeep.ts";
 
 const jsonError = (status: number, error: string) =>
@@ -27,7 +28,7 @@ export const upkeepReleaseRoute = HttpRouter.add(
     const caller = yield* ports.authenticate(request).pipe(Effect.option);
     if (Option.isNone(caller)) return jsonError(401, "Sign in first.");
     if (!caller.value.paired) return jsonError(403, NOT_PAIRED_DETAIL);
-    if (!caller.value.scopes.includes(AuthEnvironmentMaintainScope)) {
+    if (!grantsScope(caller.value.scopes, AuthEnvironmentMaintainScope)) {
       return jsonError(403, `This needs the ${AuthEnvironmentMaintainScope} scope.`);
     }
     const name = (yield* HttpRouter.params).name ?? "";
