@@ -22,6 +22,7 @@ import {
   testDescriptor,
   testTicketRoute,
 } from "../testing.ts";
+import * as MagnesiumDb from "../db/MagnesiumDb.ts";
 import * as HubMachines from "./HubMachines.ts";
 import { connectMachine } from "./machineRpc.ts";
 
@@ -63,6 +64,7 @@ const hubFor = (machineOrigin: string, token: string) =>
       ...defaultSettingsPorts,
     });
     return HubMachines.layer.pipe(
+      Layer.provide(MagnesiumDb.layer),
       Layer.provideMerge(
         Layer.mergeAll(
           Layer.succeed(ServerPorts, ports),

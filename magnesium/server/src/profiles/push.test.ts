@@ -20,6 +20,7 @@ import { FetchHttpClient, HttpRouter, HttpServerRequest, HttpServerResponse } fr
 import { describe, expect, it } from "@effect/vitest";
 
 import { Fleet } from "../fleet/Fleet.ts";
+import * as MagnesiumDb from "../db/MagnesiumDb.ts";
 import * as HubMachines from "../hub/HubMachines.ts";
 import { connectMachine } from "../hub/machineRpc.ts";
 import { ServerPorts } from "../ports.ts";
@@ -149,7 +150,7 @@ const hubFor = (
     return {
       folder,
       layer: HubProfilePusher.layer.pipe(
-        Layer.provideMerge(HubMachines.layer),
+        Layer.provideMerge(HubMachines.layer.pipe(Layer.provide(MagnesiumDb.layer))),
         Layer.provideMerge(services),
       ),
     };

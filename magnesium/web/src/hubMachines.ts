@@ -3,9 +3,11 @@ import {
   HUB_MACHINES_PATH,
   HubMachine,
   type HubMachineAccessInput,
+  type HubMachineAddInput,
   HubMachineList,
   hubEnvironmentBasePath,
   hubMachineAccessPath,
+  hubMachinePath,
 } from "@magnesium/contracts";
 import { HubConnectionRegistration, HubConnectionTarget } from "@t3tools/client-runtime/connection";
 import type { EnvironmentId } from "@t3tools/contracts";
@@ -82,6 +84,19 @@ export const giveHubAccess = (hubHttpBaseUrl: string, name: string, input: HubMa
 /** Needs `access:write` on the hub. */
 export const removeHubAccess = (hubHttpBaseUrl: string, name: string) =>
   send(HttpClientRequest.delete(hubUrl(hubHttpBaseUrl, hubMachineAccessPath(name))), null);
+
+/** A machine already running Magnesium, by its address and a pairing code (goal 35). Needs `access:write`. */
+export const addHubMachine = (hubHttpBaseUrl: string, input: HubMachineAddInput) =>
+  send(
+    HttpClientRequest.post(hubUrl(hubHttpBaseUrl, HUB_MACHINES_PATH)).pipe(
+      HttpClientRequest.bodyJsonUnsafe(input),
+    ),
+    HubMachine,
+  );
+
+/** Off the hub's list, and the hub's session there ended (goal 35). Needs `access:write`. */
+export const forgetHubMachine = (hubHttpBaseUrl: string, name: string) =>
+  send(HttpClientRequest.delete(hubUrl(hubHttpBaseUrl, hubMachinePath(name))), null);
 
 /** For UI handlers: run a hub request with the browser's fetch. */
 export const runHubRequest = <A>(

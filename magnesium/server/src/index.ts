@@ -30,6 +30,7 @@ import { profileRpcHandlersLayer } from "./profiles/rpcHandlers.ts";
 import { coreHandlersLayer } from "./rpc/handlers.ts";
 import { magnesiumWsRouteLayer } from "./rpc/route.ts";
 import { pairingCodeLayer } from "./session/pairingCode.ts";
+import { sessionEndRouteLayer } from "./session/end.ts";
 import { sessionRenewRouteLayer } from "./session/renew.ts";
 import { currentRelease } from "./status/release.ts";
 import * as ServerStatus from "./status/ServerStatus.ts";
@@ -68,6 +69,7 @@ const routeLayers = Layer.unwrap(
       hubProxyRouteLayer,
       hubMachineRoutesLayer,
       sessionRenewRouteLayer,
+      sessionEndRouteLayer,
       upkeepReleaseRoute,
       gateway === null ? Layer.empty : gatewayRouteLayer(gateway),
     ).pipe(

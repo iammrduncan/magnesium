@@ -136,6 +136,8 @@ export class ServerPorts extends Context.Service<
       { readonly token: string; readonly expiresAt: DateTime.Utc },
       ServerPortError
     >;
+    /** Ends a session, so its token stops working here: the hub's Forget (goal 35). */
+    readonly endSession?: (sessionId: string) => Effect.Effect<void, ServerPortError>;
     /**
      * Registers `code` as a one-time pairing code until `expiresAt`, unless that
      * code was ever registered here, used or not, so a restart can't re-arm it.

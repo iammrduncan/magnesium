@@ -2,8 +2,10 @@ import {
   type HubMachine,
   type HubMachineAccess,
   type HubMachineAccessInput,
+  type HubMachineAddInput,
   type HubMachineList,
   HubMachineName,
+  type HubMachineSource,
 } from "@magnesium/contracts";
 import { AuthAccessWriteScope, EnvironmentId } from "@t3tools/contracts";
 import * as Context from "effect/Context";
@@ -21,14 +23,18 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import { HttpClient } from "effect/http";
 
-import { ServerPorts, type ServerPortError } from "../ports.ts";
+import { MagnesiumDb } from "../db/MagnesiumDb.ts";
+import { ServerPorts, ServerPortError } from "../ports.ts";
 import * as MachineApi from "./machineApi.ts";
 import { readAttachedRecords, readSpokeRecords } from "./spokeRecords.ts";
 
 /**
  * The machines this hub carries, and the token it holds for each (D14: tokens
- * stay on the hub). The list comes from deploy config, `<T3CODE_HOME>/hub-machines.json`,
- * written by the `magnesium_hub` Ansible role; a server without that file is not a hub.
+ * stay on the hub). The list is deploy config, `<T3CODE_HOME>/hub-machines.json`
+ * written by the `magnesium_hub` Ansible role, with the machines added in the
+ * app (goal 35), which live in the hub's database and so outlast a deploy. A
+ * deploy-config machine forgotten in the app stays forgotten. A server with no
+ * machines at all is not a hub.
  */
 
 export const HUB_MACHINES_CONFIG_FILE = "hub-machines.json";
@@ -42,7 +48,9 @@ const HubMachinesConfig = Schema.Struct({
     }),
   ),
 });
-type HubMachineConfig = (typeof HubMachinesConfig.Type)["machines"][number];
+type HubMachineConfig = (typeof HubMachinesConfig.Type)["machines"][number] & {
+  readonly source: HubMachineSource;
+};
 const decodeConfig = Schema.decodeUnknownEffect(Schema.fromJsonString(HubMachinesConfig));
 
 const StoredAccess = Schema.Struct({
@@ -101,6 +109,19 @@ export class HubMachines extends Context.Service<
     readonly removeAccess: (
       name: string,
     ) => Effect.Effect<void, HubMachineNotFoundError | ServerPortError>;
+    /** Adds a machine by its address, paired with a code from it; nothing changes there. */
+    readonly add: (
+      input: HubMachineAddInput,
+    ) => Effect.Effect<HubMachine, HubMachineAccessError | ServerPortError>;
+    /**
+     * Takes a machine off the hub's list and ends the hub's session on it. A
+     * pod or attached machine is taken out where it was added.
+     */
+    readonly forget: (
+      name: string,
+    ) => Effect.Effect<void, HubMachineNotFoundError | HubMachineAccessError | ServerPortError>;
+    /** Machines were added or forgotten: the list changed. */
+    readonly listChanged: Stream.Stream<void>;
     /** Where to send a proxied request, with the token to send it with. */
     readonly upstream: (
       name: string,
@@ -122,6 +143,7 @@ export class HubMachines extends Context.Service<
 
 export const make = Effect.gen(function* () {
   const ports = yield* ServerPorts;
+  const { sql } = yield* MagnesiumDb;
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const httpClient = yield* HttpClient.HttpClient;
@@ -129,14 +151,18 @@ export const make = Effect.gen(function* () {
   const probes = yield* Ref.make(new Map<string, Probe>());
   const rejected = yield* Ref.make(new Set<string>());
   const accessChanged = yield* PubSub.unbounded<string>();
+  const listChanged = yield* PubSub.unbounded<void>();
+  const dbError = (detail: string) => (cause: unknown) => new ServerPortError({ detail, cause });
 
   const withHttp = <A, E>(effect: Effect.Effect<A, E, HttpClient.HttpClient>) =>
     Effect.provideService(effect, HttpClient.HttpClient, httpClient);
 
-  // Missing or unreadable config means no machines: this server is not a hub.
+  // Missing or unreadable config means no machines from it.
   const readDeployConfig = fileSystem.readFileString(configPath).pipe(
     Effect.flatMap(decodeConfig),
-    Effect.map((config) => config.machines),
+    Effect.map((config) =>
+      config.machines.map((machine): HubMachineConfig => ({ ...machine, source: "deploy" })),
+    ),
     Effect.catch((error) =>
       error._tag === "PlatformError" && error.reason._tag === "NotFound"
         ? Effect.succeed([] as ReadonlyArray<HubMachineConfig>)
@@ -146,21 +172,56 @@ export const make = Effect.gen(function* () {
     ),
   );
 
-  // The hub's own spokes (goal 25) and attached machines (D59) join the deploy
-  // config's machines, replacing one of the same name.
+  /** The machines added in the app, and the deploy-config ones forgotten there. */
+  const readAppMachines = Effect.all([
+    sql<{ readonly name: string; readonly url: string }>`
+      SELECT name, url FROM hub_machines ORDER BY name`,
+    sql<{ readonly name: string }>`SELECT name FROM hub_machines_forgotten`,
+  ]).pipe(
+    Effect.map(([added, forgotten]) => ({
+      added: added.map((row): HubMachineConfig => ({ ...row, source: "app" })),
+      forgotten: new Set(forgotten.map((row) => row.name)),
+    })),
+    Effect.catch((error) =>
+      Effect.logWarning("Could not read the machines added in the app.", { error }).pipe(
+        Effect.as({ added: [] as ReadonlyArray<HubMachineConfig>, forgotten: new Set<string>() }),
+      ),
+    ),
+  );
+
+  // The machines added in the app join the deploy config's, minus those
+  // forgotten; the hub's own spokes (goal 25) and attached machines (D59)
+  // replace one of the same name.
   const readConfig = Effect.all([
     readDeployConfig,
+    readAppMachines,
     Effect.all([readSpokeRecords(ports.baseDir), readAttachedRecords(ports.baseDir)]).pipe(
       Effect.provideService(FileSystem.FileSystem, fileSystem),
       Effect.provideService(Path.Path, path),
     ),
   ]).pipe(
-    Effect.map(([machines, [spokes, attached]]): ReadonlyArray<HubMachineConfig> => {
-      const behindGateways = [...spokes, ...attached];
-      const names = new Set(behindGateways.map((record) => record.name));
+    Effect.map(([deployed, app, [spokes, attached]]): ReadonlyArray<HubMachineConfig> => {
+      const behindGateways = [
+        ...spokes.map((record): HubMachineConfig => ({
+          name: record.name,
+          url: record.url,
+          source: "pod",
+        })),
+        ...attached.map((record): HubMachineConfig => ({
+          name: record.name,
+          url: record.url,
+          source: "attached",
+        })),
+      ];
+      const replaced = new Set([...behindGateways, ...app.added].map((machine) => machine.name));
       return [
-        ...machines.filter((machine) => !names.has(machine.name)),
-        ...behindGateways.map((record) => ({ name: record.name, url: record.url })),
+        ...deployed.filter(
+          (machine) => !replaced.has(machine.name) && !app.forgotten.has(machine.name),
+        ),
+        ...app.added.filter(
+          (machine) => !behindGateways.some((other) => other.name === machine.name),
+        ),
+        ...behindGateways,
       ];
     }),
   );
@@ -263,6 +324,7 @@ export const make = Effect.gen(function* () {
       access: accessOf(machine.name, storedValue, probed, now, rejectedNames),
       accessExpiresAt: storedValue?.expiresAt ?? null,
       online: probed.online,
+      source: machine.source,
     } satisfies HubMachine;
   });
 
@@ -317,6 +379,7 @@ export const make = Effect.gen(function* () {
     const descriptor = yield* withHttp(MachineApi.fetchDescriptor(machine.url)).pipe(
       Effect.mapError(unreachable),
     );
+    const previous = yield* readStored(name);
     yield* writeStored(name, {
       token: granted.token,
       environmentId: descriptor.environmentId,
@@ -333,9 +396,88 @@ export const make = Effect.gen(function* () {
       next.delete(name);
       return next;
     });
+    // Access given again: the token it replaces stops working there too.
+    if (Option.isSome(previous) && previous.value.token !== granted.token) {
+      yield* withHttp(MachineApi.endSession(machine.url, previous.value.token)).pipe(Effect.ignore);
+    }
     yield* Effect.logInfo("The hub has access to a machine.", { name });
     yield* PubSub.publish(accessChanged, name);
     return yield* describe(machine);
+  });
+
+  const add = Effect.fn("HubMachines.add")(function* (input: HubMachineAddInput) {
+    const { name, url } = input;
+    const refused = (detail: string) => new HubMachineAccessError({ name, detail });
+    if ((yield* readConfig).some((machine) => machine.name === name)) {
+      return yield* refused(`Fleet already has a machine named ${name}.`);
+    }
+    const wasForgotten =
+      (yield* sql<{ readonly name: string }>`
+        SELECT name FROM hub_machines_forgotten WHERE name = ${name}`.pipe(
+        Effect.mapError(dbError("Could not read the hub's machines.")),
+      )).length > 0;
+    const now = DateTime.formatIso(yield* DateTime.now);
+    yield* sql`INSERT INTO hub_machines (name, url, added_at) VALUES (${name}, ${url}, ${now})`.pipe(
+      Effect.andThen(sql`DELETE FROM hub_machines_forgotten WHERE name = ${name}`),
+      Effect.mapError(dbError("Could not save the machine.")),
+    );
+    // Kept only once the hub has access: a machine it can't reach isn't added.
+    const undo = Effect.gen(function* () {
+      yield* sql`DELETE FROM hub_machines WHERE name = ${name}`;
+      if (wasForgotten) {
+        yield* sql`INSERT INTO hub_machines_forgotten (name, forgotten_at) VALUES (${name}, ${now})`;
+      }
+    }).pipe(Effect.ignore);
+    const added = yield* giveAccess(name, { pairingCode: input.pairingCode }).pipe(
+      Effect.tapError(() => undo),
+      Effect.catchTags({
+        HubMachineNotFoundError: () =>
+          Effect.fail(refused("The machine went missing while it was being added.")),
+      }),
+    );
+    yield* Effect.logInfo("Added a machine to the hub.", { name });
+    yield* PubSub.publish(listChanged, undefined);
+    return added;
+  });
+
+  const forget = Effect.fn("HubMachines.forget")(function* (name: string) {
+    const machine = yield* findMachine(name);
+    if (machine.source === "pod" || machine.source === "attached") {
+      return yield* new HubMachineAccessError({
+        name,
+        detail:
+          machine.source === "pod"
+            ? `${name} is one of the hub's pods: remove it in Settings → Connections.`
+            : `${name} is attached to a workload: detach it in Settings → Connections.`,
+      });
+    }
+    const stored = yield* readStored(name);
+    // The hub's session there ends first, so its token stops working even if a copy were kept.
+    if (Option.isSome(stored)) {
+      yield* withHttp(MachineApi.endSession(machine.url, stored.value.token)).pipe(
+        Effect.catch((error) =>
+          Effect.logWarning("Could not end the hub's session on a forgotten machine.", {
+            name,
+            error: error.detail,
+          }),
+        ),
+      );
+    }
+    yield* ports.removeSecret(secretName(name));
+    const now = DateTime.formatIso(yield* DateTime.now);
+    yield* (
+      machine.source === "app"
+        ? sql`DELETE FROM hub_machines WHERE name = ${name}`
+        : sql`INSERT OR REPLACE INTO hub_machines_forgotten (name, forgotten_at) VALUES (${name}, ${now})`
+    ).pipe(Effect.mapError(dbError("Could not forget the machine.")));
+    yield* Ref.update(probes, (current) => {
+      const next = new Map(current);
+      next.delete(name);
+      return next;
+    });
+    yield* Effect.logInfo("Forgot a machine.", { name });
+    yield* PubSub.publish(listChanged, undefined);
+    yield* PubSub.publish(accessChanged, name);
   });
 
   const removeAccess = Effect.fn("HubMachines.removeAccess")(function* (name: string) {
@@ -410,6 +552,9 @@ export const make = Effect.gen(function* () {
     list,
     giveAccess,
     removeAccess,
+    add,
+    forget,
+    listChanged: Stream.fromPubSub(listChanged),
     upstream,
     markRejected,
     renewDue,

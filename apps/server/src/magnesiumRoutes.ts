@@ -7,7 +7,7 @@ import {
   ServerPortError,
   ServerPorts,
 } from "@magnesium/server";
-import { AuthStandardClientScopes, ScheduledTaskId } from "@t3tools/contracts";
+import { AuthSessionId, AuthStandardClientScopes, ScheduledTaskId } from "@t3tools/contracts";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -213,6 +213,10 @@ const serverPortsLayer = Layer.effect(
           Effect.map((issued) => ({ token: issued.token, expiresAt: issued.expiresAt })),
           Effect.mapError(portError("Could not issue a session.")),
         ),
+      endSession: (sessionId) =>
+        auth
+          .revokeSession(AuthSessionId.make(sessionId))
+          .pipe(Effect.asVoid, Effect.mapError(portError("Could not end the session."))),
       registerPairingCode: (input) =>
         registerPairingCode(pairingLinks, crypto, input).pipe(
           Effect.mapError(portError("Could not register the pairing code.")),

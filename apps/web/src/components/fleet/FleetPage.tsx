@@ -11,11 +11,12 @@ import {
   fleetRows,
   upkeepNotes,
 } from "@magnesium/web";
-import { TerminalIcon } from "lucide-react";
+import { PlusIcon, TerminalIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { currentFleetWatch, useFleetView } from "./fleetStore";
 import { formatTime } from "./fleetTime";
+import { AddMachineDialog, ForgetMachineDialog, GiveAccessAgainDialog } from "./MachineDialogs";
 import { MachineTerminal } from "./MachineTerminal";
 import { ServerPanel } from "./ServerPanel";
 
@@ -180,6 +181,42 @@ function MachineRow({
   );
 }
 
+/** A machine's own actions under its facts: the hub's access to it, and leaving the list. */
+function MachineActions({
+  machine,
+  onForgotten,
+}: {
+  readonly machine: FleetMachine;
+  readonly onForgotten: () => void;
+}) {
+  const [dialog, setDialog] = useState<"access" | "forget" | null>(null);
+  // The hub's pods and attached machines are added and taken out in Settings → Connections.
+  if (machine.name === null || machine.deployment === "pod" || machine.deployment === "attached") {
+    return null;
+  }
+  return (
+    <>
+      <Button size="compact" variant="outline" onClick={() => setDialog("access")}>
+        Give access again
+      </Button>
+      <Button size="compact" variant="outline" onClick={() => setDialog("forget")}>
+        Forget {machine.name}
+      </Button>
+      <GiveAccessAgainDialog
+        machine={machine}
+        open={dialog === "access"}
+        onOpenChange={(open) => setDialog(open ? "access" : null)}
+      />
+      <ForgetMachineDialog
+        machine={machine}
+        open={dialog === "forget"}
+        onOpenChange={(open) => setDialog(open ? "forget" : null)}
+        onForgotten={onForgotten}
+      />
+    </>
+  );
+}
+
 function EventList({
   events,
   hasEarlier,
@@ -237,6 +274,7 @@ export function FleetPage() {
   // The board's panel sits beside the list on a wide screen; a phone opens it in a sheet.
   const wide = useMediaQuery("lg");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const picked = rows.find((row) => fleetMachineKey(row) === selectedKey);
   const shown = picked ?? (wide ? hub : undefined);
   // Backups age by the minute; nothing on the page needs a finer clock.
@@ -254,7 +292,17 @@ export function FleetPage() {
               <h1>Fleet</h1>
             </WorkspaceBreadcrumbItem>
           </WorkspaceBreadcrumb>
+          <span className="min-w-0 flex-1" />
+          <Button size="compact" variant="outline" onClick={() => setAdding(true)}>
+            <PlusIcon />
+            Add a machine
+          </Button>
         </WorkspacePageHeader>
+        <AddMachineDialog
+          open={adding}
+          onOpenChange={setAdding}
+          onAdded={(name) => setSelectedKey(name)}
+        />
         <div className="flex min-h-0 flex-1">
           <ScrollArea className="min-h-0 flex-1">
             <WorkspacePageContainer width="wide">
@@ -307,7 +355,15 @@ export function FleetPage() {
               aria-label="Server"
               className="w-[380px] shrink-0 overflow-y-auto border-l border-border bg-card p-4"
             >
-              <ServerPanel key={fleetMachineKey(shown)} machine={shown} hub={hub} now={now} />
+              <ServerPanel
+                key={fleetMachineKey(shown)}
+                machine={shown}
+                hub={hub}
+                now={now}
+                extraActions={
+                  <MachineActions machine={shown} onForgotten={() => setSelectedKey(null)} />
+                }
+              />
             </aside>
           ) : null}
         </div>
@@ -321,7 +377,15 @@ export function FleetPage() {
             <div className="max-h-[88dvh] overflow-y-auto p-4">
               <SheetTitle className="sr-only">{shown?.label ?? "Server"}</SheetTitle>
               {shown !== undefined ? (
-                <ServerPanel key={fleetMachineKey(shown)} machine={shown} hub={hub} now={now} />
+                <ServerPanel
+                  key={fleetMachineKey(shown)}
+                  machine={shown}
+                  hub={hub}
+                  now={now}
+                  extraActions={
+                    <MachineActions machine={shown} onForgotten={() => setSelectedKey(null)} />
+                  }
+                />
               ) : null}
             </div>
           </SheetPopup>

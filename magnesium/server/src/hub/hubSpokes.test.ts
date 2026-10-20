@@ -94,6 +94,7 @@ const makeHub = (options: {
       access: "ready",
       accessExpiresAt: null,
       online: true,
+      source: "deploy",
     });
     const machines = HubMachines.of({
       // Every machine the hub has access to answers, unless the test says otherwise.
@@ -144,6 +145,9 @@ const makeHub = (options: {
       names: Effect.succeed(["gateway", "cpu-host-1"]),
       accessChanged: Stream.empty,
       refresh: (name) => Effect.sync(() => void refreshed.push(name)),
+      add: () => Effect.die("unused"),
+      forget: () => Effect.die("unused"),
+      listChanged: Stream.empty,
     });
     const gateways = GatewayClient.of({
       list: (gateway) =>

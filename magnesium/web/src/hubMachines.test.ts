@@ -11,6 +11,7 @@ const machine = (overrides: Partial<HubMachine>): HubMachine => ({
   access: "ready",
   accessExpiresAt: null,
   online: true,
+  source: "deploy",
   ...overrides,
 });
 

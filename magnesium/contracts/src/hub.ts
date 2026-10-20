@@ -1,4 +1,5 @@
 import { EnvironmentId } from "@t3tools/contracts";
+import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
 /**
@@ -12,6 +13,8 @@ export const HUB_ENVIRONMENT_ROUTE_PREFIX = "/api/magnesium/env";
 export const HUB_MACHINES_PATH = "/api/magnesium/hub/machines";
 /** Any server: swap the caller's bearer session for a fresh one before it expires. */
 export const SESSION_RENEW_PATH = "/api/magnesium/session/renew";
+/** Any server: `DELETE` ends the caller's own bearer session, as the hub's Forget does (goal 35). */
+export const SESSION_END_PATH = "/api/magnesium/session";
 
 export const HubMachineName = Schema.String.check(Schema.isPattern(/^[a-z0-9][a-z0-9-]{0,62}$/));
 export type HubMachineName = typeof HubMachineName.Type;
@@ -19,8 +22,18 @@ export type HubMachineName = typeof HubMachineName.Type;
 export const hubEnvironmentBasePath = (name: string): string =>
   `${HUB_ENVIRONMENT_ROUTE_PREFIX}/${encodeURIComponent(name)}/`;
 
-export const hubMachineAccessPath = (name: string): string =>
-  `${HUB_MACHINES_PATH}/${encodeURIComponent(name)}/access`;
+export const hubMachinePath = (name: string): string =>
+  `${HUB_MACHINES_PATH}/${encodeURIComponent(name)}`;
+
+export const hubMachineAccessPath = (name: string): string => `${hubMachinePath(name)}/access`;
+
+/**
+ * Where the hub's list has a machine from (goal 35): its deploy config, added in
+ * the app, or one of its own pods or attached machines, which Settings →
+ * Connections adds and takes out.
+ */
+export const HubMachineSource = Schema.Literals(["deploy", "app", "pod", "attached"]);
+export type HubMachineSource = typeof HubMachineSource.Type;
 
 /**
  * - `ready`: the hub holds a live token, so clients can reach the machine.
@@ -41,6 +54,7 @@ export const HubMachine = Schema.Struct({
   accessExpiresAt: Schema.NullOr(Schema.String),
   /** Whether the hub reached the machine the last time it looked. */
   online: Schema.Boolean,
+  source: HubMachineSource.pipe(Schema.withDecodingDefault(Effect.succeed("deploy" as const))),
 });
 export type HubMachine = typeof HubMachine.Type;
 
@@ -58,6 +72,14 @@ export const HubMachineAccessInput = Schema.Union([
   Schema.Struct({ pairingCode: Schema.NonEmptyString }),
 ]);
 export type HubMachineAccessInput = typeof HubMachineAccessInput.Type;
+
+/** A machine already running Magnesium, added by its address and a pairing code from it. */
+export const HubMachineAddInput = Schema.Struct({
+  name: HubMachineName,
+  url: Schema.String.check(Schema.isPattern(/^https?:\/\/[^\s/?#]+(\/[^\s?#]*)?$/)),
+  pairingCode: Schema.NonEmptyString,
+});
+export type HubMachineAddInput = typeof HubMachineAddInput.Type;
 
 export const SessionRenewResult = Schema.Struct({
   token: Schema.NonEmptyString,

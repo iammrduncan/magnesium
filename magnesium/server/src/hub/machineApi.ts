@@ -1,4 +1,4 @@
-import { SESSION_RENEW_PATH, SessionRenewResult } from "@magnesium/contracts";
+import { SESSION_END_PATH, SESSION_RENEW_PATH, SessionRenewResult } from "@magnesium/contracts";
 import {
   AuthAccessTokenType,
   AuthEnvironmentBootstrapTokenType,
@@ -125,5 +125,20 @@ export const renewSession = (baseUrl: string, token: string) =>
                 ),
           ),
         ),
+    ),
+  );
+
+/** Ends the hub's session on a machine, so its token stops working there (Forget, goal 35). */
+export const endSession = (baseUrl: string, token: string) =>
+  request(
+    "sign-out",
+    Effect.flatMap(HttpClient.HttpClient, (httpClient) =>
+      httpClient
+        .execute(
+          HttpClientRequest.delete(urlUnder(baseUrl, SESSION_END_PATH).toString()).pipe(
+            HttpClientRequest.setHeaders(bearer(token)),
+          ),
+        )
+        .pipe(Effect.flatMap(HttpClientResponse.filterStatusOk), Effect.asVoid),
     ),
   );

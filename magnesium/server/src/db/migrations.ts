@@ -55,8 +55,28 @@ const profileRequests = Effect.gen(function* () {
     )`;
 });
 
+/**
+ * The hub's machines (goal 35): those added in the app, and those its deploy
+ * config names that were forgotten in the app, which stay forgotten.
+ */
+const hubMachines = Effect.gen(function* () {
+  const sql = yield* SqlClient.SqlClient;
+  yield* sql`
+    CREATE TABLE hub_machines (
+      name TEXT PRIMARY KEY,
+      url TEXT NOT NULL,
+      added_at TEXT NOT NULL
+    )`;
+  yield* sql`
+    CREATE TABLE hub_machines_forgotten (
+      name TEXT PRIMARY KEY,
+      forgotten_at TEXT NOT NULL
+    )`;
+});
+
 export const migrations = Migrator.fromRecord({
   "1_Fleet": fleet,
   "2_HomePins": homePins,
   "3_ProfileRequests": profileRequests,
+  "4_HubMachines": hubMachines,
 });

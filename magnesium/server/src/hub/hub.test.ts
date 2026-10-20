@@ -4,7 +4,13 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { HUB_MACHINES_PATH, hubMachineAccessPath, type HubMachineList } from "@magnesium/contracts";
+import {
+  HUB_MACHINES_PATH,
+  hubMachineAccessPath,
+  type HubMachineList,
+  hubMachinePath,
+  SESSION_END_PATH,
+} from "@magnesium/contracts";
 import {
   AuthAccessTokenType,
   AuthAdministrativeScopes,
@@ -28,6 +34,7 @@ import {
   noThreads,
   testDescriptor,
 } from "../testing.ts";
+import * as MagnesiumDb from "../db/MagnesiumDb.ts";
 import * as HubMachines from "./HubMachines.ts";
 import { parseProxyPath } from "./proxy.ts";
 import { renewedScopes } from "../session/renew.ts";
@@ -93,9 +100,12 @@ const makeHub = async (options: { readonly machineToken?: string } = {}) => {
   const seen: SeenRequest[] = [];
   let validToken = options.machineToken ?? "machine-token";
   let renewCalls = 0;
+  /** Tokens whose session the hub ended on the machine (Forget, or access given again). */
+  const ended: Array<string> = [];
   // Whether the machine renews the hub's token: in its last week, or a grant from before granular permissions.
   let machineRenews = false;
   const issuedScopes: Array<ReadonlyArray<AuthEnvironmentScope>> = [];
+  const endedSessions: Array<string> = [];
 
   const client = HttpClient.make((request) =>
     Effect.sync(() => {
@@ -110,6 +120,7 @@ const makeHub = async (options: { readonly machineToken?: string } = {}) => {
           }),
         );
       const bearer = request.headers.authorization?.replace(/^Bearer /, "");
+      if (url.hostname === "unreachable.test") return json({ error: "down" }, 503);
       switch (url.pathname) {
         case "/.well-known/t3/environment":
           return json(descriptor);
@@ -128,6 +139,12 @@ const makeHub = async (options: { readonly machineToken?: string } = {}) => {
             expires_in: 30 * 24 * 60 * 60,
             scope: AuthStandardClientScopes.join(" "),
           });
+        case "/api/magnesium/session":
+          if (request.method === "DELETE" && bearer !== undefined) {
+            ended.push(bearer);
+            if (bearer === validToken) validToken = "ended-token";
+          }
+          return json({});
         case "/api/magnesium/session/renew":
           renewCalls++;
           if (!machineRenews)
@@ -193,6 +210,7 @@ const makeHub = async (options: { readonly machineToken?: string } = {}) => {
           expiresAt: DateTime.makeUnsafe(Date.now() + 30 * DAY_MS),
         };
       }),
+    endSession: (sessionId) => Effect.sync(() => void endedSessions.push(sessionId)),
     getSecret: (name) => Effect.succeed(Option.fromNullishOr(secrets.get(name))),
     setSecret: (name, value) => Effect.sync(() => void secrets.set(name, value)),
     removeSecret: (name) => Effect.sync(() => void secrets.delete(name)),
@@ -229,12 +247,34 @@ const makeHub = async (options: { readonly machineToken?: string } = {}) => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     });
-  const machinesLayer = HubMachines.layer.pipe(Layer.provide(services));
+  const machinesLayer = HubMachines.layer.pipe(
+    Layer.provide(MagnesiumDb.layer),
+    Layer.provide(services),
+  );
+
+  const writeDeployConfig = (machines: ReadonlyArray<{ name: string; url: string }>) =>
+    NodeFSP.writeFile(
+      NodePath.join(baseDir, HubMachines.HUB_MACHINES_CONFIG_FILE),
+      JSON.stringify({ machines }),
+    );
+  const add = (body: unknown, session = "admin") =>
+    request(HUB_MACHINES_PATH, {
+      method: "POST",
+      session,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  const forget = (name: string, session = "admin") =>
+    request(hubMachinePath(name), { method: "DELETE", session });
 
   return {
     request,
     list,
     giveAccess,
+    add,
+    forget,
+    ended,
+    writeDeployConfig,
     machinesLayer,
     seen,
     secrets,
@@ -243,6 +283,7 @@ const makeHub = async (options: { readonly machineToken?: string } = {}) => {
       machineRenews = renews;
     },
     issuedScopes,
+    endedSessions,
   };
 };
 
@@ -282,6 +323,7 @@ describe("hub machines", () => {
         access: "missing",
         accessExpiresAt: null,
         online: true,
+        source: "deploy",
       },
     ]);
     expect((await hub.request(HUB_MACHINES_PATH)).status).toBe(401);
@@ -315,6 +357,68 @@ describe("hub machines", () => {
     expect(await hub.list()).toMatchObject([{ access: "ready" }]);
     const exchange = hub.seen.find((seen) => seen.url.endsWith("/oauth/token"));
     expect(exchange?.method).toBe("POST");
+  });
+
+  it("adds a machine by its address and a pairing code, which outlasts the next deploy", async () => {
+    const hub = await makeHub({ machineToken: "paired-token" });
+    const body = { name: "gpu-host-9", url: "http://127.0.0.1:10009", pairingCode: "ABCDEF123456" };
+    expect((await hub.add(body, "operator")).status).toBe(403);
+    expect((await hub.add({ ...body, url: "ftp://nowhere" })).status).toBe(400);
+    const added = await hub.add(body);
+    expect(added.status).toBe(201);
+    expect(await added.json()).toMatchObject({
+      name: "gpu-host-9",
+      access: "ready",
+      source: "app",
+    });
+    expect((await hub.add(body)).status).toBe(422);
+
+    // A deploy rewrites its own list; the machine added in the app stays.
+    await hub.writeDeployConfig([{ name: "cpu-host-1", url: "http://127.0.0.1:10001" }]);
+    expect((await hub.list()).map((machine) => [machine.name, machine.source])).toEqual([
+      ["cpu-host-1", "deploy"],
+      ["gpu-host-9", "app"],
+    ]);
+  });
+
+  it("keeps no machine it can't pair with", async () => {
+    const hub = await makeHub();
+    const refused = await hub.add({
+      name: "gpu-host-8",
+      url: "http://unreachable.test",
+      pairingCode: "CODE",
+    });
+    expect(refused.status).toBe(422);
+    expect((await hub.list()).map((machine) => machine.name)).toEqual(["cpu-host-1"]);
+  });
+
+  it("forgets a machine: off the list, and the hub's session on it ended", async () => {
+    const hub = await makeHub();
+    await hub.giveAccess({ bearerToken: "machine-token" });
+    expect((await hub.forget("cpu-host-1")).status).toBe(204);
+    expect(hub.ended).toEqual(["machine-token"]);
+    expect(hub.secrets.size).toBe(0);
+    // The deploy config still names it; forgotten in the app, it stays forgotten.
+    expect(await hub.list()).toEqual([]);
+    expect((await hub.forget("cpu-host-1")).status).toBe(404);
+
+    // Back, with a new code.
+    const back = await hub.add({
+      name: "cpu-host-1",
+      url: "http://127.0.0.1:10001",
+      pairingCode: "ABCDEF123456",
+    });
+    expect(back.status).toBe(201);
+    expect(await hub.list()).toMatchObject([
+      { name: "cpu-host-1", access: "ready", source: "app" },
+    ]);
+  });
+
+  it("ends the token it replaces when given access again", async () => {
+    const hub = await makeHub();
+    await hub.giveAccess({ bearerToken: "machine-token" });
+    expect((await hub.giveAccess({ pairingCode: "ABCDEF123456" })).status).toBe(200);
+    expect(hub.ended).toEqual(["machine-token"]);
   });
 
   it("forgets access on request", async () => {
@@ -467,6 +571,21 @@ describe("session renewal", () => {
     expect(renewed).not.toContain("review:write");
     // A current grant renews as it is.
     expect(renewedScopes(AuthStandardClientScopes)).toEqual(AuthStandardClientScopes);
+  });
+
+  it("ends a bearer session on its own say-so, and no other kind", async () => {
+    const hub = await makeHub();
+    const ended = await hub.request(SESSION_END_PATH, {
+      method: "DELETE",
+      headers: { authorization: "Bearer not-due" },
+    });
+    expect(ended.status).toBe(204);
+    expect(hub.endedSessions).toEqual(["session-not-due"]);
+    expect(
+      (await hub.request(SESSION_END_PATH, { method: "DELETE", session: "admin" })).status,
+    ).toBe(403);
+    expect((await hub.request(SESSION_END_PATH, { method: "DELETE" })).status).toBe(401);
+    expect(hub.endedSessions).toEqual(["session-not-due"]);
   });
 
   it("swaps a bearer session in its last week for a new one", async () => {

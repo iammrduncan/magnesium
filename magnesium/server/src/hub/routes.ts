@@ -1,4 +1,4 @@
-import { HUB_MACHINES_PATH, HubMachineAccessInput } from "@magnesium/contracts";
+import { HUB_MACHINES_PATH, HubMachineAccessInput, HubMachineAddInput } from "@magnesium/contracts";
 import {
   AuthAccessWriteScope,
   AuthOrchestrationReadScope,
@@ -112,4 +112,48 @@ const removeAccessRoute = HttpRouter.add(
   ),
 );
 
-export const hubMachineRoutesLayer = Layer.mergeAll(listRoute, giveAccessRoute, removeAccessRoute);
+/** Add a machine by its address and a pairing code from it (goal 35). */
+const addRoute = HttpRouter.add(
+  "POST",
+  HUB_MACHINES_PATH,
+  withScope(
+    AuthAccessWriteScope,
+    Effect.gen(function* () {
+      const input = yield* HttpServerRequest.schemaBodyJson(HubMachineAddInput).pipe(Effect.option);
+      if (Option.isNone(input)) {
+        return jsonError(
+          400,
+          "Send a name (a-z, 0-9 and -), an http(s) address and a pairing code.",
+        );
+      }
+      const machines = yield* HubMachines;
+      return yield* accessErrors(machines.add(input.value), (machine) =>
+        HttpServerResponse.jsonUnsafe(machine, { status: 201 }),
+      );
+    }),
+  ),
+);
+
+/** Forget a machine: off the hub's list, and the hub's session there ended (goal 35). */
+const forgetRoute = HttpRouter.add(
+  "DELETE",
+  `${HUB_MACHINES_PATH}/:name`,
+  withScope(
+    AuthAccessWriteScope,
+    Effect.gen(function* () {
+      const name = yield* machineName;
+      const machines = yield* HubMachines;
+      return yield* accessErrors(machines.forget(name), () =>
+        HttpServerResponse.empty({ status: 204 }),
+      );
+    }),
+  ),
+);
+
+export const hubMachineRoutesLayer = Layer.mergeAll(
+  listRoute,
+  giveAccessRoute,
+  removeAccessRoute,
+  addRoute,
+  forgetRoute,
+);

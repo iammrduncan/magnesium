@@ -396,6 +396,11 @@ export const make = (
     );
     // Access given or taken away: try that machine now.
     yield* machines.accessChanged.pipe(Stream.runForEach(reconnect), Effect.forkScoped);
+    // A machine added or forgotten in the app: follow the list now, not at the next poll.
+    yield* machines.listChanged.pipe(
+      Stream.runForEach(() => syncLinks),
+      Effect.forkScoped,
+    );
 
     return Fleet.of({
       subscribeMachines: (input) =>
