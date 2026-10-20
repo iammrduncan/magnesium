@@ -85,8 +85,11 @@ Run each on the hub, a bare-metal machine, a Magnesium pod and a machine attache
 
 ## Goal summary
 
-Not started.
+In progress, 2026-10-20. The Fleet boards had no place for these actions, so both now have one, waiting for the owner's approval (gate 1):
+- **Desktop:** Add a machine in the header. A note on each card when the server is behind the hub, its backup failed or is old, or its clock is on another time zone. A Server section in the machine's panel: its build with Update, the build before with Roll back, its time zone, its newest backup with Backups (Back up now, Restore…), and Edit pod, Give access again and Forget. Each action asks first, saying what restarts, then shows its progress and result in the panel.
+- **Phone:** the same notes on the rows, and a machine's sheet with its build and Update, its newest backup and Backups, Roll back and Forget, each confirmed in the sheet.
 
 ## Next steps
 
-1. Check the Fleet boards for room for these actions; draw an update if they need one, and get the owner's approval.
+1. The owner approves the Fleet boards, desktop and phone (gate 1).
+2. Build, in order: status gains the previous build, time zone and newest backup; each server backs itself up and lists, takes and restores backups; update and roll back as a detached service method on every kind of server; the hub's machine list in its database, with Add, Forget and Give access again; Edit pod and Replace a model key; the agent tools, Home cards and palette entries.

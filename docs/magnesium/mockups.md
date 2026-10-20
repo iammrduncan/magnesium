@@ -6,26 +6,26 @@ These are the 18 boards of the owner's mock canvas (D9), in their default state 
 
 **What's built today:** the sidebar of Home and Session, and the footer's core items (goal 05). The rest of each board comes with the goals in the table below; each built part has a dated note under its board.
 
-| Board                                            | Goals that make it real                                 | Phase |
-| ------------------------------------------------ | ------------------------------------------------------- | ----- |
-| [Home · desktop](#home--desktop)                 | 05 (sidebar), 06 (needs you), 10 (fleet tiles)          | 2     |
-| [Session · desktop](#session--desktop)           | 03 and 19 (profile and sandbox picker), 05 (sidebar)    | 1     |
-| [Room · desktop](#room--desktop)                 | 08 (rooms), 09 (routing and decision log)               | 3     |
-| [Brain · desktop](#brain--desktop)               | 12 (reader), 13 (memories, dream cycle), 14 (skills)    | 5     |
-| [Brain · document open](#brain--document-open)   | 12                                                      | 5     |
-| [Project · desktop](#project--desktop)           | 15                                                      | 5     |
-| [Profiles · desktop](#profiles--desktop)         | 34                                                      | 2     |
-| [Fleet · desktop](#fleet--desktop)               | 04 (first list), 10 (fleet and launch), 18 (started by) | 4     |
-| [Apps · desktop](#apps--desktop)                 | 16 (app host), 17 (New app)                             | 6     |
-| [Selected app · desktop](#selected-app--desktop) | 16                                                      | 6     |
-| [Home · phone](#home--phone)                     | 07                                                      | 7     |
-| [Session · phone](#session--phone)               | 07                                                      | 7     |
-| [Room · phone](#room--phone)                     | 08                                                      | 7     |
-| [Fleet · phone](#fleet--phone)                   | 10                                                      | 7     |
-| [Profiles · phone](#profiles--phone)             | 34                                                      | 2     |
-| [App · phone](#app--phone)                       | 16                                                      | 7     |
-| [Footer](#footer)                                | 05 (core items), 16 (app items)                         | 2, 6  |
-| [Footer · popover open](#footer--popover-open)   | 16                                                      | 6     |
+| Board                                            | Goals that make it real                                                     | Phase |
+| ------------------------------------------------ | --------------------------------------------------------------------------- | ----- |
+| [Home · desktop](#home--desktop)                 | 05 (sidebar), 06 (needs you), 10 (fleet tiles)                              | 2     |
+| [Session · desktop](#session--desktop)           | 03 and 19 (profile and sandbox picker), 05 (sidebar)                        | 1     |
+| [Room · desktop](#room--desktop)                 | 08 (rooms), 09 (routing and decision log)                                   | 3     |
+| [Brain · desktop](#brain--desktop)               | 12 (reader), 13 (memories, dream cycle), 14 (skills)                        | 5     |
+| [Brain · document open](#brain--document-open)   | 12                                                                          | 5     |
+| [Project · desktop](#project--desktop)           | 15                                                                          | 5     |
+| [Profiles · desktop](#profiles--desktop)         | 34                                                                          | 2     |
+| [Fleet · desktop](#fleet--desktop)               | 04 (first list), 10 (fleet and launch), 18 (started by), 35 (run the fleet) | 4     |
+| [Apps · desktop](#apps--desktop)                 | 16 (app host), 17 (New app)                                                 | 6     |
+| [Selected app · desktop](#selected-app--desktop) | 16                                                                          | 6     |
+| [Home · phone](#home--phone)                     | 07                                                                          | 7     |
+| [Session · phone](#session--phone)               | 07                                                                          | 7     |
+| [Room · phone](#room--phone)                     | 08                                                                          | 7     |
+| [Fleet · phone](#fleet--phone)                   | 10, 35                                                                      | 7     |
+| [Profiles · phone](#profiles--phone)             | 34                                                                          | 2     |
+| [App · phone](#app--phone)                       | 16                                                                          | 7     |
+| [Footer](#footer)                                | 05 (core items), 16 (app items)                                             | 2, 6  |
+| [Footer · popover open](#footer--popover-open)   | 16                                                                          | 6     |
 
 Not mocked yet: **Schedule** (goal 11 mocks it) and the **desktop pill** (goal 20 mocks it). What it takes to build each screen, piece by piece, is in [doc 13](13-mocks-to-working-app.md).
 
@@ -174,8 +174,10 @@ Not mocked yet: **Schedule** (goal 11 mocks it) and the **desktop pill** (goal 2
 - **Every machine** with CPU, memory and GPU load, and what runs on it.
 - **Routes** (LAN, Tailscale) and the load-balancing preference for new threads.
 - **Launch** on a machine with a profile and a sandbox (native, container, microVM).
+- **Each server's build, time zone and backups,** under Server in its panel. A card says when the server is behind the hub, its backup failed or is more than two days old, or its clock isn't on the hub's time zone.
+- **Running the fleet:** Update to the hub's build, Roll back to the build before, Backups with Back up now and Restore…, Edit pod for a Magnesium pod, Give access again and Forget. Each asks first and says what restarts; progress and the result show in the panel. **Add a machine** takes its address and a pairing code.
 
-**Built in:** goal 04 (the hub's first live list), goal 10 (metrics, jobs and launch), goal 18 ("started by" when an agent launched it). Each Magnesium server collects its own metrics (D21).
+**Built in:** goal 04 (the hub's first live list), goal 10 (metrics, jobs and launch), goal 18 ("started by" when an agent launched it), goal 35 (update, roll back, backups, add and forget machines, edit pods, time zones). Each Magnesium server collects its own metrics (D21).
 
 **Rules:** only sessions started from Magnesium are shown (D25). GPUs on the GPU hosts are read-only to Magnesium: it shows their metrics and starts no GPU work there.
 
@@ -235,7 +237,7 @@ The same web UI, installed as an app on the phone (D10). Goal 07 adds web push, 
 
 ![Fleet on the phone](mockups/fleet-phone.png)
 
-**What it shows:** each machine's load and what needs you there, with All, Needs you and GPU filters. **Built in:** goal 10.
+**What it shows:** each machine's load and what needs you there, with All, Needs you and GPU filters. A row says when its backup failed or it's behind the hub. A machine's sheet shows its build and newest backup, with Update, Backups (Back up now, Restore…), Roll back and Forget, each confirmed in the sheet. **Built in:** goal 10, goal 35.
 
 ### Profiles · phone
 

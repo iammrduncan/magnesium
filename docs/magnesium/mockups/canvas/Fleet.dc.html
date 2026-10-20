@@ -11,9 +11,10 @@
 <style>
 body{margin:0}
 a{color:inherit;text-decoration:none}a:hover{color:inherit}
-.t3{--canvas:#fcfcfc;--sidebar:#fafafa;--surface:#ffffff;--fg:#27272a;--fg-strong:#18181b;--muted:#71717b;--subtle:#a1a1aa;--border:#e4e4e7;--hover:#f4f4f5;--primary:#1b4ed8;--primary-wash:#eef2ff;--on-primary:#ffffff;--warn:#b45309;--warn-wash:#fffbeb;--input:#4f46e5;--info:#2563eb;--ok:#15803d;--err:#dc2626;--plan:#7c3aed;--shadow:0 1px 2px rgba(0,0,0,.04),0 10px 30px rgba(0,0,0,.07);color-scheme:light}
-.t3.dark{--canvas:#0a0a0a;--sidebar:#000000;--surface:#111111;--fg:#f5f5f5;--fg-strong:#ffffff;--muted:#8a8a8a;--subtle:#5c5c5c;--border:#1f1f1f;--hover:#171717;--primary:#346bf1;--primary-wash:#0f1a33;--on-primary:#ffffff;--warn:#fbbf24;--warn-wash:#1f1705;--input:#a5b4fc;--info:#60a5fa;--ok:#4ade80;--err:#f87171;--plan:#c4b5fd;--shadow:0 10px 30px rgba(0,0,0,.5);color-scheme:dark}
+.t3{--canvas:#fcfcfc;--sidebar:#fafafa;--surface:#ffffff;--fg:#27272a;--fg-strong:#18181b;--muted:#71717b;--subtle:#a1a1aa;--border:#e4e4e7;--hover:#f4f4f5;--primary:#1b4ed8;--primary-wash:#eef2ff;--on-primary:#ffffff;--warn:#b45309;--warn-wash:#fffbeb;--input:#4f46e5;--info:#2563eb;--ok:#15803d;--err:#dc2626;--err-wash:#fef2f2;--plan:#7c3aed;--scrim:rgba(0,0,0,.28);--shadow:0 1px 2px rgba(0,0,0,.04),0 10px 30px rgba(0,0,0,.07);color-scheme:light}
+.t3.dark{--canvas:#0a0a0a;--sidebar:#000000;--surface:#111111;--fg:#f5f5f5;--fg-strong:#ffffff;--muted:#8a8a8a;--subtle:#5c5c5c;--border:#1f1f1f;--hover:#171717;--primary:#346bf1;--primary-wash:#0f1a33;--on-primary:#ffffff;--warn:#fbbf24;--warn-wash:#1f1705;--input:#a5b4fc;--info:#60a5fa;--ok:#4ade80;--err:#f87171;--err-wash:#2a0f0f;--plan:#c4b5fd;--scrim:rgba(0,0,0,.6);--shadow:0 10px 30px rgba(0,0,0,.5);color-scheme:dark}
 .t3 button{font:inherit;color:inherit;cursor:pointer}
+.t3 input{font:inherit;color:inherit}
 .hov:hover{background:var(--hover)}
 .pri:hover{filter:brightness(1.08)}
 .t3 :focus-visible{outline:2px solid var(--primary);outline-offset:2px}
@@ -78,6 +79,9 @@ a{color:inherit;text-decoration:none}a:hover{color:inherit}
         <button type="button" aria-pressed="{{gridPressed}}" onClick="{{showGrid}}" style="{{gridStyle}}">By machine</button>
         <button type="button" aria-pressed="{{listPressed}}" onClick="{{showList}}" style="{{listStyle}}">Everything running</button>
       </div>
+      <button type="button" class="hov" onClick="{{openAdd}}" style="display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); font-size: 12.5px; font-weight: 500">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add a machine
+      </button>
     </header>
 
     <div style="display: flex; flex-wrap: wrap; flex: 1; min-height: 0">
@@ -99,6 +103,10 @@ a{color:inherit;text-decoration:none}a:hover{color:inherit}
                   </span>
                   <span style="{{m.pillStyle}}">{{m.state}}</span>
                 </button>
+
+                <sc-for list="{{m.notes}}" as="n" hint-placeholder-count="1">
+                  <div style="{{n.style}}"><span style="{{n.dot}}"></span>{{n.text}}</div>
+                </sc-for>
 
                 <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
                   <sc-for list="{{m.meters}}" as="g" hint-placeholder-count="3">
@@ -152,6 +160,7 @@ a{color:inherit;text-decoration:none}a:hover{color:inherit}
       </div>
 
       <aside aria-label="Machine detail" style="flex: 1 1 320px; max-width: 380px; min-width: 0; border-left: 1px solid var(--border); background: var(--surface); padding: 18px; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px">
+        <sc-if value="{{panelMain}}" hint-placeholder-val="{{ true }}">
         <div style="display: flex; align-items: center; gap: 10px">
           <div style="flex: 1">
             <h2 style="margin: 0; font-size: 15px; font-weight: 600; color: var(--fg-strong)">{{sel.name}}</h2>
@@ -159,6 +168,33 @@ a{color:inherit;text-decoration:none}a:hover{color:inherit}
           </div>
           <span style="{{sel.pillStyle}}">{{sel.state}}</span>
         </div>
+
+        <section aria-label="Server" style="display: flex; flex-direction: column; gap: 6px">
+          <h3 style="margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Server</h3>
+          <div style="border: 1px solid var(--border); border-radius: 10px; overflow: hidden">
+            <sc-for list="{{sel.facts}}" as="f" hint-placeholder-count="5">
+              <div style="{{f.rowStyle}}">
+                <span style="flex: none; width: 66px; font-size: 12px; color: var(--muted)">{{f.label}}</span>
+                <span style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+                  <span style="{{f.valueStyle}}">{{f.value}}</span>
+                  <sc-if value="{{f.hasHint}}" hint-placeholder-val="{{ false }}"><span style="{{f.hintStyle}}">{{f.hint}}</span></sc-if>
+                </span>
+                <sc-if value="{{f.hasAction}}" hint-placeholder-val="{{ false }}"><button type="button" class="hov" style="height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 12.5px; font-weight: 500; white-space: nowrap" onClick="{{f.act}}">{{f.action}}</button></sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{sel.hasOp}}" hint-placeholder-val="{{ false }}">
+            <div role="status" style="font-size: 12.5px; color: var(--info); background: var(--hover); border-radius: 8px; padding: 8px 10px">{{sel.op}}</div>
+          </sc-if>
+          <sc-if value="{{sel.offline}}" hint-placeholder-val="{{ false }}">
+            <p style="margin: 0; font-size: 12.5px; color: var(--muted)">Update, roll back and backups wait until it reconnects.</p>
+          </sc-if>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px">
+            <sc-for list="{{sel.actions}}" as="a" hint-placeholder-count="2">
+              <button type="button" class="hov" onClick="{{a.act}}" style="{{a.style}}">{{a.label}}</button>
+            </sc-for>
+          </div>
+        </section>
 
         <section style="display: flex; flex-direction: column; gap: 6px">
           <h3 style="margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em">Routes</h3>
@@ -205,22 +241,128 @@ a{color:inherit;text-decoration:none}a:hover{color:inherit}
             </div>
             <button type="button" class="pri" onClick="{{launch}}" style="height: 36px; border: 0; border-radius: 9px; background: var(--primary); color: var(--on-primary); font-size: 13px; font-weight: 500">Launch {{launchProfile}} on {{sel.name}}</button>
           </sc-if>
-          <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
-            <div role="status" style="font-size: 12.5px; color: var(--ok); background: var(--hover); border-radius: 8px; padding: 8px 10px">{{toast}}</div>
-          </sc-if>
         </section>
+        </sc-if>
+
+        <sc-if value="{{panelBackups}}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; align-items: center; gap: 8px">
+            <button type="button" class="hov" onClick="{{closeBackups}}" aria-label="Back to {{sel.name}}" style="width: 28px; height: 28px; border: 0; border-radius: 7px; background: transparent; display: grid; place-items: center; color: var(--muted)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>
+            </button>
+            <h2 style="flex: 1; margin: 0; font-size: 15px; font-weight: 600; color: var(--fg-strong)">Backups of {{sel.name}}</h2>
+            <button type="button" class="hov" style="height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 12.5px; font-weight: 500; white-space: nowrap" onClick="{{backupNow}}">Back up now</button>
+          </div>
+          <sc-if value="{{sel.hasOp}}" hint-placeholder-val="{{ false }}">
+            <div role="status" style="font-size: 12.5px; color: var(--info); background: var(--hover); border-radius: 8px; padding: 8px 10px">{{sel.op}}</div>
+          </sc-if>
+          <div style="border: 1px solid var(--border); border-radius: 10px; overflow: hidden">
+            <sc-for list="{{sel.backupRows}}" as="b" hint-placeholder-count="4">
+              <div style="{{b.rowStyle}}">
+                <span style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+                  <span style="font-size: 13px; color: var(--fg-strong)">{{b.when}}</span>
+                  <span style="{{b.detailStyle}}">{{b.detail}}</span>
+                </span>
+                <sc-if value="{{b.ok}}" hint-placeholder-val="{{ true }}"><button type="button" class="hov" style="height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 12.5px; font-weight: 500; white-space: nowrap" onClick="{{b.restore}}">Restore…</button></sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <p style="margin: 0; font-size: 12px; color: var(--muted)">{{sel.name}} backs up its own state every day and keeps the last 7. Restoring one backs up the state it replaces first.</p>
+        </sc-if>
+        <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+          <div role="status" style="font-size: 12.5px; color: var(--ok); background: var(--hover); border-radius: 8px; padding: 8px 10px">{{toast}}</div>
+        </sc-if>
       </aside>
     </div>
   </main>
+
+  <sc-if value="{{hasDialog}}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; inset: 0; background: var(--scrim); display: grid; place-items: center; padding: 16px; z-index: 2">
+      <sc-if value="{{dialogConfirm}}" hint-placeholder-val="{{ true }}">
+        <div role="dialog" aria-label="{{confirm.title}}" style="width: min(480px, 100%); box-sizing: border-box; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); padding: 18px; display: flex; flex-direction: column; gap: 12px">
+          <h2 style="margin: 0; font-size: 16px; color: var(--fg-strong)">{{confirm.title}}</h2>
+          <p style="margin: 0">{{confirm.body}}</p>
+          <p style="margin: 0; font-size: 13px; color: var(--muted)">{{confirm.after}}</p>
+          <div style="display: flex; gap: 8px; justify-content: flex-end">
+            <button type="button" class="hov" onClick="{{closeDialog}}" style="height: 32px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface)">Cancel</button>
+            <button type="button" onClick="{{confirm.go}}" style="{{confirm.style}}">{{confirm.button}}</button>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{dialogAdd}}" hint-placeholder-val="{{ false }}">
+        <form role="dialog" aria-label="{{addTitle}}" onSubmit="{{addMachine}}" style="width: min(480px, 100%); box-sizing: border-box; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); padding: 18px; display: flex; flex-direction: column; gap: 12px">
+          <h2 style="margin: 0; font-size: 16px; color: var(--fg-strong)">{{addTitle}}</h2>
+          <p style="margin: 0; font-size: 13px; color: var(--muted)">{{addIntro}}</p>
+          <sc-if value="{{addingNew}}" hint-placeholder-val="{{ true }}">
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted)">Name in Fleet
+              <input type="text" value="{{addName}}" onChange="{{onAddName}}" placeholder="gpu-c" style="height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); font-size: 14px; color: var(--fg)">
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted)">Its address
+              <input type="text" value="{{addUrl}}" onChange="{{onAddUrl}}" placeholder="https://gpu-c.example:3773" style="height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); font-size: 14px; color: var(--fg)">
+            </label>
+          </sc-if>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted)">Pairing code, from the machine's Settings → Connections or magnesium-release pair
+            <input type="text" value="{{addCode}}" onChange="{{onAddCode}}" placeholder="7KQ4-M2XD" style="height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); font-size: 14px; color: var(--fg)">
+          </label>
+          <sc-if value="{{addingNew}}" hint-placeholder-val="{{ true }}">
+            <div style="font-size: 12.5px; color: var(--muted)">In Kubernetes? Add a Magnesium pod, or attach a workload's machine, from Settings → Connections.</div>
+          </sc-if>
+          <div style="display: flex; gap: 8px; justify-content: flex-end">
+            <button type="button" class="hov" onClick="{{closeDialog}}" style="height: 32px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface)">Cancel</button>
+            <button type="submit" class="pri" style="{{addStyle}}">{{addButton}}</button>
+          </div>
+        </form>
+      </sc-if>
+      <sc-if value="{{dialogEdit}}" hint-placeholder-val="{{ false }}">
+        <form role="dialog" aria-label="Edit {{sel.name}}" onSubmit="{{saveEdit}}" style="width: min(480px, 100%); box-sizing: border-box; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); padding: 18px; display: flex; flex-direction: column; gap: 12px">
+          <h2 style="margin: 0; font-size: 16px; color: var(--fg-strong)">Edit {{sel.name}}</h2>
+          <p style="margin: 0; font-size: 13px; color: var(--muted)">A Magnesium pod, through its gateway. Saving restarts the pod to take the change; its home and threads stay.</p>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted)">Node
+            <input type="text" value="{{edit.node}}" onChange="{{onEditNode}}" style="height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); font-size: 14px; color: var(--fg)">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted)">OpenCode's gateway
+            <input type="text" value="{{edit.gateway}}" onChange="{{onEditGateway}}" style="height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); font-size: 14px; color: var(--fg)">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted)">Models, the first is the default
+            <input type="text" value="{{edit.models}}" onChange="{{onEditModels}}" style="height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); font-size: 14px; color: var(--fg)">
+          </label>
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <span style="font-size: 12px; color: var(--muted)">Model keys it gets, from Settings → Model keys</span>
+            <sc-for list="{{edit.keys}}" as="k" hint-placeholder-count="2">
+              <label style="display: flex; align-items: center; gap: 8px; min-height: 28px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12.5px"><input type="checkbox" checked="{{k.on}}" onChange="{{k.toggle}}"> {{k.name}}</label>
+            </sc-for>
+          </div>
+          <div style="display: flex; gap: 8px; justify-content: flex-end">
+            <button type="button" class="hov" onClick="{{closeDialog}}" style="height: 32px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface)">Cancel</button>
+            <button type="submit" class="pri" style="height: 32px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--primary); color: var(--on-primary); font-weight: 500">Save</button>
+          </div>
+        </form>
+      </sc-if>
+    </div>
+  </sc-if>
   <dc-import name="Footer" theme="{{themeName}}" hint-size="100%,30px"></dc-import>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":1440,"height":960}}'>
 class Component extends DCLogic {
-  componentWillUnmount() { if (this._t) clearTimeout(this._t); }
+  componentWillUnmount() { if (this._t) clearTimeout(this._t); if (this._op) clearTimeout(this._op); }
 
   st() {
-    return Object.assign({ selected: 'gpu-a', view: 'grid', filter: 'all', balance: { 'gpu-a': 'normal' }, lp: 'research', sandbox: 'container', launched: [], toast: '' }, this.state || {});
+    return Object.assign({ selected: 'gpu-a', view: 'grid', filter: 'all', balance: { 'gpu-a': 'normal' }, lp: 'research', sandbox: 'container', launched: [], toast: '',
+      panel: 'main', dialog: null, pending: null, op: null, builds: {}, extra: {}, forgotten: [], added: [], pods: {},
+      addName: '', addUrl: '', addCode: '', edit: null }, this.state || {});
+  }
+
+  flash(text) {
+    this.setState({ toast: text });
+    if (this._t) clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({ toast: '' }), 4000);
+  }
+
+  // Runs one fleet action: its progress shows on the machine, then its result.
+  run(name, text, done) {
+    this.setState({ dialog: null, pending: null, op: { name: name, text: text } });
+    if (this._op) clearTimeout(this._op);
+    this._op = setTimeout(() => { const patch = done(this.st()); this.setState(Object.assign({ op: null }, patch.state)); this.flash(patch.toast); }, 1800);
   }
 
   renderVals() {
@@ -230,32 +372,44 @@ class Component extends DCLogic {
     const av = (p) => 'flex: none; width: 18px; height: 18px; border-radius: 5px; background: ' + P[p][1] + '; color: #ffffff; display: grid; place-items: center; font-size: 8.5px; font-weight: 700';
     const statusColor = { approval: 'var(--warn)', input: 'var(--input)', working: 'var(--info)', plan: 'var(--plan)', done: 'var(--ok)', failed: 'var(--err)', idle: 'var(--muted)', starting: 'var(--info)' };
     const human = { approval: 1, input: 1, plan: 1, failed: 1 };
+    const HUB = { build: 'c4e81f2', zone: 'Europe/Berlin' };
+    const KEYS = ['LITELLM_API_KEY', 'OPENROUTER_API_KEY'];
+    const okBackups = (times, size) => times.map((t) => ({ when: t, detail: size, ok: true }));
 
     const base = [
       { name: 'workstation', kind: 'laptop', route: 'This machine', about: 'macOS · 12 cores · 64 GB', state: 'Connected', health: 'ok', meters: [['CPU', 31], ['Memory', 58]], routes: [['Local', 'Connected']], tags: [],
+        install: 'With Ansible', build: 'c4e81f2', prev: '7b2f9e4', zone: 'America/New_York', backups: okBackups(['Today 03:12', 'Yesterday 03:15', 'Oct 18 03:11'], '36 MB'),
         items: [
           { kind: 'Thread', profile: 'reviewer', title: 'Review PR #48: room router', status: 'working', label: 'Working 3m', sandbox: 'native', href: 'Session.dc.html' },
           { kind: 'Thread', profile: 'research', title: 'Which eval set for the long-context run?', status: 'input', label: 'Input', sandbox: 'container', href: 'Session.dc.html' },
           { kind: 'Thread', profile: 'research', title: 'Compare tokenizer throughput', status: 'idle', label: '2h', sandbox: 'container', href: 'Session.dc.html' } ] },
       { name: 'gpu-a', kind: 'gpu', route: 'via LAN · 2 × 48 GB', about: 'Linux · 2 GPUs · K3s GPU node', state: 'Connected', health: 'ok', meters: [['CPU', 22], ['Memory', 41], ['GPU', 78]], routes: [['LAN', 'Connected · 2 ms'], ['Tailscale', 'Standby']], tags: ['gpu'],
+        install: 'With Ansible', build: '7b2f9e4', prev: '51ac0d8', zone: 'Europe/Berlin', backups: okBackups(['Today 03:40', 'Yesterday 03:38', 'Oct 18 03:41', 'Oct 17 03:39'], '48 MB'),
         items: [
           { kind: 'Thread', profile: 'serving', title: 'Draft the serving deployment', status: 'approval', label: 'Approval', sandbox: 'container', href: 'Session.dc.html' },
           { kind: 'Job', profile: 'research', title: 'KV-cache sweep, batch 4', status: 'working', label: '62% · 18m left', progress: 62, sandbox: 'container', href: 'Session.dc.html' } ] },
-      { name: 'gpu-b', kind: 'gpu', route: 'via LAN · 4 × 16 GB', about: 'Linux · 4 GPUs · K3s GPU node', state: 'Connected', health: 'ok', meters: [['CPU', 4], ['Memory', 12], ['GPU', 0]], routes: [['LAN', 'Connected · 3 ms']], tags: ['gpu'], items: [], empty: 'Idle. 4 GPUs free.' },
-      { name: 'enclave-1', kind: 'server', route: 'via Tailscale · enclave', about: 'Linux VM · bots and admin agent', state: 'Connected', health: 'ok', meters: [['CPU', 17], ['Memory', 49]], routes: [['Tailscale', 'Connected · 9 ms']], tags: ['enclave'],
+      { name: 'gpu-b', kind: 'gpu', route: 'via LAN · 4 × 16 GB', about: 'Linux · 4 GPUs · K3s GPU node', state: 'Connected', health: 'ok', meters: [['CPU', 4], ['Memory', 12], ['GPU', 0]], routes: [['LAN', 'Connected · 3 ms']], tags: ['gpu'], items: [], empty: 'Idle. 4 GPUs free.',
+        install: 'Magnesium pod', build: 'c4e81f2', prev: '7b2f9e4', zone: 'Europe/Berlin', backups: okBackups(['Today 04:12', 'Yesterday 04:10', 'Oct 18 04:13'], '12 MB'),
+        pod: { node: 'gpu-b', gateway: 'https://llm-gateway.example/v1', models: 'qwen3-coder, deepseek-v4', keys: { LITELLM_API_KEY: true } } },
+      { name: 'enclave-1', kind: 'server', route: 'via Tailscale · the hub', about: 'Linux VM · the hub, bots and admin agent', state: 'Connected', health: 'ok', meters: [['CPU', 17], ['Memory', 49]], routes: [['Tailscale', 'Connected · 9 ms']], tags: ['enclave'], hub: true,
+        install: 'With Ansible', build: 'c4e81f2', prev: '7b2f9e4', zone: 'Europe/Berlin', backups: okBackups(['Today 03:05', 'Yesterday 03:02', 'Oct 18 03:06'], '210 MB'),
         items: [
           { kind: 'Thread', profile: 'ops', title: 'Rotate KB backups to the new pool', status: 'plan', label: 'Plan ready', sandbox: 'microvm', href: 'Session.dc.html' },
           { kind: 'Thread', profile: 'ops', title: 'Check certificate expiry across hosts', status: 'working', label: 'Working 2m', sandbox: 'microvm', href: 'Session.dc.html' },
           { kind: 'Bot', profile: 'serving', title: 'Seat in #serving-plan', status: 'working', label: 'Replying', sandbox: 'container', href: 'Room.dc.html' } ] },
       { name: 'kb-host', kind: 'server', route: 'via Tailscale · enclave', about: 'Linux VM · GBrain and its jobs', state: 'Degraded', health: 'warn', meters: [['CPU', 12], ['Memory', 66]], routes: [['Tailscale', 'Connected · 11 ms']], tags: ['enclave'],
+        install: 'Attached to the gbrain workload', build: '7b2f9e4', prev: '51ac0d8', zone: 'Europe/Berlin',
+        backups: [{ when: 'Today 02:10', detail: 'Failed: no space left on the backup volume', ok: false }].concat(okBackups(['Yesterday 02:09', 'Oct 18 02:11'], '96 MB')),
         items: [
           { kind: 'Job', profile: 'scribe', title: 'Index the October papers', status: 'working', label: '31 of 58', progress: 53, sandbox: 'container', href: 'Session.dc.html' },
           { kind: 'Scheduled', profile: 'scribe', title: 'Nightly dream cycle', status: 'failed', label: 'Failed 02:04', sandbox: 'container', href: 'Main.dc.html' } ] },
-      { name: 'nas', kind: 'nas', route: 'via LAN', about: 'Storage · tiered pools', state: 'Offline', health: 'off', meters: [['CPU', 0], ['Disk', 71]], routes: [['LAN', 'No answer for 12m'], ['Tailscale', 'No answer']], tags: [], items: [], empty: 'Last seen 12 minutes ago.' }
-    ];
+      { name: 'nas', kind: 'nas', route: 'via LAN', about: 'Storage · tiered pools', state: 'Offline', health: 'off', meters: [['CPU', 0], ['Disk', 71]], routes: [['LAN', 'No answer for 12m'], ['Tailscale', 'No answer']], tags: [], items: [], empty: 'Last seen 12 minutes ago.',
+        install: 'With Ansible', build: '7b2f9e4', prev: '51ac0d8', zone: 'Europe/Berlin', stale: true, backups: okBackups(['Oct 17 03:20', 'Oct 16 03:22'], '8 MB') }
+    ].concat(s.added).filter((m) => s.forgotten.indexOf(m.name) < 0);
 
+    const tone = (t) => (t === 'err' ? 'var(--err)' : t === 'warn' ? 'var(--warn)' : 'var(--muted)');
     const machines = base.map((m) => {
-      const items = m.items.concat(s.launched.filter((l) => l.machine === m.name)).map((it) => Object.assign({}, it, {
+      const items = (m.items || []).concat(s.launched.filter((l) => l.machine === m.name)).map((it) => Object.assign({}, it, {
         machine: m.name, initials: P[it.profile][0], avStyle: av(it.profile),
         statusStyle: 'flex: none; font-size: 11.5px; font-weight: ' + (human[it.status] ? 600 : 500) + '; color: ' + statusColor[it.status],
         hasProgress: typeof it.progress === 'number',
@@ -264,12 +418,23 @@ class Component extends DCLogic {
       const needs = items.filter((it) => human[it.status]).length;
       const selected = s.selected === m.name;
       const pill = 'flex: none; font-size: 11.5px; font-weight: 500; padding: 2px 8px; border-radius: 999px; ' + (m.health === 'ok' ? 'color: var(--ok); background: var(--hover)' : m.health === 'warn' ? 'color: var(--warn); background: var(--warn-wash)' : 'color: var(--err); background: var(--hover)');
+      const b = s.builds[m.name] || { build: m.build, prev: m.prev };
+      const behind = !m.hub && b.build !== HUB.build;
+      const backups = (s.extra[m.name] || []).concat(m.backups);
+      const newest = backups[0];
+      const otherZone = m.zone !== HUB.zone;
+      const notes = [];
+      if (behind) notes.push(['warn', 'Behind the hub: on ' + b.build]);
+      if (newest && !newest.ok) notes.push(['err', 'Backup failed ' + newest.when.toLowerCase()]);
+      if (m.stale && !(s.extra[m.name] || []).length) notes.push(['warn', 'Newest backup is 3 days old']);
+      if (otherZone) notes.push(['warn', 'Clock on ' + m.zone.split('/')[1].replace('_', ' ') + ' time, not the hub’s']);
       return Object.assign({}, m, {
-        items: items, count: m.health === 'off' ? 'offline' : String(items.length), needs: needs,
+        items: items, count: m.health === 'off' ? 'offline' : String(items.length), needs: needs, b: b, behind: behind, backups: backups, newest: newest, otherZone: otherZone,
+        notes: notes.map((n) => ({ text: n[1], style: 'display: flex; align-items: center; gap: 6px; margin-top: -4px; font-size: 12px; color: ' + tone(n[0]), dot: 'flex: none; width: 6px; height: 6px; border-radius: 50%; background: ' + tone(n[0]) })),
         isLaptop: m.kind === 'laptop', isGpu: m.kind === 'gpu', isServer: m.kind === 'server', isNas: m.kind === 'nas',
         isEmpty: items.length === 0, emptyText: m.empty || 'Nothing running.',
         selectLabel: 'Show ' + m.name,
-        select: () => this.setState({ selected: m.name }),
+        select: () => this.setState({ selected: m.name, panel: 'main' }),
         pillStyle: pill,
         dotStyle: 'width: 7px; height: 7px; flex: none; border-radius: ' + (m.health === 'off' ? '2px' : '50%') + '; background: ' + (m.health === 'ok' ? 'var(--ok)' : m.health === 'warn' ? 'var(--warn)' : 'var(--err)'),
         sideStyle: 'display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border: 0; border-radius: 8px; font-size: 13px; ' + (selected ? 'background: var(--hover); color: var(--fg-strong); font-weight: 500' : 'background: transparent'),
@@ -289,18 +454,90 @@ class Component extends DCLogic {
     shown.forEach((m) => m.items.forEach((it) => flat.push(Object.assign({}, it))));
 
     const sel = machines.filter((m) => m.name === s.selected)[0] || machines[0];
-    const bal = (s.balance[sel.name] || 'normal');
+    const online = sel.health !== 'off';
+    const busy = !!s.op;
+    const ask = (kind, extra) => () => this.setState({ dialog: 'confirm', pending: Object.assign({ kind: kind, name: sel.name }, extra || {}) });
+    const row = (i) => 'display: flex; align-items: center; gap: 8px; padding: 7px 10px; ' + (i ? 'border-top: 1px solid var(--border)' : '');
+    const fact = (i, label, value, hint, hintTone, action, act, mono) => ({
+      label: label, value: value, hint: hint || '', hasHint: !!hint, action: action || '', hasAction: !!action && online && !busy, act: act,
+      rowStyle: row(i), valueStyle: 'font-size: 13px; color: var(--fg-strong); ' + (mono ? "font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12.5px" : ''),
+      hintStyle: 'font-size: 11.5px; color: ' + tone(hintTone)
+    });
+    const newestText = !sel.newest ? 'None yet' : sel.newest.ok ? sel.newest.when : 'Failed ' + sel.newest.when.toLowerCase();
+    const newestHint = !sel.newest ? '' : !sel.newest.ok ? sel.newest.detail.replace(/^Failed: (.)/, (_, c) => c.toUpperCase()) : sel.stale && !(s.extra[sel.name] || []).length ? 'More than two days old' : sel.newest.detail + ' · ' + sel.backups.filter((x) => x.ok).length + ' kept';
+    const facts = [
+      fact(0, 'Build', sel.b.build, sel.hub ? 'Every server follows it' : sel.behind ? 'Hub: ' + HUB.build : 'Same as the hub', sel.behind ? 'warn' : '', sel.behind ? 'Update' : '', ask('update'), true),
+      fact(1, 'Before it', sel.b.prev || 'None', sel.b.prev ? 'Threads stay' : '', '', sel.b.prev ? 'Roll back' : '', ask('rollback'), true),
+      fact(2, 'Time zone', sel.zone, sel.otherZone ? 'Hub: ' + HUB.zone + '. Tasks here run on this clock' : 'Same as the hub', sel.otherZone ? 'warn' : ''),
+      fact(3, 'Backup', newestText, newestHint, sel.newest && !sel.newest.ok ? 'err' : sel.stale ? 'warn' : '', 'Backups', () => this.setState({ panel: 'backups' }))
+    ];
+    facts[3].hasAction = true;
+    const actStyle = (danger) => 'height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 12.5px; color: ' + (danger ? 'var(--err)' : 'var(--fg)');
+    const actions = [];
+    if (sel.install === 'Magnesium pod' && online) actions.push({ label: 'Edit pod', style: actStyle(false), act: () => {
+      const pod = s.pods[sel.name] || sel.pod;
+      this.setState({ dialog: 'edit', edit: { node: pod.node, gateway: pod.gateway, models: pod.models, keys: Object.assign({}, pod.keys) } });
+    } });
+    if (!sel.hub) {
+      actions.push({ label: 'Give access again', style: actStyle(false), act: () => this.setState({ dialog: 'access', addCode: '' }) });
+      actions.push({ label: 'Forget ' + sel.name, style: actStyle(true), act: ask('forget') });
+    }
+    const backupRows = sel.backups.map((x, i) => ({
+      when: x.when, detail: x.detail, ok: x.ok, rowStyle: row(i).replace('padding: 8px 10px', 'padding: 9px 10px') + (x.ok ? '' : '; background: var(--err-wash)'),
+      detailStyle: 'font-size: 12px; color: ' + (x.ok ? 'var(--muted)' : 'var(--err)'),
+      restore: ask('restore', { when: x.when })
+    }));
+
+    const p = s.pending || {};
+    const pb = (machines.filter((m) => m.name === p.name)[0] || sel).b;
+    const pm = machines.filter((m) => m.name === p.name)[0] || sel;
+    const primary = 'height: 32px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--primary); color: var(--on-primary); font-weight: 500';
+    const danger = 'height: 32px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--err); color: #ffffff; font-weight: 500';
+    const confirms = {
+      update: { title: 'Update ' + p.name + ' to ' + HUB.build + '?', button: 'Update', style: primary,
+        body: pm.install === 'Magnesium pod' ? p.name + '’s pod restarts on the hub’s build, through its gateway. Its home and threads stay.' : 'Magnesium on ' + p.name + ' restarts on the hub’s build. Its threads pause for a minute and carry on.',
+        after: 'If the new build doesn’t start, ' + p.name + ' stays on ' + pb.build + ', and Fleet says why.',
+        go: () => this.run(p.name, 'Updating ' + p.name + ' to ' + HUB.build + ': installing, then restarting…', (cur) => {
+          const nb = Object.assign({}, cur.builds); nb[p.name] = { build: HUB.build, prev: pb.build };
+          return { state: { builds: nb }, toast: p.name + ' is on ' + HUB.build + ', connected.' };
+        }) },
+      rollback: { title: 'Roll ' + p.name + ' back to ' + pb.prev + '?', button: 'Roll back', style: primary,
+        body: pm.hub ? 'The hub restarts on the build it had before. This page loses it for a minute and reconnects on its own.' : 'Magnesium on ' + p.name + ' restarts on the build it had before. Its threads stay.',
+        after: pb.build + ' stays on ' + p.name + ', so you can update again.',
+        go: () => this.run(p.name, 'Rolling ' + p.name + ' back to ' + pb.prev + ': restarting…', (cur) => {
+          const nb = Object.assign({}, cur.builds); nb[p.name] = { build: pb.prev, prev: pb.build };
+          return { state: { builds: nb }, toast: p.name + ' is back on ' + pb.prev + '.' };
+        }) },
+      restore: { title: 'Restore ' + p.name + ' from ' + (p.when || '').toLowerCase() + '?', button: 'Restore', style: danger,
+        body: 'Magnesium on ' + p.name + ' stops, backs up the state it has now, puts back the state from ' + (p.when || '').toLowerCase() + ', and starts again.',
+        after: 'Threads and settings changed there since then go back to how they were. The restore runs on its own, so closing this page doesn’t stop it.',
+        go: () => this.run(p.name, 'Restoring ' + p.name + ': stopped, backing up its state first…', (cur) => {
+          const ne = Object.assign({}, cur.extra); ne[p.name] = [{ when: 'Today 14:06', detail: 'Taken before restoring ' + (p.when || '').toLowerCase(), ok: true }].concat(ne[p.name] || []);
+          return { state: { extra: ne }, toast: p.name + ' is back on the state from ' + (p.when || '').toLowerCase() + '.' };
+        }) },
+      forget: { title: 'Forget ' + p.name + '?', button: 'Forget', style: danger,
+        body: p.name + ' leaves the hub’s list, and the hub’s access to it ends there too.',
+        after: 'Magnesium keeps running on ' + p.name + ' with its threads. Add it again with a new pairing code.',
+        go: () => { const cur = this.st(); this.setState({ dialog: null, pending: null, forgotten: cur.forgotten.concat([p.name]), selected: machines.filter((m) => m.name !== p.name)[0].name, panel: 'main' }); this.flash('Forgot ' + p.name + '.'); } }
+    };
+    const confirm = confirms[p.kind] || confirms.update;
+
+    const adding = s.dialog === 'add';
+    const addReady = s.addCode.trim() !== '' && (!adding || (s.addName.trim() !== '' && s.addUrl.trim() !== ''));
+    const edit = s.edit || { node: '', gateway: '', models: '', keys: {} };
+    const behindCount = machines.filter((m) => m.behind && m.health !== 'off').length;
     const seg = (on) => 'flex: 1; height: 28px; padding: 0 8px; border: 0; border-radius: 6px; font-size: 12px; white-space: nowrap; ' + (on ? 'background: var(--surface); color: var(--fg-strong); font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,.08)' : 'background: transparent; color: var(--muted)');
-    const balance = [ ['normal', 'Normal'], ['prefer', 'Prefer'], ['less', 'Less often'], ['manual', 'Manual only'] ].map((b) => ({
-      label: b[1], pressed: String(bal === b[0]), style: seg(bal === b[0]),
-      pick: () => { const nb = Object.assign({}, this.st().balance); nb[sel.name] = b[0]; this.setState({ balance: nb }); }
+    const bal = (s.balance[sel.name] || 'normal');
+    const balance = [ ['normal', 'Normal'], ['prefer', 'Prefer'], ['less', 'Less often'], ['manual', 'Manual only'] ].map((x) => ({
+      label: x[1], pressed: String(bal === x[0]), style: seg(bal === x[0]),
+      pick: () => { const nb = Object.assign({}, this.st().balance); nb[sel.name] = x[0]; this.setState({ balance: nb }); }
     }));
-    const sandboxes = [ ['native', 'native'], ['container', 'container'], ['microvm', 'microvm'] ].map((b) => ({
-      label: b[1], pressed: String(s.sandbox === b[0]), style: seg(s.sandbox === b[0]), pick: () => this.setState({ sandbox: b[0] })
+    const sandboxes = [ ['native', 'native'], ['container', 'container'], ['microvm', 'microvm'] ].map((x) => ({
+      label: x[1], pressed: String(s.sandbox === x[0]), style: seg(s.sandbox === x[0]), pick: () => this.setState({ sandbox: x[0] })
     }));
-    const launchProfiles = Object.keys(P).map((p) => ({
-      name: p, initials: P[p][0], avStyle: av(p), pressed: String(s.lp === p), pick: () => this.setState({ lp: p }),
-      style: 'display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px 0 6px; border-radius: 8px; font-size: 12.5px; border: 1px solid ' + (s.lp === p ? 'var(--fg-strong)' : 'var(--border)') + '; background: var(--surface)'
+    const launchProfiles = Object.keys(P).map((x) => ({
+      name: x, initials: P[x][0], avStyle: av(x), pressed: String(s.lp === x), pick: () => this.setState({ lp: x }),
+      style: 'display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px 0 6px; border-radius: 8px; font-size: 12.5px; border: 1px solid ' + (s.lp === x ? 'var(--fg-strong)' : 'var(--border)') + '; background: var(--surface)'
     }));
     const seg2 = (on) => 'height: 26px; padding: 0 10px; border: 0; border-radius: 7px; font-size: 12.5px; ' + (on ? 'background: var(--fg-strong); color: var(--canvas); font-weight: 500' : 'background: transparent; color: var(--muted)');
     const total = machines.reduce((n, m) => n + m.items.length, 0);
@@ -308,22 +545,66 @@ class Component extends DCLogic {
     return {
       themeClass: dark ? 'dark' : '', themeName: dark ? 'dark' : 'light',
       machines: machines, shown: shown, flat: flat, filters: filters,
-      headline: machines.length + ' machines · 1 offline · ' + total + ' threads and jobs',
+      headline: machines.length + ' machines · 1 offline · ' + behindCount + ' behind the hub · ' + total + ' threads and jobs',
       isGrid: s.view === 'grid', isList: s.view === 'list',
       gridPressed: String(s.view === 'grid'), listPressed: String(s.view === 'list'),
       gridStyle: seg2(s.view === 'grid'), listStyle: seg2(s.view === 'list'),
       showGrid: () => this.setState({ view: 'grid' }), showList: () => this.setState({ view: 'list' }),
-      sel: Object.assign({}, sel, { offline: sel.health === 'off', online: sel.health !== 'off' }),
+      sel: Object.assign({}, sel, { about: sel.about + ' · ' + sel.install.replace(/^With/, 'with'), offline: !online, online: online, facts: facts, actions: actions, backupRows: backupRows,
+        hasOp: !!s.op && s.op.name === sel.name, op: s.op ? s.op.text : '' }),
+      panelMain: s.panel !== 'backups', panelBackups: s.panel === 'backups',
+      closeBackups: () => this.setState({ panel: 'main' }),
+      backupNow: () => { if (busy || !online) return; this.run(sel.name, 'Backing up ' + sel.name + '…', (cur) => {
+        const ne = Object.assign({}, cur.extra); ne[sel.name] = [{ when: 'Today 14:05', detail: sel.backups.filter((x) => x.ok)[0].detail, ok: true }].concat(ne[sel.name] || []);
+        return { state: { extra: ne }, toast: 'Backed up ' + sel.name + '.' };
+      }); },
       balance: balance, sandboxes: sandboxes, launchProfiles: launchProfiles, launchProfile: s.lp,
       sandboxHint: s.sandbox === 'native' ? 'The harness sandbox only. Scheduled runs never use less than container.' : s.sandbox === 'container' ? 'Docker or Podman with gVisor. The default.' : 'A microVM. The strongest isolation.',
       launch: () => {
         const cur = this.st();
         const item = { kind: 'Thread', profile: cur.lp, title: 'New session', status: 'working', label: 'Starting', sandbox: cur.sandbox, machine: sel.name, href: 'Session.dc.html' };
-        this.setState({ launched: cur.launched.concat([item]), toast: 'Started ' + cur.lp + ' on ' + sel.name + ' in a ' + cur.sandbox + ' sandbox.' });
-        if (this._t) clearTimeout(this._t);
-        this._t = setTimeout(() => this.setState({ toast: '' }), 4000);
+        this.setState({ launched: cur.launched.concat([item]) });
+        this.flash('Started ' + cur.lp + ' on ' + sel.name + ' in a ' + cur.sandbox + ' sandbox.');
       },
-      hasToast: !!s.toast, toast: s.toast
+      hasToast: !!s.toast, toast: s.toast,
+      hasDialog: !!s.dialog, dialogConfirm: s.dialog === 'confirm', dialogAdd: s.dialog === 'add' || s.dialog === 'access', dialogEdit: s.dialog === 'edit',
+      closeDialog: () => this.setState({ dialog: null, pending: null }),
+      confirm: confirm,
+      openAdd: () => this.setState({ dialog: 'add', addName: '', addUrl: '', addCode: '' }),
+      addingNew: adding,
+      addTitle: adding ? 'Add a machine' : 'Give the hub access to ' + sel.name + ' again',
+      addIntro: adding ? 'A machine already running Magnesium. The hub keeps it in its list and connects to it; nothing else changes there.' : 'With a new pairing code from ' + sel.name + ', the hub gets a fresh token there. Its old one stops working.',
+      addButton: adding ? 'Add' : 'Give access',
+      addName: s.addName, addUrl: s.addUrl, addCode: s.addCode,
+      onAddName: (e) => this.setState({ addName: e.target.value }),
+      onAddUrl: (e) => this.setState({ addUrl: e.target.value }),
+      onAddCode: (e) => this.setState({ addCode: e.target.value }),
+      addStyle: 'height: 32px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--primary); color: var(--on-primary); font-weight: 500; opacity: ' + (addReady ? 1 : 0.5),
+      addMachine: (e) => {
+        e.preventDefault();
+        const cur = this.st();
+        if (!addReady) return;
+        if (!adding) { this.setState({ dialog: null }); this.flash('The hub has access to ' + sel.name + ' again.'); return; }
+        const name = cur.addName.trim();
+        const m = { name: name, kind: 'server', route: 'via ' + cur.addUrl.trim().replace(/^https?:\/\//, '').split(/[:/]/)[0], about: 'Linux · added from Fleet', state: 'Connected', health: 'ok', meters: [['CPU', 3], ['Memory', 9]], routes: [['Address', 'Connected · 4 ms']], tags: [], items: [], empty: 'Nothing running yet.',
+          install: 'With Ansible', build: HUB.build, prev: null, zone: HUB.zone, backups: [] };
+        this.setState({ dialog: null, added: cur.added.concat([m]), forgotten: cur.forgotten.filter((x) => x !== name), selected: name, panel: 'main' });
+        this.flash(name + ' is in Fleet, connected.');
+      },
+      edit: { node: edit.node, gateway: edit.gateway, models: edit.models,
+        keys: KEYS.map((k) => ({ name: k, on: !!edit.keys[k], toggle: () => { const e2 = Object.assign({}, this.st().edit); e2.keys = Object.assign({}, e2.keys); e2.keys[k] = !e2.keys[k]; this.setState({ edit: e2 }); } })) },
+      onEditNode: (e) => this.setState({ edit: Object.assign({}, this.st().edit, { node: e.target.value }) }),
+      onEditGateway: (e) => this.setState({ edit: Object.assign({}, this.st().edit, { gateway: e.target.value }) }),
+      onEditModels: (e) => this.setState({ edit: Object.assign({}, this.st().edit, { models: e.target.value }) }),
+      saveEdit: (e) => {
+        e.preventDefault();
+        const name = sel.name;
+        const saved = this.st().edit;
+        this.run(name, 'Saving ' + name + ' through its gateway: its pod restarts to take it…', (cur) => {
+          const np = Object.assign({}, cur.pods); np[name] = saved;
+          return { state: { pods: np, edit: null }, toast: name + ' restarted with its new settings.' };
+        });
+      }
     };
   }
 }

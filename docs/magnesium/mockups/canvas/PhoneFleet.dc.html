@@ -12,8 +12,8 @@
 <style>
 body{margin:0}
 a{color:inherit;text-decoration:none}a:hover{color:inherit}
-.ph{--screen:#fcfcfc;--card:#ffffff;--fg:#27272a;--fg-strong:#18181b;--muted:#71717b;--subtle:#a1a1aa;--border:#e4e4e7;--hover:#f4f4f5;--primary:#1b4ed8;--on-primary:#ffffff;--warn:#b45309;--warn-wash:#fffbeb;--input:#4f46e5;--info:#2563eb;--ok:#15803d;--err:#dc2626;--plan:#7c3aed;--glass:rgba(252,252,252,.86);--scrim:rgba(0,0,0,.28);--shadow:0 8px 28px rgba(0,0,0,.10);color-scheme:light}
-.ph.dark{--screen:#0a0a0a;--card:#111111;--fg:#f5f5f5;--fg-strong:#ffffff;--muted:#8a8a8a;--subtle:#5c5c5c;--border:#1f1f1f;--hover:#161616;--primary:#346bf1;--on-primary:#ffffff;--warn:#fbbf24;--warn-wash:#1f1705;--input:#a5b4fc;--info:#60a5fa;--ok:#4ade80;--err:#f87171;--plan:#c4b5fd;--glass:rgba(10,10,10,.86);--scrim:rgba(0,0,0,.6);--shadow:0 8px 28px rgba(0,0,0,.6);color-scheme:dark}
+.ph{--screen:#fcfcfc;--card:#ffffff;--fg:#27272a;--fg-strong:#18181b;--muted:#71717b;--subtle:#a1a1aa;--border:#e4e4e7;--hover:#f4f4f5;--primary:#1b4ed8;--on-primary:#ffffff;--warn:#b45309;--warn-wash:#fffbeb;--input:#4f46e5;--info:#2563eb;--ok:#15803d;--err:#dc2626;--err-wash:#fef2f2;--plan:#7c3aed;--glass:rgba(252,252,252,.86);--scrim:rgba(0,0,0,.28);--shadow:0 8px 28px rgba(0,0,0,.10);color-scheme:light}
+.ph.dark{--screen:#0a0a0a;--card:#111111;--fg:#f5f5f5;--fg-strong:#ffffff;--muted:#8a8a8a;--subtle:#5c5c5c;--border:#1f1f1f;--hover:#161616;--primary:#346bf1;--on-primary:#ffffff;--warn:#fbbf24;--warn-wash:#1f1705;--input:#a5b4fc;--info:#60a5fa;--ok:#4ade80;--err:#f87171;--err-wash:#2a0f0f;--plan:#c4b5fd;--glass:rgba(10,10,10,.86);--scrim:rgba(0,0,0,.6);--shadow:0 8px 28px rgba(0,0,0,.6);color-scheme:dark}
 .ph button{font:inherit;color:inherit;cursor:pointer}
 .ph :focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 </style>
@@ -27,7 +27,7 @@ a{color:inherit;text-decoration:none}a:hover{color:inherit}
     </div>
     <div>
       <h1 style="margin: 0; font-size: 32px; line-height: 1.1; font-weight: 700; color: var(--fg-strong); letter-spacing: -0.02em">Fleet</h1>
-      <p style="margin: 4px 0 0; font-size: 14px; color: var(--muted)">6 machines · 1 offline · 13 running</p>
+      <p style="margin: 4px 0 0; font-size: 14px; color: var(--muted)">{{headline}}</p>
     </div>
     <div role="group" aria-label="Filter" style="display: flex; padding: 3px; border-radius: 12px; background: var(--hover)">
       <sc-for list="{{filters}}" as="f" hint-placeholder-count="3">
@@ -41,6 +41,7 @@ a{color:inherit;text-decoration:none}a:hover{color:inherit}
           <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; text-align: left">
             <span style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 16px; font-weight: 700; color: var(--fg-strong)">{{m.name}}</span><span style="font-size: 12.5px; color: var(--muted)">{{m.kind}}</span></span>
             <span style="font-size: 13px; color: var(--muted)">{{m.line}}</span>
+            <sc-if value="{{m.hasNote}}" hint-placeholder-val="{{ false }}"><span style="{{m.noteStyle}}">{{m.note}}</span></sc-if>
             <span style="display: block; height: 4px; border-radius: 2px; background: var(--hover); overflow: hidden"><span style="{{m.bar}}"></span></span>
           </span>
           <sc-if value="{{m.hasNeeds}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12.5px; font-weight: 700; color: var(--warn)">{{m.needs}}</span></sc-if>
@@ -53,7 +54,7 @@ a{color:inherit;text-decoration:none}a:hover{color:inherit}
 
   <sc-if value="{{hasSheet}}" hint-placeholder-val="{{ false }}">
     <button type="button" onClick="{{close}}" aria-label="Close" style="position: absolute; inset: 0; border: 0; background: var(--scrim); padding: 0"></button>
-    <div role="dialog" aria-label="{{sel.name}}" style="position: absolute; left: 0; right: 0; bottom: 0; background: var(--card); border-radius: 24px 24px 0 0; box-shadow: var(--shadow); padding: 8px 16px 28px; display: flex; flex-direction: column; gap: 12px">
+    <div role="dialog" aria-label="{{sel.name}}" style="position: absolute; left: 0; right: 0; bottom: 0; max-height: 88%; overflow-y: auto; box-sizing: border-box; background: var(--card); border-radius: 24px 24px 0 0; box-shadow: var(--shadow); padding: 8px 16px 28px; display: flex; flex-direction: column; gap: 12px">
       <span style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: var(--border)"></span>
       <div style="display: flex; align-items: center; gap: 10px">
         <div style="flex: 1">
@@ -62,14 +63,37 @@ a{color:inherit;text-decoration:none}a:hover{color:inherit}
         </div>
         <span style="{{sel.pill}}">{{sel.state}}</span>
       </div>
+      <sc-if value="{{viewMain}}" hint-placeholder-val="{{ true }}">
       <div style="display: flex; flex-direction: column">
         <sc-if value="{{sel.isEmpty}}" hint-placeholder-val="{{ false }}"><p style="margin: 0; color: var(--muted)">{{sel.empty}}</p></sc-if>
         <sc-for list="{{sel.items}}" as="it" hint-placeholder-count="2">
-          <a href="{{it.href}}" style="display: flex; align-items: center; gap: 10px; min-height: 52px; border-top: {{it.border}}">
+          <a href="{{it.href}}" style="display: flex; align-items: center; gap: 10px; min-height: 48px; border-top: {{it.border}}">
             <span style="{{it.av}}">{{it.initials}}</span>
             <span style="flex: 1; min-width: 0; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{it.title}}</span>
             <span style="{{it.statusStyle}}">{{it.label}}</span>
           </a>
+        </sc-for>
+      </div>
+      <div style="border: 1px solid var(--border); border-radius: 16px; overflow: hidden">
+        <sc-for list="{{sel.facts}}" as="f" hint-placeholder-count="3">
+          <div style="{{f.rowStyle}}">
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+              <span style="font-size: 12.5px; color: var(--muted)">{{f.label}}</span>
+              <span style="{{f.valueStyle}}">{{f.value}}</span>
+            </span>
+            <sc-if value="{{f.hasAction}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{f.act}}" style="flex: none; min-height: 36px; padding: 0 14px; border: 1px solid var(--border); border-radius: 11px; background: var(--card); font-size: 14px; font-weight: 600">{{f.action}}</button></sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <sc-if value="{{sel.hasOp}}" hint-placeholder-val="{{ false }}">
+        <div role="status" style="font-size: 14px; color: var(--info); background: var(--hover); border-radius: 12px; padding: 10px 12px">{{op}}</div>
+      </sc-if>
+      <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+        <div role="status" style="font-size: 14px; color: var(--ok); background: var(--hover); border-radius: 12px; padding: 10px 12px">{{toast}}</div>
+      </sc-if>
+      <div style="display: flex; gap: 8px">
+        <sc-for list="{{sel.more}}" as="a" hint-placeholder-count="2">
+          <button type="button" onClick="{{a.act}}" style="{{a.style}}">{{a.label}}</button>
         </sc-for>
       </div>
       <sc-if value="{{sel.online}}" hint-placeholder-val="{{ true }}">
@@ -78,13 +102,58 @@ a{color:inherit;text-decoration:none}a:hover{color:inherit}
       <sc-if value="{{sel.offline}}" hint-placeholder-val="{{ false }}">
         <button type="button" onClick="{{close}}" style="height: 50px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); font-size: 16px; font-weight: 500">Reconnect when it is back</button>
       </sc-if>
+      </sc-if>
+
+      <sc-if value="{{viewBackups}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; align-items: center; gap: 8px">
+          <button type="button" onClick="{{toMain}}" style="flex: none; min-height: 36px; padding: 0 4px; border: 0; background: transparent; color: var(--primary); font-size: 15px; font-weight: 600">‹ {{sel.name}}</button>
+          <span style="flex: 1; font-size: 15px; font-weight: 700; color: var(--fg-strong)">Backups</span>
+          <button type="button" onClick="{{backupNow}}" style="flex: none; min-height: 36px; padding: 0 14px; border: 1px solid var(--border); border-radius: 11px; background: var(--card); font-size: 14px; font-weight: 600">Back up now</button>
+        </div>
+        <sc-if value="{{sel.hasOp}}" hint-placeholder-val="{{ false }}">
+          <div role="status" style="font-size: 14px; color: var(--info); background: var(--hover); border-radius: 12px; padding: 10px 12px">{{op}}</div>
+        </sc-if>
+        <div style="border: 1px solid var(--border); border-radius: 16px; overflow: hidden">
+          <sc-for list="{{sel.backupRows}}" as="b" hint-placeholder-count="3">
+            <div style="{{b.rowStyle}}">
+              <span style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+                <span style="font-size: 15px; color: var(--fg-strong)">{{b.when}}</span>
+                <span style="{{b.detailStyle}}">{{b.detail}}</span>
+              </span>
+              <sc-if value="{{b.ok}}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{b.restore}}" style="flex: none; min-height: 36px; padding: 0 14px; border: 1px solid var(--border); border-radius: 11px; background: var(--card); font-size: 14px; font-weight: 600">Restore…</button></sc-if>
+            </div>
+          </sc-for>
+        </div>
+        <p style="margin: 0; font-size: 13px; color: var(--muted)">It backs itself up every day and keeps the last 7.</p>
+      </sc-if>
+
+      <sc-if value="{{viewConfirm}}" hint-placeholder-val="{{ false }}">
+        <h3 style="margin: 0; font-size: 18px; color: var(--fg-strong)">{{confirm.title}}</h3>
+        <p style="margin: 0; font-size: 15px">{{confirm.body}}</p>
+        <p style="margin: 0; font-size: 13.5px; color: var(--muted)">{{confirm.after}}</p>
+        <button type="button" onClick="{{confirm.go}}" style="{{confirm.style}}">{{confirm.button}}</button>
+        <button type="button" onClick="{{toMain}}" style="height: 50px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); font-size: 16px; font-weight: 500">Cancel</button>
+      </sc-if>
     </div>
   </sc-if>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
-  st() { return Object.assign({ filter: 'all', sel: null, launched: {} }, this.state || {}); }
+  componentWillUnmount() { if (this._t) clearTimeout(this._t); if (this._op) clearTimeout(this._op); }
+
+  st() { return Object.assign({ forgotten: [], filter: 'all', sel: 'kb-host', view: 'main', pending: null, launched: {}, builds: {}, extra: {}, op: null, toast: '' }, this.state || {}); }
+
+  run(name, text, done) {
+    this.setState({ view: 'main', pending: null, op: { name: name, text: text } });
+    if (this._op) clearTimeout(this._op);
+    this._op = setTimeout(() => {
+      const patch = done(this.st());
+      this.setState(Object.assign({ op: null, toast: patch.toast }, patch.state));
+      if (this._t) clearTimeout(this._t);
+      this._t = setTimeout(() => this.setState({ toast: '' }), 4000);
+    }, 1800);
+  }
 
   renderVals() {
     const s = this.st();
@@ -92,14 +161,18 @@ class Component extends DCLogic {
     const P = { serving: ['SE', '#c2410c'], research: ['RE', '#0e7490'], ops: ['OP', '#4d7c0f'], scribe: ['SC', '#be185d'], reviewer: ['RV', '#475569'] };
     const color = { approval: 'var(--warn)', input: 'var(--input)', working: 'var(--info)', plan: 'var(--plan)', done: 'var(--ok)', failed: 'var(--err)', idle: 'var(--muted)' };
     const human = { approval: 1, input: 1, plan: 1, failed: 1 };
+    const HUB = 'c4e81f2';
+    const ok = (times, size) => times.map((t) => ({ when: t, detail: size, ok: true }));
     const base = [
-      { name: 'workstation', kind: 'laptop', route: 'This machine', state: 'Connected', health: 'ok', load: 31, tags: [], items: [['reviewer', 'Review PR #48: room router', 'working', 'Working'], ['research', 'Which eval set for the long-context run?', 'input', 'Input']] },
-      { name: 'gpu-a', kind: '2 GPUs', route: 'via LAN · 2 ms', state: 'Connected', health: 'ok', load: 78, tags: ['gpu'], items: [['serving', 'Draft the serving deployment', 'approval', 'Approval'], ['research', 'KV-cache sweep, batch 4', 'working', '62%']] },
-      { name: 'gpu-b', kind: '4 GPUs', route: 'via LAN · 3 ms', state: 'Connected', health: 'ok', load: 0, tags: ['gpu'], items: [], empty: 'Idle. 4 GPUs free.' },
-      { name: 'enclave-1', kind: 'VM', route: 'via Tailscale · 9 ms', state: 'Connected', health: 'ok', load: 17, tags: [], items: [['ops', 'Rotate KB backups to the new pool', 'plan', 'Plan ready'], ['ops', 'Check certificate expiry', 'working', 'Working']] },
-      { name: 'kb-host', kind: 'VM', route: 'via Tailscale · 11 ms', state: 'Degraded', health: 'warn', load: 12, tags: [], items: [['scribe', 'Index the October papers', 'working', '31 of 58'], ['scribe', 'Nightly dream cycle', 'failed', 'Failed']] },
-      { name: 'nas', kind: 'storage', route: 'via LAN · no answer', state: 'Offline', health: 'off', load: 0, tags: [], items: [], empty: 'Last seen 12 minutes ago.' }
-    ];
+      { name: 'workstation', kind: 'laptop', route: 'This machine', state: 'Connected', health: 'ok', load: 31, tags: [], build: 'c4e81f2', prev: '7b2f9e4', backups: ok(['Today 03:12', 'Yesterday 03:15'], '36 MB'), items: [['reviewer', 'Review PR #48: room router', 'working', 'Working'], ['research', 'Which eval set for the long-context run?', 'input', 'Input']] },
+      { name: 'gpu-a', kind: '2 GPUs', route: 'via LAN · 2 ms', state: 'Connected', health: 'ok', load: 78, tags: ['gpu'], build: '7b2f9e4', prev: '51ac0d8', backups: ok(['Today 03:40', 'Yesterday 03:38'], '48 MB'), items: [['serving', 'Draft the serving deployment', 'approval', 'Approval'], ['research', 'KV-cache sweep, batch 4', 'working', '62%']] },
+      { name: 'gpu-b', kind: '4 GPUs', route: 'via LAN · 3 ms', state: 'Connected', health: 'ok', load: 0, tags: ['gpu'], build: 'c4e81f2', prev: '7b2f9e4', backups: ok(['Today 04:12', 'Yesterday 04:10'], '12 MB'), items: [], empty: 'Idle. 4 GPUs free.' },
+      { name: 'enclave-1', kind: 'the hub', route: 'via Tailscale · 9 ms', state: 'Connected', health: 'ok', load: 17, tags: [], hub: true, build: 'c4e81f2', prev: '7b2f9e4', backups: ok(['Today 03:05', 'Yesterday 03:02'], '210 MB'), items: [['ops', 'Rotate KB backups to the new pool', 'plan', 'Plan ready'], ['ops', 'Check certificate expiry', 'working', 'Working']] },
+      { name: 'kb-host', kind: 'VM', route: 'via Tailscale · 11 ms', state: 'Degraded', health: 'warn', load: 12, tags: [], build: '7b2f9e4', prev: '51ac0d8',
+        backups: [{ when: 'Today 02:10', detail: 'Failed: no space left on the backup volume', ok: false }].concat(ok(['Yesterday 02:09', 'Oct 18 02:11'], '96 MB')),
+        items: [['scribe', 'Index the October papers', 'working', '31 of 58'], ['scribe', 'Nightly dream cycle', 'failed', 'Failed']] },
+      { name: 'nas', kind: 'storage', route: 'via LAN · no answer', state: 'Offline', health: 'off', load: 0, tags: [], build: '7b2f9e4', prev: '51ac0d8', backups: ok(['Oct 17 03:20'], '8 MB'), items: [], empty: 'Last seen 12 minutes ago.' }
+    ].filter((m) => s.forgotten.indexOf(m.name) < 0);
     const machines = base.map((m) => {
       const extra = s.launched[m.name] ? [['research', 'New session', 'working', 'Starting']] : [];
       const items = m.items.concat(extra).map((it, i) => ({
@@ -109,29 +182,82 @@ class Component extends DCLogic {
         statusStyle: 'flex: none; font-size: 13px; font-weight: ' + (human[it[2]] ? 700 : 500) + '; color: ' + color[it[2]]
       }));
       const needs = m.items.filter((it) => human[it[2]]).length;
+      const b = s.builds[m.name] || { build: m.build, prev: m.prev };
+      const behind = !m.hub && m.health !== 'off' && b.build !== HUB;
+      const backups = (s.extra[m.name] || []).concat(m.backups);
+      const failed = !backups[0].ok;
+      const note = failed ? 'Backup failed ' + backups[0].when.toLowerCase() : behind ? 'Behind the hub' : '';
       return Object.assign({}, m, {
-        items: items, needs: needs + ' need you', hasNeeds: needs > 0,
+        items: items, needs: needs + ' need you', hasNeeds: needs > 0, b: b, behind: behind, backups: backups, failed: failed,
+        hasNote: note !== '', note: note, noteStyle: 'font-size: 13px; font-weight: 600; color: ' + (failed ? 'var(--err)' : 'var(--warn)'),
         line: m.health === 'off' ? 'Offline for 12m' : (m.tags.indexOf('gpu') >= 0 ? 'GPU ' + m.load + '% · ' : 'CPU ' + m.load + '% · ') + items.length + ' running',
         bar: 'display: block; height: 4px; width: ' + m.load + '%; background: ' + (m.load > 75 ? 'var(--warn)' : 'var(--fg)') + '; opacity: .7',
         dot: 'flex: none; width: 10px; height: 10px; border-radius: ' + (m.health === 'off' ? '3px' : '50%') + '; background: ' + (m.health === 'ok' ? 'var(--ok)' : m.health === 'warn' ? 'var(--warn)' : 'var(--err)'),
         rowStyle: 'width: 100%; display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 10px 14px; border: 0; border-top: 1px solid var(--border); background: transparent; text-align: left; opacity: ' + (m.health === 'off' ? 0.6 : 1),
-        open: () => this.setState({ sel: m.name }),
+        open: () => this.setState({ sel: m.name, view: 'main' }),
         isEmpty: items.length === 0, empty: m.empty || '', online: m.health !== 'off', offline: m.health === 'off',
         pill: 'font-size: 12.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--hover); color: ' + (m.health === 'ok' ? 'var(--ok)' : m.health === 'warn' ? 'var(--warn)' : 'var(--err)')
       });
     });
-    const shown = machines.filter((m) => s.filter === 'all' || (s.filter === 'needs' ? m.hasNeeds : m.tags.indexOf('gpu') >= 0));
+    const shown = machines.filter((m) => s.filter === 'all' || (s.filter === 'needs' ? m.hasNeeds || m.failed : m.tags.indexOf('gpu') >= 0));
     if (shown.length) shown[0] = Object.assign({}, shown[0], { rowStyle: shown[0].rowStyle.replace('border-top: 1px solid var(--border)', 'border-top: 0') });
     const filters = [['all', 'All'], ['needs', 'Needs you'], ['gpu', 'GPU']].map((f) => ({
       label: f[1], pressed: String(s.filter === f[0]), pick: () => this.setState({ filter: f[0] }),
       style: 'flex: 1; min-height: 36px; border: 0; border-radius: 9px; font-size: 14px; ' + (s.filter === f[0] ? 'background: var(--card); color: var(--fg-strong); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.08)' : 'background: transparent; color: var(--muted); font-weight: 500')
     }));
     const sel = machines.filter((m) => m.name === s.sel)[0] || machines[0];
+    const busy = !!s.op;
+    const ask = (kind, extra) => () => this.setState({ view: 'confirm', pending: Object.assign({ kind: kind }, extra || {}) });
+    const row = (i) => 'display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 14px; ' + (i ? 'border-top: 1px solid var(--border)' : '');
+    const newest = sel.backups[0];
+    const facts = [
+      { label: sel.hub ? 'Build, which every server follows' : sel.behind ? 'Build, behind the hub’s ' + HUB : 'Build, same as the hub', value: sel.b.build, tone: sel.behind ? 'var(--warn)' : 'var(--fg-strong)', action: sel.behind ? 'Update' : '', act: ask('update'), mono: true },
+      { label: newest.ok ? 'Newest backup' : 'Backup failed ' + newest.when.toLowerCase(), value: newest.ok ? newest.when + ' · ' + newest.detail : newest.detail.replace(/^Failed: (.)/, (_, c) => c.toUpperCase()), tone: newest.ok ? 'var(--fg-strong)' : 'var(--err)', action: 'Backups', act: () => this.setState({ view: 'backups' }) }
+    ].map((f, i) => ({
+      label: f.label, value: f.value, action: f.action, act: f.act,
+      hasAction: !!f.action && sel.online && (!busy || f.action === 'Backups'),
+      rowStyle: row(i) + (f.tone === 'var(--err)' ? '; background: var(--err-wash)' : ''),
+      valueStyle: 'font-size: 15px; font-weight: 600; color: ' + f.tone + (f.mono ? "; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 14px" : '')
+    }));
+    const moreStyle = (danger) => 'flex: 1; min-height: 44px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); font-size: 14.5px; font-weight: 600; color: ' + (danger ? 'var(--err)' : 'var(--fg)');
+    const more = [];
+    if (sel.online && sel.b.prev) more.push({ label: 'Roll back', style: moreStyle(false), act: ask('rollback') });
+    if (!sel.hub) more.push({ label: 'Forget', style: moreStyle(true), act: ask('forget') });
+    const backupRows = sel.backups.map((x, i) => ({
+      when: x.when, detail: x.detail, ok: x.ok,
+      rowStyle: row(i) + (x.ok ? '' : '; background: var(--err-wash)'),
+      detailStyle: 'font-size: 13px; color: ' + (x.ok ? 'var(--muted)' : 'var(--err)'),
+      restore: ask('restore', { when: x.when })
+    }));
+    const p = s.pending || { kind: 'update' };
+    const big = (bg) => 'height: 50px; border: 0; border-radius: 14px; background: ' + bg + '; color: #ffffff; font-size: 16px; font-weight: 700';
+    const confirms = {
+      update: { title: 'Update ' + sel.name + ' to ' + HUB + '?', button: 'Update ' + sel.name, style: big('var(--primary)'),
+        body: 'Magnesium on ' + sel.name + ' restarts on the hub’s build. Its threads pause for a minute and carry on.',
+        after: 'If the new build doesn’t start, it stays on ' + sel.b.build + '.',
+        go: () => this.run(sel.name, 'Updating ' + sel.name + ': installing, then restarting…', (cur) => { const nb = Object.assign({}, cur.builds); nb[sel.name] = { build: HUB, prev: sel.b.build }; return { state: { builds: nb }, toast: sel.name + ' is on ' + HUB + ', connected.' }; }) },
+      rollback: { title: 'Roll ' + sel.name + ' back to ' + sel.b.prev + '?', button: 'Roll back', style: big('var(--primary)'),
+        body: 'Magnesium on ' + sel.name + ' restarts on the build it had before. Its threads stay.', after: sel.b.build + ' stays there, so you can update again.',
+        go: () => this.run(sel.name, 'Rolling ' + sel.name + ' back: restarting…', (cur) => { const nb = Object.assign({}, cur.builds); nb[sel.name] = { build: sel.b.prev, prev: sel.b.build }; return { state: { builds: nb }, toast: sel.name + ' is back on ' + sel.b.prev + '.' }; }) },
+      restore: { title: 'Restore ' + sel.name + ' from ' + (p.when || '').toLowerCase() + '?', button: 'Restore', style: big('var(--err)'),
+        body: 'It stops, backs up the state it has now, puts back the state from ' + (p.when || '').toLowerCase() + ', and starts again.', after: 'Changes since then go back to how they were.',
+        go: () => this.run(sel.name, 'Restoring ' + sel.name + ': backing up its state first…', (cur) => { const ne = Object.assign({}, cur.extra); ne[sel.name] = [{ when: 'Today 14:06', detail: 'Taken before restoring', ok: true }].concat(ne[sel.name] || []); return { state: { extra: ne }, toast: sel.name + ' is back on the state from ' + (p.when || '').toLowerCase() + '.' }; }) },
+      forget: { title: 'Forget ' + sel.name + '?', button: 'Forget ' + sel.name, style: big('var(--err)'),
+        body: 'It leaves the hub’s list, and the hub’s access to it ends.', after: 'Magnesium keeps running there. Add it again with a new pairing code.',
+        go: () => this.setState({ forgotten: s.forgotten.concat([sel.name]), sel: null, view: 'main', pending: null }) }
+    };
+    const behindCount = machines.filter((m) => m.behind).length;
     return {
       themeClass: dark ? 'dark' : '',
+      headline: machines.length + ' machines · 1 offline · ' + behindCount + ' behind the hub',
       filters: filters, shown: shown,
-      hasSheet: !!s.sel, sel: sel,
-      close: () => this.setState({ sel: null }),
+      hasSheet: !!s.sel, sel: Object.assign({}, sel, { facts: facts, more: more, backupRows: backupRows, hasOp: !!s.op && s.op.name === sel.name }),
+      op: s.op ? s.op.text : '', hasToast: !!s.toast, toast: s.toast,
+      viewMain: s.view === 'main', viewBackups: s.view === 'backups', viewConfirm: s.view === 'confirm',
+      toMain: () => this.setState({ view: 'main', pending: null }),
+      confirm: confirms[p.kind],
+      backupNow: () => { if (busy) return; this.run(sel.name, 'Backing up ' + sel.name + '…', (cur) => { const ne = Object.assign({}, cur.extra); ne[sel.name] = [{ when: 'Today 14:05', detail: sel.backups.filter((x) => x.ok)[0].detail, ok: true }].concat(ne[sel.name] || []); return { state: { extra: ne, view: 'backups' }, toast: 'Backed up ' + sel.name + '.' }; }); },
+      close: () => this.setState({ sel: null, view: 'main' }),
       launchText: s.launched[sel.name] ? 'Launched research here' : 'Launch a session here',
       launch: () => { const l = Object.assign({}, this.st().launched); l[sel.name] = true; this.setState({ launched: l }); }
     };
