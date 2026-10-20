@@ -2,6 +2,9 @@
 import {
   MAGNESIUM_AGENT_TOOLS,
   MAGNESIUM_MCP_SERVER,
+  PROFILE_HARNESS_LABELS,
+  PROFILE_HARNESSES,
+  type ProfileHarness,
   type ProfileDelivery,
   type ProfileDetail,
   type ProfileEnvironment,
@@ -669,6 +672,12 @@ export function ToolsSection({ detail, onChanged }: Section) {
           {copied ? "Copied" : "Copy MCP URL"}
         </Button>
       </div>
+      {detail.harnesses.includes("opencode") ? (
+        <p className="text-xs text-muted-foreground">
+          On OpenCode, a thread's permission mode comes after these settings: in Supervised every
+          tool still asks, and in full access every tool runs.
+        </p>
+      ) : null}
       <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
         {detail.mcpServers.map((server) => (
           <ServerRow
@@ -911,9 +920,8 @@ export function RunsOnSection({
           name,
           settings: {
             machines: machinesSetting(every, picked),
-            harnesses: harnesses.filter(
-              (harness): harness is "claude" | "codex" =>
-                harness === "claude" || harness === "codex",
+            harnesses: harnesses.filter((harness): harness is ProfileHarness =>
+              (PROFILE_HARNESSES as ReadonlyArray<string>).includes(harness),
             ),
             sandbox: sandbox === "container" ? "container" : "fenced",
             launchArgs: args.trim() === "" ? [] : args.trim().split(/\s+/),
@@ -967,26 +975,25 @@ export function RunsOnSection({
           disabled={!editable}
         >
           <legend className="px-1 text-xs text-muted-foreground">Harnesses</legend>
-          {[
-            { value: "claude", label: "Claude Code" },
-            { value: "codex", label: "Codex" },
-          ].map((harness) => (
-            <label key={harness.value} className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={harnesses.includes(harness.value)}
-                onCheckedChange={(checked) =>
-                  setHarnesses((list) =>
-                    checked === true
-                      ? [...list, harness.value]
-                      : list.length > 1
-                        ? list.filter((value) => value !== harness.value)
-                        : list,
-                  )
-                }
-              />
-              {harness.label}
-            </label>
-          ))}
+          {PROFILE_HARNESSES.map((value) => ({ value, label: PROFILE_HARNESS_LABELS[value] })).map(
+            (harness) => (
+              <label key={harness.value} className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={harnesses.includes(harness.value)}
+                  onCheckedChange={(checked) =>
+                    setHarnesses((list) =>
+                      checked === true
+                        ? [...list, harness.value]
+                        : list.length > 1
+                          ? list.filter((value) => value !== harness.value)
+                          : list,
+                    )
+                  }
+                />
+                {harness.label}
+              </label>
+            ),
+          )}
         </fieldset>
         <fieldset
           className="flex flex-col gap-2 rounded-lg border border-border p-3"

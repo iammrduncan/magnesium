@@ -436,6 +436,14 @@ export const checkProfile = Effect.fn("profiles.checkProfile")(function* (profil
       );
     }
   }
+  const onOpenCode = [meta.harness, ...(meta.harnesses ?? [])].includes("opencode");
+  if (onOpenCode && Object.keys(meta.tool_permissions ?? {}).length > 0) {
+    add(
+      "warn",
+      FILES.meta,
+      "tool_permissions: on OpenCode, a thread's permission mode comes after these, so Supervised still asks and full access still runs.",
+    );
+  }
   if (!(yield* fs.exists(file(FILES.agents)).pipe(Effect.orElseSucceed(() => false)))) {
     add("error", FILES.agents, "Missing; it holds the agent's role and rules.");
   }

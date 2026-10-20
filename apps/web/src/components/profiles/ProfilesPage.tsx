@@ -1,6 +1,7 @@
 // magnesium: Profiles, made and managed in the app (goal 34, D65, D67)
 import {
   parseProfileInstanceId,
+  PROFILE_HARNESS_LABELS,
   PROFILE_TRASH_DAYS,
   type ProfileDetail,
   type ProfileSummary,
@@ -362,9 +363,7 @@ function ProfileView({
           <p className="text-xs text-muted-foreground">
             {[
               profile.description,
-              detail.harnesses
-                .map((harness) => (harness === "claude" ? "Claude Code" : "Codex"))
-                .join(" and "),
+              detail.harnesses.map((harness) => PROFILE_HARNESS_LABELS[harness]).join(" and "),
               `${profile.sandbox} by default`,
             ]
               .filter(Boolean)

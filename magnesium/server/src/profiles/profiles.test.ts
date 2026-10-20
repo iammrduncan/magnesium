@@ -344,6 +344,134 @@ describe("profile instances", () => {
   );
 });
 
+describe("profiles on OpenCode (D68)", () => {
+  it.effect("run fenced or native through OpenCode's config folder, never in a container", () =>
+    Effect.gen(function* () {
+      const root = tempRoot();
+      const config = setupFor(root, {
+        setup: {
+          ...setupFor(root).setup,
+          binaries: { claude: undefined, codex: undefined, opencode: "/usr/local/bin/opencode" },
+          container: { image: "docker.io/library/node@sha256:abc" },
+        },
+      });
+      writeProfile(config.folder, "triage", {
+        "profile.yaml": "name: triage\nharness: opencode\nsandbox:\n  level: container\n",
+        "AGENTS.md": "You sort new issues.\n",
+      });
+      const path = yield* Path.Path;
+      const plan = planProfile(
+        path,
+        resolveProfile(yield* loadProfile(config.folder, "triage")),
+        config.setup,
+      );
+      expect(plan.instances.map((instance) => instance.instanceId)).toEqual([
+        profileInstanceId("opencode", "fenced", "triage"),
+        profileInstanceId("opencode", "native", "triage"),
+      ]);
+      expect(plan.notes.map((note) => note.message)).toContainEqual(
+        "opencode has no container level; it runs fenced by default.",
+      );
+      const home = NodePath.join(config.folder, "triage", ".magnesium", "opencode");
+      const [fenced] = plan.instances;
+      expect(fenced?.config).toMatchObject({
+        driver: "opencode",
+        displayName: "triage",
+        config: { binaryPath: "/opt/magnesium/bin/magnesium-opencode" },
+      });
+      expect(fenced?.config.environment).toContainEqual({
+        name: "OPENCODE_CONFIG_DIR",
+        value: home,
+        sensitive: false,
+      });
+    }).pipe(Effect.provide(NodeServices.layer)),
+  );
+
+  it.effect(
+    "write its instructions, skills, servers and tool rules where OpenCode reads them",
+    () =>
+      Effect.gen(function* () {
+        const root = tempRoot();
+        const config = setupFor(root);
+        writeProfile(config.folder, "serving", {
+          "profile.yaml": [
+            "name: serving",
+            "harnesses: [opencode]",
+            "tool_permissions:",
+            "  grafana:",
+            "    default: ask",
+            "    tools: { search_dashboards: allow, delete_dashboard: off }",
+            "  magnesium:",
+            "    tools: { update_profile: ask }",
+            "",
+          ].join("\n"),
+          "AGENTS.md": "You serve models.\n",
+          "skills/rollout-watch/SKILL.md":
+            "---\nname: rollout-watch\ndescription: Watch a rollout\n---\nWatch it.\n",
+          "mcp.json": JSON.stringify({
+            mcpServers: {
+              grafana: {
+                type: "http",
+                url: "https://grafana.example/mcp",
+                headers: { Authorization: "Bearer ${GRAFANA_TOKEN}" },
+              },
+              kube: {
+                command: "kube-mcp",
+                args: ["--read-only"],
+                env: { KUBECONFIG: "${KUBECONFIG}" },
+              },
+            },
+          }),
+        });
+        const profile = resolveProfile(yield* loadProfile(config.folder, "serving"));
+        yield* writeHomes(profile, config.setup);
+        const home = NodePath.join(config.folder, "serving", ".magnesium", "opencode");
+        expect(NodeFS.readFileSync(NodePath.join(home, "AGENTS.md"), "utf8")).toContain(
+          "You serve models.",
+        );
+        expect(NodeFS.existsSync(NodePath.join(home, "skills", "rollout-watch", "SKILL.md"))).toBe(
+          true,
+        );
+        const written = JSON.parse(
+          NodeFS.readFileSync(NodePath.join(home, "opencode.json"), "utf8"),
+        );
+        expect(written).toEqual({
+          $schema: "https://opencode.ai/config.json",
+          instructions: [NodePath.join(home, "AGENTS.md")],
+          skills: { paths: [NodePath.join(home, "skills")] },
+          // Secrets stay names: OpenCode reads {env:NAME} when it starts the server.
+          mcp: {
+            grafana: {
+              type: "remote",
+              url: "https://grafana.example/mcp",
+              enabled: true,
+              headers: { Authorization: "Bearer {env:GRAFANA_TOKEN}" },
+            },
+            kube: {
+              type: "local",
+              command: ["kube-mcp", "--read-only"],
+              enabled: true,
+              environment: { KUBECONFIG: "{env:KUBECONFIG}" },
+            },
+          },
+          // Broad first: OpenCode lets the last matching rule win.
+          permission: {
+            "grafana_*": "ask",
+            grafana_search_dashboards: "allow",
+            grafana_delete_dashboard: "deny",
+            "t3_code_*_update_profile": "ask",
+          },
+        });
+        expect(Object.keys(written.permission)).toEqual([
+          "grafana_*",
+          "grafana_search_dashboards",
+          "grafana_delete_dashboard",
+          "t3_code_*_update_profile",
+        ]);
+      }).pipe(Effect.provide(NodeServices.layer)),
+  );
+});
+
 describe("stock instances", () => {
   const settings = (overrides: Partial<ServerSettings> = {}): ServerSettings => ({
     ...DEFAULT_SERVER_SETTINGS,

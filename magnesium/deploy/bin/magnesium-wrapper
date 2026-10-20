@@ -1,10 +1,11 @@
 #!/bin/sh
-# magnesium-wrapper claude|codex [harness args...]
+# magnesium-wrapper claude|codex|opencode [harness args...]
 #
 # Runs a Magnesium profile's harness at the sandbox level its provider instance
-# asks for (goal 03, D40). T3 starts `magnesium-claude` or `magnesium-codex` as
-# the instance's binary, with CLAUDE_CONFIG_DIR or CODEX_HOME set to the profile's
-# home and MAGNESIUM_SANDBOX set by the instance. The harness speaks over stdio
+# asks for (goal 03, D40). T3 starts `magnesium-claude`, `magnesium-codex` or
+# `magnesium-opencode` as the instance's binary, with CLAUDE_CONFIG_DIR,
+# CODEX_HOME or OPENCODE_CONFIG_DIR set to the profile's home and
+# MAGNESIUM_SANDBOX set by the instance. The harness speaks over stdio
 # with no TTY, so this script writes nothing to stdout.
 #
 #   fenced     (default) the machine's CLI, with Magnesium's state home hidden;
@@ -24,7 +25,9 @@ harness=${1:-}
 case $harness in
   claude) home=${CLAUDE_CONFIG_DIR:-}; home_var=CLAUDE_CONFIG_DIR; login=.credentials.json ;;
   codex) home=${CODEX_HOME:-}; home_var=CODEX_HOME; login=auth.json ;;
-  *) echo "usage: magnesium-wrapper claude|codex [args...]" >&2; exit 64 ;;
+  # OpenCode keeps its logins in its own data folder; the profile's folder holds its config.
+  opencode) home=${OPENCODE_CONFIG_DIR:-}; home_var=OPENCODE_CONFIG_DIR; login= ;;
+  *) echo "usage: magnesium-wrapper claude|codex|opencode [args...]" >&2; exit 64 ;;
 esac
 
 fail() {
@@ -41,6 +44,7 @@ state=$(dirname "$home")
 case $harness in
   claude) real=$MG_CLAUDE_BIN ;;
   codex) real=$MG_CODEX_BIN ;;
+  opencode) real=${MG_OPENCODE_BIN:-} ;;
 esac
 [ -n "$real" ] && [ -x "$real" ] || fail "$harness is not installed on this machine."
 
@@ -59,6 +63,12 @@ case $harness in
     done
     ;;
   codex) [ "${1:-}" = "app-server" ] && mode=session ;;
+  # T3 talks to one `opencode serve` per instance; everything else is a probe.
+  opencode)
+    [ "${1:-}" = "serve" ] && mode=session
+    # Its skills are the profile's, not the account's Claude Code or agents skills.
+    export OPENCODE_DISABLE_EXTERNAL_SKILLS=1
+    ;;
 esac
 
 log() {
@@ -79,6 +89,9 @@ fi
 log "$@"
 attachments=$MG_STATE_HOME/userdata/attachments
 cwd=$(pwd -P)
+
+[ "$harness" = opencode ] && [ "$level" = container ] &&
+  fail "OpenCode runs fenced or native; it has no container level."
 
 if [ "$level" = native ]; then
   exec "$real" "$@"

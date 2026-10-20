@@ -1,0 +1,3 @@
+#!/bin/sh
+# A Magnesium profile's OpenCode, at its sandbox level. See magnesium-wrapper.
+exec "$(dirname "$0")/magnesium-wrapper" opencode "$@"

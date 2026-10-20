@@ -38,6 +38,8 @@ const anyFence = MECHANISMS.find((mechanism) => available[mechanism].ok);
 interface Call {
   readonly name: string;
   readonly args: Array<string>;
+  /** OPENCODE_DISABLE_EXTERNAL_SKILLS as the harness saw it. */
+  readonly externalSkills: string | null;
   readonly secret: string | null;
   /** What happened when it tried to read the state home's canary. */
   readonly canary: "read" | "denied";
@@ -77,6 +79,7 @@ function makeProfile(
     NodePath.dirname(canary),
     NodePath.join(state, "claude"),
     NodePath.join(state, "codex"),
+    NodePath.join(state, "opencode"),
     NodePath.join(state, "home"),
     NodePath.join(fakes, "bin"),
     project,
@@ -93,10 +96,11 @@ const os = require("node:os");
 const path = require("node:path");
 const [name, ...args] = process.argv.slice(2);
 const tries = (fn) => { try { fn(); return true; } catch { return false; } };
-const home = process.env.CLAUDE_CONFIG_DIR || process.env.CODEX_HOME;
+const home = process.env.CLAUDE_CONFIG_DIR || process.env.CODEX_HOME || process.env.OPENCODE_CONFIG_DIR;
 fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify({
   name,
   args,
+  externalSkills: process.env.OPENCODE_DISABLE_EXTERNAL_SKILLS ?? null,
   secret: process.env.GBRAIN_TOKEN ?? null,
   canary: tries(() => fs.readFileSync(${JSON.stringify(canary)})) ? "read" : "denied",
   homeWritable: Boolean(home) && tries(() => fs.writeFileSync(home + "/probe", "x")),
@@ -117,6 +121,7 @@ fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify({
   };
   const claude = fake("claude");
   const codex = fake("codex");
+  const opencode = fake("opencode");
   fake("podman");
   // What a harness does with T3's workspaces: realpath and write each one (and its
   // cwd), and try the secrets and the attachments. It prints what it could do.
@@ -160,6 +165,7 @@ console.log(JSON.stringify({
       `MG_MOUNTS=''`,
       `MG_CLAUDE_BIN=${quote(claude)}`,
       `MG_CODEX_BIN=${quote(codex)}`,
+      `MG_OPENCODE_BIN=${quote(opencode)}`,
       "",
     ].join("\n"),
   );
@@ -195,14 +201,19 @@ console.log(JSON.stringify({
     });
     return { ...result, calls: readCalls() };
   };
+  const HOME_VAR = {
+    claude: "CLAUDE_CONFIG_DIR",
+    codex: "CODEX_HOME",
+    opencode: "OPENCODE_CONFIG_DIR",
+  } as const;
   const harness = (
-    name: "claude" | "codex",
+    name: keyof typeof HOME_VAR,
     level: string,
     args: ReadonlyArray<string>,
     env: Record<string, string> = {},
   ) =>
     run(`magnesium-${name}`, args, {
-      [name === "claude" ? "CLAUDE_CONFIG_DIR" : "CODEX_HOME"]: NodePath.join(state, name),
+      [HOME_VAR[name]]: NodePath.join(state, name),
       MAGNESIUM_SANDBOX: level,
       ...env,
     });
@@ -253,6 +264,25 @@ describe("magnesium-claude and magnesium-codex", () => {
     expect(profile.log()).toContain(`home=${NodePath.join(profile.state, "claude")}`);
     expect(profile.log()).toContain(`cwd=${profile.project}`);
     expect(profile.log()).toContain("level=native mode=session");
+  });
+
+  it("run OpenCode's server with the profile's config folder, and refuse it a container", () => {
+    const profile = makeProfile();
+    const session = profile.harness("opencode", "native", ["serve", "--port", "0"]);
+    expect(session.status).toBe(0);
+    // Its skills are the profile's, never the account's Claude Code or agents skills.
+    expect(session.calls).toMatchObject([
+      { name: "opencode", args: ["serve", "--port", "0"], externalSkills: "1" },
+    ]);
+    expect(profile.log()).toContain("harness=opencode level=native mode=session");
+    expect(profile.log()).toContain(`home=${NodePath.join(profile.state, "opencode")}`);
+    expect(profile.harness("opencode", "native", ["--version"]).calls[0]?.args).toEqual([
+      "--version",
+    ]);
+    expect(profile.log()).toContain("harness=opencode level=native mode=probe");
+    const container = profile.harness("opencode", "container", ["serve"]);
+    expect(container.status).toBe(78);
+    expect(container.stderr).toContain("it has no container level");
   });
 
   it("run a container session through podman, with secrets by name only", () => {

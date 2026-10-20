@@ -77,7 +77,15 @@ export interface ProfilePlan {
   readonly notes: ReadonlyArray<ProfileIssue>;
 }
 
-const DRIVERS: Record<ProfileHarness, string> = { claude: "claudeAgent", codex: "codex" };
+const DRIVERS: Record<ProfileHarness, string> = {
+  claude: "claudeAgent",
+  codex: "codex",
+  opencode: "opencode",
+};
+
+/** OpenCode has no container level here: its server runs fenced or native. */
+const harnessLevels = (harness: ProfileHarness, levels: ReadonlyArray<SandboxLevel>) =>
+  harness === "opencode" ? levels.filter((level) => level !== "container") : [...levels];
 
 export const stateDirOf = (path: Path.Path, profile: ResolvedProfile) =>
   path.join(profile.dir, STATE_DIR);
@@ -114,7 +122,18 @@ export const planProfile = (
       notes.push({ level: "warn", file: FILES.meta, message: `${harness} is not installed here.` });
       continue;
     }
-    for (const sandbox of levelsFor(profile, setup)) {
+    const levels = harnessLevels(harness, levelsFor(profile, setup));
+    const defaultLevel = levels.includes(profile.sandbox) ? profile.sandbox : "fenced";
+    if (defaultLevel !== profile.sandbox) {
+      notes.push({
+        level: "warn",
+        file: FILES.meta,
+        message: `${harness} has no ${profile.sandbox} level; it runs ${defaultLevel} by default.`,
+      });
+    }
+    const home = path.join(state, harness);
+    const binaryPath = path.join(setup.wrapperDir, `magnesium-${harness}`);
+    for (const sandbox of levels) {
       instances.push({
         instanceId: ProviderInstanceId.make(profileInstanceId(harness, sandbox, profile.name)),
         harness,
@@ -122,21 +141,22 @@ export const planProfile = (
         config: {
           driver: ProviderDriverKind.make(DRIVERS[harness]),
           displayName:
-            sandbox === profile.sandbox
-              ? profile.displayName
-              : `${profile.displayName} · ${sandbox}`,
+            sandbox === defaultLevel ? profile.displayName : `${profile.displayName} · ${sandbox}`,
           accentColor: profile.accentColor,
           // Names the wrapper reads; never secrets. Secrets pass by name in launch.env.
           environment: [
             { name: "MAGNESIUM_PROFILE", value: profile.name, sensitive: false },
             { name: "MAGNESIUM_SANDBOX", value: sandbox, sensitive: false },
+            // OpenCode's driver has no home setting: its config folder is the home.
+            ...(harness === "opencode"
+              ? [{ name: "OPENCODE_CONFIG_DIR", value: home, sensitive: false }]
+              : []),
           ],
           enabled: true,
-          config: {
-            binaryPath: path.join(setup.wrapperDir, `magnesium-${harness}`),
-            homePath: path.join(state, harness),
-            launchArgs: joinLaunchArgs(profile.launchArgs),
-          },
+          config:
+            harness === "opencode"
+              ? { binaryPath }
+              : { binaryPath, homePath: home, launchArgs: joinLaunchArgs(profile.launchArgs) },
         },
       });
     }
@@ -219,6 +239,7 @@ export const renderLaunchEnv = (
     MG_MOUNTS: profile.mounts.map((mount) => `${expand(mount.path)}:${mount.mode}`).join("\n"),
     MG_CLAUDE_BIN: setup.binaries.claude ?? "",
     MG_CODEX_BIN: setup.binaries.codex ?? "",
+    MG_OPENCODE_BIN: setup.binaries.opencode ?? "",
   };
   return [
     "# Written by Magnesium's profile sync for the wrapper. Paths and names only, never secrets.",
@@ -363,6 +384,88 @@ export const mcpToCodexToml = (
   return { toml: tables.join("\n\n"), warnings };
 };
 
+/** `${VAR}` as OpenCode writes it, `{env:VAR}`; it substitutes nothing else. */
+const toOpenCodeEnv = (value: string) =>
+  value.replaceAll(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, "{env:$1}");
+
+const stringRecord = (value: unknown): Record<string, string> =>
+  Predicate.isObject(value)
+    ? Object.fromEntries(
+        Object.entries(value as Record<string, unknown>).flatMap(([key, entry]) =>
+          typeof entry === "string" ? [[key, toOpenCodeEnv(entry)]] : [],
+        ),
+      )
+    : {};
+
+const OPENCODE_ACTION: Record<ProfileToolPermission, string> = {
+  allow: "allow",
+  ask: "ask",
+  off: "deny",
+};
+
+/** Upstream names each thread's server `t3-code-<thread>`; OpenCode's tool names turn `-` into `_`. */
+const OPENCODE_OWN_TOOLS = "t3_code_*";
+
+/**
+ * A profile's OpenCode config (`opencode.json` in its config folder), merged
+ * over the machine's own, which keeps the model gateway. Secrets stay
+ * `{env:VAR}`. Tool permissions are written broad first, as OpenCode lets the
+ * last matching rule win; a thread's permission mode still comes after them.
+ */
+export const openCodeConfig = (input: {
+  readonly servers: Record<string, unknown>;
+  readonly permissions: Readonly<Record<string, ProfileServerPermissions>>;
+  readonly instructionsFile: string;
+  readonly skillsDir: string;
+}) => {
+  const warnings: string[] = [];
+  const mcp: Record<string, unknown> = {};
+  for (const [name, server] of Object.entries(input.servers)) {
+    if (!Predicate.isObject(server)) continue;
+    const record = server as Record<string, unknown>;
+    if (typeof record.url === "string") {
+      const headers = stringRecord(record.headers);
+      mcp[name] = {
+        type: "remote",
+        url: toOpenCodeEnv(record.url),
+        enabled: true,
+        ...(Object.keys(headers).length > 0 ? { headers } : {}),
+      };
+    } else if (typeof record.command === "string") {
+      const args = Array.isArray(record.args) ? record.args.filter(Predicate.isString) : [];
+      const environment = stringRecord(record.env);
+      mcp[name] = {
+        type: "local",
+        command: [record.command, ...args],
+        enabled: true,
+        ...(Object.keys(environment).length > 0 ? { environment } : {}),
+      };
+    } else {
+      warnings.push(`${name}: needs a command or a url; skipped.`);
+    }
+  }
+  const permission: Record<string, string> = {};
+  for (const [server, granted] of Object.entries(input.permissions)) {
+    const own = server === MAGNESIUM_MCP_SERVER;
+    const prefix = own ? OPENCODE_OWN_TOOLS : server.replaceAll(/[^A-Za-z0-9_]/g, "_");
+    // Magnesium's own tools share upstream's server: only they are named, never the rest of it.
+    if (!own) permission[`${prefix}_*`] = OPENCODE_ACTION[granted.default];
+    for (const [tool, value] of Object.entries(granted.tools)) {
+      permission[`${prefix}_${tool}`] = OPENCODE_ACTION[value];
+    }
+  }
+  return {
+    config: {
+      $schema: "https://opencode.ai/config.json",
+      instructions: [input.instructionsFile],
+      skills: { paths: [input.skillsDir] },
+      ...(Object.keys(mcp).length > 0 ? { mcp } : {}),
+      ...(Object.keys(permission).length > 0 ? { permission } : {}),
+    },
+    warnings,
+  };
+};
+
 const BLOCK_START = "# --- magnesium: managed by profile sync; edits here are replaced ---";
 const BLOCK_END = "# --- end magnesium ---";
 
@@ -439,7 +542,7 @@ export const writeHomes = Effect.fn("profiles.writeHomes")(function* (
           Effect.orElseSucceed(() => ({})),
         );
   const warnings: string[] = [];
-  for (const dir of ["claude", "codex", "home"]) {
+  for (const dir of ["claude", "codex", "opencode", "home"]) {
     yield* fs.makeDirectory(path.join(state, dir), { recursive: true, mode: 0o700 });
   }
   yield* writeIfChanged(path.join(state, "launch.env"), renderLaunchEnv(path, profile, setup));
@@ -482,6 +585,25 @@ export const writeHomes = Effect.fn("profiles.writeHomes")(function* (
       path.join(setup.userHome, ".codex", "auth.json"),
       path.join(home, "auth.json"),
     );
+  }
+
+  // OpenCode keeps its logins in its own data folder, so its home needs no link.
+  if (profile.harnesses.includes("opencode")) {
+    const home = path.join(state, "opencode");
+    const instructionsFile = path.join(home, "AGENTS.md");
+    yield* writeIfChanged(instructionsFile, instructions);
+    yield* linkSkills(profile, home);
+    const { config, warnings: configWarnings } = openCodeConfig({
+      servers,
+      permissions: profile.toolPermissions,
+      instructionsFile,
+      skillsDir: path.join(home, FILES.skills),
+    });
+    warnings.push(...configWarnings);
+    yield* writeIfChanged(path.join(home, "opencode.json"), prettyJson(config));
+    if (yield* fs.exists(path.join(profile.dir, FILES.hooks))) {
+      warnings.push("OpenCode has no hooks file; hooks.json applies to Claude Code and Codex.");
+    }
   }
   return warnings;
 });

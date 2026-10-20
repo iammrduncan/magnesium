@@ -36,9 +36,16 @@ export const SandboxLevel = Schema.Literals(SANDBOX_LEVELS);
 export type SandboxLevel = typeof SandboxLevel.Type;
 export const DEFAULT_SANDBOX_LEVEL: SandboxLevel = "fenced";
 
-export const PROFILE_HARNESSES = ["claude", "codex"] as const;
+export const PROFILE_HARNESSES = ["claude", "codex", "opencode"] as const;
 export const ProfileHarness = Schema.Literals(PROFILE_HARNESSES);
 export type ProfileHarness = typeof ProfileHarness.Type;
+
+/** What each harness is called in the app. */
+export const PROFILE_HARNESS_LABELS: Record<ProfileHarness, string> = {
+  claude: "Claude Code",
+  codex: "Codex",
+  opencode: "OpenCode",
+};
 
 /** Lowercase, so instance ids parse back without ambiguity. */
 export const PROFILE_NAME_PATTERN = /^[a-z][a-z0-9-]{0,31}$/;
