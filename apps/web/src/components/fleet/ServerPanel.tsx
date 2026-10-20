@@ -255,16 +255,23 @@ export function ServerPanel({
   hub,
   extraActions,
   now,
+  initialAsk = null,
 }: {
   readonly machine: FleetMachine;
   readonly hub: FleetMachine | undefined;
   /** The page's clock, to the minute: how old a backup is. */
   readonly now: number;
+  /** An action to ask about as the panel opens, from the palette. */
+  readonly initialAsk?: "update" | "rollback" | null;
   /** The server's other actions, such as Forget, below its facts. */
   readonly extraActions?: ReactNode;
 }) {
   const [view, setView] = useState<"main" | "backups">("main");
-  const [ask, setAsk] = useState<UpkeepAsk | null>(null);
+  const [ask, setAsk] = useState<UpkeepAsk | null>(() =>
+    initialAsk !== null && buildOffers(machine, hub)[initialAsk].offered
+      ? { kind: initialAsk }
+      : null,
+  );
 
   const offers = buildOffers(machine, hub);
   const status = upkeepStatus(machine);

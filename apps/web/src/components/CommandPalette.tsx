@@ -74,6 +74,9 @@ import {
   PaletteIcon,
   RotateCcwIcon,
   ServerIcon, // magnesium: Fleet (goal 04)
+  ArchiveIcon, // magnesium: Back up now (goal 35)
+  ArrowUpCircleIcon, // magnesium: Update (goal 35)
+  PlusIcon, // magnesium: Add a machine (goal 35)
   UsersRoundIcon, // magnesium: Profiles (goal 34)
   SettingsIcon,
   SquarePenIcon,
@@ -248,6 +251,9 @@ import type { Project } from "../types";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { readPullRequestListPreferences } from "~/components/pullRequest/pullRequestListPreferences";
 import { useBots } from "./sidebar/useBots"; // magnesium: bots (goal 34, D68)
+import { useFleetView } from "./fleet/fleetStore"; // magnesium: Fleet's actions (goal 35)
+import { buildOffers, fleetBackupNow, fleetRows } from "@magnesium/web"; // magnesium: goal 35
+import { fleetMachineKey } from "@magnesium/contracts"; // magnesium: goal 35
 
 const EMPTY_BROWSE_ENTRIES: FilesystemBrowseResult["entries"] = [];
 
@@ -603,6 +609,7 @@ function OpenCommandPaletteDialog(props: {
   const navigate = useNavigate();
   const pathname = useLocation({ select: (location) => location.pathname });
   const botActions = useBots(); // magnesium: the hub's profiles as bots (goal 34, D68)
+  const fleetView = useFleetView(); // magnesium: each server's Update, Roll back and Back up now (goal 35)
   const { clearOpenIntent, openIntent, openOverlayMode, setOpen } = props;
   const [query, setQuery] = useState(openIntent?.kind === "search" ? openIntent.query : "");
   const [linkedThreadSearch, setLinkedThreadSearch] = useState(
@@ -2248,6 +2255,71 @@ function OpenCommandPaletteDialog(props: {
       await navigate({ to: "/fleet" });
     },
   });
+
+  // magnesium: run the fleet from the palette (goal 35); Update and Roll back ask in Fleet first
+  actionItems.push({
+    kind: "action",
+    value: "action:fleet-add-machine",
+    searchTerms: ["add a machine", "add machine", "fleet", "server", "pair", "hub"],
+    title: "Add a machine",
+    icon: <PlusIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/fleet", search: { add: true } });
+    },
+  });
+  {
+    const servers = fleetRows(fleetView.machines);
+    const hubRow = servers.find((server) => server.name === null);
+    for (const server of servers) {
+      const key = fleetMachineKey(server);
+      const name = server.name ?? server.label;
+      const offers = buildOffers(server, hubRow);
+      if (offers.update.offered) {
+        actionItems.push({
+          kind: "action",
+          value: `action:fleet-update:${key}`,
+          searchTerms: ["update", "upgrade", "build", "fleet", name],
+          title: `Update ${name} to the hub's build`,
+          icon: <ArrowUpCircleIcon className={ITEM_ICON_CLASS} />,
+          run: async () => {
+            await navigate({ to: "/fleet", search: { server: key, ask: "update" } });
+          },
+        });
+      }
+      if (offers.rollback.offered) {
+        actionItems.push({
+          kind: "action",
+          value: `action:fleet-rollback:${key}`,
+          searchTerms: ["roll back", "rollback", "revert", "build", "fleet", name],
+          title: `Roll ${name} back`,
+          icon: <RotateCcwIcon className={ITEM_ICON_CLASS} />,
+          run: async () => {
+            await navigate({ to: "/fleet", search: { server: key, ask: "rollback" } });
+          },
+        });
+      }
+      if (server.link === "connected" && server.backups !== null) {
+        actionItems.push({
+          kind: "action",
+          value: `action:fleet-backup:${key}`,
+          searchTerms: ["back up", "backup", "fleet", name],
+          title: `Back up ${name} now`,
+          icon: <ArchiveIcon className={ITEM_ICON_CLASS} />,
+          run: async () => {
+            await fleetBackupNow(window.location.href, server.name)
+              .then(() => toastManager.add({ type: "success", title: `Backed up ${name}` }))
+              .catch((cause: unknown) =>
+                toastManager.add({
+                  type: "error",
+                  title: "The backup failed",
+                  description: cause instanceof Error ? cause.message : "The hub did not answer.",
+                }),
+              );
+          },
+        });
+      }
+    }
+  }
 
   // magnesium: Profiles, made and managed in the app (goal 34)
   actionItems.push({

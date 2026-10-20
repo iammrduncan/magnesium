@@ -12,7 +12,8 @@ import {
   upkeepNotes,
 } from "@magnesium/web";
 import { PlusIcon, TerminalIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 
 import { currentFleetWatch, useFleetView } from "./fleetStore";
 import { formatTime } from "./fleetTime";
@@ -288,6 +289,18 @@ export function FleetPage() {
   const wide = useMediaQuery("lg");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  // The palette's Fleet actions arrive as search: a server to show, an action to ask, or Add.
+  const search = useSearch({ from: "/fleet" });
+  const navigate = useNavigate();
+  const [askOnOpen, setAskOnOpen] = useState<"update" | "rollback" | null>(null);
+  useEffect(() => {
+    if (search.server === undefined && search.ask === undefined && search.add === undefined) return;
+    if (search.server !== undefined) setSelectedKey(search.server);
+    setAskOnOpen(search.ask ?? null);
+    if (search.add === true) setAdding(true);
+    // Taken once: a reload doesn't ask again.
+    void navigate({ to: "/fleet", search: {}, replace: true });
+  }, [search.server, search.ask, search.add, navigate]);
   const picked = rows.find((row) => fleetMachineKey(row) === selectedKey);
   const shown = picked ?? (wide ? hub : undefined);
   // Backups age by the minute; nothing on the page needs a finer clock.
@@ -370,6 +383,7 @@ export function FleetPage() {
             >
               <ServerPanel
                 key={fleetMachineKey(shown)}
+                initialAsk={askOnOpen}
                 machine={shown}
                 hub={hub}
                 now={now}
@@ -392,6 +406,7 @@ export function FleetPage() {
               {shown !== undefined ? (
                 <ServerPanel
                   key={fleetMachineKey(shown)}
+                  initialAsk={askOnOpen}
                   machine={shown}
                   hub={hub}
                   now={now}
