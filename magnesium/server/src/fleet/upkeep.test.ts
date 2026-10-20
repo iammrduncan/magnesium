@@ -89,6 +89,13 @@ const waitFor = <A>(read: () => A | undefined) =>
     return value === undefined ? Effect.fail("not yet" as const) : Effect.succeed(value);
   }).pipe(Effect.retry({ schedule: Schedule.spaced("100 millis"), times: 150 }));
 
+/** Waits for the machine to have stopped itself once, for its launcher. */
+const stoppedOnce = (stops: Ref.Ref<number>) =>
+  Ref.get(stops).pipe(
+    Effect.flatMap((n) => (n === 1 ? Effect.void : Effect.fail("not yet" as const))),
+    Effect.retry({ schedule: Schedule.spaced("100 millis"), times: 50 }),
+  );
+
 const pendingOf = (stateDir: string) => {
   try {
     return NodeFS.readFileSync(NodePath.join(stateDir, "upkeep/pending"), "utf8").trim();
@@ -112,7 +119,7 @@ describe("Fleet's upkeep through the hub", () => {
 
       yield* browser[MAGNESIUM_WS_METHODS.fleetRestore]({ machine: "cpu-host-1", name: made.name });
       expect(pendingOf(machine.stateDir)).toBe(`restore ${made.name}`);
-      yield* waitFor(() => (Effect.runSync(Ref.get(stops)) === 1 ? true : undefined));
+      yield* stoppedOnce(stops);
     }),
   );
 
@@ -140,7 +147,7 @@ describe("Fleet's upkeep through the hub", () => {
       ).toBe(true);
       // The machine's copy of the pack is gone once unpacked.
       expect(NodeFS.readdirSync(NodePath.join(machineRoot, "incoming"))).toEqual([]);
-      yield* waitFor(() => (Effect.runSync(Ref.get(stops)) === 1 ? true : undefined));
+      yield* stoppedOnce(stops);
     }),
   );
 
