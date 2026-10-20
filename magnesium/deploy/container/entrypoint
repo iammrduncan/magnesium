@@ -74,6 +74,34 @@ if [ -n "${MAGNESIUM_OPENCODE_BASE_URL:-}" ]; then
       "${MAGNESIUM_OPENCODE_API_KEY_ENV:-LITELLM_API_KEY}" > "$HOME/.config/opencode/opencode.json.new"
   )
   mv "$HOME/.config/opencode/opencode.json.new" "$HOME/.config/opencode/opencode.json"
+  # Turn OpenCode on in the server's settings, with the first model as the
+  # default, as the role's magnesium_settings does on a machine. Only what the
+  # settings don't say yet, so a choice made in Settings stays.
+  "$node_bin" --no-warnings -e '
+    const fs = require("node:fs");
+    const [file, models] = process.argv.slice(1);
+    let settings;
+    try {
+      settings = JSON.parse(fs.readFileSync(file, "utf8"));
+    } catch {
+      console.error(`magnesium: ${file} is not valid JSON; OpenCode left as it is`);
+      process.exit(0);
+    }
+    const before = JSON.stringify(settings);
+    const instances = (settings.providerInstances ??= {});
+    if (!("opencode" in instances) && settings.providers?.opencode === undefined) {
+      instances.opencode = { driver: "opencode", enabled: true };
+    }
+    const model = models.split(",").map((name) => name.trim()).find(Boolean);
+    for (const key of ["defaultModelSelection", "textGenerationModelSelection"]) {
+      if (!(key in settings)) settings[key] = { instanceId: "opencode", model: `litellm/${model}` };
+    }
+    if (JSON.stringify(settings) !== before) {
+      fs.writeFileSync(`${file}.new`, JSON.stringify(settings, null, 2) + "\n", { mode: 0o600 });
+      fs.renameSync(`${file}.new`, file);
+      console.error(`magnesium: OpenCode turned on in ${file}`);
+    }
+  ' "$settings" "$MAGNESIUM_OPENCODE_MODELS"
 fi
 
 cd "$HOME"
