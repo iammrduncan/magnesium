@@ -135,10 +135,11 @@ jobs:
             -e HOME=/home/agent -e MAGNESIUM_MACHINE=ci-spoke -p 127.0.0.1:3773:3773 \
             magnesium-spoke:ci
           for _ in $(seq 1 60); do
-            if curl -fsS http://127.0.0.1:3773/.well-known/t3/environment > /dev/null; then break; fi
+            # A server that takes the connection but never answers fails the step, not the job's clock.
+            if curl -fsS --max-time 5 http://127.0.0.1:3773/.well-known/t3/environment > /dev/null; then break; fi
             sleep 2
           done
-          curl -fsS http://127.0.0.1:3773/.well-known/t3/environment
+          curl -fsS --max-time 5 http://127.0.0.1:3773/.well-known/t3/environment
           echo
           # A fence works with no capabilities, and the pairing token stays out of the log.
           docker exec spoke magnesium-fence --probe
@@ -166,7 +167,7 @@ jobs:
             sh -c 'trap "exit 7" TERM; echo workload up; while :; do sleep 1; done'
           up() {
             for _ in $(seq 1 60); do
-              if curl -fsS http://127.0.0.1:3774/.well-known/t3/environment > /dev/null; then return 0; fi
+              if curl -fsS --max-time 5 http://127.0.0.1:3774/.well-known/t3/environment > /dev/null; then return 0; fi
               sleep 2
             done
             return 1
@@ -193,7 +194,12 @@ jobs:
           if docker logs workload 2>&1 | grep -qi "token"; then echo "the log holds a token" >&2; exit 1; fi
 
       - name: Logs on failure
-        if: failure()
+        if: failure() || cancelled()
         run: |
           docker logs spoke || true
           docker logs workload || true
+          # The servers' own logs and processes, for one that started but never answered.
+          docker top spoke || true
+          docker exec spoke sh -c 'tail -n 300 "$HOME"/.magnesium/userdata/logs/*.log' || true
+          docker top workload || true
+          docker exec workload sh -c 'tail -n 300 /home/work/.magnesium/userdata/logs/*.log' || true
