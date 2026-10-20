@@ -103,6 +103,7 @@ import {
   openCodePermissionPrompt, // magnesium: whole-tool asks
   openCodePermissionRequestKind,
 } from "../adapter.ts";
+import { forT3Server, OpenCodeToolRules } from "../magnesiumToolRules.ts"; // magnesium: profile tool rules
 import { openCodeToolTurnItem } from "../toolItems.ts";
 
 const OpenCode2ProviderCapabilities = {
@@ -856,6 +857,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
   const mcpSessions = yield* McpProviderSessions.McpProviderSessions;
   const continuationRequests = yield* ProviderContinuationRequests.ProviderContinuationRequests;
   const crypto = yield* Crypto.Crypto;
+  const readToolRules = yield* OpenCodeToolRules; // magnesium: profile tool rules
   const driver = OPENCODE_PROVIDER;
   const mcpServerNameFor = (threadId: string) =>
     t3McpServerName(threadId).pipe(Effect.provideService(Crypto.Crypto, crypto));
@@ -3101,12 +3103,22 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
         policy.runtimeMode === "full-access" && !plan
           ? []
           : yield* pathsFor(thread.directory, plan ? [thread.agent, "plan"] : [thread.agent]);
-      return sessionRules(
-        policy,
-        paths,
-        policy.runtimeMode === "full-access" ? [] : thread.grants,
-        appThreadId === null ? null : yield* mcpServerNameFor(appThreadId),
-      );
+      const mcpServerName = appThreadId === null ? null : yield* mcpServerNameFor(appThreadId); // magnesium: profile tool rules
+      // magnesium: the profile's MCP tool rules go after the mode's, or the mode's would win
+      const toolRules = forT3Server(yield* readToolRules, mcpServerName).map((entry): Rule => ({
+        action: entry.permission,
+        resource: entry.pattern,
+        effect: entry.action,
+      }));
+      return [
+        ...sessionRules(
+          policy,
+          paths,
+          policy.runtimeMode === "full-access" ? [] : thread.grants,
+          mcpServerName,
+        ),
+        ...toolRules,
+      ];
     });
 
     /** Writes the session's rules for `policy` when they differ from what it has. */

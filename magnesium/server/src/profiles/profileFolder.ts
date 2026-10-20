@@ -1,5 +1,6 @@
 import {
   DEFAULT_SANDBOX_LEVEL,
+  MAGNESIUM_MCP_SERVER,
   PROFILE_HARNESSES,
   PROFILE_NAME_PATTERN,
   PROFILE_TOOL_PERMISSIONS,
@@ -240,7 +241,12 @@ export const resolveProfile = (profile: Profile): ResolvedProfile => {
       Object.entries(meta.tool_permissions ?? {}).map(([server, value]) => [
         server,
         {
-          default: isPermission(value.default) ? value.default : DEFAULT_TOOL_PERMISSION,
+          default: isPermission(value.default)
+            ? value.default
+            : // Magnesium's own tools ask nothing unless told to: their changes wait for you anyway.
+              server === MAGNESIUM_MCP_SERVER
+              ? "allow"
+              : DEFAULT_TOOL_PERMISSION,
           tools: Object.fromEntries(
             Object.entries(value.tools ?? {}).filter(([, permission]) => isPermission(permission)),
           ) as Record<string, ProfileToolPermission>,
@@ -435,14 +441,6 @@ export const checkProfile = Effect.fn("profiles.checkProfile")(function* (profil
         `tool_permissions.${server}: Claude Code can't turn off the rest while some tools are on; its other tools ask first there.`,
       );
     }
-  }
-  const onOpenCode = [meta.harness, ...(meta.harnesses ?? [])].includes("opencode");
-  if (onOpenCode && Object.keys(meta.tool_permissions ?? {}).length > 0) {
-    add(
-      "warn",
-      FILES.meta,
-      "tool_permissions: on OpenCode, a thread's permission mode comes after these, so Supervised still asks and full access still runs.",
-    );
   }
   if (!(yield* fs.exists(file(FILES.agents)).pipe(Effect.orElseSucceed(() => false)))) {
     add("error", FILES.agents, "Missing; it holds the agent's role and rules.");

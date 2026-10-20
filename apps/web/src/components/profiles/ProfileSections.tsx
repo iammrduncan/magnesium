@@ -672,12 +672,6 @@ export function ToolsSection({ detail, onChanged }: Section) {
           {copied ? "Copied" : "Copy MCP URL"}
         </Button>
       </div>
-      {detail.harnesses.includes("opencode") ? (
-        <p className="text-xs text-muted-foreground">
-          On OpenCode, a thread's permission mode comes after these settings: in Supervised every
-          tool still asks, and in full access every tool runs.
-        </p>
-      ) : null}
       <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
         {detail.mcpServers.map((server) => (
           <ServerRow

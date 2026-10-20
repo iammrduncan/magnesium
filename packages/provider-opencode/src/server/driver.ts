@@ -57,6 +57,7 @@ import {
 import * as OpenCodeServerOwner from "./OpenCodeServerOwner.ts";
 import * as OpenCode2Client from "./v2/OpenCode2Client.ts";
 import * as OpenCode2Server from "./v2/OpenCode2Server.ts";
+import { OpenCodeToolRules, readConfigToolRules } from "./magnesiumToolRules.ts"; // magnesium: profile tool rules
 import {
   defaultProviderContinuationIdentity,
   type ProviderDriver,
@@ -269,6 +270,11 @@ export const OpenCodeDriver: ProviderDriver<
                 Effect.andThen(cachedMaintenance({ fresh: true })),
               )
             : cachedMaintenance();
+      // magnesium: each session reads the profile's MCP tool rules from its OpenCode config
+      const readToolRules = readConfigToolRules(processEnv).pipe(
+        Effect.provideService(FileSystem.FileSystem, fileSystem),
+        Effect.provideService(Path.Path, pathService),
+      );
       const openCodeV1Adapter = yield* OpenCodeAdapterV2.OpenCodeAdapterV2Driver.create({
         instanceId,
         displayName,
@@ -277,6 +283,7 @@ export const OpenCodeDriver: ProviderDriver<
         enabled,
         config,
       }).pipe(
+        Effect.provideService(OpenCodeToolRules, readToolRules), // magnesium: profile tool rules
         Effect.mapError(
           (cause) =>
             new ProviderDriverError({
@@ -308,6 +315,7 @@ export const OpenCodeDriver: ProviderDriver<
         v1: openCodeV1Adapter,
         v2: yield* OpenCode2AdapterV2.make(instanceId).pipe(
           Effect.provideService(OpenCode2Server.OpenCode2Server, openCode2Server),
+          Effect.provideService(OpenCodeToolRules, readToolRules), // magnesium: profile tool rules
         ),
       });
       const loadOpenCode2Models = yield* makeOpenCode2ModelLoader(

@@ -1,4 +1,5 @@
 import {
+  MAGNESIUM_AGENT_TOOLS,
   MAGNESIUM_MCP_SERVER,
   type ProfileHarness,
   type ProfileServerPermissions,
@@ -403,14 +404,22 @@ const OPENCODE_ACTION: Record<ProfileToolPermission, string> = {
   off: "deny",
 };
 
-/** Upstream names each thread's server `t3-code-<thread>`; OpenCode's tool names turn `-` into `_`. */
-const OPENCODE_OWN_TOOLS = "t3_code_*";
+/**
+ * Upstream's T3 server, `t3-code` or `t3-code-<thread>`. OpenCode names an MCP
+ * tool's permission `<server>_<tool>`, keeping `-` and `_`; the OpenCode adapter
+ * names these rules for the session's own T3 server.
+ */
+const OPENCODE_OWN_TOOLS = "t3-code*";
+
+/** Magnesium's own tools ask nothing unless told to: every change they make waits for you anyway. */
+const OWN_TOOLS_DEFAULT: ProfileServerPermissions = { default: "allow", tools: {} };
 
 /**
  * A profile's OpenCode config (`opencode.json` in its config folder), merged
  * over the machine's own, which keeps the model gateway. Secrets stay
  * `{env:VAR}`. Tool permissions are written broad first, as OpenCode lets the
- * last matching rule win; a thread's permission mode still comes after them.
+ * last matching rule win; the OpenCode adapter applies them again after a
+ * thread's permission mode, so they hold in every mode.
  */
 export const openCodeConfig = (input: {
   readonly servers: Record<string, unknown>;
@@ -446,13 +455,17 @@ export const openCodeConfig = (input: {
   }
   const permission: Record<string, string> = {};
   for (const [server, granted] of Object.entries(input.permissions)) {
-    const own = server === MAGNESIUM_MCP_SERVER;
-    const prefix = own ? OPENCODE_OWN_TOOLS : server.replaceAll(/[^A-Za-z0-9_]/g, "_");
-    // Magnesium's own tools share upstream's server: only they are named, never the rest of it.
-    if (!own) permission[`${prefix}_*`] = OPENCODE_ACTION[granted.default];
+    if (server === MAGNESIUM_MCP_SERVER) continue;
+    const prefix = server.replaceAll(/[^A-Za-z0-9_-]/g, "_");
+    permission[`${prefix}_*`] = OPENCODE_ACTION[granted.default];
     for (const [tool, value] of Object.entries(granted.tools)) {
       permission[`${prefix}_${tool}`] = OPENCODE_ACTION[value];
     }
+  }
+  // Magnesium's own tools share upstream's server: each is named, never the rest of it.
+  const own = input.permissions[MAGNESIUM_MCP_SERVER] ?? OWN_TOOLS_DEFAULT;
+  for (const tool of Object.keys(MAGNESIUM_AGENT_TOOLS)) {
+    permission[`${OPENCODE_OWN_TOOLS}_${tool}`] = OPENCODE_ACTION[own.tools[tool] ?? own.default];
   }
   return {
     config: {

@@ -81,6 +81,7 @@ import {
   subagentThreadTitle,
 } from "@t3tools/provider-core/server/subagentProjection";
 import { openCodeToolTurnItem } from "./toolItems.ts";
+import { forT3Server, OpenCodeToolRules } from "./magnesiumToolRules.ts"; // magnesium: profile tool rules
 
 export { openCodeToolProjectionKind } from "./toolItems.ts";
 
@@ -949,6 +950,7 @@ export const makeOpenCodeAdapterV2 = Effect.fn("makeOpenCodeAdapterV2")(function
   const host = yield* ProviderHost.ProviderHost;
   const mcpSessions = yield* McpProviderSessions.McpProviderSessions;
   const messageIdClock = yield* Ref.make({ epochMillis: -1, counter: 0 });
+  const readToolRules = yield* OpenCodeToolRules; // magnesium: profile tool rules
 
   return ProviderAdapter.ProviderAdapterV2.of({
     instanceId: options.instanceId,
@@ -989,6 +991,11 @@ export const makeOpenCodeAdapterV2 = Effect.fn("makeOpenCodeAdapterV2")(function
             }),
           );
         }
+        // magnesium: the profile's MCP tool rules go after the mode's, or the mode's would win
+        const toolRules = forT3Server(yield* readToolRules, hasT3Mcp ? "t3-code" : null);
+        const sessionPermissionRules = (
+          runtimePolicy: ProviderAdapter.ProviderAdapterV2RuntimePolicy,
+        ) => [...openCodePermissionRules(runtimePolicy), ...toolRules];
 
         const now = yield* DateTime.now;
         let sessionEntity: OrchestrationV2ProviderSession = {
@@ -1412,10 +1419,13 @@ export const makeOpenCodeAdapterV2 = Effect.fn("makeOpenCodeAdapterV2")(function
               () => client.session.get({ sessionID: childSessionId }),
             );
             const nativeChildSession = unwrapData("session.get", childSessionResponse);
-            const childPermission = openCodeChildPermissionRules(
-              turn.runtimePolicy,
-              nativeChildSession.permission ?? [],
-            );
+            const childPermission = [
+              ...openCodeChildPermissionRules(
+                turn.runtimePolicy,
+                nativeChildSession.permission ?? [],
+              ),
+              ...toolRules, // magnesium: profile tool rules
+            ];
             yield* sdkCall(
               "session.update",
               { sessionID: childSessionId, permission: childPermission },
@@ -3043,10 +3053,10 @@ export const makeOpenCodeAdapterV2 = Effect.fn("makeOpenCodeAdapterV2")(function
               // session.create leaves it unset (SessionPrompt.ensureTitle).
               const response = yield* sdkCall(
                 "session.create",
-                { permission: openCodePermissionRules(threadInput.runtimePolicy) },
+                { permission: sessionPermissionRules(threadInput.runtimePolicy) }, // magnesium: profile tool rules
                 () =>
                   client.session.create({
-                    permission: openCodePermissionRules(threadInput.runtimePolicy),
+                    permission: sessionPermissionRules(threadInput.runtimePolicy), // magnesium: profile tool rules
                   }),
               );
               const nativeSession = unwrapData("session.create", response);
@@ -3607,7 +3617,7 @@ export const makeOpenCodeAdapterV2 = Effect.fn("makeOpenCodeAdapterV2")(function
                 yield* sdkCall("session.update", { sessionID: fork.id }, () =>
                   client.session.update({
                     sessionID: fork.id,
-                    permission: openCodePermissionRules(input.runtimePolicy),
+                    permission: sessionPermissionRules(input.runtimePolicy), // magnesium: profile tool rules
                   }),
                 );
                 retainedThread = {

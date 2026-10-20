@@ -55,8 +55,10 @@ is checked first:
   `CLAUDE.md` and any other Markdown file you add beside it.
 - **Skills**: one folder each, with its `SKILL.md`.
 - **Tools**: the agent's MCP servers, and for each server whether its tools
-  run without asking, ask first, or are off, one tool at a time. A server
-  that needs a secret takes the variable's name, never its value. Claude Code
+  run without asking, ask first, or are off, one tool at a time. These hold
+  in every permission mode: a tool that is off isn't offered even in Full
+  access. A server that needs a secret takes the variable's name, never its
+  value. Claude Code
   can't turn off the rest of a server's tools while some stay on; the page
   says so where that matters.
 - **Environment**: the variables it needs, by name, and which machines have

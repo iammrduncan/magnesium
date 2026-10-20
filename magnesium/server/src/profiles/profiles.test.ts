@@ -454,19 +454,26 @@ describe("profiles on OpenCode (D68)", () => {
               environment: { KUBECONFIG: "{env:KUBECONFIG}" },
             },
           },
-          // Broad first: OpenCode lets the last matching rule win.
+          // Broad first: OpenCode lets the last matching rule win. Magnesium's
+          // own tools are each named on upstream's T3 server, never the rest of it.
           permission: {
             "grafana_*": "ask",
             grafana_search_dashboards: "allow",
             grafana_delete_dashboard: "deny",
-            "t3_code_*_update_profile": "ask",
+            "t3-code*_list_profiles": "allow",
+            "t3-code*_get_profile": "allow",
+            "t3-code*_check_profiles": "allow",
+            "t3-code*_create_profile": "allow",
+            "t3-code*_update_profile": "ask",
+            "t3-code*_delete_profile": "allow",
+            "t3-code*_profile_request_status": "allow",
+            "t3-code*_send_profile_now": "allow",
           },
         });
-        expect(Object.keys(written.permission)).toEqual([
+        expect(Object.keys(written.permission).slice(0, 3)).toEqual([
           "grafana_*",
           "grafana_search_dashboards",
           "grafana_delete_dashboard",
-          "t3_code_*_update_profile",
         ]);
       }).pipe(Effect.provide(NodeServices.layer)),
   );
