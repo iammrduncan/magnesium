@@ -154,6 +154,8 @@ export const ProfileSummary = Schema.Struct({
   /** `refused` profiles have errors: sync and every machine refuse them. */
   status: Schema.Literals(["ready", "refused"]),
   issues: Schema.Array(ProfileIssue),
+  /** Its newest version, where its history is kept (the hub, or a single box). */
+  version: Schema.optionalKey(Schema.Number),
 });
 export type ProfileSummary = typeof ProfileSummary.Type;
 

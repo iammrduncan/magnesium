@@ -1,9 +1,11 @@
 // magnesium: Profiles, made and managed in the app (goal 34, D65, D67)
 import {
+  type DeletedProfile,
   parseProfileInstanceId,
   PROFILE_HARNESS_LABELS,
   PROFILE_TRASH_DAYS,
   type ProfileDetail,
+  type ProfileList,
   type ProfileSummary,
 } from "@magnesium/contracts";
 import {
@@ -12,6 +14,7 @@ import {
   describeProfileAsk,
   fleetRows,
   type HeldAnswer,
+  newThreadTarget,
   type ProfileAsk,
   profileAsks,
   profileListLine,
@@ -19,13 +22,17 @@ import {
   restoreProfile,
   waitedFor,
 } from "@magnesium/web";
-import { useNavigate, useSearch } from "@tanstack/react-router";
-import { PlusIcon } from "lucide-react";
+import { scopeThreadRef } from "@t3tools/client-runtime/environment";
+import { EnvironmentId } from "@t3tools/contracts";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { ChevronRightIcon, PlusIcon } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { isElectron } from "../../env";
 import { cn } from "../../lib/utils";
-import { useThreadShells } from "../../state/entities";
+import { useServerConfigs, useThreadShells } from "../../state/entities";
+import { useEnvironments } from "../../state/environments";
+import { buildThreadRouteParams } from "../../threadRoutes";
 import { useFleetView } from "../fleet/fleetStore";
 import { HeldBanner } from "../home/HomeCard";
 import { answerHold, useHeldAnswers, useHomeView, useNow } from "../home/homeStore";
@@ -55,7 +62,12 @@ import { ScrollArea } from "../ui/scroll-area";
 import { SidebarInset } from "../ui/sidebar";
 import { Tabs, TabsList, TabsPanel, TabsTab } from "../ui/tabs";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
-import { WorkspaceBreadcrumb, WorkspaceBreadcrumbItem } from "../WorkspaceBreadcrumb";
+import { useStartProfileThread } from "../sidebar/useBots";
+import {
+  WorkspaceBreadcrumb,
+  WorkspaceBreadcrumbItem,
+  WorkspaceBreadcrumbSeparator,
+} from "../WorkspaceBreadcrumb";
 import { WorkspacePageHeader } from "../WorkspacePageHeader";
 import {
   BrainSection,
@@ -154,7 +166,9 @@ function NewProfileDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPopup>
+        {/* Layout-free, so the popup's header, panel and footer stay its direct children. */}
         <form
+          className="contents"
           onSubmit={(event) => {
             event.preventDefault();
             if (name !== "" && problem === undefined) void create();
@@ -318,12 +332,60 @@ function ProfileAskBanner({
   );
 }
 
+/** The threads running on this profile, on every machine, newest first: the board's Used by. */
+function UsedBy({ name }: { readonly name: string }) {
+  const threads = useThreadShells();
+  const { environments } = useEnvironments();
+  const labels = useMemo(
+    () =>
+      new Map(environments.map((environment) => [environment.environmentId, environment.label])),
+    [environments],
+  );
+  const using = threads
+    .filter(
+      (shell) =>
+        shell.archivedAt === null &&
+        parseProfileInstanceId(shell.providerInstanceId)?.profile === name,
+    )
+    .toSorted((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .slice(0, 8);
+  return (
+    <section aria-label="Used by" className="flex flex-col gap-2">
+      <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Used by</h3>
+      {using.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No thread runs on it.</p>
+      ) : (
+        <ul className="flex flex-col gap-1">
+          {using.map((shell) => (
+            <li
+              key={`${shell.environmentId}:${shell.id}`}
+              className="flex items-center gap-2 text-sm"
+            >
+              <Link
+                to="/$environmentId/$threadId"
+                params={buildThreadRouteParams(scopeThreadRef(shell.environmentId, shell.id))}
+                className="min-w-0 flex-1 truncate text-foreground underline-offset-2 hover:underline"
+              >
+                {shell.title}
+              </Link>
+              <span className="shrink-0 text-xs text-muted-foreground">
+                {labels.get(shell.environmentId) ?? ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function ProfileView({
   detail,
   machines,
   tab,
   onTab,
   onChanged,
+  onNewThread,
   onDuplicate,
   onDelete,
   asks,
@@ -333,6 +395,8 @@ function ProfileView({
   readonly tab: ProfileTab;
   readonly onTab: (tab: ProfileTab) => void;
   readonly onChanged: () => void;
+  /** Null when it runs nowhere a thread can start now. */
+  readonly onNewThread: (() => void) | null;
   readonly onDuplicate: () => void;
   readonly onDelete: () => void;
   /** Agents' asks about this profile, as banners. */
@@ -370,6 +434,11 @@ function ProfileView({
               .join(" · ")}
           </p>
         </div>
+        {onNewThread !== null ? (
+          <Button size="sm" onClick={onNewThread}>
+            New thread
+          </Button>
+        ) : null}
         {detail.editable ? (
           <>
             <Button size="sm" variant="outline" onClick={onDuplicate}>
@@ -399,12 +468,9 @@ function ProfileView({
           </AlertDescription>
         </Alert>
       ) : null}
-      <div className="flex flex-wrap gap-6">
-        <Tabs
-          className="min-w-0 flex-[999_1_32rem]"
-          value={tab}
-          onValueChange={(value) => onTab(value as ProfileTab)}
-        >
+      {/* The boards' layout: the sections, then Delivery and Used by in their own column. */}
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <Tabs className="min-w-0" value={tab} onValueChange={(value) => onTab(value as ProfileTab)}>
           <TabsList aria-label="Profile sections">
             {PROFILE_TABS.map((value) => (
               <TabsTab key={value} value={value}>
@@ -440,10 +506,143 @@ function ProfileView({
             <HistorySection {...section} />
           </TabsPanel>
         </Tabs>
-        <div className="min-w-0 flex-[1_1_16rem]">
+        <aside className="flex min-w-0 flex-col gap-6">
           <DeliveryPanel {...section} />
-        </div>
+          <UsedBy name={profile.name} />
+        </aside>
       </div>
+    </div>
+  );
+}
+
+/** Profiles opens here, at every width (D68): how many, the agents' asks, then a row each. */
+function ProfileListScreen({
+  list,
+  deleted,
+  error,
+  asks,
+  onOpen,
+  onNew,
+  onRestored,
+}: {
+  readonly list: ProfileList | null;
+  readonly deleted: ReadonlyArray<DeletedProfile>;
+  readonly error: string | null;
+  readonly asks: ReactNode;
+  readonly onOpen: (name: string) => void;
+  readonly onNew: () => void;
+  readonly onRestored: (name: string) => void;
+}) {
+  const profiles = list?.profiles ?? [];
+  const homeItems = useHomeView().items;
+  const asking = new Set(profileAsks(homeItems).map((ask) => ask.body.target));
+  const refused = profiles.filter((profile) => profile.status === "refused").length;
+  const askCount = profileAsks(homeItems).length;
+  const counts = [
+    `${profiles.length} ${profiles.length === 1 ? "profile" : "profiles"}`,
+    ...(askCount > 0 ? [`${askCount} ${askCount === 1 ? "asks" : "ask"} you`] : []),
+    ...(refused > 0 ? [`${refused} refused`] : []),
+  ].join(" · ");
+  return (
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+      <header className="flex items-end gap-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-2xl font-semibold text-foreground">Profiles</h2>
+          {list !== null ? <p className="text-sm text-muted-foreground">{counts}</p> : null}
+        </div>
+        {list === null || list.machine === "hub" ? (
+          <Button size="icon" variant="outline" aria-label="New profile" onClick={onNew}>
+            <PlusIcon />
+          </Button>
+        ) : null}
+      </header>
+      {error ? <p className="text-sm text-destructive-foreground">{error}</p> : null}
+      {list === null && error === null ? (
+        <p className="text-sm text-muted-foreground">Reading the hub's profiles…</p>
+      ) : null}
+      {asks}
+      {list !== null && profiles.length === 0 ? (
+        <div className="flex flex-col items-start gap-2 py-2">
+          <p className="text-sm text-muted-foreground">
+            No profiles yet. A profile is an agent you set up once: its instructions, tools and
+            where it runs.
+          </p>
+          <Button size="sm" onClick={onNew}>
+            Create a profile
+          </Button>
+        </div>
+      ) : null}
+      {profiles.length > 0 ? (
+        <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+          {profiles.map((profile) => {
+            const line = profileListLine(profile, list?.pushes ?? []);
+            return (
+              <li key={profile.name}>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
+                  onClick={() => onOpen(profile.name)}
+                >
+                  <ProfileAvatar profile={profile} size="lg" />
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-sm font-medium text-foreground">
+                      {profile.displayName}
+                    </span>
+                    <span className={cn("truncate text-xs", LINE_TONE[line.tone])}>
+                      {line.text}
+                    </span>
+                  </span>
+                  {asking.has(profile.name) ? (
+                    <span
+                      role="img"
+                      aria-label="An agent asks to change it"
+                      className="size-2 shrink-0 rounded-full bg-warning"
+                    />
+                  ) : null}
+                  <ChevronRightIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+      {deleted.length > 0 ? (
+        <section aria-label="Deleted profiles" className="flex flex-col gap-2">
+          <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            Deleted
+          </h3>
+          <ul className="flex flex-col gap-1">
+            {deleted.map((profile) => (
+              <li key={`${profile.name}-${profile.deletedAt}`} className="flex items-center gap-2">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm text-muted-foreground line-through">
+                    {profile.displayName}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    Until{" "}
+                    {new Date(profile.expiresAt).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </span>
+                </span>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={() =>
+                    void runChange(
+                      (url) => restoreProfile(url, profile.name),
+                      `${profile.displayName} restored`,
+                    ).then((ok) => ok && onRestored(profile.name))
+                  }
+                >
+                  Restore
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </div>
   );
 }
@@ -453,18 +652,18 @@ export function ProfilesPage() {
   const navigate = useNavigate({ from: "/profiles" });
   const { list, deleted, error, refresh } = useProfileList();
   const profiles = useMemo(() => list?.profiles ?? [], [list]);
-  const selectedName =
-    search.name !== undefined && profiles.some((profile) => profile.name === search.name)
-      ? search.name
-      : (profiles[0]?.name ?? null);
+  // No name opens the list; a profile opens on its own.
+  const selectedName = search.name ?? null;
   const tab = search.tab ?? "instructions";
   const { detail, error: detailError, refresh: refreshDetail } = useProfileDetail(selectedName);
   const fleet = useFleetView();
+  const fleetMachines = useMemo(() => fleetRows(fleet.machines), [fleet.machines]);
   const machines = useMemo(
-    () =>
-      fleetRows(fleet.machines).flatMap((machine) => (machine.name === null ? [] : [machine.name])),
-    [fleet.machines],
+    () => fleetMachines.flatMap((machine) => (machine.name === null ? [] : [machine.name])),
+    [fleetMachines],
   );
+  const serverConfigs = useServerConfigs();
+  const startProfileThread = useStartProfileThread();
   const [chosenDialog, setDialog] = useState<"new" | "copy" | "delete" | null>(null);
   const dialog = chosenDialog ?? (search.new === true ? "new" : null);
   const selected = profiles.find((profile) => profile.name === selectedName) ?? null;
@@ -472,13 +671,13 @@ export function ProfilesPage() {
   const asks = useMemo(() => profileAsks(homeItems), [homeItems]);
   const held = useHeldAnswers();
   const now = useNow([...held.values()].some((answer) => answer.state === "holding"));
-  // Asks to create a profile have none to sit on yet: they show above whichever is open.
-  const shownAsks = asks.filter(
-    (ask) => ask.body.target === selectedName || ask.body.kind === "create",
-  );
+  const askBanners = (shown: ReadonlyArray<ProfileAsk>) =>
+    shown.map((ask) => (
+      <ProfileAskBanner key={ask.key} ask={ask} held={held.get(ask.key)} now={now} />
+    ));
 
   const select = (name: string, nextTab: ProfileTab = tab) =>
-    void navigate({ search: { name, tab: nextTab }, replace: true });
+    void navigate({ search: { name, tab: nextTab } });
   const closeDialog = () => {
     setDialog(null);
     if (search.new === true) {
@@ -507,147 +706,84 @@ export function ProfilesPage() {
     void refreshDetail();
   }, [askKeys, refresh, refreshDetail]);
 
+  const threadTarget =
+    detail === null
+      ? null
+      : newThreadTarget({
+          detail,
+          machines: fleetMachines,
+          hasInstance: (environmentId, instanceId) =>
+            serverConfigs
+              .get(EnvironmentId.make(environmentId))
+              ?.providers.some((provider) => provider.instanceId === instanceId) ?? false,
+        });
+
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none isolate">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-foreground">
         <WorkspacePageHeader electron={isElectron}>
           <WorkspaceBreadcrumb ariaLabel="Profiles breadcrumb" className="min-w-0">
-            <WorkspaceBreadcrumbItem current>
-              <h1>Profiles</h1>
-            </WorkspaceBreadcrumbItem>
+            {selectedName === null ? (
+              <WorkspaceBreadcrumbItem current>
+                <h1>Profiles</h1>
+              </WorkspaceBreadcrumbItem>
+            ) : (
+              <>
+                <WorkspaceBreadcrumbItem>
+                  <Link to="/profiles" search={{}} className="hover:text-foreground">
+                    Profiles
+                  </Link>
+                </WorkspaceBreadcrumbItem>
+                <WorkspaceBreadcrumbSeparator />
+                <WorkspaceBreadcrumbItem current>
+                  <h1 className="truncate">{detail?.summary.displayName ?? selectedName}</h1>
+                </WorkspaceBreadcrumbItem>
+              </>
+            )}
           </WorkspaceBreadcrumb>
         </WorkspacePageHeader>
         <ScrollArea className="min-h-0 flex-1">
-          <div className="flex flex-wrap gap-6 p-4 sm:p-6">
-            <nav aria-label="Profiles" className="flex w-full flex-col gap-1 sm:w-60">
-              <div className="flex items-center gap-2 px-1">
-                <h2 className="flex-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                  Profiles
-                </h2>
-                {list === null || detail?.editable !== false ? (
-                  <Button
-                    size="icon-xs"
-                    variant="ghost"
-                    aria-label="New profile"
-                    onClick={() => setDialog("new")}
-                  >
-                    <PlusIcon />
-                  </Button>
-                ) : null}
-              </div>
-              {error ? <p className="px-1 text-sm text-destructive-foreground">{error}</p> : null}
-              {list === null && error === null ? (
-                <p className="px-1 text-sm text-muted-foreground">Reading the hub's profiles…</p>
-              ) : null}
-              {list !== null && profiles.length === 0 ? (
-                <div className="flex flex-col items-start gap-2 px-1 py-2">
-                  <p className="text-sm text-muted-foreground">
-                    No profiles yet. A profile is an agent you set up once: its instructions, tools
-                    and where it runs.
-                  </p>
-                  <Button size="sm" onClick={() => setDialog("new")}>
-                    Create a profile
-                  </Button>
-                </div>
-              ) : null}
-              <ul className="flex flex-col gap-0.5">
-                {profiles.map((profile) => {
-                  const line = profileListLine(profile, list?.pushes ?? []);
-                  return (
-                    <li key={profile.name}>
-                      <Button
-                        variant={profile.name === selectedName ? "secondary" : "ghost"}
-                        size="sm-multiline"
-                        className="w-full justify-start"
-                        aria-current={profile.name === selectedName}
-                        onClick={() => select(profile.name)}
-                      >
-                        <ProfileAvatar profile={profile} size="sm" />
-                        <span className="flex min-w-0 flex-1 flex-col items-start">
-                          <span className="truncate text-sm text-foreground">
-                            {profile.displayName}
-                          </span>
-                          <span className={cn("truncate text-xs", LINE_TONE[line.tone])}>
-                            {line.text}
-                          </span>
-                        </span>
-                        {asks.some((ask) => ask.body.target === profile.name) ? (
-                          <span
-                            role="img"
-                            aria-label="An agent asks to change it"
-                            className="size-2 shrink-0 rounded-full bg-warning"
-                          />
-                        ) : null}
-                      </Button>
-                    </li>
-                  );
-                })}
-              </ul>
-              {deleted.length > 0 ? (
-                <>
-                  <h2 className="mt-3 px-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                    Deleted
-                  </h2>
-                  <ul className="flex flex-col gap-1">
-                    {deleted.map((profile) => (
-                      <li
-                        key={`${profile.name}-${profile.deletedAt}`}
-                        className="flex items-center gap-2 px-1"
-                      >
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm text-muted-foreground line-through">
-                            {profile.displayName}
-                          </span>
-                          <span className="block text-xs text-muted-foreground">
-                            Until{" "}
-                            {new Date(profile.expiresAt).toLocaleDateString(undefined, {
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          </span>
-                        </span>
-                        <Button
-                          size="xs"
-                          variant="outline"
-                          onClick={() =>
-                            void runChange(
-                              (url) => restoreProfile(url, profile.name),
-                              `${profile.displayName} restored`,
-                            ).then((ok) => {
-                              if (ok) {
-                                void refresh();
-                                select(profile.name);
-                              }
-                            })
-                          }
-                        >
-                          Restore
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : null}
-            </nav>
-            <div className="flex min-w-0 flex-[999_1_40rem]">
-              {detail !== null ? (
-                <ProfileView
-                  key={detail.summary.name}
-                  detail={detail}
-                  machines={machines}
-                  tab={tab}
-                  onTab={(next) => selectedName !== null && select(selectedName, next)}
-                  onChanged={changed}
-                  onDuplicate={() => setDialog("copy")}
-                  onDelete={() => setDialog("delete")}
-                  asks={shownAsks.map((ask) => (
-                    <ProfileAskBanner key={ask.key} ask={ask} held={held.get(ask.key)} now={now} />
-                  ))}
-                />
-              ) : detailError !== null ? (
-                <p className="text-sm text-destructive-foreground">{detailError}</p>
-              ) : null}
-            </div>
+          <div className="flex p-4 sm:p-6">
+            {selectedName === null ? (
+              <ProfileListScreen
+                list={list}
+                deleted={deleted}
+                error={error}
+                asks={askBanners(asks)}
+                onOpen={(name) => select(name, "instructions")}
+                onNew={() => setDialog("new")}
+                onRestored={(name) => {
+                  void refresh();
+                  select(name, "instructions");
+                }}
+              />
+            ) : detail !== null ? (
+              <ProfileView
+                key={detail.summary.name}
+                detail={detail}
+                machines={machines}
+                tab={tab}
+                onTab={(next) =>
+                  void navigate({ search: { name: selectedName, tab: next }, replace: true })
+                }
+                onChanged={changed}
+                onNewThread={
+                  threadTarget === null
+                    ? null
+                    : () =>
+                        void startProfileThread(
+                          EnvironmentId.make(threadTarget.environmentId),
+                          threadTarget.instanceId,
+                          `Could not start a thread on ${detail.summary.displayName}`,
+                        )
+                }
+                onDuplicate={() => setDialog("copy")}
+                onDelete={() => setDialog("delete")}
+                asks={askBanners(asks.filter((ask) => ask.body.target === selectedName))}
+              />
+            ) : detailError !== null ? (
+              <p className="text-sm text-destructive-foreground">{detailError}</p>
+            ) : null}
           </div>
         </ScrollArea>
       </div>
@@ -675,6 +811,7 @@ export function ProfilesPage() {
           onDeleted={() => {
             setDialog(null);
             void refresh();
+            void navigate({ search: {} });
           }}
         />
       ) : null}

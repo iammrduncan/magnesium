@@ -40,7 +40,13 @@ import { isMap, parseDocument } from "yaml";
 
 import { HubMachines } from "../hub/HubMachines.ts";
 import { connectMachine } from "../hub/machineRpc.ts";
-import { InstanceSource, isPushManaged, ProfilesConfig, summarize } from "./catalog.ts";
+import {
+  HISTORY_DIR,
+  InstanceSource,
+  isPushManaged,
+  ProfilesConfig,
+  summarize,
+} from "./catalog.ts";
 import { bundleProfile, HubProfilePusher, revisionOf } from "./HubProfilePusher.ts";
 import {
   checkProfile,
@@ -101,7 +107,6 @@ export class ProfileStore extends Context.Service<
   }
 >()("@magnesium/server/profiles/ProfileStore") {}
 
-const HISTORY_DIR = ".history";
 const TRASH_DIR = ".trash";
 /** A profile's files are text, and small. */
 const MAX_FILE_BYTES = 256 * 1024;

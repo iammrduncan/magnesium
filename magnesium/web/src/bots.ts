@@ -1,4 +1,8 @@
-import { parseProfileInstanceId, type ProfileList } from "@magnesium/contracts";
+import {
+  parseProfileInstanceId,
+  type ProfileList,
+  type ProfileSummary,
+} from "@magnesium/contracts";
 
 /**
  * Bots (D68): each profile that runs on the hub is a bot in the sidebar, and
@@ -17,17 +21,19 @@ export interface Bot {
   readonly instanceId: string;
 }
 
+/** The instance a profile starts on where it runs: its main harness at its default level, if there. */
+export const mainInstanceOf = (profile: ProfileSummary) =>
+  profile.instances.find(
+    (candidate) => candidate.harness === profile.harness && candidate.sandbox === profile.sandbox,
+  ) ??
+  profile.instances.find((candidate) => candidate.sandbox === profile.sandbox) ??
+  profile.instances[0];
+
 /** The hub's bots, from its profile list: those that run there, in the list's order. */
 export function botsOf(list: ProfileList): ReadonlyArray<Bot> {
   return list.profiles.flatMap((profile) => {
     if (!profile.runsHere) return [];
-    const instance =
-      profile.instances.find(
-        (candidate) =>
-          candidate.harness === profile.harness && candidate.sandbox === profile.sandbox,
-      ) ??
-      profile.instances.find((candidate) => candidate.sandbox === profile.sandbox) ??
-      profile.instances[0];
+    const instance = mainInstanceOf(profile);
     if (instance === undefined) return [];
     return [
       {

@@ -1,9 +1,10 @@
-import type { ProfilePushStatus, ProfileSummary } from "@magnesium/contracts";
+import type { ProfileDetail, ProfilePushStatus, ProfileSummary } from "@magnesium/contracts";
 import { describe, expect, it } from "@effect/vitest";
 
 import {
   deliveryLine,
   instructionsFileProblem,
+  newThreadTarget,
   permissionLine,
   profileListLine,
   withToolPermission,
@@ -56,7 +57,16 @@ describe("a profile's line in the list", () => {
     );
     expect(
       profileListLine(summary(), [push("nas", { current: false, error: "Not connected." })]).text,
-    ).toBe("Every machine");
+    ).toBe("1 machine offline");
+    expect(profileListLine(summary(), []).text).toBe("Every machine");
+    // Where the hub keeps its history, the line leads with its version, as the boards do.
+    expect(
+      profileListLine(summary({ version: 14, machines: ["gpu-a", "gpu-b", "nas"] }), []).text,
+    ).toBe("v14 · 3 machines");
+    expect(
+      profileListLine(summary({ version: 9 }), [push("gpu-a"), push("gpu-b", { current: false })])
+        .text,
+    ).toBe("v9 · 1 machine behind");
   });
 });
 
@@ -95,5 +105,49 @@ describe("delivery and tool permissions", () => {
     expect(instructionsFileProblem("RUNBOOK.md", ["AGENTS.md"])).toBeUndefined();
     expect(instructionsFileProblem("AGENTS.md", ["AGENTS.md"])).toContain("already there");
     expect(instructionsFileProblem("notes.txt", [])).toContain("Markdown");
+  });
+});
+
+describe("a profile's New thread", () => {
+  const machines = [
+    { name: null, environmentId: "env-hub", link: "connected" },
+    { name: "gpu-a", environmentId: "env-gpu-a", link: "offline" },
+    { name: "gpu-b", environmentId: "env-gpu-b", link: "connected" },
+  ];
+  // Only what newThreadTarget reads; the rest of a detail doesn't matter here.
+  const detail = (
+    summaryOverrides: Partial<ProfileSummary>,
+    deliveries: ProfileDetail["deliveries"],
+  ) => ({ summary: summary(summaryOverrides), deliveries }) as unknown as ProfileDetail;
+  const everywhere = () => true;
+
+  it("starts on the hub when it runs there, on its main instance", () => {
+    const onHub = detail(
+      {
+        harness: "opencode",
+        sandbox: "fenced",
+        instances: [
+          { instanceId: "mg-opencode-fenced-serving", harness: "opencode", sandbox: "fenced" },
+        ],
+      },
+      [],
+    );
+    expect(newThreadTarget({ detail: onHub, machines, hasInstance: everywhere })).toEqual({
+      environmentId: "env-hub",
+      instanceId: "mg-opencode-fenced-serving",
+    });
+  });
+
+  it("else on the first connected machine holding its current version and its instance", () => {
+    const delivered = detail({ runsHere: false, harness: "claude", sandbox: "fenced" }, [
+      { machine: "gpu-a", state: "current", checkedAt: null, detail: null },
+      { machine: "gpu-b", state: "current", checkedAt: null, detail: null },
+    ]);
+    expect(newThreadTarget({ detail: delivered, machines, hasInstance: everywhere })).toEqual({
+      environmentId: "env-gpu-b",
+      instanceId: "mg-claude-fenced-serving",
+    });
+    // A machine without the harness has no instance for it: nowhere to start.
+    expect(newThreadTarget({ detail: delivered, machines, hasInstance: () => false })).toBeNull();
   });
 });

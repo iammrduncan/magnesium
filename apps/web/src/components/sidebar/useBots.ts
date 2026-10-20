@@ -2,7 +2,7 @@
 import { type Bot, botConversation, botsOf } from "@magnesium/web";
 import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { isScratchProject } from "@t3tools/client-runtime/state/projects";
-import { type ProviderInstanceId, ThreadId } from "@t3tools/contracts";
+import { type EnvironmentId, type ProviderInstanceId, ThreadId } from "@t3tools/contracts";
 import { createModelSelection } from "@t3tools/shared/model";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
@@ -17,6 +17,37 @@ import { buildThreadRouteParams } from "../../threadRoutes";
 import { useProfileList } from "../profiles/profilesData";
 
 /**
+ * Starts a thread without a project in an environment, on a profile's
+ * instance there, with that instance's first model chosen: a bot's new
+ * conversation, or a profile's New thread.
+ */
+export function useStartProfileThread() {
+  const serverConfigs = useServerConfigs();
+  const { openScratchProject } = useScratchProject();
+  const handleNewThread = useNewThreadHandler();
+  return useCallback(
+    async (environmentId: EnvironmentId, instanceId: string, failureTitle: string) => {
+      const project = await openScratchProject(environmentId, failureTitle);
+      if (project === null) return;
+      const draft = await handleNewThread(scopeProjectRef(project.environmentId, project.id));
+      if (draft === null) return;
+      const instance = instanceId as ProviderInstanceId;
+      const model = serverConfigs
+        .get(environmentId)
+        ?.providers.find((provider) => provider.instanceId === instance)?.models[0]?.slug;
+      if (model !== undefined) {
+        useComposerDraftStore
+          .getState()
+          .setModelSelection(draft.draftId, createModelSelection(instance, model), {
+            explicit: true,
+          });
+      }
+    },
+    [handleNewThread, openScratchProject, serverConfigs],
+  );
+}
+
+/**
  * Each profile the hub runs, as a bot: `open` goes to your conversation with
  * it on the hub, starting one when there is none, and `startOver` archives
  * that conversation and starts another.
@@ -27,9 +58,8 @@ export function useBots() {
   const bots = useMemo(() => (list === null ? [] : botsOf(list)), [list]);
   const threads = useThreadShells(bots.length > 0);
   const projects = useProjects();
-  const serverConfigs = useServerConfigs();
-  const { scratchWorkspaceRootFor, openScratchProject } = useScratchProject();
-  const handleNewThread = useNewThreadHandler();
+  const { scratchWorkspaceRootFor } = useScratchProject();
+  const startProfileThread = useStartProfileThread();
   const { archiveThread } = useThreadActions();
   const navigate = useNavigate();
 
@@ -54,27 +84,10 @@ export function useBots() {
   );
 
   /** A new conversation: a thread without a project on the hub, on the bot's instance. */
-  const startConversation = async (bot: Bot) => {
-    if (hubId === null) return;
-    const project = await openScratchProject(
-      hubId,
-      `Could not start talking to ${bot.displayName}`,
-    );
-    if (project === null) return;
-    const draft = await handleNewThread(scopeProjectRef(project.environmentId, project.id));
-    if (draft === null) return;
-    const instanceId = bot.instanceId as ProviderInstanceId;
-    const model = serverConfigs
-      .get(hubId)
-      ?.providers.find((provider) => provider.instanceId === instanceId)?.models[0]?.slug;
-    if (model !== undefined) {
-      useComposerDraftStore
-        .getState()
-        .setModelSelection(draft.draftId, createModelSelection(instanceId, model), {
-          explicit: true,
-        });
-    }
-  };
+  const startConversation = (bot: Bot) =>
+    hubId === null
+      ? Promise.resolve()
+      : startProfileThread(hubId, bot.instanceId, `Could not start talking to ${bot.displayName}`);
 
   const open = async (bot: Bot) => {
     const conversation = conversationOf(bot);

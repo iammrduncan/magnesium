@@ -8,8 +8,11 @@ import {
   type ProfileSummary,
   type ProfileToolPermission,
   MAGNESIUM_WS_METHODS,
+  profileInstanceId,
+  type ProfileDetail,
 } from "@magnesium/contracts";
 
+import { mainInstanceOf } from "./bots.ts";
 import { callHub } from "./spokes.ts";
 
 /**
@@ -55,7 +58,11 @@ const targetsOf = (profile: ProfileSummary, pushes: ReadonlyArray<ProfilePushSta
     ? pushes
     : pushes.filter((push) => profile.machines.includes(push.machine));
 
-/** A profile's line in the list: what's wrong with it, or where it runs. */
+/**
+ * A profile's line in the list, as the boards write it: its version, then
+ * what's wrong ("1 machine behind", "1 machine offline") or where it runs
+ * ("3 machines"); a refused profile says so instead.
+ */
 export const profileListLine = (
   profile: ProfileSummary,
   pushes: ReadonlyArray<ProfilePushStatus>,
@@ -64,19 +71,23 @@ export const profileListLine = (
   if (profile.status === "refused") {
     return { text: `Refused · ${errors} ${errors === 1 ? "issue" : "issues"}`, tone: "error" };
   }
+  const versioned = (text: string) =>
+    profile.version === undefined ? text : `v${profile.version} · ${text}`;
+  const machinesText = (count: number, what: string) =>
+    `${count} ${count === 1 ? "machine" : "machines"} ${what}`;
   const targets = targetsOf(profile, pushes);
   const refusing = targets.filter((push) => push.refused.includes(profile.name)).length;
   if (refusing > 0) {
     return {
-      text: `${refusing} ${refusing === 1 ? "machine refuses" : "machines refuse"} it`,
+      text: versioned(`${refusing} ${refusing === 1 ? "machine refuses" : "machines refuse"} it`),
       tone: "error",
     };
   }
   const behind = targets.filter((push) => push.error === null && !push.current).length;
-  if (behind > 0) {
-    return { text: `${behind} ${behind === 1 ? "machine" : "machines"} behind`, tone: "warning" };
-  }
-  return { text: describeMachines(profile.machines), tone: "muted" };
+  if (behind > 0) return { text: versioned(machinesText(behind, "behind")), tone: "warning" };
+  const offline = targets.filter((push) => push.error !== null).length;
+  if (offline > 0) return { text: versioned(machinesText(offline, "offline")), tone: "muted" };
+  return { text: versioned(describeMachines(profile.machines)), tone: "muted" };
 };
 
 export const describeMachines = (machines: ReadonlyArray<string>): string =>
@@ -166,3 +177,40 @@ export const profileNameProblem = (name: string, taken: ReadonlyArray<string>) =
   if (taken.includes(name)) return `A profile named ${name} exists.`;
   return undefined;
 };
+
+/**
+ * Where a profile's New thread starts: on the hub when it runs there, else on
+ * the first connected machine that holds its current version and has its
+ * instance. Null when it runs nowhere a thread can start now.
+ */
+export function newThreadTarget(input: {
+  readonly detail: ProfileDetail;
+  readonly machines: ReadonlyArray<{
+    readonly name: string | null;
+    readonly environmentId: string | null;
+    readonly link: string;
+  }>;
+  /** Whether an environment offers a provider instance. */
+  readonly hasInstance: (environmentId: string, instanceId: string) => boolean;
+}): { readonly environmentId: string; readonly instanceId: string } | null {
+  const { detail, machines, hasInstance } = input;
+  const summary = detail.summary;
+  const hub = machines.find((machine) => machine.name === null)?.environmentId ?? null;
+  const onHub = summary.runsHere ? mainInstanceOf(summary) : undefined;
+  if (hub !== null && onHub !== undefined)
+    return { environmentId: hub, instanceId: onHub.instanceId };
+  // A machine names its instances the same way, at the profile's default level.
+  const level =
+    summary.harness === "opencode" && summary.sandbox === "container" ? "fenced" : summary.sandbox;
+  const instanceId = profileInstanceId(summary.harness, level, summary.name);
+  for (const delivery of detail.deliveries) {
+    if (delivery.state !== "current") continue;
+    const machine = machines.find(
+      (candidate) => candidate.name === delivery.machine && candidate.link === "connected",
+    );
+    if (machine?.environmentId != null && hasInstance(machine.environmentId, instanceId)) {
+      return { environmentId: machine.environmentId, instanceId };
+    }
+  }
+  return null;
+}

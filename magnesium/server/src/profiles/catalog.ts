@@ -43,6 +43,9 @@ export class InstanceSource extends Context.Service<
 /** A machine's folder is the hub's to fill: it holds a `.revision` from the last push. */
 export const REVISION_FILE = ".revision";
 
+/** Where the profile store keeps each profile's versions, beside the profiles. */
+export const HISTORY_DIR = ".history";
+
 export interface CatalogEntry {
   readonly profile: Profile;
   readonly resolved: ResolvedProfile;
@@ -123,10 +126,27 @@ export const listProfiles = Effect.fn("profiles.listProfiles")(function* (
   const entries = yield* loadCatalog(config.folder);
   const pushManaged = yield* isPushManaged(config.folder);
   const configured = yield* (yield* InstanceSource).instances;
+  const fs = yield* FileSystem.FileSystem;
+  const profiles = yield* Effect.forEach(entries, (entry) =>
+    Effect.gen(function* () {
+      const summary = summarize(path, entry, config, pushManaged, configured);
+      // The newest snapshot in its history, which the profile store keeps.
+      const snapshots = yield* fs
+        .readDirectory(path.join(config.folder, HISTORY_DIR, summary.name))
+        .pipe(Effect.orElseSucceed((): ReadonlyArray<string> => []));
+      const version = Math.max(
+        0,
+        ...snapshots.flatMap((file) =>
+          /^\d+\.json$/.test(file) ? [Number.parseInt(file, 10)] : [],
+        ),
+      );
+      return version > 0 ? { ...summary, version } : summary;
+    }),
+  );
   return {
     machine: config.machine,
     folder: config.folder,
-    profiles: entries.map((entry) => summarize(path, entry, config, pushManaged, configured)),
+    profiles,
     pushes,
   } satisfies ProfileList;
 });
