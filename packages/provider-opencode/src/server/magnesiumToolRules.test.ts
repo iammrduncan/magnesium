@@ -2,9 +2,8 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
-import * as NodeFS from "node:fs";
-import * as NodeOS from "node:os";
-import * as NodePath from "node:path";
+import * as FileSystem from "effect/FileSystem";
+import * as Path from "effect/Path";
 
 import { configToolRules, forT3Server, readConfigToolRules } from "./magnesiumToolRules.ts";
 
@@ -50,15 +49,19 @@ describe("a profile's MCP tool rules", () => {
   });
 
   it.effect("are read from OPENCODE_CONFIG_DIR, and are none without it", () =>
-    Effect.gen(function* () {
-      const dir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "mg-opencode-"));
-      NodeFS.writeFileSync(NodePath.join(dir, "opencode.json"), JSON.stringify(profileConfig));
-      const read = yield* readConfigToolRules({ OPENCODE_CONFIG_DIR: dir });
-      assert.equal(read.length, 4);
-      assert.deepStrictEqual(yield* readConfigToolRules({}), []);
-      NodeFS.writeFileSync(NodePath.join(dir, "opencode.json"), "{ not json");
-      assert.deepStrictEqual(yield* readConfigToolRules({ OPENCODE_CONFIG_DIR: dir }), []);
-      NodeFS.rmSync(dir, { recursive: true, force: true });
-    }).pipe(Effect.provide(NodeServices.layer)),
+    Effect.scoped(
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const dir = yield* fs.makeTempDirectoryScoped({ prefix: "mg-opencode-" });
+        const file = path.join(dir, "opencode.json");
+        yield* fs.writeFileString(file, JSON.stringify(profileConfig));
+        const read = yield* readConfigToolRules({ OPENCODE_CONFIG_DIR: dir });
+        assert.equal(read.length, 4);
+        assert.deepStrictEqual(yield* readConfigToolRules({}), []);
+        yield* fs.writeFileString(file, "{ not json");
+        assert.deepStrictEqual(yield* readConfigToolRules({ OPENCODE_CONFIG_DIR: dir }), []);
+      }),
+    ).pipe(Effect.provide(NodeServices.layer)),
   );
 });

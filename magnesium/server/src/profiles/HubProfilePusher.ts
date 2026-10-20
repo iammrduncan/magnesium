@@ -180,17 +180,18 @@ export const make = Effect.gen(function* () {
         });
         continue;
       }
-      const previous = (yield* Ref.get(statuses)).get(name);
-      // Offline or still connecting: its row says so, keeping what it last held, and it is
-      // asked once its link is up.
+      // Offline or still connecting: it is asked once its link is up. One never reached says so
+      // here; status says so for the rest, while the link is down.
       if (machine.link !== "connected") {
-        yield* setStatus({
-          machine: name,
-          revision: previous?.revision ?? null,
-          checkedAt: previous?.checkedAt ?? null,
-          error: NOT_CONNECTED,
-          refused: previous?.refused ?? [],
-        });
+        if (!(yield* Ref.get(statuses)).has(name)) {
+          yield* setStatus({
+            machine: name,
+            revision: null,
+            checkedAt: null,
+            error: NOT_CONNECTED,
+            refused: [],
+          });
+        }
         continue;
       }
       const checkedAt = DateTime.toEpochMillis(nowAt);
@@ -198,8 +199,6 @@ export const make = Effect.gen(function* () {
         !askEvery &&
         !askDue(held.get(name), { revision, startedAt: machine.startedAt }, checkedAt)
       ) {
-        // Back on the same start of its server: it still holds what it held.
-        if (previous?.error === NOT_CONNECTED) yield* setStatus({ ...previous, error: null });
         continue;
       }
       const outcome = yield* pushTo(name, { revision, profiles }).pipe(Effect.result);
@@ -225,6 +224,7 @@ export const make = Effect.gen(function* () {
           removed: result.removed,
         });
       }
+      const previous = (yield* Ref.get(statuses)).get(name);
       yield* setStatus({
         machine: name,
         revision,
@@ -244,14 +244,20 @@ export const make = Effect.gen(function* () {
       Effect.catch((error) => Effect.logError("Profile push failed.", { error: String(error) })),
       Effect.withSpan(askEvery ? "HubProfilePusher.sendNow" : "HubProfilePusher.pushNow"),
     );
-  const status = Ref.get(statuses).pipe(
-    Effect.map((current) =>
-      [...current.values()].map((entry) => ({
+  // What each machine last held, and whether its link is down right now: a restart shorter
+  // than a tick still shows.
+  const status = Effect.gen(function* () {
+    const links = new Map((yield* fleet.machines).map((machine) => [machine.name, machine.link]));
+    return [...(yield* Ref.get(statuses)).values()].map((entry) => {
+      const link = links.get(entry.machine);
+      const away = entry.error === null && link !== undefined && link !== "connected";
+      return {
         ...entry,
+        error: away ? NOT_CONNECTED : entry.error,
         current: entry.revision !== null && entry.revision === wanted.get(entry.machine),
-      })),
-    ),
-  );
+      };
+    });
+  });
   return HubProfilePusher.of({ pushNow: push(false), sendNow: push(true), status });
 });
 
