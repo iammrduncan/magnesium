@@ -1,6 +1,7 @@
 // Magnesium's own web routes and components (doc 11).
 export * from "./bots.ts";
 export * from "./fleet.ts";
+export * from "./fleetUpkeep.ts";
 export * from "./footer.ts";
 export * from "./home.ts";
 export * from "./hubMachines.ts";

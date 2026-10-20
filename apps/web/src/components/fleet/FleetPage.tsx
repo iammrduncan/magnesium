@@ -1,5 +1,5 @@
-// magnesium: the first Fleet page, a plain list of every server the hub reaches (goal 04; goal 10 replaces it with the board)
-import type { FleetEvent, FleetMachine } from "@magnesium/contracts";
+// magnesium: Fleet, every server the hub reaches (goal 04), each one's panel to run it from (goal 35); goal 10 adds the board's cards
+import { type FleetEvent, type FleetMachine, fleetMachineKey } from "@magnesium/contracts";
 import {
   describeEvent,
   describeLink,
@@ -9,39 +9,29 @@ import {
   differsFromHub,
   KIND_HINT,
   fleetRows,
+  upkeepNotes,
 } from "@magnesium/web";
 import { TerminalIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { currentFleetWatch, useFleetView } from "./fleetStore";
+import { formatTime } from "./fleetTime";
 import { MachineTerminal } from "./MachineTerminal";
+import { ServerPanel } from "./ServerPanel";
 
 import { isElectron } from "../../env";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
+import { useNowMinute } from "../../hooks/useNowMinute";
 import { cn } from "../../lib/utils";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
+import { Sheet, SheetPopup, SheetTitle } from "../ui/sheet";
 import { SidebarInset } from "../ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { WorkspaceBreadcrumb, WorkspaceBreadcrumbItem } from "../WorkspaceBreadcrumb";
 import { WorkspacePageContainer } from "../WorkspacePageContainer";
 import { WorkspacePageHeader } from "../WorkspacePageHeader";
-
-const timeFormat = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
-const dateTimeFormat = new Intl.DateTimeFormat(undefined, {
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-});
-
-/** A time today as its clock time; an older one with its date. */
-const formatTime = (iso: string) => {
-  const date = new Date(iso);
-  return date.toDateString() === new Date().toDateString()
-    ? timeFormat.format(date)
-    : dateTimeFormat.format(date);
-};
 
 const LINK_DOT: Record<FleetMachine["link"], string> = {
   connected: "bg-success",
@@ -52,13 +42,21 @@ const LINK_DOT: Record<FleetMachine["link"], string> = {
 
 function MachineRow({
   machine,
-  hubRelease,
+  hub,
+  selected,
+  onSelect,
   onReconnect,
+  now,
 }: {
   readonly machine: FleetMachine;
-  readonly hubRelease: string | null;
+  readonly hub: FleetMachine | undefined;
+  readonly selected: boolean;
+  readonly onSelect: () => void;
   readonly onReconnect: (name: string) => Promise<void>;
+  readonly now: number;
 }) {
+  const hubRelease = hub?.release ?? null;
+  const notes = upkeepNotes(machine, hub, now, formatTime);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [terminalOpen, setTerminalOpen] = useState(false);
@@ -84,8 +82,19 @@ function MachineRow({
     .filter((part) => part !== null)
     .join(" · ");
   return (
-    <li className="grid grid-cols-1 gap-x-4 gap-y-1 border-b border-border py-3 last:border-b-0 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_auto] sm:items-center">
-      <div className="flex min-w-0 flex-col">
+    <li
+      className={cn(
+        "grid grid-cols-1 gap-x-4 gap-y-1 border-b border-border px-2 py-3 last:border-b-0 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_auto] sm:items-center",
+        selected && "rounded-md bg-accent/60",
+      )}
+    >
+      <button
+        type="button"
+        aria-pressed={selected}
+        aria-label={`Show ${machine.label}`}
+        onClick={onSelect}
+        className="flex min-w-0 flex-col text-left"
+      >
         <div className="flex min-w-0 items-center gap-2">
           <span className="truncate text-sm font-medium text-foreground">{machine.label}</span>
           <Tooltip>
@@ -100,7 +109,18 @@ function MachineRow({
         {subtitle !== "" ? (
           <span className="truncate text-xs text-muted-foreground">{subtitle}</span>
         ) : null}
-      </div>
+        {notes.map((note) => (
+          <span
+            key={note.kind}
+            className={cn(
+              "truncate text-xs",
+              note.tone === "error" ? "text-destructive-foreground" : "text-warning-foreground",
+            )}
+          >
+            {note.text}
+          </span>
+        ))}
+      </button>
       <span
         className={cn(
           "truncate text-xs tabular-nums",
@@ -213,7 +233,14 @@ export function FleetPage() {
   const view = useFleetView();
   const rows = useMemo(() => fleetRows(view.machines), [view.machines]);
   const carriesMachines = rows.some((row) => row.name !== null);
-  const hubRelease = rows.find((row) => row.name === null)?.release ?? null;
+  const hub = rows.find((row) => row.name === null);
+  // The board's panel sits beside the list on a wide screen; a phone opens it in a sheet.
+  const wide = useMediaQuery("lg");
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const picked = rows.find((row) => fleetMachineKey(row) === selectedKey);
+  const shown = picked ?? (wide ? hub : undefined);
+  // Backups age by the minute; nothing on the page needs a finer clock.
+  const now = Date.parse(useNowMinute());
   const reconnect = (name: string) =>
     currentFleetWatch()?.reconnect(name) ?? Promise.reject(new Error("Not connected to the hub."));
   const loadEarlier = () => currentFleetWatch()?.loadEarlierEvents() ?? Promise.resolve();
@@ -228,48 +255,78 @@ export function FleetPage() {
             </WorkspaceBreadcrumbItem>
           </WorkspaceBreadcrumb>
         </WorkspacePageHeader>
-        <ScrollArea className="min-h-0 flex-1">
-          <WorkspacePageContainer width="wide">
-            {view.connection !== "live" ? (
-              <p className="text-sm text-muted-foreground">
-                {view.connection === "connecting"
-                  ? "Connecting to the hub…"
-                  : "Lost the hub. Reconnecting…"}
-              </p>
-            ) : null}
-            {rows.length > 0 ? (
-              <section className="flex flex-col gap-2">
-                <h2 className="text-sm font-medium text-foreground">Servers</h2>
-                <ul className="flex flex-col">
-                  {rows.map((machine) => (
-                    <MachineRow
-                      key={machine.name ?? "@self"}
-                      machine={machine}
-                      hubRelease={hubRelease}
-                      onReconnect={reconnect}
-                    />
-                  ))}
-                </ul>
-                {carriesMachines ? null : (
-                  <p className="text-sm text-muted-foreground">
-                    This server carries no machines. On the hub, they come from its machine list.
-                  </p>
-                )}
-              </section>
-            ) : null}
-            {carriesMachines ? (
-              <section className="flex flex-col gap-2">
-                <h2 className="text-sm font-medium text-foreground">Recent</h2>
-                <EventList
-                  events={view.events.items}
-                  hasEarlier={view.events.before !== null}
-                  onLoadEarlier={loadEarlier}
-                />
-              </section>
-            ) : null}
-          </WorkspacePageContainer>
-        </ScrollArea>
+        <div className="flex min-h-0 flex-1">
+          <ScrollArea className="min-h-0 flex-1">
+            <WorkspacePageContainer width="wide">
+              {view.connection !== "live" ? (
+                <p className="text-sm text-muted-foreground">
+                  {view.connection === "connecting"
+                    ? "Connecting to the hub…"
+                    : "Lost the hub. Reconnecting…"}
+                </p>
+              ) : null}
+              {rows.length > 0 ? (
+                <section className="flex flex-col gap-2">
+                  <h2 className="text-sm font-medium text-foreground">Servers</h2>
+                  <ul className="flex flex-col">
+                    {rows.map((machine) => (
+                      <MachineRow
+                        key={fleetMachineKey(machine)}
+                        machine={machine}
+                        hub={hub}
+                        selected={
+                          shown !== undefined && fleetMachineKey(shown) === fleetMachineKey(machine)
+                        }
+                        onSelect={() => setSelectedKey(fleetMachineKey(machine))}
+                        onReconnect={reconnect}
+                        now={now}
+                      />
+                    ))}
+                  </ul>
+                  {carriesMachines ? null : (
+                    <p className="text-sm text-muted-foreground">
+                      This server carries no machines. On the hub, they come from its machine list.
+                    </p>
+                  )}
+                </section>
+              ) : null}
+              {carriesMachines ? (
+                <section className="flex flex-col gap-2">
+                  <h2 className="text-sm font-medium text-foreground">Recent</h2>
+                  <EventList
+                    events={view.events.items}
+                    hasEarlier={view.events.before !== null}
+                    onLoadEarlier={loadEarlier}
+                  />
+                </section>
+              ) : null}
+            </WorkspacePageContainer>
+          </ScrollArea>
+          {wide && shown !== undefined ? (
+            <aside
+              aria-label="Server"
+              className="w-[380px] shrink-0 overflow-y-auto border-l border-border bg-card p-4"
+            >
+              <ServerPanel key={fleetMachineKey(shown)} machine={shown} hub={hub} now={now} />
+            </aside>
+          ) : null}
+        </div>
       </div>
+      {wide ? null : (
+        <Sheet
+          open={shown !== undefined}
+          onOpenChange={(open) => (open ? undefined : setSelectedKey(null))}
+        >
+          <SheetPopup side="bottom">
+            <div className="max-h-[88dvh] overflow-y-auto p-4">
+              <SheetTitle className="sr-only">{shown?.label ?? "Server"}</SheetTitle>
+              {shown !== undefined ? (
+                <ServerPanel key={fleetMachineKey(shown)} machine={shown} hub={hub} now={now} />
+              ) : null}
+            </div>
+          </SheetPopup>
+        </Sheet>
+      )}
     </SidebarInset>
   );
 }
