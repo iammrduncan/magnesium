@@ -398,6 +398,7 @@ import {
   removeInlineContextReference,
   stripInlineContextReferences,
 } from "../lib/composerContextReferences";
+import { useProfileGoneBanner } from "./magnesium/useProfileGoneBanner"; // magnesium: goal 34
 import { serializeLegacyContextMessage } from "@t3tools/shared/composerContextLegacySend";
 import {
   buildMessageContext,
@@ -7767,6 +7768,19 @@ export default function ChatView(props: ChatViewProps) {
     systemComposerBannerItems,
     usageLimitsBanner,
   ]);
+  // magnesium: a thread whose profile is gone from its machine says so (goal 34)
+  const profileGoneBanner = useProfileGoneBanner({
+    threadId: activeThread?.id ?? null,
+    instanceId: activeRuntime?.providerInstanceId ?? activeThread?.modelSelection.instanceId,
+    entries: providerInstanceEntries,
+  });
+  const composerBannerItemsWithProfile = useMemo(
+    () =>
+      profileGoneBanner === null
+        ? composerBannerItems
+        : [profileGoneBanner, ...composerBannerItems],
+    [composerBannerItems, profileGoneBanner],
+  );
 
   useEffect(() => {
     setPendingServerThreadEnvMode(null);
@@ -11540,7 +11554,7 @@ export default function ChatView(props: ChatViewProps) {
                               }
                               isPreparingWorktree={isPreparingWorktree && !sendQueuesBehindSetup}
                               queuedRunsControl={queuedRunsControl}
-                              bannerItems={composerBannerItems}
+                              bannerItems={composerBannerItemsWithProfile} // magnesium: goal 34
                               resumeCompactionTokens={resumeCompactionTokens}
                               keepFullHistory={keepFullHistory}
                               onToggleKeepFullHistory={toggleKeepFullHistoryStable}

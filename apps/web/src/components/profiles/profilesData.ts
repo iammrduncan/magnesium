@@ -79,10 +79,13 @@ export async function runChange(
   action: (pageUrl: string) => Promise<ProfileSaveResult | void>,
   done: string,
   undo?: () => void,
+  /** Gets a refused save's issues, to show each beside its field. */
+  onRefused?: (issues: ProfileSaveResult["issues"]) => void,
 ): Promise<boolean> {
   try {
     const result = await action(pageUrl());
     if (result !== undefined && !result.saved) {
+      onRefused?.(result.issues);
       const why = result.issues.find((issue) => issue.level === "error")?.message;
       toastManager.add({
         type: "error",

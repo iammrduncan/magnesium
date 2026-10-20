@@ -910,14 +910,18 @@ export function RunsOnSection({
   const [args, setArgs] = useState(detail.launchArgs.join(" "));
   const [displayName, setDisplayName] = useState(detail.summary.displayName);
   const [accent, setAccent] = useState(detail.summary.accentColor);
+  // A refused save's reasons, shown beside the fields they're about until the next try.
+  const [refusals, setRefusals] = useState<ReadonlyArray<string>>([]);
+  const refusedArgs = refusals.filter((message) => message.startsWith("launch_args"));
   // The hub first, as the page lists it; then the rest by name.
   const choices = [
     ...new Set([...machines.slice(0, 1), ...[...machines.slice(1), ...named].toSorted()]),
   ];
   const editable = detail.editable;
 
-  const save = () =>
-    void runChange(
+  const save = () => {
+    setRefusals([]);
+    return void runChange(
       (url) =>
         saveProfile(url, {
           name,
@@ -933,7 +937,13 @@ export function RunsOnSection({
           },
         }),
       "Saved where it runs",
+      undefined,
+      (issues) =>
+        setRefusals(
+          issues.filter((issue) => issue.level === "error").map((issue) => issue.message),
+        ),
     ).then((ok) => ok && onChanged());
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -1046,13 +1056,26 @@ export function RunsOnSection({
               size="sm"
               value={args}
               readOnly={!editable}
+              aria-invalid={refusedArgs.length > 0}
               onChange={(event) => setArgs(event.target.value)}
             />
           </span>
+          {refusedArgs.map((message) => (
+            <span key={message} className="text-destructive-foreground">
+              {message.replace(/^launch_args: /, "")}
+            </span>
+          ))}
         </label>
       </div>
       {editable ? (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {refusals
+            .filter((message) => !message.startsWith("launch_args"))
+            .map((message) => (
+              <span key={message} className="w-full text-right text-xs text-destructive-foreground">
+                {message}
+              </span>
+            ))}
           <span className="text-xs text-muted-foreground">
             Saving checks it first; a refused change leaves the machines as they are.
           </span>
