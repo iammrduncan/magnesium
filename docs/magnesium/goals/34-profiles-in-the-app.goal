@@ -4,7 +4,7 @@ kind: feature
 depends_on: [mg-profiles, mg-home]
 phase: 2
 boards: ["Profiles · desktop and phone (drawn in this goal)", "Session · desktop (picker)"]
-decisions: [D39, D40, D41, D46, D65, D66, D67]
+decisions: [D39, D40, D41, D46, D65, D66, D67, D68]
 ---
 # Profiles in the app: create and manage them, with their tools and knowledge
 
@@ -14,6 +14,7 @@ Goal 03 built profiles: an agent's instructions, skills, tools and sandbox, kept
 
 1. **The board.** No board shows profiles yet (mockups.md lists the Profile page as not mocked). Draw Profiles at desktop and phone width, in the style of the other boards. The owner approves it before the build starts.
 2. **Goal 03's board differences.** Decided 2026-10-19: one picker for profile and model, and the sandbox chip in the composer, stay as built; the approval card must say where a command runs (step 14).
+3. **This goal's board differences.** Decided 2026-10-19: the build matches the boards, and the sidebar's profiles are bots (D68, steps 15 to 17).
 
 ## Build
 
@@ -62,6 +63,9 @@ Goal 03 built profiles: an agent's instructions, skills, tools and sandbox, kept
 12. **Single box.** On a hub with no machines, profiles run on the hub, and everything above works.
 13. **Docs.** The user guide's profiles page ([`docs/user/profiles-and-sandboxes.md`](../../user/profiles-and-sandboxes.md)) says how to make and manage profiles in the app, and how to connect an agent to the Magnesium MCP address.
 14. **The approval card says where a command runs:** its machine and sandbox, as the Session board shows (goal 03's test 7, difference 3).
+15. **The layout of the boards.** The Profiles place opens a list of every profile at every width: a line saying how many there are, how many ask you and how many are refused; the agents' asks on top; then a row per profile with its version and delivery ("v14 · 3 machines", "1 machine behind", "Refused · 1 issue"). A profile opens at full width with Delivery in its own column and Used by, the threads on it, under it, and New thread in its header.
+16. **Bots (D68).** Each profile that runs on the hub is listed under the sidebar's places. Clicking it opens your one long-running conversation with that profile on the hub; New conversation archives it and starts another, and past ones stay findable. A profile that doesn't run on the hub isn't listed there.
+17. **OpenCode is a harness (D68).** A profile can run on OpenCode beside Claude Code and Codex: its instructions, MCP servers, tool permissions and sandbox, as the other two get them.
 
 ## Test it
 
@@ -93,13 +97,16 @@ Goal 03 built profiles: an agent's instructions, skills, tools and sandbox, kept
 14. **Single box.** On a hub with no machines, create a profile and run a thread on it.
 15. **The MCP address.** Copy MCP URL from the page, point an agent outside Magnesium at it, and its `list_profiles` call returns the profiles.
 16. **Where a command runs.** An approval card in a thread and on Home names the command's machine and sandbox.
+17. **The list.** Profiles opens on the list at desktop and phone width; an agent's ask on top is approved from there; a row says when a machine is behind.
+18. **Bots.** Click a profile that runs on the hub in the sidebar: its conversation opens, and its replies follow its rules. Leave and come back: the same conversation. New conversation starts a fresh one, and the old one is still there.
+19. **OpenCode.** A profile on OpenCode runs on a machine with no Claude Code or Codex login, follows its rules, and its tool permissions hold.
 
 ## Not in this goal
 
 - The Brain, and access to its sections (goal 29).
 - Memory notes and skill proposals learned from sessions (goal 14).
 - Profiles that launch and steer other agents (goal 18).
-- More harnesses and sandbox kinds (goal 19).
+- More harnesses and sandbox kinds (goal 19), except OpenCode, which comes in here (D68).
 - Accounts: profiles use the machine's active account (goal 30).
 
 ## Goal summary

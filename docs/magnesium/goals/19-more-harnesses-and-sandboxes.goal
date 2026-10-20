@@ -13,8 +13,8 @@ This goal covers A1 (works with any harness: Claude Code, Codex, OpenCode, Pi, o
 
 ## Build
 
-1. **Profiles can name the harness** `opencode`, `pi` or `omp`.
-   - Profile sync writes instances for T3's OpenCode and Pi drivers.
+1. **Profiles can name the harness** `pi` or `omp` (`opencode` came in goal 34, D68).
+   - Profile sync writes instances for T3's Pi driver.
    - Each gets a wrapper and sandbox, as in goal 03.
 2. **O12.** Check whether oh-my-pi speaks Pi's RPC mode (`--mode rpc`).
    - If it does, run omp as a Pi-driver instance with omp's binary.
