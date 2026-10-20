@@ -12,9 +12,10 @@
 # and `magnesium-attach` runs it inside a workload's own container once an
 # init container has copied the folder in (D59, kubernetes/README.md).
 #
-# The build reaches the npm registry (pnpm and the dependencies), Debian's
-# mirrors (the toolchains below), and the GitHub releases of OpenCode,
-# python-build-standalone and tini, each checked against a pinned checksum.
+# The build reaches the npm registry (pnpm, the dependencies and OpenCode's
+# package for the platform), Debian's mirrors (the toolchains below), and the
+# GitHub releases of python-build-standalone and tini, each checked against a
+# pinned checksum.
 # Base images are pinned by digest.
 
 ARG NODE_IMAGE=docker.io/library/node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
@@ -114,10 +115,11 @@ RUN set -eu; \
 FROM ${NODE_IMAGE}
 ARG TARGETARCH
 ARG MAGNESIUM_COMMIT
-# The OpenCode the Ansible role pins (D36); empty leaves it out.
-ARG OPENCODE_VERSION=1.18.34
-ARG OPENCODE_SHA256_AMD64=0f22479647226d1d2dd99595d20082ee7bda3870b62dc6a90b41efc1a71d7e9a
-ARG OPENCODE_SHA256_ARM64=bbdb3f00c2c51e42e315525233151309724226a8776da8e9145e3b0fa3d5310f
+# The OpenCode the Ansible role pins (D36, D69: 2.x only); empty leaves it out.
+# The sums are the npm registry's published sha512 for each platform package.
+ARG OPENCODE_VERSION=2.0.32
+ARG OPENCODE_SHA512_AMD64=439d287c143781dc230fa65086b551f1f5659bc0f6c4f32c872e1dca763a97a6fea8b74a801489f56a68683cab417d585a67f6b3b20de116d79a85d77498ad0c
+ARG OPENCODE_SHA512_ARM64=611e4ed378abbe6a2dfc6d1ff16e3d7a1be19f9baa085377bdff494ec0a1bdfe3b5ba95d8ca08dbec6824974b648fdba74f394310067ed6a9b2a7c87ceb351e7
 
 # What agents in a spoke find: the basics, more only when a project needs it
 # (D52). bubblewrap and python3 also serve the fence.
@@ -133,18 +135,18 @@ RUN set -eu; \
   cp /usr/local/bin/node "$MAGNESIUM_ROOT/node/bin/node"; \
   if [ -n "$OPENCODE_VERSION" ]; then \
     case "$TARGETARCH" in \
-      amd64) arch=x64; sum="$OPENCODE_SHA256_AMD64" ;; \
-      arm64) arch=arm64; sum="$OPENCODE_SHA256_ARM64" ;; \
+      amd64) arch=x64; sum="$OPENCODE_SHA512_AMD64" ;; \
+      arm64) arch=arm64; sum="$OPENCODE_SHA512_ARM64" ;; \
       *) echo "no OpenCode for $TARGETARCH" >&2; exit 1 ;; \
     esac; \
-    curl -fsSL -o /tmp/opencode.tar.gz \
-      "https://github.com/anomalyco/opencode/releases/download/v$OPENCODE_VERSION/opencode-linux-$arch.tar.gz"; \
-    echo "$sum  /tmp/opencode.tar.gz" | sha256sum -c -; \
+    curl -fsSL -o /tmp/opencode.tgz \
+      "https://registry.npmjs.org/@opencode/cli-linux-$arch/-/cli-linux-$arch-$OPENCODE_VERSION.tgz"; \
+    echo "$sum  /tmp/opencode.tgz" | sha512sum -c -; \
     mkdir -p "$MAGNESIUM_ROOT/opencode"; \
-    tar -xzf /tmp/opencode.tar.gz -C "$MAGNESIUM_ROOT/opencode"; \
-    rm /tmp/opencode.tar.gz; \
-    ln -s ../opencode/opencode "$MAGNESIUM_ROOT/bin/opencode"; \
-    ln -s "$MAGNESIUM_ROOT/opencode/opencode" /usr/local/bin/opencode; \
+    tar -xzf /tmp/opencode.tgz -C "$MAGNESIUM_ROOT/opencode" --strip-components=1; \
+    rm /tmp/opencode.tgz; \
+    ln -s ../opencode/bin/opencode "$MAGNESIUM_ROOT/bin/opencode"; \
+    ln -s "$MAGNESIUM_ROOT/opencode/bin/opencode" /usr/local/bin/opencode; \
   fi
 
 # The release layout `magnesium-release` keeps, so Fleet shows the commit and
