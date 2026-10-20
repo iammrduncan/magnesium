@@ -802,7 +802,7 @@ export const make = Effect.gen(function* () {
       }),
     );
 
-  const sendNow = Option.isSome(pusher) ? pusher.value.pushNow : Effect.void;
+  const sendNow = Option.isSome(pusher) ? pusher.value.sendNow : Effect.void;
 
   /** Asks one machine which names its server has; unreachable when the hub can't ask it. */
   const presenceOn = (machine: string, names: ReadonlyArray<string>) =>

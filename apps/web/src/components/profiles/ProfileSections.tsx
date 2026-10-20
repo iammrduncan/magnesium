@@ -1166,7 +1166,6 @@ const DELIVERY_DOT: Record<ReturnType<typeof describeDelivery>["tone"], string> 
 };
 
 export function DeliveryPanel({ detail, onChanged }: Section) {
-  const [sent, setSent] = useState(false);
   return (
     <aside aria-label="Delivery" className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
@@ -1182,14 +1181,11 @@ export function DeliveryPanel({ detail, onChanged }: Section) {
                 (url) => sendProfilesNow(url),
                 "Sent to every machine that is up",
               ).then((ok) => {
-                if (ok) {
-                  setSent(true);
-                  window.setTimeout(onChanged, 1500);
-                }
+                if (ok) onChanged();
               })
             }
           >
-            {sent ? "Sent" : "Send now"}
+            Send now
           </Button>
         ) : null}
       </div>

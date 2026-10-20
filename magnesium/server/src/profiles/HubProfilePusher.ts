@@ -36,7 +36,8 @@ import { FILES } from "./profileFolder.ts";
  * RECHECK_EVERY passed. It pushes only when the answer differs. So a new or
  * edited profile reaches its machines within PUSH_EVERY, a wiped machine is
  * filled again when it comes back, and a quiet fleet costs one call per
- * machine every RECHECK_EVERY.
+ * machine every RECHECK_EVERY. Send now (`sendNow`) asks every connected
+ * machine regardless, for when one lost its profiles and nothing says so.
  *
  * The push needs `orchestration:operate` on the machine: the scope that already
  * edits provider instances through `server.updateSettings`, which is what a
@@ -70,7 +71,10 @@ export const askDue = (
 export class HubProfilePusher extends Context.Service<
   HubProfilePusher,
   {
+    /** One tick: asks a machine only when there is a reason (see above). */
     readonly pushNow: Effect.Effect<void>;
+    /** Asks every connected machine now, and pushes to each that holds another revision. */
+    readonly sendNow: Effect.Effect<void>;
     readonly status: Effect.Effect<ReadonlyArray<ProfilePushStatus>>;
   }
 >()("@magnesium/server/profiles/HubProfilePusher") {}
@@ -135,7 +139,7 @@ export const make = Effect.gen(function* () {
       }),
     ).pipe(Effect.timeout(CALL_TIMEOUT));
 
-  const pushOnce = Effect.gen(function* () {
+  const pushOnce = Effect.fnUntraced(function* (askEvery: boolean) {
     const machines = yield* fleet.machines;
     if (machines.length === 0) return;
     const path = yield* Path.Path;
@@ -189,7 +193,10 @@ export const make = Effect.gen(function* () {
         continue;
       }
       const checkedAt = DateTime.toEpochMillis(nowAt);
-      if (!askDue(held.get(name), { revision, startedAt: machine.startedAt }, checkedAt)) {
+      if (
+        !askEvery &&
+        !askDue(held.get(name), { revision, startedAt: machine.startedAt }, checkedAt)
+      ) {
         continue;
       }
       const outcome = yield* pushTo(name, { revision, profiles }).pipe(Effect.result);
@@ -229,11 +236,12 @@ export const make = Effect.gen(function* () {
     }
   });
 
-  const pushNow = pushOnce.pipe(
-    Effect.provideContext(context),
-    Effect.catch((error) => Effect.logError("Profile push failed.", { error: String(error) })),
-    Effect.withSpan("HubProfilePusher.pushNow"),
-  );
+  const push = (askEvery: boolean) =>
+    pushOnce(askEvery).pipe(
+      Effect.provideContext(context),
+      Effect.catch((error) => Effect.logError("Profile push failed.", { error: String(error) })),
+      Effect.withSpan(askEvery ? "HubProfilePusher.sendNow" : "HubProfilePusher.pushNow"),
+    );
   const status = Ref.get(statuses).pipe(
     Effect.map((current) =>
       [...current.values()].map((entry) => ({
@@ -242,7 +250,7 @@ export const make = Effect.gen(function* () {
       })),
     ),
   );
-  return HubProfilePusher.of({ pushNow, status });
+  return HubProfilePusher.of({ pushNow: push(false), sendNow: push(true), status });
 });
 
 export const layer = Layer.effect(HubProfilePusher, make);

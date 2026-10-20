@@ -255,6 +255,10 @@ describe("the hub's push", () => {
         row = { ...row, startedAt: "2026-01-02T00:00:00.000Z" };
         yield* pusher.pushNow;
         expect(machine.tickets()).toBe(3);
+
+        // Send now asks even when nothing says it changed.
+        yield* pusher.sendNow;
+        expect(machine.tickets()).toBe(4);
       }).pipe(Effect.provide(hub.layer));
     }),
   );
