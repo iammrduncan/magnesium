@@ -23,9 +23,11 @@ import { connectMagnesium, type MagnesiumRpcClient, magnesiumSocketUrl } from ".
 /** A refusal from the hub, in a sentence the page can show. */
 const sentenceOf = (error: unknown): string => {
   if (typeof error === "object" && error !== null && "_tag" in error) {
-    // SpokeError and ProfileError say why in a sentence of their own.
+    // SpokeError, ProfileError and UpkeepError say why in a sentence of their own.
     if (
-      (error._tag === "SpokeError" || error._tag === "ProfileError") &&
+      (error._tag === "SpokeError" ||
+        error._tag === "ProfileError" ||
+        error._tag === "UpkeepError") &&
       "detail" in error &&
       typeof error.detail === "string"
     ) {

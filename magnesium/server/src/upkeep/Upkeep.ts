@@ -129,12 +129,19 @@ export const launcherOf = (value: string | undefined): UpkeepLauncher | null => 
   return isLauncher(trimmed) ? trimmed : null;
 };
 
-/** The last line a failed command printed, which says why. */
-const lastLine = (text: string) =>
-  text
+/**
+ * Why a command failed, from what it printed: `magnesium-release`'s own line,
+ * else an error's first line (not a stack trace's last), else the last line.
+ */
+const lastLine = (text: string) => {
+  const lines = text
     .split("\n")
-    .map((line) => line.replace(/^magnesium-release: /, "").trim())
-    .findLast((line) => line !== "");
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+  const own = lines.findLast((line) => line.startsWith("magnesium-release: "));
+  if (own !== undefined) return own.replace(/^magnesium-release: /, "");
+  return lines.find((line) => /^\w*Error\b|^Error:/.test(line)) ?? lines.at(-1);
+};
 
 const ResultJson = Schema.fromJsonString(UpkeepResult);
 const decodeResult = Schema.decodeUnknownOption(ResultJson);
@@ -172,6 +179,8 @@ export const make = (config: UpkeepConfig) =>
     const keep = keepOf(process.env.MAGNESIUM_BACKUP_KEEP);
     const now = DateTime.now.pipe(Effect.map(DateTime.formatIso));
 
+    // The script's own Node work (a live SQLite copy) runs on the Node that runs this server.
+    const nodeDir = path.dirname(yield* HostProcess.ExecutablePath);
     const previousRelease =
       config.root === null
         ? null
@@ -186,6 +195,7 @@ export const make = (config: UpkeepConfig) =>
         const child = yield* spawner.spawn(
           ChildProcess.make("bash", [config.script, ...args], {
             env: {
+              PATH: `${nodeDir}:${process.env.PATH ?? ""}`,
               MAGNESIUM_HOME: config.home,
               ...(config.root === null ? {} : { MAGNESIUM_ROOT: config.root }),
               MAGNESIUM_RESTART: "0",
