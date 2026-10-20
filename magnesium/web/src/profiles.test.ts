@@ -37,7 +37,7 @@ const push = (machine: string, overrides: Partial<ProfilePushStatus> = {}): Prof
 });
 
 describe("a profile's line in the list", () => {
-  it("says it's refused first, then a machine refusing it, then one behind, else where it runs", () => {
+  it("says it's refused first, then a machine refusing it, then an agent's ask, then one behind, else where it runs", () => {
     const refused = summary({
       status: "refused",
       issues: [{ level: "error", file: "profile.yaml", message: "x" }],
@@ -67,6 +67,15 @@ describe("a profile's line in the list", () => {
       profileListLine(summary({ version: 9 }), [push("gpu-a"), push("gpu-b", { current: false })])
         .text,
     ).toBe("v9 · 1 machine behind");
+    // An agent's ask comes before a machine behind, as the phone board shows it.
+    expect(
+      profileListLine(
+        summary({ version: 14 }),
+        [push("gpu-a"), push("gpu-b", { current: false })],
+        "research",
+      ),
+    ).toEqual({ text: "v14 · research asks a change", tone: "warning" });
+    expect(profileListLine(refused, [], "research").text).toBe("Refused · 1 issue");
   });
 });
 

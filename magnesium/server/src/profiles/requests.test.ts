@@ -19,6 +19,7 @@ import {
   testTicketRoute,
   watchTable,
 } from "../testing.ts";
+import { previewOf } from "./ProfileRequests.ts";
 
 /** An agent outside Magnesium, asking over REST with an operator's session. */
 const postTo = (origin: string, path: string, body: unknown, session = "operator") =>
@@ -48,6 +49,17 @@ const change = {
 };
 
 describe("an agent asks to change a profile (goal 34, D65)", () => {
+  it("previews a file's lines without a blank one for its final newline", () => {
+    expect(
+      previewOf({
+        kind: "update",
+        name: "serving",
+        summary: "Add rollout-watch",
+        files: [{ path: "skills/rollout-watch/SKILL.md", content: "Watch it.\nSay why.\n" }],
+      }),
+    ).toBe("+ skills/rollout-watch/SKILL.md\n+   Watch it.\n+   Say why.");
+  });
+
   it.live(
     "waits on Home: Reject leaves the profile alone, Approve applies it, and a change that no longer passes stays waiting",
     () =>

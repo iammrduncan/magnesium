@@ -294,10 +294,13 @@ function DeleteProfileDialog({
 /** An agent's ask, answered here or on Home: the same card, with the same Undo. */
 function ProfileAskBanner({
   ask,
+  asker,
   held,
   now,
 }: {
   readonly ask: ProfileAsk;
+  /** The asking agent's profile, for its mark. */
+  readonly asker: ProfileSummary | undefined;
   readonly held: HeldAnswer | undefined;
   readonly now: number;
 }) {
@@ -310,7 +313,12 @@ function ProfileAskBanner({
     );
   return (
     <Alert variant="warning">
-      <AlertTitle>{describeProfileAsk(ask.body)}</AlertTitle>
+      <AlertTitle>
+        <span className="flex items-center gap-2">
+          {asker === undefined ? null : <ProfileAvatar profile={asker} size="sm" />}
+          {describeProfileAsk(ask.body)}
+        </span>
+      </AlertTitle>
       <AlertDescription>
         <span>
           {ask.body.summary} · {ask.machine.label} · {waitedFor(ask.since, now)} · also on Home
@@ -318,7 +326,8 @@ function ProfileAskBanner({
         <pre className="max-h-60 overflow-auto rounded-lg bg-background px-3 py-2 font-mono text-xs whitespace-pre-wrap text-foreground">
           {ask.body.preview}
         </pre>
-        <div className="flex flex-wrap justify-end gap-2">
+        {/* One thumb on a phone: the two answers share the width. */}
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
           <Button size="sm" variant="outline" disabled={locked} onClick={() => respond(false)}>
             Reject
           </Button>
@@ -450,65 +459,71 @@ function ProfileView({
           </>
         ) : null}
       </header>
-      {!detail.editable ? (
-        <Alert variant="info">
-          <AlertTitle>From the hub</AlertTitle>
-          <AlertDescription>
-            This machine's profiles come from the hub: change them there.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-      {asks}
-      {refused ? (
-        <Alert variant="error">
-          <AlertTitle>Refused</AlertTitle>
-          <AlertDescription>
-            {errors.map((issue) => `${issue.file}: ${issue.message}`).join(" ")} Its machines keep
-            running the last version that passed.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-      {/* The boards' layout: the sections, then Delivery and Used by in their own column. */}
+      {/* The boards' layout: notices and the sections, then Delivery and Used by in their own column. */}
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <Tabs className="min-w-0" value={tab} onValueChange={(value) => onTab(value as ProfileTab)}>
-          {/* The row scrolls where seven tabs don't fit, as on a phone. */}
-          <div className="overflow-x-auto">
-            <TabsList aria-label="Profile sections">
-              {PROFILE_TABS.map((value) => (
-                <TabsTab key={value} value={value}>
-                  {TAB_LABEL[value]}
-                  {counts[value] !== undefined ? (
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {counts[value]}
-                    </span>
-                  ) : null}
-                </TabsTab>
-              ))}
-            </TabsList>
-          </div>
-          <TabsPanel value="instructions">
-            <InstructionsSection {...section} />
-          </TabsPanel>
-          <TabsPanel value="skills">
-            <SkillsSection {...section} />
-          </TabsPanel>
-          <TabsPanel value="tools">
-            <ToolsSection {...section} />
-          </TabsPanel>
-          <TabsPanel value="environment">
-            <EnvironmentSection key={detail.version} {...section} />
-          </TabsPanel>
-          <TabsPanel value="runs-on">
-            {/* Read again after each save: its fields start from what's saved. */}
-            <RunsOnSection key={detail.version} {...section} machines={machines} />
-          </TabsPanel>
-          <TabsPanel value="brain">
-            <BrainSection {...section} />
-          </TabsPanel>
-          <TabsPanel value="history">
-            <HistorySection {...section} />
-          </TabsPanel>
-        </Tabs>
+        <div className="flex min-w-0 flex-col gap-4">
+          {!detail.editable ? (
+            <Alert variant="info">
+              <AlertTitle>From the hub</AlertTitle>
+              <AlertDescription>
+                This machine's profiles come from the hub: change them there.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {asks}
+          {refused ? (
+            <Alert variant="error">
+              <AlertTitle>Refused</AlertTitle>
+              <AlertDescription>
+                {errors.map((issue) => `${issue.file}: ${issue.message}`).join(" ")} Its machines
+                keep running the last version that passed.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          <Tabs
+            className="min-w-0"
+            value={tab}
+            onValueChange={(value) => onTab(value as ProfileTab)}
+          >
+            {/* The row scrolls where seven tabs don't fit, as on a phone. */}
+            <div className="overflow-x-auto">
+              <TabsList aria-label="Profile sections">
+                {PROFILE_TABS.map((value) => (
+                  <TabsTab key={value} value={value}>
+                    {TAB_LABEL[value]}
+                    {counts[value] !== undefined ? (
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {counts[value]}
+                      </span>
+                    ) : null}
+                  </TabsTab>
+                ))}
+              </TabsList>
+            </div>
+            <TabsPanel value="instructions">
+              <InstructionsSection {...section} />
+            </TabsPanel>
+            <TabsPanel value="skills">
+              <SkillsSection {...section} />
+            </TabsPanel>
+            <TabsPanel value="tools">
+              <ToolsSection {...section} />
+            </TabsPanel>
+            <TabsPanel value="environment">
+              <EnvironmentSection key={detail.version} {...section} />
+            </TabsPanel>
+            <TabsPanel value="runs-on">
+              {/* Read again after each save: its fields start from what's saved. */}
+              <RunsOnSection key={detail.version} {...section} machines={machines} />
+            </TabsPanel>
+            <TabsPanel value="brain">
+              <BrainSection {...section} />
+            </TabsPanel>
+            <TabsPanel value="history">
+              <HistorySection {...section} />
+            </TabsPanel>
+          </Tabs>
+        </div>
         <aside className="flex min-w-0 flex-col gap-6">
           <DeliveryPanel {...section} />
           <UsedBy name={profile.name} />
@@ -538,7 +553,12 @@ function ProfileListScreen({
 }) {
   const profiles = list?.profiles ?? [];
   const homeItems = useHomeView().items;
-  const asking = new Set(profileAsks(homeItems).map((ask) => ask.body.target));
+  // The first agent to ask about each profile, as its row says.
+  const askedBy = new Map(
+    profileAsks(homeItems)
+      .toReversed()
+      .map((ask) => [ask.body.target, ask.body.requestedBy]),
+  );
   const refused = profiles.filter((profile) => profile.status === "refused").length;
   const askCount = profileAsks(homeItems).length;
   const counts = [
@@ -578,7 +598,7 @@ function ProfileListScreen({
       {profiles.length > 0 ? (
         <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
           {profiles.map((profile) => {
-            const line = profileListLine(profile, list?.pushes ?? []);
+            const line = profileListLine(profile, list?.pushes ?? [], askedBy.get(profile.name));
             return (
               <li key={profile.name}>
                 <button
@@ -595,13 +615,6 @@ function ProfileListScreen({
                       {line.text}
                     </span>
                   </span>
-                  {asking.has(profile.name) ? (
-                    <span
-                      role="img"
-                      aria-label="An agent asks to change it"
-                      className="size-2 shrink-0 rounded-full bg-warning"
-                    />
-                  ) : null}
                   <ChevronRightIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
                 </button>
               </li>
@@ -680,7 +693,13 @@ export function ProfilesPage() {
   const now = useNow([...held.values()].some((answer) => answer.state === "holding"));
   const askBanners = (shown: ReadonlyArray<ProfileAsk>) =>
     shown.map((ask) => (
-      <ProfileAskBanner key={ask.key} ask={ask} held={held.get(ask.key)} now={now} />
+      <ProfileAskBanner
+        key={ask.key}
+        ask={ask}
+        asker={list?.profiles.find((profile) => profile.name === ask.body.requestedBy)}
+        held={held.get(ask.key)}
+        now={now}
+      />
     ));
 
   const select = (name: string, nextTab: ProfileTab = tab) =>

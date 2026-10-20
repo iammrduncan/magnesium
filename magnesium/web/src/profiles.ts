@@ -66,6 +66,8 @@ const targetsOf = (profile: ProfileSummary, pushes: ReadonlyArray<ProfilePushSta
 export const profileListLine = (
   profile: ProfileSummary,
   pushes: ReadonlyArray<ProfilePushStatus>,
+  /** The profile whose agent asks to change this one, if one does. */
+  askedBy?: string,
 ): { readonly text: string; readonly tone: "error" | "warning" | "muted" } => {
   const errors = profile.issues.filter((issue) => issue.level === "error").length;
   if (profile.status === "refused") {
@@ -83,6 +85,8 @@ export const profileListLine = (
       tone: "error",
     };
   }
+  if (askedBy !== undefined)
+    return { text: versioned(`${askedBy} asks a change`), tone: "warning" };
   const behind = targets.filter((push) => push.error === null && !push.current).length;
   if (behind > 0) return { text: versioned(machinesText(behind, "behind")), tone: "warning" };
   const offline = targets.filter((push) => push.error !== null).length;

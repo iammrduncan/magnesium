@@ -101,7 +101,10 @@ export const previewOf = (input: ProfileRequestInput): string => {
       continue;
     }
     lines.push(`+ ${file.path}`);
-    for (const line of file.content.split("\n").slice(0, 6)) lines.push(`+   ${line}`);
+    // A file's final newline is no line of its own.
+    for (const line of file.content.replace(/\n$/, "").split("\n").slice(0, 6)) {
+      lines.push(`+   ${line}`);
+    }
   }
   for (const [key, value] of Object.entries(input.settings ?? {})) {
     lines.push(`~ ${key}: ${JSON.stringify(value)}`);
