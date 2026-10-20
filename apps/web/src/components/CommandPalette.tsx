@@ -247,6 +247,7 @@ import {
 import type { Project } from "../types";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { readPullRequestListPreferences } from "~/components/pullRequest/pullRequestListPreferences";
+import { useBots } from "./sidebar/useBots"; // magnesium: bots (goal 34, D68)
 
 const EMPTY_BROWSE_ENTRIES: FilesystemBrowseResult["entries"] = [];
 
@@ -601,6 +602,7 @@ function OpenCommandPaletteDialog(props: {
 }) {
   const navigate = useNavigate();
   const pathname = useLocation({ select: (location) => location.pathname });
+  const botActions = useBots(); // magnesium: the hub's profiles as bots (goal 34, D68)
   const { clearOpenIntent, openIntent, openOverlayMode, setOpen } = props;
   const [query, setQuery] = useState(openIntent?.kind === "search" ? openIntent.query : "");
   const [linkedThreadSearch, setLinkedThreadSearch] = useState(
@@ -2268,6 +2270,25 @@ function OpenCommandPaletteDialog(props: {
       await navigate({ to: "/profiles", search: { new: true } });
     },
   });
+  // magnesium: talk to each of the hub's profiles, or start a new conversation with it (D68)
+  for (const bot of botActions.bots) {
+    actionItems.push({
+      kind: "action",
+      value: `action:talk-to:${bot.name}`,
+      searchTerms: ["talk", "chat", "bot", bot.name, bot.displayName],
+      title: `Talk to ${bot.displayName}`,
+      icon: <MessageSquareIcon className={ITEM_ICON_CLASS} />,
+      run: () => botActions.open(bot),
+    });
+    actionItems.push({
+      kind: "action",
+      value: `action:new-conversation:${bot.name}`,
+      searchTerms: ["new conversation", "chat", "bot", bot.name, bot.displayName],
+      title: `New conversation with ${bot.displayName}`,
+      icon: <SquarePenIcon className={ITEM_ICON_CLASS} />,
+      run: () => botActions.startOver(bot),
+    });
+  }
 
   actionItems.push({
     kind: "action",

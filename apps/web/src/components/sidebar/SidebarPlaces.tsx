@@ -1,5 +1,6 @@
 // magnesium: the places at the top of the sidebar, as on the Home and Session boards.
 // Each place appears when its goal lands: Home (goal 06), Fleet (goal 04) and Profiles (goal 34) so far.
+// Under them, the hub's profiles as bots (D68).
 import { profileAsks } from "@magnesium/web";
 import { Link, useLocation } from "@tanstack/react-router";
 import { HouseIcon, ServerIcon, UsersRoundIcon } from "lucide-react";
@@ -7,6 +8,7 @@ import { memo, useCallback } from "react";
 
 import { countOffline, useFleetView } from "../fleet/fleetStore";
 import { useHomeView } from "../home/homeStore";
+import { SidebarBots } from "./SidebarBots";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "../ui/sidebar";
 
 /** What waits on you at a place, in the warning tone. */
@@ -35,45 +37,48 @@ export const SidebarPlaces = memo(function SidebarPlaces() {
   }, [isMobile, setOpenMobile]);
 
   return (
-    <nav aria-label="Places">
-      <SidebarMenu>
-        <SidebarMenuItem>
-          <SidebarMenuButton
-            isActive={onHome}
-            render={<Link to="/home" onClick={closeMobileSidebar} />}
-          >
-            <HouseIcon />
-            <span className="min-w-0 flex-1 truncate">Home</span>
-            {needs > 0 ? <CountBadge count={needs} label={`${needs} need you`} /> : null}
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-        <SidebarMenuItem>
-          <SidebarMenuButton
-            isActive={onFleet}
-            render={<Link to="/fleet" onClick={closeMobileSidebar} />}
-          >
-            <ServerIcon />
-            <span className="min-w-0 flex-1 truncate">Fleet</span>
-            {offline > 0 ? (
-              <span
-                aria-label={`${offline} offline`}
-                className="size-2 shrink-0 rounded-full bg-destructive"
-                role="img"
-              />
-            ) : null}
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-        <SidebarMenuItem>
-          <SidebarMenuButton
-            isActive={onProfiles}
-            render={<Link to="/profiles" onClick={closeMobileSidebar} />}
-          >
-            <UsersRoundIcon />
-            <span className="min-w-0 flex-1 truncate">Profiles</span>
-            {asks > 0 ? <CountBadge count={asks} label={`${asks} asked by agents`} /> : null}
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      </SidebarMenu>
-    </nav>
+    <>
+      <nav aria-label="Places">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              isActive={onHome}
+              render={<Link to="/home" onClick={closeMobileSidebar} />}
+            >
+              <HouseIcon />
+              <span className="min-w-0 flex-1 truncate">Home</span>
+              {needs > 0 ? <CountBadge count={needs} label={`${needs} need you`} /> : null}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              isActive={onFleet}
+              render={<Link to="/fleet" onClick={closeMobileSidebar} />}
+            >
+              <ServerIcon />
+              <span className="min-w-0 flex-1 truncate">Fleet</span>
+              {offline > 0 ? (
+                <span
+                  aria-label={`${offline} offline`}
+                  className="size-2 shrink-0 rounded-full bg-destructive"
+                  role="img"
+                />
+              ) : null}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              isActive={onProfiles}
+              render={<Link to="/profiles" onClick={closeMobileSidebar} />}
+            >
+              <UsersRoundIcon />
+              <span className="min-w-0 flex-1 truncate">Profiles</span>
+              {asks > 0 ? <CountBadge count={asks} label={`${asks} asked by agents`} /> : null}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </nav>
+      <SidebarBots />
+    </>
   );
 });
