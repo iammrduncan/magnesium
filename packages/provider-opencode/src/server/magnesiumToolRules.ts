@@ -1,8 +1,8 @@
-// magnesium: a profile's MCP tool permissions hold in every permission mode (goal 34, D67)
+// magnesium: a profile's MCP tool permissions hold in every permission mode (goal 34, D67).
+// OpenCode 2.x only (D69): the 1.x adapter is upstream's, untouched.
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
-import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 
 export interface ToolRule {
@@ -72,16 +72,19 @@ export const forT3Server = (
 
 const decodeJson = Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Unknown));
 
-/** configToolRules of the opencode.json in `environment`'s OPENCODE_CONFIG_DIR; none without one. */
+/** configToolRules of the config file in `environment`'s OPENCODE_CONFIG (a profile's); none without one. */
 export const readConfigToolRules = (environment: NodeJS.ProcessEnv) =>
   Effect.gen(function* () {
-    const dir = environment.OPENCODE_CONFIG_DIR;
-    if (dir === undefined || dir === "") return [];
+    const file = environment.OPENCODE_CONFIG;
+    if (file === undefined || file === "") return [];
     const fs = yield* FileSystem.FileSystem;
-    const path = yield* Path.Path;
-    const text = yield* fs.readFileString(path.join(dir, "opencode.json"));
+    const text = yield* fs.readFileString(file);
     return configToolRules(yield* decodeJson(text));
   }).pipe(Effect.orElseSucceed((): ReadonlyArray<ToolRule> => []));
+
+/** What an approval card shows for a permission ask: its resources, or the action when they cover everything. */
+export const openCodePermissionPrompt = (action: string, resources: ReadonlyArray<string>) =>
+  resources.every((resource) => resource === "*") ? action : resources.join("\n");
 
 /** Reads the instance's tool rules when a session needs them; the driver provides it. */
 export class OpenCodeToolRules extends Context.Reference<Effect.Effect<ReadonlyArray<ToolRule>>>(

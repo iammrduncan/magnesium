@@ -98,12 +98,9 @@ import {
 } from "@t3tools/provider-core/server/subagentProjection";
 import * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 import { turnScopedSelectionTransition } from "@t3tools/provider-core/server/selectionTransition";
-import {
-  OPENCODE_PROVIDER,
-  openCodePermissionPrompt, // magnesium: whole-tool asks
-  openCodePermissionRequestKind,
-} from "../adapter.ts";
-import { forT3Server, OpenCodeToolRules } from "../magnesiumToolRules.ts"; // magnesium: profile tool rules
+import { OPENCODE_PROVIDER, openCodePermissionRequestKind } from "../adapter.ts";
+// magnesium: profile tool rules, and whole-tool asks named by their tool
+import { forT3Server, openCodePermissionPrompt, OpenCodeToolRules } from "../magnesiumToolRules.ts";
 import { openCodeToolTurnItem } from "../toolItems.ts";
 
 const OpenCode2ProviderCapabilities = {

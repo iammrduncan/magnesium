@@ -4,7 +4,7 @@
 # Runs a Magnesium profile's harness at the sandbox level its provider instance
 # asks for (goal 03, D40). T3 starts `magnesium-claude`, `magnesium-codex` or
 # `magnesium-opencode` as the instance's binary, with CLAUDE_CONFIG_DIR,
-# CODEX_HOME or OPENCODE_CONFIG_DIR set to the profile's home and
+# CODEX_HOME set to the profile's home, or OPENCODE_CONFIG to the config file in it, and
 # MAGNESIUM_SANDBOX set by the instance. The harness speaks over stdio
 # with no TTY, so this script writes nothing to stdout.
 #
@@ -25,8 +25,8 @@ harness=${1:-}
 case $harness in
   claude) home=${CLAUDE_CONFIG_DIR:-}; home_var=CLAUDE_CONFIG_DIR; login=.credentials.json ;;
   codex) home=${CODEX_HOME:-}; home_var=CODEX_HOME; login=auth.json ;;
-  # OpenCode keeps its logins in its own data folder; the profile's folder holds its config.
-  opencode) home=${OPENCODE_CONFIG_DIR:-}; home_var=OPENCODE_CONFIG_DIR; login= ;;
+  # OpenCode keeps its logins in its own data folder; the profile's home holds its config file.
+  opencode) home=${OPENCODE_CONFIG:+$(dirname "$OPENCODE_CONFIG")}; home_var=OPENCODE_CONFIG; login= ;;
   *) echo "usage: magnesium-wrapper claude|codex|opencode [args...]" >&2; exit 64 ;;
 esac
 

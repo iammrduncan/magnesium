@@ -55,7 +55,9 @@ const fingerprint = (value: unknown) => encodeJson(canonical(value));
 export const make = Effect.gen(function* () {
   const config = yield* ProfilesConfig;
   const ports = yield* ServerPorts;
-  const context = yield* Effect.context<FileSystem.FileSystem | Path.Path | ProfilesConfig>();
+  const context = yield* Effect.context<
+    ChildProcessSpawner.ChildProcessSpawner | FileSystem.FileSystem | Path.Path | ProfilesConfig
+  >();
   const lock = yield* Semaphore.make(1);
 
   const syncOnce = Effect.gen(function* () {

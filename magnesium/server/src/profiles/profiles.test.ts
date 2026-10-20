@@ -379,9 +379,10 @@ describe("profiles on OpenCode (D68)", () => {
         displayName: "triage",
         config: { binaryPath: "/opt/magnesium/bin/magnesium-opencode" },
       });
+      // A config file OpenCode 2 merges over the machine's own, which keeps the model gateway.
       expect(fenced?.config.environment).toContainEqual({
-        name: "OPENCODE_CONFIG_DIR",
-        value: home,
+        name: "OPENCODE_CONFIG",
+        value: NodePath.join(home, "opencode.json"),
         sensitive: false,
       });
     }).pipe(Effect.provide(NodeServices.layer)),

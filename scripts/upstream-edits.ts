@@ -25,6 +25,8 @@ export const UNMARKABLE_EDITS: Readonly<Record<string, string>> = {
   LICENSE: "adds the copyright line for Magnesium's own work",
   "package.json": "adds check:public (scripts/check-public.ts)",
   "apps/server/package.json": "adds @magnesium/server (doc 11)",
+  "apps/server/src/provider/model-manifest.json":
+    "marks OpenCode 2.0.28 supported for this release, the version its client is built for (D69)",
   "apps/web/package.json":
     "drops @clerk/electron and @clerk/react (D13); adds @magnesium/web and @magnesium/contracts (doc 11)",
 };

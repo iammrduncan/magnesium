@@ -18,6 +18,7 @@ import { ServerPorts } from "../ports.ts";
 import { noThreads, noSchedule, testDescriptor } from "../testing.ts";
 import { ProfilesConfig } from "./catalog.ts";
 import * as ProfileSync from "./ProfileSync.ts";
+import { findBinaries, openCodeVersionOf } from "./setup.ts";
 
 const roots: string[] = [];
 afterEach(() => {
@@ -101,5 +102,35 @@ describe("profile sync", () => {
         binaryPath: "/opt/magnesium-portable/bin/magnesium-fenced",
       });
     }),
+  );
+});
+
+describe("OpenCode for profiles (D69)", () => {
+  /** A folder holding an `opencode` that prints `version`, as a PATH entry. */
+  const fakeOpenCode = (version: string) => {
+    const root = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "mg-opencode-"));
+    roots.push(root);
+    const file = NodePath.join(root, "opencode");
+    NodeFS.writeFileSync(file, `#!/bin/sh\necho '${version}'\n`, { mode: 0o755 });
+    return { dir: root, file };
+  };
+
+  it("reads both versions' --version output", () => {
+    expect(openCodeVersionOf("opencode v2.0.32\n")).toBe("2.0.32");
+    expect(openCodeVersionOf("1.18.35")).toBe("1.18.35");
+    expect(openCodeVersionOf("")).toBeUndefined();
+  });
+
+  it.effect("are run on 2.x only: a 1.x OpenCode counts as none, and the override wins", () =>
+    Effect.gen(function* () {
+      const old = fakeOpenCode("1.18.35");
+      const current = fakeOpenCode("opencode v2.0.32");
+      expect((yield* findBinaries({ PATH: old.dir }, undefined)).opencode).toBeUndefined();
+      expect((yield* findBinaries({ PATH: current.dir }, undefined)).opencode).toBe(current.file);
+      expect(
+        (yield* findBinaries({ PATH: old.dir, MAGNESIUM_OPENCODE_BIN: current.file }, undefined))
+          .opencode,
+      ).toBe(current.file);
+    }).pipe(Effect.provide(NodeServices.layer)),
   );
 });

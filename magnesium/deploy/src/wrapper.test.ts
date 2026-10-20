@@ -96,7 +96,7 @@ const os = require("node:os");
 const path = require("node:path");
 const [name, ...args] = process.argv.slice(2);
 const tries = (fn) => { try { fn(); return true; } catch { return false; } };
-const home = process.env.CLAUDE_CONFIG_DIR || process.env.CODEX_HOME || process.env.OPENCODE_CONFIG_DIR;
+const home = process.env.CLAUDE_CONFIG_DIR || process.env.CODEX_HOME || (process.env.OPENCODE_CONFIG && path.dirname(process.env.OPENCODE_CONFIG));
 fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify({
   name,
   args,
@@ -204,7 +204,7 @@ console.log(JSON.stringify({
   const HOME_VAR = {
     claude: "CLAUDE_CONFIG_DIR",
     codex: "CODEX_HOME",
-    opencode: "OPENCODE_CONFIG_DIR",
+    opencode: "OPENCODE_CONFIG",
   } as const;
   const harness = (
     name: keyof typeof HOME_VAR,
@@ -213,7 +213,11 @@ console.log(JSON.stringify({
     env: Record<string, string> = {},
   ) =>
     run(`magnesium-${name}`, args, {
-      [HOME_VAR[name]]: NodePath.join(state, name),
+      // OpenCode is pointed at the config file in its home, the others at the home itself.
+      [HOME_VAR[name]]:
+        name === "opencode"
+          ? NodePath.join(state, name, "opencode.json")
+          : NodePath.join(state, name),
       MAGNESIUM_SANDBOX: level,
       ...env,
     });

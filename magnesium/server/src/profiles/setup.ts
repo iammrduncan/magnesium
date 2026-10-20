@@ -1,6 +1,7 @@
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
+import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Stream from "effect/Stream";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
@@ -78,6 +79,42 @@ const lookOnPath = Effect.fn("profiles.lookOnPath")(function* (
   return undefined;
 });
 
+/** The version in `opencode --version`: 2.x says "opencode v2.0.32", 1.x a bare "1.18.35". */
+export const openCodeVersionOf = (output: string): string | undefined =>
+  /(\d+\.\d+\.\d+)/.exec(output)?.[1];
+
+/** Each binary's version, by path and modified time, so a sync doesn't run it every time. */
+const openCodeVersions = new Map<string, string | undefined>();
+
+/**
+ * `file` when it is OpenCode 2.x, which profiles run on (D69); a 1.x binary counts as no
+ * OpenCode here, and says why once. One that can't be asked is taken as it is.
+ */
+const supportedOpenCode = Effect.fn("profiles.supportedOpenCode")(function* (
+  file: string | undefined,
+) {
+  if (file === undefined) return undefined;
+  const fs = yield* FileSystem.FileSystem;
+  const info = yield* fs.stat(file).pipe(Effect.option);
+  const modified = Option.isSome(info)
+    ? Option.match(info.value.mtime, { onNone: () => 0, onSome: (date) => date.getTime() })
+    : 0;
+  const key = `${file}\u0000${modified}`;
+  if (!openCodeVersions.has(key)) {
+    const probed = yield* runCommand(file, ["--version"]);
+    const version = probed === undefined ? undefined : openCodeVersionOf(probed.stdout);
+    openCodeVersions.set(key, version);
+    if (version !== undefined && Number(version.split(".")[0]) < 2) {
+      yield* Effect.logWarning(
+        "OpenCode here is 1.x; profiles run on OpenCode 2.x, so none run on OpenCode on this machine.",
+        { opencode: file, version },
+      );
+    }
+  }
+  const version = openCodeVersions.get(key);
+  return version !== undefined && Number(version.split(".")[0]) < 2 ? undefined : file;
+});
+
 /**
  * Where each harness's CLI is now. Profile sync asks again on every run, so a
  * CLI installed after the server started, such as one copied into a pod, counts
@@ -90,7 +127,9 @@ export const findBinaries = Effect.fn("profiles.findBinaries")(function* (
   return {
     claude: env.MAGNESIUM_CLAUDE_BIN?.trim() || (yield* lookOnPath(env, wrapperDir, "claude")),
     codex: env.MAGNESIUM_CODEX_BIN?.trim() || (yield* lookOnPath(env, wrapperDir, "codex")),
-    opencode: yield* lookOnPath(env, wrapperDir, "opencode"),
+    opencode: yield* supportedOpenCode(
+      env.MAGNESIUM_OPENCODE_BIN?.trim() || (yield* lookOnPath(env, wrapperDir, "opencode")),
+    ),
   };
 });
 

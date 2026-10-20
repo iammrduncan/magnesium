@@ -148,9 +148,16 @@ export const planProfile = (
           environment: [
             { name: "MAGNESIUM_PROFILE", value: profile.name, sensitive: false },
             { name: "MAGNESIUM_SANDBOX", value: sandbox, sensitive: false },
-            // OpenCode's driver has no home setting: its config folder is the home.
+            // OpenCode's driver has no home setting: the home holds its config file, which
+            // OpenCode 2 merges over the machine's own (OPENCODE_CONFIG_DIR would replace it).
             ...(harness === "opencode"
-              ? [{ name: "OPENCODE_CONFIG_DIR", value: home, sensitive: false }]
+              ? [
+                  {
+                    name: "OPENCODE_CONFIG",
+                    value: path.join(home, "opencode.json"),
+                    sensitive: false,
+                  },
+                ]
               : []),
           ],
           enabled: true,

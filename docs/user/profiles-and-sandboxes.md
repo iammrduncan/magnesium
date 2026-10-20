@@ -65,7 +65,9 @@ is checked first:
   each one. Values never leave the machine.
 - **Runs on**: every machine, or the ones you tick; its harnesses (Claude
   Code, Codex or OpenCode) and sandbox level. OpenCode runs fenced or native,
-  and uses the machine's own OpenCode setup for its models.
+  and uses the machine's own OpenCode setup for its models. Profiles need
+  OpenCode 2.x: a machine with 1.x runs none on OpenCode. Set
+  `MAGNESIUM_OPENCODE_BIN` to pick which OpenCode a machine uses.
 - **History**: every version, by you or by an agent you approved, with what it
   changed. **Put back** restores an earlier one.
 

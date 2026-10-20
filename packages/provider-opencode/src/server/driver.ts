@@ -270,7 +270,7 @@ export const OpenCodeDriver: ProviderDriver<
                 Effect.andThen(cachedMaintenance({ fresh: true })),
               )
             : cachedMaintenance();
-      // magnesium: each session reads the profile's MCP tool rules from its OpenCode config
+      // magnesium: each 2.x session reads the profile's MCP tool rules from its OpenCode config (D69)
       const readToolRules = readConfigToolRules(processEnv).pipe(
         Effect.provideService(FileSystem.FileSystem, fileSystem),
         Effect.provideService(Path.Path, pathService),
@@ -283,7 +283,6 @@ export const OpenCodeDriver: ProviderDriver<
         enabled,
         config,
       }).pipe(
-        Effect.provideService(OpenCodeToolRules, readToolRules), // magnesium: profile tool rules
         Effect.mapError(
           (cause) =>
             new ProviderDriverError({

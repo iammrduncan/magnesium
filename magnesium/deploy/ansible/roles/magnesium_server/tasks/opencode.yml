@@ -10,15 +10,23 @@
     fail_msg: "Set magnesium_opencode_base_url, magnesium_secret_env_files (holding {{ magnesium_opencode_api_key_env }}) and magnesium_opencode_models."
 
 - name: Installed OpenCode version
-  ansible.builtin.command: "{{ magnesium_root }}/opencode/opencode --version"
+  ansible.builtin.command: "{{ magnesium_root }}/opencode/bin/opencode --version"
   register: magnesium_opencode_installed
   changed_when: false
   failed_when: false
   check_mode: false
 
+# 2.x says "opencode v2.0.32"; the version is the number in it. 2.x's first run
+# converts OpenCode's own database in place, as moving off 1.x needs (D69).
 - name: Install OpenCode {{ magnesium_opencode_version }}
-  when: magnesium_opencode_installed.stdout | default('') | trim != magnesium_opencode_version and not ansible_check_mode
+  when: >-
+    (magnesium_opencode_installed.stdout | default('') | regex_search('[0-9]+[.][0-9]+[.][0-9]+') | default('', true))
+    != magnesium_opencode_version and not ansible_check_mode
   block:
+    - name: A clean folder for OpenCode
+      ansible.builtin.file:
+        path: "{{ magnesium_root }}/opencode"
+        state: absent
     - name: Folder for OpenCode
       ansible.builtin.file:
         path: "{{ magnesium_root }}/opencode"
@@ -26,23 +34,24 @@
         mode: "0755"
     - name: Download OpenCode
       ansible.builtin.get_url:
-        url: "https://github.com/anomalyco/opencode/releases/download/v{{ magnesium_opencode_version }}/opencode-linux-{{ magnesium_arch }}.tar.gz"
-        dest: "{{ magnesium_root }}/opencode-{{ magnesium_opencode_version }}.tar.gz"
-        checksum: "sha256:{{ magnesium_opencode_sha256[magnesium_arch] }}"
+        url: "https://registry.npmjs.org/@opencode/cli-linux-{{ magnesium_arch }}/-/cli-linux-{{ magnesium_arch }}-{{ magnesium_opencode_version }}.tgz"
+        dest: "{{ magnesium_root }}/opencode-{{ magnesium_opencode_version }}.tgz"
+        checksum: "sha512:{{ magnesium_opencode_sha512[magnesium_arch] }}"
         mode: "0644"
     - name: Unpack OpenCode
       ansible.builtin.unarchive:
-        src: "{{ magnesium_root }}/opencode-{{ magnesium_opencode_version }}.tar.gz"
+        src: "{{ magnesium_root }}/opencode-{{ magnesium_opencode_version }}.tgz"
         dest: "{{ magnesium_root }}/opencode"
         remote_src: true
+        extra_opts: ["--strip-components=1"]
     - name: Remove the download
       ansible.builtin.file:
-        path: "{{ magnesium_root }}/opencode-{{ magnesium_opencode_version }}.tar.gz"
+        path: "{{ magnesium_root }}/opencode-{{ magnesium_opencode_version }}.tgz"
         state: absent
 
 - name: OpenCode on the unit's PATH
   ansible.builtin.file:
-    src: "{{ magnesium_root }}/opencode/opencode"
+    src: "{{ magnesium_root }}/opencode/bin/opencode"
     dest: "{{ ansible_env.HOME }}/.local/bin/opencode"
     state: link
     force: true
