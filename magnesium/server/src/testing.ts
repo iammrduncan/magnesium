@@ -48,6 +48,7 @@ import {
 import type * as NetAddress from "effect/net/NetAddress";
 
 import { Fleet } from "./fleet/Fleet.ts";
+import { Upkeep, type UpkeepState } from "./upkeep/Upkeep.ts";
 import { routesLayer } from "./index.ts";
 import {
   CallerUnauthenticatedError,
@@ -506,6 +507,27 @@ export const testFleetMachine = (
   detail: null,
   ...overrides,
 });
+
+/** An Upkeep with nothing to report and nothing it can do, for tests about something else. */
+export const idleUpkeep = (state: Partial<UpkeepState> = {}) =>
+  Upkeep.of({
+    previousRelease: null,
+    platform: "linux-x64",
+    timeZone: "UTC",
+    launcher: null,
+    state: Effect.succeed({
+      backups: { newestAt: null, failure: null },
+      activity: null,
+      lastResult: null,
+      ...state,
+    }),
+    changes: Stream.never,
+    backups: Effect.succeed({ backups: [], keep: 7 }),
+    backupNow: Effect.die("unused"),
+    restore: () => Effect.die("unused"),
+    rollback: Effect.die("unused"),
+    update: () => Effect.die("unused"),
+  });
 
 /** A stand-in for Fleet whose machine rows the test supplies. */
 export const testFleet = (machines: Effect.Effect<ReadonlyArray<FleetMachine>>) =>

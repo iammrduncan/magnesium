@@ -14,10 +14,12 @@ import { ServerPorts } from "../ports.ts";
 import {
   authenticateTestSocket,
   defaultSettingsPorts,
+  idleUpkeep,
   makeTestThreads,
   testDescriptor,
   testThread,
 } from "../testing.ts";
+import { Upkeep } from "../upkeep/Upkeep.ts";
 import { deploymentOf, releaseOf } from "./release.ts";
 import { countThreads, ServerStatus, layer, threadStateOf } from "./ServerStatus.ts";
 
@@ -69,7 +71,13 @@ describe("server status", () => {
       });
       const context = yield* Layer.build(
         layer.pipe(
-          Layer.provide(Layer.mergeAll(Layer.succeed(ServerPorts, ports), NodeServices.layer)),
+          Layer.provide(
+            Layer.mergeAll(
+              Layer.succeed(ServerPorts, ports),
+              Layer.succeed(Upkeep, idleUpkeep()),
+              NodeServices.layer,
+            ),
+          ),
         ),
       );
       const status = Context.get(context, ServerStatus);

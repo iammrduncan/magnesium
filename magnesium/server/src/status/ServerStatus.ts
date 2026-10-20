@@ -20,6 +20,7 @@ import * as Stream from "effect/Stream";
 import { ServerPorts } from "../ports.ts";
 import * as LiveTable from "../stream/LiveTable.ts";
 import { isBusy, viewOf } from "../threads.ts";
+import { Upkeep } from "../upkeep/Upkeep.ts";
 import { currentRelease, deploymentOf, nodeOf, roleOf, workloadOf } from "./release.ts";
 
 /**
@@ -101,6 +102,8 @@ export const layer = Layer.effect(
     const role = roleOf(process.env.MAGNESIUM_ROLE);
     const table = yield* LiveTable.make<ServerStatusRow>({ key: (row) => row.environmentId });
     const threads = new Map<ThreadId, ThreadState>();
+    const upkeep = yield* Upkeep;
+    let upkeepState = yield* upkeep.state;
 
     const publish = Effect.suspend(() =>
       table.set({
@@ -114,6 +117,13 @@ export const layer = Layer.effect(
         role,
         startedAt,
         threads: countThreads(threads.values()),
+        previousRelease: upkeep.previousRelease,
+        platform: upkeep.platform,
+        timeZone: upkeep.timeZone,
+        launcher: upkeep.launcher,
+        backups: upkeepState.backups,
+        activity: upkeepState.activity,
+        lastResult: upkeepState.lastResult,
       }),
     );
 
@@ -171,6 +181,17 @@ export const layer = Layer.effect(
     });
 
     yield* publish;
+    // Backups and builds change rarely; each change is one more row for the hub.
+    yield* Effect.forkScoped(
+      upkeep.changes.pipe(
+        Stream.runForEach((next) =>
+          Effect.suspend(() => {
+            upkeepState = next;
+            return publish;
+          }),
+        ),
+      ),
+    );
     return ServerStatus.of({
       serverVersion: descriptor.serverVersion,
       release,

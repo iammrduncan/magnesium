@@ -104,6 +104,13 @@ if [ -n "${MAGNESIUM_OPENCODE_BASE_URL:-}" ]; then
   ' "$settings" "$MAGNESIUM_OPENCODE_MODELS"
 fi
 
+# The server's Restore (goal 35) leaves its work for here: it runs while the
+# server is stopped, before each start. A pod changes build through its image.
+export MAGNESIUM_LAUNCHER=container
+MAGNESIUM_HOME="$T3CODE_HOME" MAGNESIUM_ROOT="${MAGNESIUM_ROOT:-/opt/magnesium-portable}" \
+  MAGNESIUM_RESTART=0 bash "$release/magnesium/deploy/bin/magnesium-release" apply-pending ||
+  echo "magnesium: a pending restore didn't run; starting the server as it is" >&2
+
 cd "$HOME"
 # `serve` prints a pairing token at every start; keep it out of the pod's log.
 # Pair on demand with `magnesium-release pair`.

@@ -78,7 +78,7 @@ Check it from a phone or laptop: the machine's `http://<address>:3773/` is refus
 
 The unit drops the server's stdout, so a startup pairing token never reaches the journal. Pair on demand instead.
 
-**Backups:** a user timer backs up `~/.magnesium/userdata` daily, and every activate backs it up first. That way a rollback past a database migration has a copy to restore. The newest seven are kept in `~/.magnesium/backups`. Logs are left out: the server caps its own, and journald rotates the rest. A restore stops the server and backs up the state it replaces first.
+**Backups:** the server backs up `~/.magnesium/userdata` itself, daily, and every activate backs it up first. That way a rollback past a database migration has a copy to restore. The newest seven are kept in `~/.magnesium/backups`. Logs are left out: the server caps its own, and journald rotates the rest. A restore stops the server and backs up the state it replaces first.
 
 ## Adding a machine
 

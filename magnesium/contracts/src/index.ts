@@ -8,3 +8,4 @@ export * from "./rpc.ts";
 export * from "./spokes.ts";
 export * from "./status.ts";
 export * from "./stream.ts";
+export * from "./upkeep.ts";

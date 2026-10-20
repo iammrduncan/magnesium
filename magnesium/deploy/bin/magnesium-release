@@ -15,6 +15,10 @@
 #                                               current or previous
 #   magnesium-release backup                    copy the state folder into backups/<UTC time>
 #   magnesium-release restore <backup>          stop the server, put a backup back, start it
+#   magnesium-release apply-pending             before the server starts: run the update,
+#                                               rollback or restore it left in upkeep/pending,
+#                                               and switch back from a new release that keeps
+#                                               failing to start (its launcher runs this)
 #   magnesium-release pair [--admin]            print a one-time pairing code, link and QR code
 #                                               (15 minutes) for a device; --admin lets that
 #                                               device pair others from Settings → Connections.
@@ -37,6 +41,13 @@
 # activate, rollback and restore stop or restart the unit, which ends every
 # process in it, a Fleet terminal's shell included. Started there, they go on
 # as a transient unit of their own and say how to follow it.
+#
+# The server's own Update, Roll back and Restore (Fleet, goal 35) write one line
+# to $MAGNESIUM_HOME/upkeep/pending and stop the server; its launcher (the unit's
+# ExecStartPre, or a pod's entrypoint) runs apply-pending while it is stopped.
+# A release switched to that way is on trial: the server ends the trial once it
+# has run a while, and the third start without that switches back. Each outcome
+# is written to upkeep/result.json for Fleet.
 set -euo pipefail
 
 ROOT="${MAGNESIUM_ROOT:-$HOME/.local/share/magnesium}"
@@ -391,6 +402,92 @@ status() {
   fi
 }
 
+# How many starts a release switched to by apply-pending gets before it is
+# switched back. The server ends the trial once it has run a while.
+TRIAL_STARTS=3
+
+# Writes upkeep/result.json: kind, from, to, ok, detail. Names and builds are
+# plain [0-9A-Za-z._-], so they need no escaping; the detail is escaped.
+write_result() {
+  local kind="$1" from="$2" to="$3" ok="$4" detail="$5"
+  detail="${detail//\\/\\\\}"
+  detail="${detail//\"/\\\"}"
+  mkdir -p "$STATE_HOME/upkeep"
+  printf '{"kind":"%s","from":"%s","to":"%s","ok":%s,"detail":"%s","at":"%s"}\n' \
+    "$kind" "$from" "$to" "$ok" "$detail" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    > "$STATE_HOME/upkeep/result.json.new"
+  mv "$STATE_HOME/upkeep/result.json.new" "$STATE_HOME/upkeep/result.json"
+}
+
+current_name() {
+  local link
+  link="$(readlink "$ROOT/current" 2> /dev/null || true)"
+  echo "${link#releases/}"
+}
+
+# activate <sha> <update|rollback>: switch while the server is stopped, on trial.
+pending_activate() {
+  local name="$1" kind="$2" old
+  old="$(current_name)"
+  # Said first, so a switch that dies halfway still leaves an answer.
+  write_result "$kind" "$old" "$name" false "$name couldn't be switched to."
+  if ! is_built "$ROOT/releases/$name"; then
+    write_result "$kind" "$old" "$name" false "$name isn't on this machine."
+    return
+  fi
+  MAGNESIUM_RESTART=0 switch_to "$name"
+  printf '%s %s %s 0\n' "$kind" "$old" "$name" > "$STATE_HOME/upkeep/trial"
+  write_result "$kind" "$old" "$name" true "Starting on $name."
+}
+
+# restore <backup>: put a backup back while the server is stopped.
+pending_restore() {
+  local name="$1"
+  write_result restore "" "$name" false "The restore of $name didn't finish."
+  if ! [[ "$name" =~ $BACKUP_NAME ]] || ! [ -d "$STATE_HOME/backups/$name" ]; then
+    write_result restore "" "$name" false "There is no backup named $name."
+    return
+  fi
+  MAGNESIUM_RESTART=0 restore "$name"
+  write_result restore "" "$name" true "Restored $name; the state it replaced is a backup of its own."
+}
+
+# Counts a start of a release on trial; the last one allowed switches back.
+check_trial() {
+  local trial="$STATE_HOME/upkeep/trial" kind from to starts
+  read -r kind from to starts < "$trial" || { rm -f "$trial"; return; }
+  if [ "$(current_name)" != "$to" ]; then
+    rm -f "$trial"
+    return
+  fi
+  starts=$((starts + 1))
+  if [ "$starts" -lt "$TRIAL_STARTS" ] || [ -z "$from" ]; then
+    printf '%s %s %s %s\n' "$kind" "$from" "$to" "$starts" > "$trial"
+    return
+  fi
+  rm -f "$trial"
+  MAGNESIUM_RESTART=0 switch_to "$from"
+  write_result "$kind" "$from" "$to" false "$to stopped $TRIAL_STARTS times while starting, so this server is back on $from."
+}
+
+apply_pending() {
+  local dir="$STATE_HOME/upkeep"
+  [ -d "$dir" ] || return 0
+  if [ -f "$dir/pending" ]; then
+    local op arg kind
+    read -r op arg kind < "$dir/pending" || true
+    # Taken first: an operation that fails is never tried again on every start.
+    rm -f "$dir/pending"
+    case "$op" in
+      activate) pending_activate "$arg" "${kind:-update}" ;;
+      restore) pending_restore "$arg" ;;
+      *) echo "magnesium-release: ignored an unknown pending operation: $op" >&2 ;;
+    esac
+  elif [ -f "$dir/trial" ]; then
+    check_trial
+  fi
+}
+
 case "${1:-}" in
   build)
     [ $# -eq 3 ] || die "usage: magnesium-release build <git-ref> <source>"
@@ -430,11 +527,15 @@ case "${1:-}" in
     [ $# -eq 2 ] || die "usage: magnesium-release restore <backup>"
     restore "$2"
     ;;
+  apply-pending)
+    [ $# -eq 1 ] || die "usage: magnesium-release apply-pending"
+    apply_pending
+    ;;
   pair)
     [ $# -le 2 ] || die "usage: magnesium-release pair [--admin]"
     pair "${2:-}"
     ;;
   *)
-    die "usage: magnesium-release build|activate|rollback|status|pack|unpack|prune|backup|restore|pair"
+    die "usage: magnesium-release build|activate|rollback|status|pack|unpack|prune|backup|restore|apply-pending|pair"
     ;;
 esac

@@ -115,7 +115,7 @@ Provider logins work from inside the pod: Settings → Providers → **Sign in**
 **Retiring the bare metal,** once you no longer want that rollback:
 
 1. Take the machine out of your Ansible inventory first, or the next release run reinstalls and starts the service beside the pod.
-2. As the machine's user, remove the units (`magnesium.service` with its `.d`, `magnesium-backup.service` and `.timer`) and reload systemd. Then remove `~/.local/share/magnesium` and its links in `~/.local/bin`, `~/.config/magnesium`, and `~/.magnesium` with its backups (the volume holds the state now).
+2. As the machine's user, remove the unit (`magnesium.service` with its `.d`) and reload systemd. Then remove `~/.local/share/magnesium` and its links in `~/.local/bin`, `~/.config/magnesium`, and `~/.magnesium` with its backups (the volume holds the state now).
 3. Remove what Magnesium set up for its agents there: `~/.config/opencode`, OpenCode's data in `~/.local/share/opencode` and `~/.local/state/opencode` (the volume has a copy), and the container sandbox's image from the user's Podman store.
 4. Retire the machine's own model key and its direct route from the hub.
 
@@ -125,7 +125,7 @@ Provider logins work from inside the pod: Settings → Providers → **Sign in**
 | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Upgrade   | Build the new commit's image and change the spoke's build in Settings. The old pod stops before the new one starts; a new release may migrate the database on start. |
 | Roll back | Run the previous image. Restore a backup first if the newer release migrated the database.                                                                           |
-| Back up   | Run `magnesium-release backup` on a schedule (a CronJob on the same node, with the same volume, `HOME` and uid). Backups land in `$HOME/.magnesium/backups`.         |
+| Back up   | Nothing to set up: the server backs itself up daily into `$HOME/.magnesium/backups` and keeps the newest seven. `magnesium-release backup` takes one now.            |
 | Restore   | Stop the spoke, run `magnesium-release restore <name>` in a one-off pod with the volume, then scale it back to one.                                                  |
 | Pair      | `magnesium-release pair` in the pod.                                                                                                                                 |
 

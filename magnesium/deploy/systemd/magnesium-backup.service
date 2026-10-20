@@ -1,8 +1,0 @@
-# Copies the Magnesium state folder into ~/.magnesium/backups. Started daily by
-# magnesium-backup.timer; `magnesium-release backup` keeps the newest seven.
-[Unit]
-Description=Back up the Magnesium state folder
-
-[Service]
-Type=oneshot
-ExecStart=%h/.local/share/magnesium/bin/magnesium-release backup

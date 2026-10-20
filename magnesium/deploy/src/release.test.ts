@@ -341,6 +341,105 @@ describe("magnesium-release", () => {
     expect(release.run("restore", "../userdata").status).not.toBe(0);
   });
 
+  describe("apply-pending, which a server's launcher runs before it starts", () => {
+    const pending = (home: string, line: string) => {
+      NodeFS.mkdirSync(NodePath.join(home, "upkeep"), { recursive: true });
+      NodeFS.writeFileSync(NodePath.join(home, "upkeep/pending"), `${line}\n`);
+    };
+    const result = (home: string): unknown =>
+      JSON.parse(NodeFS.readFileSync(NodePath.join(home, "upkeep/result.json"), "utf8"));
+    const onTrial = (home: string) => NodeFS.existsSync(NodePath.join(home, "upkeep/trial"));
+
+    it("does nothing when nothing is pending", () => {
+      const release = makeRoot();
+      expect(release.run("activate", "a").status).toBe(0);
+      const run = release.run("apply-pending");
+      expect(run.status).toBe(0);
+      expect(release.link("current")).toBe("releases/a");
+      expect(NodeFS.existsSync(NodePath.join(release.home, "upkeep/result.json"))).toBe(false);
+    });
+
+    it("switches to a pending release, and back after its third start that never settles", () => {
+      const release = makeRoot();
+      expect(release.run("activate", "a").status).toBe(0);
+      pending(release.home, "activate b update");
+
+      expect(release.run("apply-pending").status).toBe(0);
+      expect([release.link("current"), release.link("previous")]).toEqual([
+        "releases/b",
+        "releases/a",
+      ]);
+      expect(result(release.home)).toMatchObject({ kind: "update", from: "a", to: "b", ok: true });
+      expect(NodeFS.existsSync(NodePath.join(release.home, "upkeep/pending"))).toBe(false);
+      expect(onTrial(release.home)).toBe(true);
+
+      // b dies on each start, and the launcher starts it again: three starts in all.
+      for (const start of [2, 3]) {
+        expect(release.run("apply-pending").status, `start ${start}`).toBe(0);
+        expect(release.link("current")).toBe("releases/b");
+      }
+      expect(release.run("apply-pending").status).toBe(0);
+      expect(release.link("current")).toBe("releases/a");
+      expect(onTrial(release.home)).toBe(false);
+      expect(result(release.home)).toMatchObject({
+        kind: "update",
+        from: "a",
+        to: "b",
+        ok: false,
+        detail: "b stopped 3 times while starting, so this server is back on a.",
+      });
+    });
+
+    it("keeps a release whose server ended its trial", () => {
+      const release = makeRoot();
+      expect(release.run("activate", "a").status).toBe(0);
+      pending(release.home, "activate b rollback");
+      expect(release.run("apply-pending").status).toBe(0);
+      // What the server does once it has run a while.
+      NodeFS.rmSync(NodePath.join(release.home, "upkeep/trial"));
+      for (let start = 0; start < 4; start += 1) release.run("apply-pending");
+      expect(release.link("current")).toBe("releases/b");
+      expect(result(release.home)).toMatchObject({ kind: "rollback", to: "b", ok: true });
+    });
+
+    it("says why when the pending release isn't here, and stays on its own", () => {
+      const release = makeRoot();
+      expect(release.run("activate", "a").status).toBe(0);
+      pending(release.home, "activate c update");
+      expect(release.run("apply-pending").status).toBe(0);
+      expect(release.link("current")).toBe("releases/a");
+      expect(result(release.home)).toMatchObject({
+        to: "c",
+        ok: false,
+        detail: "c isn't on this machine.",
+      });
+    });
+
+    it("restores a pending backup, keeping the state it replaces as a backup", () => {
+      const release = makeRoot();
+      const userdata = NodePath.join(release.home, "userdata");
+      NodeFS.mkdirSync(userdata, { recursive: true });
+      NodeFS.writeFileSync(NodePath.join(userdata, "settings.json"), '{"from":"before"}');
+      expect(release.run("backup").status).toBe(0);
+      const backups = NodePath.join(release.home, "backups");
+      const [name = ""] = NodeFS.readdirSync(backups);
+      NodeFS.writeFileSync(NodePath.join(userdata, "settings.json"), '{"from":"after"}');
+      pending(release.home, `restore ${name}`);
+
+      expect(release.run("apply-pending").status).toBe(0);
+      expect(release.settings()).toBe('{"from":"before"}');
+      expect(NodeFS.readdirSync(backups)).toHaveLength(2);
+      expect(result(release.home)).toMatchObject({ kind: "restore", to: name, ok: true });
+
+      pending(release.home, "restore ../userdata");
+      expect(release.run("apply-pending").status).toBe(0);
+      expect(result(release.home)).toMatchObject({
+        ok: false,
+        detail: "There is no backup named ../userdata.",
+      });
+    });
+  });
+
   it("goes on as its own unit when started inside the server's, which a restore stops", () => {
     const release = makeRoot();
     NodeFS.mkdirSync(NodePath.join(release.home, "userdata"), { recursive: true });

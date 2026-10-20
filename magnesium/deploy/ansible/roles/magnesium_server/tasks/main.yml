@@ -97,11 +97,19 @@
         dest: "{{ ansible_env.HOME }}/.config/systemd/user/magnesium.service.d/secret-env.conf"
         mode: "0644"
       register: magnesium_dropin
-    - name: The daily backup of the state folder
-      ansible.builtin.copy:
-        src: "{{ role_path }}/../../../systemd/{{ item }}"
-        dest: "{{ ansible_env.HOME }}/.config/systemd/user/{{ item }}"
-        mode: "0644"
+    # The server backs itself up daily (goal 35); the timer that used to is retired.
+    - name: Stop the retired backup timer
+      ansible.builtin.systemd_service:
+        name: magnesium-backup.timer
+        scope: user
+        enabled: false
+        state: stopped
+      failed_when: false
+      when: not ansible_check_mode
+    - name: Remove the retired backup units
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/.config/systemd/user/{{ item }}"
+        state: absent
       loop: [magnesium-backup.service, magnesium-backup.timer]
       register: magnesium_backup_units
     - name: Reload the user's systemd when a unit changed
@@ -191,12 +199,4 @@
     scope: user
     enabled: true
     state: "{{ 'restarted' if (magnesium_env.changed or magnesium_unit.changed or magnesium_dropin.changed or (magnesium_activate.changed | default(false))) else 'started' }}"
-  when: not ansible_check_mode
-
-- name: Back up the state folder daily
-  ansible.builtin.systemd_service:
-    name: magnesium-backup.timer
-    scope: user
-    enabled: true
-    state: started
   when: not ansible_check_mode

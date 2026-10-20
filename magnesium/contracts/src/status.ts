@@ -2,6 +2,8 @@ import { EnvironmentId, IsoDateTime, NonNegativeInt } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
+import { BackupHealth, UpkeepActivity, UpkeepLauncher, UpkeepResult } from "./upkeep.ts";
+
 /**
  * What every Magnesium server says about itself. The hub keeps one live
  * subscription to each machine's status and gathers them into Fleet (goal 04).
@@ -50,6 +52,21 @@ export const ServerStatus = Schema.Struct({
   ),
   startedAt: IsoDateTime,
   threads: ThreadCounts,
+  // Goal 35: what Fleet shows about a server's upkeep, and what it can do there.
+  /** The build `magnesium-release rollback` goes back to; null when there is none. */
+  previousRelease: Schema.NullOr(Schema.String).pipe(
+    Schema.withDecodingDefault(Effect.succeed(null)),
+  ),
+  /** `<os>-<cpu>`, such as `linux-x64`: whether it can run another server's build as it is. */
+  platform: Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  /** The IANA time zone its clock and scheduled tasks keep (D64). */
+  timeZone: Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  /** What restarts it and runs its pending work; null when nothing does. */
+  launcher: Schema.NullOr(UpkeepLauncher).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  /** Null from a server that predates its own backups. */
+  backups: Schema.NullOr(BackupHealth).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  activity: Schema.NullOr(UpkeepActivity).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  lastResult: Schema.NullOr(UpkeepResult).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
 });
 export type ServerStatus = typeof ServerStatus.Type;
 

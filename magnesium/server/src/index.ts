@@ -32,6 +32,8 @@ import { pairingCodeLayer } from "./session/pairingCode.ts";
 import { sessionRenewRouteLayer } from "./session/renew.ts";
 import { currentRelease } from "./status/release.ts";
 import * as ServerStatus from "./status/ServerStatus.ts";
+import { upkeepHandlersLayer } from "./upkeep/handlers.ts";
+import * as Upkeep from "./upkeep/Upkeep.ts";
 
 export * from "./ports.ts";
 export { agentsCommand } from "./agents/cli.ts";
@@ -84,6 +86,7 @@ const rpcHandlersLayer = Layer.mergeAll(
   profileRpcHandlersLayer,
   spokeHandlersLayer,
   hubSpokeHandlersLayer,
+  upkeepHandlersLayer,
 );
 
 /** A gateway deploys spokes with its namespace's identity; other servers say they can't. */
@@ -131,5 +134,7 @@ export const routesLayer = Layer.mergeAll(
   Layer.provide(spokesLayer),
   Layer.provide(Layer.mergeAll(GatewayClient.layer, ModelKeys.layer)),
   Layer.provide(Layer.mergeAll(HubMachines.layer, ServerStatus.layer)),
+  // Status carries each server's backups and builds (goal 35).
+  Layer.provide(Upkeep.layer),
   Layer.provide(MagnesiumDb.layer),
 );

@@ -32,6 +32,13 @@ const status = (waiting: number): ServerStatus => ({
   role: null,
   startedAt: "2026-10-15T00:00:00.000Z",
   threads: { total: 3, running: 1, waiting, approvals: waiting, questions: 0 },
+  previousRelease: null,
+  platform: "linux-x64",
+  timeZone: "UTC",
+  launcher: "container",
+  backups: { newestAt: null, failure: null },
+  activity: null,
+  lastResult: null,
 });
 
 /** A machine the link dials: up or down, answering pings or silent, and droppable. */

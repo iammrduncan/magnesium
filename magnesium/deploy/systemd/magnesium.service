@@ -21,6 +21,10 @@ Environment=T3CODE_TELEMETRY_ENABLED=false
 Environment=T3CODE_NO_BROWSER=true
 # Provider CLIs (claude, codex) usually live in ~/.local/bin.
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+# The server's Update, Roll back and Restore (goal 35) leave their work for
+# here: it runs while the server is stopped, before each start.
+Environment=MAGNESIUM_LAUNCHER=systemd
+ExecStartPre=-/bin/bash %h/.local/share/magnesium/current/magnesium/deploy/bin/magnesium-release apply-pending
 # bin/magnesium-release points current at a built release.
 ExecStart=%h/.local/share/magnesium/node/bin/node %h/.local/share/magnesium/current/apps/server/dist/bin.mjs serve
 # `serve` prints a fresh pairing token on stdout at every start. Drop stdout so
@@ -28,8 +32,11 @@ ExecStart=%h/.local/share/magnesium/node/bin/node %h/.local/share/magnesium/curr
 # $T3CODE_HOME/userdata/logs. Pair a browser with `bin.mjs pair` on demand.
 StandardOutput=null
 StandardError=journal
-Restart=on-failure
+# Always: the server stops itself to run an update or a restore at its next start.
+Restart=always
 RestartSec=5
+# Another server owns the state folder (78): starting again won't help.
+RestartPreventExitStatus=78
 # Effect's runMain exits 130 when a stop signal interrupts it; that is a clean stop.
 SuccessExitStatus=130
 

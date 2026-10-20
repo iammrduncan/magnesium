@@ -1,5 +1,6 @@
 import {
   AuthAccessWriteScope,
+  AuthEnvironmentMaintainScope,
   AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
   type AuthEnvironmentScope,
@@ -14,6 +15,7 @@ import * as RpcMiddleware from "effect/rpc/RpcMiddleware";
 import { FleetEvent, FleetMachine, FleetReconnectInput } from "./fleet.ts";
 import { HubMachineName } from "./hub.ts";
 import { FooterItem } from "./footer.ts";
+import { BackupList, BackupNameInput, ServerBackup, UpdateInput, UpkeepError } from "./upkeep.ts";
 import {
   HomeAnswerError,
   HomeAnswerInput,
@@ -136,6 +138,11 @@ export const MAGNESIUM_WS_METHODS = {
   modelKeysList: "magnesium.modelKeys.list",
   modelKeysSet: "magnesium.modelKeys.set",
   modelKeysRemove: "magnesium.modelKeys.remove",
+  upkeepBackups: "magnesium.upkeep.backups",
+  upkeepBackupNow: "magnesium.upkeep.backupNow",
+  upkeepRestore: "magnesium.upkeep.restore",
+  upkeepRollback: "magnesium.upkeep.rollback",
+  upkeepUpdate: "magnesium.upkeep.update",
 } as const;
 
 /**
@@ -441,6 +448,34 @@ const ModelKeysRemoveRpc = Rpc.make(MAGNESIUM_WS_METHODS.modelKeysRemove, {
   error: SpokeError,
 }).annotate(RequiredScope, AuthAccessWriteScope);
 
+// A server's own upkeep (goal 35). Reading its backups is free; the rest
+// restarts the server, which upstream's maintenance scope covers.
+const UpkeepBackupsRpc = Rpc.make(MAGNESIUM_WS_METHODS.upkeepBackups, {
+  payload: Schema.Struct({}),
+  success: BackupList,
+  error: UpkeepError,
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
+const UpkeepBackupNowRpc = Rpc.make(MAGNESIUM_WS_METHODS.upkeepBackupNow, {
+  payload: Schema.Struct({}),
+  success: ServerBackup,
+  error: UpkeepError,
+}).annotate(RequiredScope, AuthEnvironmentMaintainScope);
+/** Stops the server, puts the backup back and starts it again; answers before it stops. */
+const UpkeepRestoreRpc = Rpc.make(MAGNESIUM_WS_METHODS.upkeepRestore, {
+  payload: BackupNameInput,
+  error: UpkeepError,
+}).annotate(RequiredScope, AuthEnvironmentMaintainScope);
+/** Restarts the server on the build before; answers before it stops. */
+const UpkeepRollbackRpc = Rpc.make(MAGNESIUM_WS_METHODS.upkeepRollback, {
+  payload: Schema.Struct({}),
+  error: UpkeepError,
+}).annotate(RequiredScope, AuthEnvironmentMaintainScope);
+/** Restarts the server on a release, built here first when asked; answers once it is under way. */
+const UpkeepUpdateRpc = Rpc.make(MAGNESIUM_WS_METHODS.upkeepUpdate, {
+  payload: UpdateInput,
+  error: UpkeepError,
+}).annotate(RequiredScope, AuthEnvironmentMaintainScope);
+
 export const MagnesiumRpcGroup = RpcGroup.make(
   PingRpc,
   ServerStatusRpc,
@@ -488,6 +523,11 @@ export const MagnesiumRpcGroup = RpcGroup.make(
   ModelKeysListRpc,
   ModelKeysSetRpc,
   ModelKeysRemoveRpc,
+  UpkeepBackupsRpc,
+  UpkeepBackupNowRpc,
+  UpkeepRestoreRpc,
+  UpkeepRollbackRpc,
+  UpkeepUpdateRpc,
 ).middleware(ScopeGuard);
 export type MagnesiumRpcs = RpcGroup.Rpcs<typeof MagnesiumRpcGroup>;
 export type MagnesiumRpcMethod = MagnesiumRpcs["_tag"];
