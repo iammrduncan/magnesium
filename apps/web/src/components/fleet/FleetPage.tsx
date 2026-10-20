@@ -16,6 +16,7 @@ import { useMemo, useState } from "react";
 
 import { currentFleetWatch, useFleetView } from "./fleetStore";
 import { formatTime } from "./fleetTime";
+import { EditPodDialog } from "../settings/HubMachineControls";
 import { AddMachineDialog, ForgetMachineDialog, GiveAccessAgainDialog } from "./MachineDialogs";
 import { MachineTerminal } from "./MachineTerminal";
 import { ServerPanel } from "./ServerPanel";
@@ -189,10 +190,22 @@ function MachineActions({
   readonly machine: FleetMachine;
   readonly onForgotten: () => void;
 }) {
-  const [dialog, setDialog] = useState<"access" | "forget" | null>(null);
-  // The hub's pods and attached machines are added and taken out in Settings → Connections.
-  if (machine.name === null || machine.deployment === "pod" || machine.deployment === "attached") {
-    return null;
+  const [dialog, setDialog] = useState<"access" | "forget" | "edit" | null>(null);
+  if (machine.name === null || machine.deployment === "attached") return null;
+  // The hub's pods are added and taken out in Settings → Connections; their settings change here too.
+  if (machine.deployment === "pod") {
+    return (
+      <>
+        <Button size="compact" variant="outline" onClick={() => setDialog("edit")}>
+          Edit pod
+        </Button>
+        <EditPodDialog
+          name={machine.name}
+          open={dialog === "edit"}
+          setOpen={(open) => setDialog(open ? "edit" : null)}
+        />
+      </>
+    );
   }
   return (
     <>

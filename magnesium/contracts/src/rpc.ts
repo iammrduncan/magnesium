@@ -449,8 +449,10 @@ const ModelKeysListRpc = Rpc.make(MAGNESIUM_WS_METHODS.modelKeysList, {
   error: SpokeError,
 }).annotate(RequiredScope, AuthAccessWriteScope);
 
+/** Adds or replaces a key; answers with the pods that get it, which restart to take it. */
 const ModelKeysSetRpc = Rpc.make(MAGNESIUM_WS_METHODS.modelKeysSet, {
   payload: ModelKeySetInput,
+  success: Schema.Array(HubMachineName),
   error: SpokeError,
 }).annotate(RequiredScope, AuthAccessWriteScope);
 

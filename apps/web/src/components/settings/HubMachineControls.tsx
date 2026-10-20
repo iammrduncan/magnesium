@@ -1,4 +1,4 @@
-// magnesium: managing the hub's machines in Kubernetes from the Environments list: Magnesium's own pods and machines attached inside workloads (goal 25, D59, D60)
+// magnesium: managing the hub's machines in Kubernetes from the Environments list: Magnesium's own pods and machines attached inside workloads (goal 25, D59, D60); editing a pod, here and from Fleet (goal 35)
 import type { HubAttached, HubMachine, HubSpoke, SpokeSpec } from "@magnesium/contracts";
 import {
   applyHubSpoke,
@@ -94,35 +94,54 @@ function useAction(onDone: () => void) {
   return { busy, error, setError, run };
 }
 
+/**
+ * Adds a Magnesium pod, or edits one (`existing`): its node, OpenCode's gateway
+ * and models, and the model keys it gets. Saving applies it through its
+ * gateway, which restarts the pod when anything it runs with changed.
+ */
 function AddSpokeDialog({
   gateways,
   keys,
   onAdded,
   open,
   setOpen,
+  existing,
 }: {
   readonly gateways: ReadonlyArray<HubMachine>;
   readonly keys: ReadonlyArray<string>;
   readonly onAdded: () => void;
+  readonly existing?: HubSpoke | undefined;
 } & Opened) {
-  const [gateway, setGateway] = useState(gateways[0]?.name ?? "");
+  const [gateway, setGateway] = useState(existing?.gateway ?? gateways[0]?.name ?? "");
   const [form, setForm] = useState({
-    name: "",
-    node: "",
-    home: "/home/magnesium",
-    volumeSize: "100Gi",
-    opencodeUrl: "",
-    opencodeModels: "",
-    startNow: true,
+    name: existing?.name ?? "",
+    node: existing?.spec.node ?? "",
+    home: existing?.spec.home ?? "/home/magnesium",
+    volumeSize: existing?.spec.volumeSize ?? "100Gi",
+    opencodeUrl: existing?.spec.opencode?.baseUrl ?? "",
+    opencodeModels: existing?.spec.opencode?.models.join(", ") ?? "",
+    startNow: existing === undefined ? true : existing.spec.replicas === 1,
   });
-  const [chosenKeys, setChosenKeys] = useState<ReadonlyArray<string>>([]);
+  const [chosenKeys, setChosenKeys] = useState<ReadonlyArray<string>>(existing?.keys ?? []);
   const action = useAction(() => setOpen(false));
   const set = (field: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) =>
     setForm((current) => ({ ...current, [field]: event.target.value }));
+  // A key it gets that the hub no longer holds still shows, so it can be unticked.
+  const keyChoices = [...new Set([...keys, ...chosenKeys])];
 
   const submit = () => {
-    const spec = specFromForm(form);
-    if ("problem" in spec) return action.setError(spec.problem);
+    const fromForm = specFromForm(form);
+    if ("problem" in fromForm) return action.setError(fromForm.problem);
+    // An edit keeps what the form doesn't show: its build, host name and whether it runs.
+    const spec: SpokeSpec =
+      existing === undefined
+        ? fromForm
+        : {
+            ...fromForm,
+            hostname: existing.spec.hostname,
+            build: existing.spec.build,
+            replicas: existing.spec.replicas,
+          };
     void action
       .run(() => applyHubSpoke(hubUrl(), { gateway, spec, keys: chosenKeys }))
       .then((done) => (done ? onAdded() : undefined));
@@ -132,50 +151,61 @@ function AddSpokeDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogPopup className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add a machine in Kubernetes</DialogTitle>
+          <DialogTitle>
+            {existing === undefined ? "Add a machine in Kubernetes" : `Edit ${existing.name}`}
+          </DialogTitle>
           <DialogDescription>
-            Its gateway runs it in its namespace, on a node the namespace allows. The hub pairs with
-            it once it is up.
+            {existing === undefined
+              ? "Its gateway runs it in its namespace, on a node the namespace allows. The hub pairs with it once it is up."
+              : "A Magnesium pod, through its gateway. Saving restarts the pod to take the change; its home and threads stay."}
           </DialogDescription>
         </DialogHeader>
         <DialogPanel>
           <div className="flex flex-col gap-3">
-            <Field label="Gateway">
-              <Select value={gateway} onValueChange={(value) => setGateway(value ?? "")}>
-                <SelectTrigger size="sm" aria-label="Gateway">
-                  <SelectValue>
-                    {gateways.find((g) => g.name === gateway)?.label ?? gateway}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectPopup>
-                  {gateways.map((candidate) => (
-                    <SelectItem key={candidate.name} hideIndicator value={candidate.name}>
-                      {candidate.label}
-                    </SelectItem>
-                  ))}
-                </SelectPopup>
-              </Select>
-            </Field>
-            <Field label="Name" hint="The hub's name for it, also its host name.">
-              <Input
-                value={form.name}
-                onChange={set("name")}
-                placeholder="cpu-host-3"
-                spellCheck={false}
-              />
-            </Field>
+            {existing === undefined ? (
+              <Field label="Gateway">
+                <Select value={gateway} onValueChange={(value) => setGateway(value ?? "")}>
+                  <SelectTrigger size="sm" aria-label="Gateway">
+                    <SelectValue>
+                      {gateways.find((g) => g.name === gateway)?.label ?? gateway}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectPopup>
+                    {gateways.map((candidate) => (
+                      <SelectItem key={candidate.name} hideIndicator value={candidate.name}>
+                        {candidate.label}
+                      </SelectItem>
+                    ))}
+                  </SelectPopup>
+                </Select>
+              </Field>
+            ) : null}
+            {existing === undefined ? (
+              <Field label="Name" hint="The hub's name for it, also its host name.">
+                <Input
+                  value={form.name}
+                  onChange={set("name")}
+                  placeholder="cpu-host-3"
+                  spellCheck={false}
+                />
+              </Field>
+            ) : null}
             <Field label="Node" hint="One the namespace allows.">
               <Input value={form.node} onChange={set("node")} spellCheck={false} />
             </Field>
-            <Field
-              label="Home folder"
-              hint="Where its volume is mounted. A machine moved in keeps its user's home path."
-            >
-              <Input value={form.home} onChange={set("home")} spellCheck={false} />
-            </Field>
-            <Field label="Volume size">
-              <Input value={form.volumeSize} onChange={set("volumeSize")} spellCheck={false} />
-            </Field>
+            {existing === undefined ? (
+              <>
+                <Field
+                  label="Home folder"
+                  hint="Where its volume is mounted. A machine moved in keeps its user's home path."
+                >
+                  <Input value={form.home} onChange={set("home")} spellCheck={false} />
+                </Field>
+                <Field label="Volume size">
+                  <Input value={form.volumeSize} onChange={set("volumeSize")} spellCheck={false} />
+                </Field>
+              </>
+            ) : null}
             <Field label="OpenCode gateway" hint="Optional: a LiteLLM or OpenAI-compatible URL.">
               <Input value={form.opencodeUrl} onChange={set("opencodeUrl")} spellCheck={false} />
             </Field>
@@ -188,12 +218,12 @@ function AddSpokeDialog({
                 />
               </Field>
             ) : null}
-            {keys.length > 0 ? (
+            {keyChoices.length > 0 ? (
               <fieldset className="flex flex-col gap-1.5">
                 <legend className="mb-1.5 text-xs font-medium text-foreground">
                   Model keys it gets
                 </legend>
-                {keys.map((key) => (
+                {keyChoices.map((key) => (
                   <label key={key} className="flex items-center gap-2 text-sm">
                     <Checkbox
                       checked={chosenKeys.includes(key)}
@@ -208,25 +238,34 @@ function AddSpokeDialog({
                 ))}
               </fieldset>
             ) : null}
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={form.startNow}
-                onCheckedChange={(checked) =>
-                  setForm((current) => ({ ...current, startNow: checked === true }))
-                }
-              />
-              Start it now
-            </label>
-            <p className="text-xs text-muted-foreground">
-              Untick it to copy a machine's home into its volume before it first starts. Adding it
-              again with the same name changes its settings.
-            </p>
+            {existing === undefined ? (
+              <>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={form.startNow}
+                    onCheckedChange={(checked) =>
+                      setForm((current) => ({ ...current, startNow: checked === true }))
+                    }
+                  />
+                  Start it now
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Untick it to copy a machine's home into its volume before it first starts.
+                </p>
+              </>
+            ) : null}
             {action.error ? <p className="text-xs text-destructive">{action.error}</p> : null}
           </div>
         </DialogPanel>
         <DialogFooter>
           <Button disabled={action.busy || gateway === ""} onClick={submit}>
-            {action.busy ? "Adding…" : "Add"}
+            {existing === undefined
+              ? action.busy
+                ? "Adding…"
+                : "Add"
+              : action.busy
+                ? "Saving…"
+                : "Save"}
           </Button>
         </DialogFooter>
       </DialogPopup>
@@ -488,6 +527,7 @@ type OpenDialog =
   | { readonly kind: "add-pod" }
   | { readonly kind: "attach" }
   | { readonly kind: "change-build"; readonly spoke: HubSpoke }
+  | { readonly kind: "edit"; readonly spoke: HubSpoke }
   | { readonly kind: "remove"; readonly spoke: HubSpoke }
   | { readonly kind: "detach"; readonly machine: HubAttached };
 
@@ -577,6 +617,16 @@ export function HubMachineControlsProvider({
       {dialog?.kind === "attach" ? (
         <AttachDialog open setOpen={setOpen} gateways={gateways} onAttached={done} />
       ) : null}
+      {dialog?.kind === "edit" ? (
+        <AddSpokeDialog
+          open
+          setOpen={setOpen}
+          gateways={gateways}
+          keys={keys}
+          existing={dialog.spoke}
+          onAdded={done}
+        />
+      ) : null}
       {dialog?.kind === "change-build" ? (
         <ChangeBuildDialog open setOpen={setOpen} spoke={dialog.spoke} onChanged={done} />
       ) : null}
@@ -625,6 +675,7 @@ export function HubMachineMenuItems({ name }: { readonly name: string | null }) 
         <MenuItem onClick={() => controls.toggle(spoke)}>
           {spoke.spec.replicas === 1 ? "Stop its pod" : "Start its pod"}
         </MenuItem>
+        <MenuItem onClick={() => controls.open({ kind: "edit", spoke })}>Edit…</MenuItem>
         <MenuItem onClick={() => controls.open({ kind: "change-build", spoke })}>
           Change build…
         </MenuItem>
@@ -670,5 +721,54 @@ export function KubernetesAddOptions({ onPick }: { readonly onPick: () => void }
         the labels.
       </p>
     </div>
+  );
+}
+
+/**
+ * Edit a Magnesium pod from anywhere, such as Fleet's panel: loads the pod's
+ * record and the hub's keys when opened, then edits as Settings does.
+ */
+export function EditPodDialog({ name, open, setOpen }: { readonly name: string } & Opened) {
+  const [spoke, setSpoke] = useState<HubSpoke | null>(null);
+  const [keys, setKeys] = useState<ReadonlyArray<string>>([]);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    let live = true;
+    void Promise.all([listHubSpokes(hubUrl()), listModelKeys(hubUrl()).catch(() => [])])
+      .then(([spokes, held]) => {
+        if (!live) return;
+        const found = spokes.find((candidate) => candidate.name === name) ?? null;
+        setSpoke(found);
+        setKeys(held);
+        setError(found === null ? `The hub runs no pod named ${name}.` : null);
+      })
+      .catch((cause: unknown) => live && setError(errorMessage(cause)));
+    return () => {
+      live = false;
+    };
+  }, [open, name]);
+  if (open && error !== null) {
+    return (
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogPopup className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit {name}</DialogTitle>
+            <DialogDescription>{error}</DialogDescription>
+          </DialogHeader>
+        </DialogPopup>
+      </Dialog>
+    );
+  }
+  // Closed, it unmounts, so the next opening starts from the pod as it is then.
+  return spoke === null || !open ? null : (
+    <AddSpokeDialog
+      open={open}
+      setOpen={setOpen}
+      gateways={[]}
+      keys={keys}
+      existing={spoke}
+      onAdded={() => undefined}
+    />
   );
 }

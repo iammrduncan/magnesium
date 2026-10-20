@@ -289,6 +289,53 @@ describe("the hub's spokes", () => {
     }).pipe(Effect.scoped),
   );
 
+  it.effect("sends a replaced key to every pod that gets it, and to no other", () =>
+    Effect.gen(function* () {
+      const hub = yield* makeHub({ access: ["cpu-host-2", "cpu-host-3"] });
+      yield* hub.keys.set("LITELLM_API_KEY", "sk-old");
+      yield* hub.spokes.apply({ gateway: "gateway", spec, keys: ["LITELLM_API_KEY"] });
+      yield* hub.spokes.apply({
+        gateway: "gateway",
+        spec: { ...spec, name: "cpu-host-3", hostname: "cpu-host-3" },
+        keys: [],
+      });
+      hub.applied.length = 0;
+
+      yield* hub.keys.set("LITELLM_API_KEY", "sk-new");
+      expect(yield* hub.spokes.sendKey("LITELLM_API_KEY")).toEqual(["cpu-host-2"]);
+      expect(hub.applied).toEqual([
+        {
+          gateway: "gateway",
+          input: { spec, secrets: { pairingCode: null, keys: { LITELLM_API_KEY: "sk-new" } } },
+        },
+      ]);
+    }).pipe(Effect.scoped),
+  );
+
+  it.effect("keeps the build a pod ran before its build changed, for Roll back", () =>
+    Effect.gen(function* () {
+      const hub = yield* makeHub({ access: ["cpu-host-2"] });
+      yield* hub.spokes.apply({
+        gateway: "gateway",
+        spec: { ...spec, build: "aaaaaaa" },
+        keys: [],
+      });
+      expect(yield* hub.spokes.previousBuildOf("cpu-host-2")).toBeNull();
+      yield* hub.spokes.changeBuild("cpu-host-2", "bbbbbbb", "aaaaaaa");
+      expect(yield* hub.spokes.previousBuildOf("cpu-host-2")).toBe("aaaaaaa");
+      expect(hub.applied.at(-1)?.input.spec.build).toBe("bbbbbbb");
+      // Other changes keep it.
+      yield* hub.spokes.apply({
+        gateway: "gateway",
+        spec: { ...spec, build: "bbbbbbb", node: "node-c" },
+        keys: [],
+      });
+      expect(yield* hub.spokes.previousBuildOf("cpu-host-2")).toBe("aaaaaaa");
+      expect(yield* hub.spokes.kindOf("cpu-host-2")).toBe("pod");
+      expect(yield* hub.spokes.kindOf("nowhere")).toBeNull();
+    }).pipe(Effect.scoped),
+  );
+
   it.effect("refuses a key the hub doesn't hold, and a gateway that isn't one", () =>
     Effect.gen(function* () {
       const hub = yield* makeHub({});

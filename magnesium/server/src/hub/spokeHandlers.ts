@@ -75,7 +75,10 @@ const keysSetHandler = MagnesiumRpcGroup.toLayerHandler(
   MAGNESIUM_WS_METHODS.modelKeysSet,
   Effect.gen(function* () {
     const keys = yield* ModelKeys;
-    return (input) => keys.set(input.name, input.value);
+    const spokes = yield* HubSpokes;
+    // A replaced key reaches every pod that gets it, which restarts to take it (goal 35).
+    return (input) =>
+      keys.set(input.name, input.value).pipe(Effect.andThen(spokes.sendKey(input.name)));
   }),
 );
 

@@ -60,6 +60,11 @@ export class HubSpokes extends Context.Service<
     readonly kindOf: (name: string) => Effect.Effect<"pod" | "attached" | null>;
     /** The build a spoke ran before its build last changed. */
     readonly previousBuildOf: (name: string) => Effect.Effect<string | null>;
+    /**
+     * Sends a model key's value again to every spoke that gets it, as after it
+     * is replaced (goal 35); each restarts to take it. Returns their names.
+     */
+    readonly sendKey: (key: string) => Effect.Effect<ReadonlyArray<string>, SpokeError>;
     readonly remove: (input: SpokeRemoveInput) => Effect.Effect<void, SpokeError>;
     /** The hub's machines that say they are gateways, connected now. */
     readonly gateways: Effect.Effect<ReadonlyArray<string>, SpokeError>;
@@ -494,9 +499,22 @@ export const make = Effect.gen(function* () {
       Effect.map((known) => known.find((record) => record.name === name)?.previousBuild ?? null),
     );
 
+  const sendKey = Effect.fn("HubSpokes.sendKey")(function* (key: string) {
+    const using = (yield* records).filter((record) => record.keys.includes(key));
+    for (const record of using) {
+      // Only its Secret changes; the pod rolls on the Secret's fingerprint.
+      yield* gateways.apply(record.gateway, {
+        spec: record.spec,
+        secrets: { pairingCode: null, keys: yield* keys.values(record.keys) },
+      });
+    }
+    return using.map((record) => record.name);
+  });
+
   return HubSpokes.of({
     list,
     apply: (input) => apply(input),
+    sendKey,
     changeBuild,
     kindOf,
     previousBuildOf,
