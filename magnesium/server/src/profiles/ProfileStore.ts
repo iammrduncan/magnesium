@@ -206,8 +206,12 @@ export const applySettings = (text: string, settings: ProfileSettingsChange): st
   return doc.toString();
 };
 
-/** One line saying what a change does, for its history, when its author gave none. */
-const describeChange = (change: ProfileChange): string => {
+/**
+ * One line saying what a change does to a profile whose profile.yaml was `meta`,
+ * for its history, when its author gave none. A form sends every field, so a
+ * setting is named only when it changes what profile.yaml says.
+ */
+export const describeChange = (change: ProfileChange, meta: string): string => {
   const parts: string[] = [];
   for (const file of change.files ?? []) {
     parts.push(file.content === null ? `removed ${file.path}` : `${file.path}`);
@@ -224,7 +228,12 @@ const describeChange = (change: ProfileChange): string => {
     launchArgs: "launch arguments",
     toolPermissions: "tool permissions",
   };
-  for (const key of Object.keys(settings)) parts.push(named[key] ?? key);
+  const before = JSON.stringify(parseDocument(meta).toJS());
+  for (const [key, value] of Object.entries(settings)) {
+    const one = { [key]: value } as ProfileSettingsChange;
+    if (JSON.stringify(parseDocument(applySettings(meta, one)).toJS()) === before) continue;
+    parts.push(named[key] ?? key);
+  }
   return parts.length === 0 ? "No change" : `Changed ${parts.join(", ")}`;
 };
 
@@ -451,6 +460,7 @@ export const make = Effect.gen(function* () {
           yield* requireProfile(change.name);
           yield* validateChange(change);
           yield* catchUp(change.name);
+          const meta = (yield* readOptional(path.join(dirOf(change.name), FILES.meta))) ?? "";
           const apply = (dir: string) =>
             Effect.gen(function* () {
               yield* applyFiles(dir, change.files ?? []);
@@ -467,7 +477,7 @@ export const make = Effect.gen(function* () {
           const version = yield* record(
             change.name,
             by,
-            change.summary?.trim() || describeChange(change),
+            change.summary?.trim() || describeChange(change, meta),
           );
           yield* deliver;
           return { saved: true, version, issues } satisfies ProfileSaveResult;

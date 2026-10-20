@@ -98,7 +98,11 @@ import {
 } from "@t3tools/provider-core/server/subagentProjection";
 import * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 import { turnScopedSelectionTransition } from "@t3tools/provider-core/server/selectionTransition";
-import { OPENCODE_PROVIDER, openCodePermissionRequestKind } from "../adapter.ts";
+import {
+  OPENCODE_PROVIDER,
+  openCodePermissionPrompt, // magnesium: whole-tool asks
+  openCodePermissionRequestKind,
+} from "../adapter.ts";
 import { openCodeToolTurnItem } from "../toolItems.ts";
 
 const OpenCode2ProviderCapabilities = {
@@ -2101,7 +2105,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
         {
           type: "approval_request",
           requestKind: openCodePermissionRequestKind(data.action, toolName),
-          prompt: data.resources.length === 0 ? data.action : data.resources.join("\n"),
+          prompt: openCodePermissionPrompt(data.action, data.resources), // magnesium: whole-tool asks
           // "Always" in OpenCode saves a grant for the whole project, so the
           // session-wide choice is T3's own rule on this session instead.
           options: [

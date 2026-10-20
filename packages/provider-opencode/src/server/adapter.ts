@@ -552,6 +552,11 @@ type OpenCodePermissionRequestKind = Extract<
   "command" | "file-read" | "file-change"
 >;
 
+// magnesium: name a whole-tool ask by its tool; "*" alone told the approver nothing
+/** What an approval card shows for a permission ask: its patterns, or the permission when they cover everything. */
+export const openCodePermissionPrompt = (permission: string, patterns: ReadonlyArray<string>) =>
+  patterns.every((pattern) => pattern === "*") ? permission : patterns.join("\n");
+
 export function openCodePermissionRequestKind(
   permission: string,
   toolName?: string,
@@ -1805,10 +1810,7 @@ export const makeOpenCodeAdapterV2 = Effect.fn("makeOpenCodeAdapterV2")(function
             type: "approval_request",
             requestId: pending.requestId,
             requestKind: pending.requestKind === "user_input" ? "command" : pending.requestKind,
-            prompt:
-              permission.patterns.length === 0
-                ? permission.permission
-                : permission.patterns.join("\n"),
+            prompt: openCodePermissionPrompt(permission.permission, permission.patterns), // magnesium: whole-tool asks
           };
         };
 

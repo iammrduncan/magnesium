@@ -11,7 +11,13 @@ import { afterEach } from "vite-plus/test";
 
 import { InstanceSource, ProfilesConfig, REVISION_FILE } from "./catalog.ts";
 import type { DetectedSetup } from "./setup.ts";
-import { applySettings, pathProblem, ProfileStore, layer as storeLayer } from "./ProfileStore.ts";
+import {
+  applySettings,
+  describeChange,
+  pathProblem,
+  ProfileStore,
+  layer as storeLayer,
+} from "./ProfileStore.ts";
 
 const roots: string[] = [];
 afterEach(() => {
@@ -295,5 +301,24 @@ describe("a profile's files and settings", () => {
     expect(after).toContain("harnesses: [ claude, codex ]");
     expect(after).toContain("sandbox:\n  level: container");
     expect(after).toContain('accent: "#c2410c"');
+  });
+
+  it("names in its history only the settings that change", () => {
+    const meta = 'name: serving\nmachines: ["*"]\nharness: claude\nsandbox:\n  level: fenced\n';
+    const form = {
+      name: "serving",
+      settings: {
+        machines: ["*"],
+        harnesses: ["opencode" as const],
+        sandbox: "fenced" as const,
+        launchArgs: [],
+        displayName: null,
+        accentColor: null,
+      },
+    };
+    expect(describeChange(form, meta)).toBe("Changed harnesses");
+    expect(
+      describeChange({ name: "serving", files: [{ path: "AGENTS.md", content: "x" }] }, meta),
+    ).toBe("Changed AGENTS.md");
   });
 });

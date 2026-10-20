@@ -44,6 +44,7 @@ import {
   openCodeBoundaryAfterProviderTurn,
   openCodeChildPermissionRules,
   openCodePermissionRules,
+  openCodePermissionPrompt,
   openCodePermissionRequestKind,
   openCodeToolProjectionKind,
   makeOpenCodeProtocolLogger,
@@ -2590,6 +2591,16 @@ describe("OpenCodeAdapterV2", () => {
       ),
     ),
   );
+
+  // magnesium: whole-tool asks
+  it("names a whole-tool ask by its tool, and a narrower one by its patterns", () => {
+    assert.equal(
+      openCodePermissionPrompt("t3_code_update_profile", ["*"]),
+      "t3_code_update_profile",
+    );
+    assert.equal(openCodePermissionPrompt("bash", []), "bash");
+    assert.equal(openCodePermissionPrompt("bash", ["git status", "ls *"]), "git status\nls *");
+  });
 
   it("maps native permission families to orchestration request kinds", () => {
     assert.equal(openCodePermissionRequestKind("bash"), "command");
