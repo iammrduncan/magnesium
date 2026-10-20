@@ -249,6 +249,31 @@ describe("magnesium-release", () => {
     expect(host.link("current")).toBe("releases/abcdef1234");
   });
 
+  it("packs an unpacked release again as it is, for a hub that didn't build its own", () => {
+    const builder = makeRoot();
+    const hub = makeRoot();
+    const machine = makeRoot();
+    // Built releases in a test root have no node_modules to deploy, so stand one in for a pack.
+    const packed = NodePath.join(builder.root, "packed");
+    NodeFS.mkdirSync(NodePath.join(packed, "apps/server/dist"), { recursive: true });
+    NodeFS.writeFileSync(NodePath.join(packed, "apps/server/dist/bin.mjs"), "");
+    NodeFS.writeFileSync(NodePath.join(packed, "RELEASE"), "abcdef1234\n");
+    const first = NodePath.join(builder.root, "first.tar.gz");
+    NodeChildProcess.execFileSync("tar", ["-czf", first, "-C", packed, "."]);
+
+    expect(hub.run("unpack", first).stdout).toContain("Unpacked abcdef1234.");
+    const again = NodePath.join(hub.root, "again.tar.gz");
+    const pack = hub.run("pack", "abcdef1234", again);
+    expect(pack.stderr).toBe("");
+    expect(pack.stdout).toContain("Packed abcdef1234");
+    expect(machine.run("unpack", again).stdout).toContain("Unpacked abcdef1234.");
+    expect(
+      NodeFS.existsSync(
+        NodePath.join(machine.root, "releases/abcdef1234/apps/server/dist/bin.mjs"),
+      ),
+    ).toBe(true);
+  });
+
   it("refuses a tarball that is not a packed release", () => {
     const release = makeRoot();
     const junk = NodePath.join(release.root, "junk.tar.gz");

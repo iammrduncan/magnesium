@@ -61,11 +61,21 @@ export interface UpkeepConfig {
   readonly stop: Effect.Effect<void>;
   /** How long a release on trial runs before it counts as started fine (a minute). */
   readonly settledAfter?: Duration.Duration;
+  /** `<os>-<cpu>`; the host's unless a test says otherwise. */
+  readonly platform?: string;
 }
+
+/** What a test server's upkeep takes instead of its process's own (`startTestServer`). */
+export const UpkeepOverrides = Context.Reference<Partial<UpkeepConfig>>(
+  "@magnesium/server/upkeep/UpkeepOverrides",
+  { defaultValue: () => ({}) },
+);
 
 export class Upkeep extends Context.Service<
   Upkeep,
   {
+    /** The build it runs; null in development. */
+    readonly release: string | null;
     /** The build a rollback goes back to; null when there is none. */
     readonly previousRelease: string | null;
     /** `<os>-<cpu>`: whether this server can run another one's build as it is. */
@@ -82,6 +92,13 @@ export class Upkeep extends Context.Service<
     readonly rollback: Effect.Effect<void, UpkeepError>;
     /** Builds the release first when asked, then stops the server, which comes back on it. */
     readonly update: (input: UpdateInput) => Effect.Effect<void, UpkeepError>;
+    /** A pack of the build it runs, for a machine like it (the hub sends it); made once. */
+    readonly packSelf: Effect.Effect<string, UpkeepError>;
+    /** Takes a pack another server sent and unpacks it as `name`, ready to update to. */
+    readonly receiveRelease: (
+      name: string,
+      body: Stream.Stream<Uint8Array, unknown>,
+    ) => Effect.Effect<void, UpkeepError>;
   }
 >()("@magnesium/server/upkeep/Upkeep") {}
 
@@ -106,6 +123,7 @@ export const releaseRootOf = (scriptPath: string): string | null => {
 };
 
 const isLauncher = Schema.is(UpkeepLauncher);
+const isUpkeepError = Schema.is(UpkeepError);
 export const launcherOf = (value: string | undefined): UpkeepLauncher | null => {
   const trimmed = value?.trim();
   return isLauncher(trimmed) ? trimmed : null;
@@ -448,9 +466,72 @@ export const make = (config: UpkeepConfig) =>
       }).pipe(Effect.forever),
     );
 
+    const packSelf = Effect.gen(function* () {
+      if (config.root === null || config.release === null) {
+        return yield* new UpkeepError({ detail: "This server doesn't run from a release." });
+      }
+      const packs = path.join(config.root, "packs");
+      const file = path.join(packs, `${config.release}.tar.gz`);
+      if (yield* fs.exists(file).pipe(Effect.orElseSucceed(() => false))) return file;
+      yield* fs
+        .makeDirectory(packs, { recursive: true })
+        .pipe(Effect.mapError((cause) => new UpkeepError({ detail: `Couldn't pack: ${cause}` })));
+      // Packs of older builds are of no more use: keep only this one.
+      for (const old of yield* fs.readDirectory(packs).pipe(Effect.orElseSucceed(() => []))) {
+        yield* fs.remove(path.join(packs, old), { recursive: true }).pipe(Effect.ignore);
+      }
+      const partial = `${file}.partial`;
+      const run = yield* runScript(["pack", config.release, partial]);
+      if (run.code !== 0) {
+        return yield* new UpkeepError({
+          detail: `Couldn't pack ${config.release}: ${lastLine(run.stderr) ?? "it stopped halfway"}`,
+        });
+      }
+      yield* fs
+        .rename(partial, file)
+        .pipe(Effect.mapError((cause) => new UpkeepError({ detail: `Couldn't pack: ${cause}` })));
+      return file;
+    }).pipe(Effect.withSpan("Upkeep.packSelf"));
+
+    const receiveRelease = (name: string, body: Stream.Stream<Uint8Array, unknown>) =>
+      Effect.gen(function* () {
+        yield* needsReleases("take another build");
+        const root = config.root ?? "";
+        const incoming = path.join(root, "incoming");
+        const file = path.join(incoming, `${name}-${process.pid}.tar.gz`);
+        const fail = (detail: string) => new UpkeepError({ detail });
+        yield* fs
+          .makeDirectory(incoming, { recursive: true })
+          .pipe(Effect.mapError((cause) => fail(`Couldn't take the build: ${cause}`)));
+        yield* Effect.ensuring(
+          Effect.gen(function* () {
+            yield* Stream.run(
+              body.pipe(
+                Stream.mapError((cause) => fail(`The build didn't arrive whole: ${cause}`)),
+              ),
+              fs.sink(file),
+            ).pipe(
+              Effect.mapError((cause) =>
+                isUpkeepError(cause) ? cause : fail(`Couldn't save the build: ${cause}`),
+              ),
+            );
+            const run = yield* runScript(["unpack", file]);
+            const unpacked = new RegExp(`(?:Unpacked ${name}\\.|${name} is already unpacked)`);
+            if (run.code !== 0 || !unpacked.test(run.stdout)) {
+              return yield* fail(
+                `Couldn't unpack ${name}: ${lastLine(run.stderr) ?? lastLine(run.stdout) ?? "it isn't a pack of it"}`,
+              );
+            }
+          }),
+          fs.remove(file).pipe(Effect.ignore),
+        );
+      }).pipe(Effect.withSpan("Upkeep.receiveRelease"));
+
     return Upkeep.of({
+      release: config.release,
       previousRelease,
-      platform: `${yield* HostProcess.Platform}-${yield* HostProcess.Architecture}`,
+      platform:
+        config.platform ?? `${yield* HostProcess.Platform}-${yield* HostProcess.Architecture}`,
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? null,
       launcher: config.launcher,
       state: SubscriptionRef.get(state),
@@ -460,6 +541,8 @@ export const make = (config: UpkeepConfig) =>
       restore,
       rollback,
       update,
+      packSelf,
+      receiveRelease,
     });
   });
 
@@ -492,6 +575,7 @@ export const layer = Layer.effect(
       entry === undefined
         ? null
         : yield* fs.realPath(entry).pipe(Effect.orElseSucceed(() => entry));
+    const overrides = yield* UpkeepOverrides;
     return yield* make({
       home: ports.baseDir,
       root: real === null ? null : releaseRootOf(real),
@@ -501,6 +585,7 @@ export const layer = Layer.effect(
       source: process.env.MAGNESIUM_SOURCE?.trim() || null,
       // runMain stops cleanly on SIGTERM; the launcher starts it again.
       stop: Effect.sync(() => void process.kill(process.pid, "SIGTERM")),
+      ...overrides,
     });
   }),
 );

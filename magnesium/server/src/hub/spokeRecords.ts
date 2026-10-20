@@ -21,6 +21,10 @@ export const SpokeRecord = Schema.Struct({
   url: Schema.String,
   spec: SpokeSpec,
   keys: Schema.Array(Schema.String),
+  /** The build it ran before its build last changed, for Fleet's Roll back (goal 35). */
+  previousBuild: Schema.NullOr(Schema.String).pipe(
+    Schema.withDecodingDefault(Effect.succeed(null)),
+  ),
 });
 export type SpokeRecord = typeof SpokeRecord.Type;
 

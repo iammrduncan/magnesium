@@ -47,6 +47,19 @@ export class HubSpokes extends Context.Service<
   {
     readonly list: Effect.Effect<ReadonlyArray<HubSpoke>, SpokeError>;
     readonly apply: (input: HubSpokeApplyInput) => Effect.Effect<HubSpoke, SpokeError>;
+    /**
+     * Runs a spoke on another build through its gateway (goal 35). `running` is
+     * the build it runs now, kept as the one to go back to.
+     */
+    readonly changeBuild: (
+      name: string,
+      build: string,
+      running: string | null,
+    ) => Effect.Effect<HubSpoke, SpokeError>;
+    /** How the hub runs a machine: its own pod, attached to a workload, or neither. */
+    readonly kindOf: (name: string) => Effect.Effect<"pod" | "attached" | null>;
+    /** The build a spoke ran before its build last changed. */
+    readonly previousBuildOf: (name: string) => Effect.Effect<string | null>;
     readonly remove: (input: SpokeRemoveInput) => Effect.Effect<void, SpokeError>;
     /** The hub's machines that say they are gateways, connected now. */
     readonly gateways: Effect.Effect<ReadonlyArray<string>, SpokeError>;
@@ -167,9 +180,18 @@ export const make = Effect.gen(function* () {
     return urlUnder(gatewayUpstream.url, `/spokes/${name}`).toString();
   });
 
-  const apply = Effect.fn("HubSpokes.apply")(function* (input: HubSpokeApplyInput) {
+  const apply = Effect.fn("HubSpokes.apply")(function* (
+    input: HubSpokeApplyInput,
+    running?: string | null,
+  ) {
     const { gateway, spec } = input;
     const known = yield* records;
+    const old = known.find((other) => other.name === spec.name);
+    // A new build keeps the one it replaces, for Roll back; any other change keeps what it had.
+    const previousBuild =
+      old !== undefined && old.spec.build !== spec.build
+        ? (running ?? old.spec.build ?? old.previousBuild)
+        : (old?.previousBuild ?? null);
     if ((yield* attachedRecords).some((record) => record.name === spec.name)) {
       return yield* new SpokeError({
         detail: `${spec.name} is attached to a workload; detach it first.`,
@@ -183,7 +205,14 @@ export const make = Effect.gen(function* () {
       spec,
       secrets: { pairingCode: code, keys: keyValues },
     });
-    const record: SpokeRecord = { name: spec.name, gateway, url, spec, keys: input.keys };
+    const record: SpokeRecord = {
+      name: spec.name,
+      gateway,
+      url,
+      spec,
+      keys: input.keys,
+      previousBuild,
+    };
     yield* save([...known.filter((other) => other.name !== spec.name), record]);
     yield* machines.refresh(spec.name);
     if (code !== null && spec.replicas === 1) {
@@ -436,9 +465,41 @@ export const make = Effect.gen(function* () {
 
   yield* discover.pipe(Effect.repeat(Schedule.spaced(DISCOVER_EVERY)), Effect.forkScoped);
 
+  const changeBuild = Effect.fn("HubSpokes.changeBuild")(function* (
+    name: string,
+    build: string,
+    running: string | null,
+  ) {
+    const record = (yield* records).find((other) => other.name === name);
+    if (record === undefined) {
+      return yield* new SpokeError({ detail: `The hub runs no spoke named ${name}.` });
+    }
+    return yield* apply(
+      { gateway: record.gateway, spec: { ...record.spec, build }, keys: record.keys },
+      running,
+    );
+  });
+
+  const kindOf = (name: string) =>
+    Effect.gen(function* () {
+      if ((yield* records).some((record) => record.name === name)) return "pod" as const;
+      if ((yield* attachedRecords).some((record) => record.name === name)) {
+        return "attached" as const;
+      }
+      return null;
+    });
+
+  const previousBuildOf = (name: string) =>
+    records.pipe(
+      Effect.map((known) => known.find((record) => record.name === name)?.previousBuild ?? null),
+    );
+
   return HubSpokes.of({
     list,
-    apply,
+    apply: (input) => apply(input),
+    changeBuild,
+    kindOf,
+    previousBuildOf,
     remove,
     gateways: gateways_,
     attached,

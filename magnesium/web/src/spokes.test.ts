@@ -164,6 +164,13 @@ describe("an environment's kind", () => {
     lastSeenAt: null,
     threads: null,
     detail: null,
+    previousRelease: null,
+    platform: null,
+    timeZone: null,
+    launcher: null,
+    backups: null,
+    activity: null,
+    lastResult: null,
     ...overrides,
   });
 

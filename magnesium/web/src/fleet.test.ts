@@ -27,6 +27,13 @@ const machine = (name: string | null, overrides: Partial<FleetMachine> = {}): Fl
   lastSeenAt: null,
   threads: { total: 4, running: 2, waiting: 1, approvals: 1, questions: 0 },
   detail: null,
+  previousRelease: null,
+  platform: null,
+  timeZone: null,
+  launcher: null,
+  backups: null,
+  activity: null,
+  lastResult: null,
   ...overrides,
 });
 

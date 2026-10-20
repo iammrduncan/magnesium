@@ -177,9 +177,28 @@ describe("Fleet's byte budget", () => {
     lastSeenAt: "2026-01-01T00:00:00.000Z",
     threads: { total: 140, running: 12, waiting: 3, approvals: 2, questions: 1 },
     detail: null,
+    // Its upkeep as a busy server shows it: a build behind it, a failed backup, a last update.
+    previousRelease: "0f1e2d3c4b",
+    platform: "linux-x64",
+    timeZone: "America/Los_Angeles",
+    launcher: "systemd",
+    backups: {
+      newestAt: "2026-01-01T03:12:00.000Z",
+      failure: { at: "2026-01-02T03:12:00.000Z", reason: "No space left on the backup volume." },
+    },
+    activity: null,
+    lastResult: {
+      kind: "update",
+      from: "0f1e2d3c4b",
+      to: "1a2b3c4d5e",
+      ok: true,
+      detail: "Updated to 1a2b3c4d5e.",
+      at: "2026-01-01T02:00:00.000Z",
+    },
   });
 
-  it("opens Fleet for five servers in under 4 KiB, and sends each change in under 640 bytes", () => {
+  // Each row carries its upkeep since goal 35, about 400 bytes of it at most.
+  it("opens Fleet for five servers in under 6 KiB, and sends each change in under 1 KiB", () => {
     const names = ["hub", "cpu-host-1", "cpu-host-2", "gpu-host-1", "gpu-host-2"];
     const snapshot: FleetMachinesItem = { _tag: "snapshot", sequence: 42, rows: names.map(row) };
     const change: FleetMachinesItem = {
@@ -190,7 +209,7 @@ describe("Fleet's byte budget", () => {
       ],
       removals: [],
     };
-    expect(wireBytes(snapshot)).toBeLessThan(4 * 1024);
-    expect(wireBytes(change)).toBeLessThan(640);
+    expect(wireBytes(snapshot)).toBeLessThan(6 * 1024);
+    expect(wireBytes(change)).toBeLessThan(1024);
   });
 });

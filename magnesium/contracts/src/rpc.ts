@@ -12,7 +12,13 @@ import * as Rpc from "effect/rpc/Rpc";
 import * as RpcGroup from "effect/rpc/RpcGroup";
 import * as RpcMiddleware from "effect/rpc/RpcMiddleware";
 
-import { FleetEvent, FleetMachine, FleetReconnectInput } from "./fleet.ts";
+import {
+  FleetEvent,
+  FleetMachine,
+  FleetReconnectInput,
+  FleetRestoreInput,
+  FleetServerInput,
+} from "./fleet.ts";
 import { HubMachineName } from "./hub.ts";
 import { FooterItem } from "./footer.ts";
 import { BackupList, BackupNameInput, ServerBackup, UpdateInput, UpkeepError } from "./upkeep.ts";
@@ -143,6 +149,11 @@ export const MAGNESIUM_WS_METHODS = {
   upkeepRestore: "magnesium.upkeep.restore",
   upkeepRollback: "magnesium.upkeep.rollback",
   upkeepUpdate: "magnesium.upkeep.update",
+  fleetBackups: "magnesium.fleet.backups",
+  fleetBackupNow: "magnesium.fleet.backupNow",
+  fleetRestore: "magnesium.fleet.restore",
+  fleetRollback: "magnesium.fleet.rollback",
+  fleetUpdate: "magnesium.fleet.update",
 } as const;
 
 /**
@@ -476,6 +487,32 @@ const UpkeepUpdateRpc = Rpc.make(MAGNESIUM_WS_METHODS.upkeepUpdate, {
   error: UpkeepError,
 }).annotate(RequiredScope, AuthEnvironmentMaintainScope);
 
+// The same, for any server in Fleet, asked of the hub (goal 35). The hub runs
+// each on the machine, or through a pod's gateway, and shows its progress.
+const FleetBackupsRpc = Rpc.make(MAGNESIUM_WS_METHODS.fleetBackups, {
+  payload: FleetServerInput,
+  success: BackupList,
+  error: UpkeepError,
+}).annotate(RequiredScope, AuthOrchestrationReadScope);
+const FleetBackupNowRpc = Rpc.make(MAGNESIUM_WS_METHODS.fleetBackupNow, {
+  payload: FleetServerInput,
+  success: ServerBackup,
+  error: UpkeepError,
+}).annotate(RequiredScope, AuthEnvironmentMaintainScope);
+const FleetRestoreRpc = Rpc.make(MAGNESIUM_WS_METHODS.fleetRestore, {
+  payload: FleetRestoreInput,
+  error: UpkeepError,
+}).annotate(RequiredScope, AuthEnvironmentMaintainScope);
+const FleetRollbackRpc = Rpc.make(MAGNESIUM_WS_METHODS.fleetRollback, {
+  payload: FleetServerInput,
+  error: UpkeepError,
+}).annotate(RequiredScope, AuthEnvironmentMaintainScope);
+/** Puts a server on the hub's build; answers once it is under way. */
+const FleetUpdateRpc = Rpc.make(MAGNESIUM_WS_METHODS.fleetUpdate, {
+  payload: FleetServerInput,
+  error: UpkeepError,
+}).annotate(RequiredScope, AuthEnvironmentMaintainScope);
+
 export const MagnesiumRpcGroup = RpcGroup.make(
   PingRpc,
   ServerStatusRpc,
@@ -528,6 +565,11 @@ export const MagnesiumRpcGroup = RpcGroup.make(
   UpkeepRestoreRpc,
   UpkeepRollbackRpc,
   UpkeepUpdateRpc,
+  FleetBackupsRpc,
+  FleetBackupNowRpc,
+  FleetRestoreRpc,
+  FleetRollbackRpc,
+  FleetUpdateRpc,
 ).middleware(ScopeGuard);
 export type MagnesiumRpcs = RpcGroup.Rpcs<typeof MagnesiumRpcGroup>;
 export type MagnesiumRpcMethod = MagnesiumRpcs["_tag"];

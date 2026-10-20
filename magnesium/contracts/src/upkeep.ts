@@ -8,6 +8,12 @@ import * as Schema from "effect/Schema";
  * nothing the server runs cuts the job off (`magnesium-release apply-pending`).
  */
 
+/**
+ * Where a machine takes a build the hub sends it: `PUT <path>/<release>` with
+ * the pack as the body (`magnesium-release pack`), then `upkeep.update`.
+ */
+export const UPKEEP_RELEASES_PATH = "/api/magnesium/upkeep/releases";
+
 /** A backup's folder under `<T3CODE_HOME>/backups`: the UTC time it was taken. */
 export const BACKUP_NAME_PATTERN = /^\d{8}T\d{6}Z(-\d+)?$/;
 export const BackupName = Schema.String.check(Schema.isPattern(BACKUP_NAME_PATTERN));

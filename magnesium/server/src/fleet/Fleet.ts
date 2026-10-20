@@ -11,6 +11,8 @@ import {
   type ServerStatus as ServerStatusRow,
   type StreamHistoryInput,
   type StreamSubscribeInput,
+  type UpkeepActivity,
+  type UpkeepResult,
 } from "@magnesium/contracts";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -65,8 +67,48 @@ export class Fleet extends Context.Service<
     readonly reconnect: (name: string) => Effect.Effect<void>;
     /** Each machine's row as its link last saw it, read without asking any machine. */
     readonly machines: Effect.Effect<ReadonlyArray<FleetMachine>>;
+    /** Every row, this server's own (`name: null`) included. */
+    readonly rows: Effect.Effect<ReadonlyArray<FleetMachine>>;
+    /** What the hub itself is doing to a server (goal 35), shown over what the server says. */
+    readonly setUpkeep: (machine: string | null, overlay: UpkeepOverlay) => Effect.Effect<void>;
   }
 >()("@magnesium/server/fleet/Fleet") {}
+
+/**
+ * The hub's own part in a server's upkeep: sending it a build, or changing a
+ * pod's image. Its activity wins over the server's; the newer result wins.
+ */
+export interface UpkeepOverlay {
+  readonly activity?: UpkeepActivity | null;
+  readonly lastResult?: UpkeepResult;
+  /** A pod's build before the hub changed it; its server can't know. */
+  readonly previousRelease?: string | null;
+}
+
+/** A row's upkeep fields from a server's status; all unknown before it says. */
+const upkeepOf = (status: ServerStatusRow | undefined) => ({
+  previousRelease: status?.previousRelease ?? null,
+  platform: status?.platform ?? null,
+  timeZone: status?.timeZone ?? null,
+  launcher: status?.launcher ?? null,
+  backups: status?.backups ?? null,
+  activity: status?.activity ?? null,
+  lastResult: status?.lastResult ?? null,
+});
+
+const newer = (a: UpkeepResult | null, b: UpkeepResult | undefined) =>
+  b === undefined || (a !== null && a.at >= b.at) ? a : b;
+
+export const withOverlay = (row: FleetMachine, overlay: UpkeepOverlay | undefined): FleetMachine =>
+  overlay === undefined
+    ? row
+    : {
+        ...row,
+        activity: overlay.activity ?? row.activity,
+        lastResult: newer(row.lastResult, overlay.lastResult),
+        previousRelease:
+          overlay.previousRelease === undefined ? row.previousRelease : overlay.previousRelease,
+      };
 
 const statusRowOf = (item: LiveTableItem<ServerStatusRow>) =>
   item._tag === "snapshot" ? item.rows[0] : item.upserts[0];
@@ -92,6 +134,15 @@ export const make = (
     const wakes = new Map<string, Queue.Queue<void>>();
     let carried: ReadonlyArray<string> = [];
     let selfStatus: ServerStatusRow | undefined;
+    const overlays = new Map<string, UpkeepOverlay>();
+    /** Each row as its server last said, before the hub's own upkeep work is laid over it. */
+    const bases = new Map<string, FleetMachine>();
+    const setRow = (row: FleetMachine) =>
+      Effect.suspend(() => {
+        const key = fleetMachineKey(row);
+        bases.set(key, row);
+        return table.set(withOverlay(row, overlays.get(key)));
+      });
 
     const remember = (machine: SeenMachine) =>
       Effect.sync(() => seen.set(machine.name, machine)).pipe(
@@ -115,6 +166,7 @@ export const make = (
       lastSeenAt: null,
       threads: selfStatus?.threads ?? null,
       detail: null,
+      ...upkeepOf(selfStatus),
     });
 
     // This server's own counts are followed only while someone watches Fleet.
@@ -125,7 +177,7 @@ export const make = (
           Stream.runForEach((item) => {
             const row = statusRowOf(item);
             if (row !== undefined) selfStatus = row;
-            return table.set(selfRow()).pipe(Effect.andThen(Deferred.succeed(first, undefined)));
+            return setRow(selfRow()).pipe(Effect.andThen(Deferred.succeed(first, undefined)));
           }),
           Effect.forkScoped,
         );
@@ -142,7 +194,7 @@ export const make = (
     const handlersFor = (name: string) => ({
       onStatus: (machine: ServerStatusRow) =>
         Effect.gen(function* () {
-          const previous = Option.getOrUndefined(yield* table.get(name));
+          const previous = bases.get(name);
           if (previous === undefined) return;
           const next: FleetMachine = {
             name,
@@ -159,8 +211,9 @@ export const make = (
             lastSeenAt: previous.lastSeenAt,
             threads: machine.threads,
             detail: null,
+            ...upkeepOf(machine),
           };
-          yield* table.set(next);
+          yield* setRow(next);
           if (previous.link === "connected") return;
           yield* appendEvent(name, "connected", null);
           yield* remember({
@@ -177,12 +230,12 @@ export const make = (
         readonly lastSeenAt: number | null;
       }) =>
         Effect.gen(function* () {
-          const previous = Option.getOrUndefined(yield* table.get(name));
+          const previous = bases.get(name);
           if (previous === undefined) return;
           if (relay !== undefined) yield* relay.down(name);
           const lastSeenAt =
             down.lastSeenAt === null ? previous.lastSeenAt : isoAt(down.lastSeenAt);
-          yield* table.set({
+          yield* setRow({
             ...previous,
             link: down.link,
             detail: down.detail,
@@ -285,7 +338,7 @@ export const make = (
         const wake = yield* Queue.sliding<void>(1);
         wakes.set(name, wake);
         const known = seen.get(name);
-        yield* table.set({
+        yield* setRow({
           name,
           label: known?.label ?? name,
           kind: "machine",
@@ -300,6 +353,7 @@ export const make = (
           lastSeenAt: known?.lastSeenAt ?? null,
           threads: null,
           detail: null,
+          ...upkeepOf(undefined),
         });
         yield* FiberMap.run(
           links,
@@ -312,6 +366,8 @@ export const make = (
       Effect.gen(function* () {
         wakes.delete(name);
         yield* FiberMap.remove(links, name);
+        bases.delete(name);
+        overlays.delete(name);
         yield* table.remove(name);
         if (relay !== undefined) yield* relay.forget(name);
       });
@@ -323,7 +379,7 @@ export const make = (
       carried = names;
       for (const name of names) if (!wakes.has(name)) yield* startLink(name);
       for (const name of previous) if (!names.includes(name)) yield* stopLink(name);
-      if (previous.length > 0 !== names.length > 0) yield* table.set(selfRow());
+      if (previous.length > 0 !== names.length > 0) yield* setRow(selfRow());
     });
 
     const reconnect = (name: string) =>
@@ -333,7 +389,7 @@ export const make = (
       });
 
     yield* syncLinks;
-    yield* table.set(selfRow());
+    yield* setRow(selfRow());
     yield* syncLinks.pipe(
       Effect.repeat(Schedule.spaced(options.configPoll ?? CONFIG_POLL)),
       Effect.forkScoped,
@@ -350,6 +406,14 @@ export const make = (
       machines: table.snapshot.pipe(
         Effect.map(({ rows }) => rows.filter((row) => row.name !== null)),
       ),
+      rows: table.snapshot.pipe(Effect.map(({ rows }) => rows)),
+      setUpkeep: (machine, overlay) =>
+        Effect.gen(function* () {
+          const key = machine ?? "@self";
+          overlays.set(key, { ...overlays.get(key), ...overlay });
+          const row = bases.get(key);
+          if (row !== undefined) yield* table.set(withOverlay(row, overlays.get(key)));
+        }),
     });
   });
 

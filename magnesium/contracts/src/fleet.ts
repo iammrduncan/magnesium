@@ -4,6 +4,13 @@ import * as Schema from "effect/Schema";
 
 import { HubMachineName } from "./hub.ts";
 import { ServerDeployment, ThreadCounts } from "./status.ts";
+import {
+  BackupHealth,
+  BackupName,
+  UpkeepActivity,
+  UpkeepLauncher,
+  UpkeepResult,
+} from "./upkeep.ts";
 
 /**
  * Fleet: every server the hub reaches, live (goal 04). The hub keeps one link
@@ -49,6 +56,17 @@ export const FleetMachine = Schema.Struct({
   threads: Schema.NullOr(ThreadCounts),
   /** Why it is offline or has no access, in a sentence. */
   detail: Schema.NullOr(Schema.String),
+  // Its upkeep (goal 35), from its status, with what the hub itself is doing to it.
+  /** The build a rollback goes back to; for a pod, the build the hub ran it on before. */
+  previousRelease: Schema.NullOr(Schema.String).pipe(
+    Schema.withDecodingDefault(Effect.succeed(null)),
+  ),
+  platform: Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  timeZone: Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  launcher: Schema.NullOr(UpkeepLauncher).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  backups: Schema.NullOr(BackupHealth).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  activity: Schema.NullOr(UpkeepActivity).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  lastResult: Schema.NullOr(UpkeepResult).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
 });
 export type FleetMachine = typeof FleetMachine.Type;
 
@@ -67,3 +85,13 @@ export type FleetEvent = typeof FleetEvent.Type;
 
 export const FleetReconnectInput = Schema.Struct({ name: HubMachineName });
 export type FleetReconnectInput = typeof FleetReconnectInput.Type;
+
+/** A server in Fleet: a machine's name on the hub, or null for the server answering. */
+export const FleetServerInput = Schema.Struct({ machine: Schema.NullOr(HubMachineName) });
+export type FleetServerInput = typeof FleetServerInput.Type;
+
+export const FleetRestoreInput = Schema.Struct({
+  machine: Schema.NullOr(HubMachineName),
+  name: BackupName,
+});
+export type FleetRestoreInput = typeof FleetRestoreInput.Type;

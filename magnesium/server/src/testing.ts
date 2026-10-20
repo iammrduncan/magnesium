@@ -48,7 +48,7 @@ import {
 import type * as NetAddress from "effect/net/NetAddress";
 
 import { Fleet } from "./fleet/Fleet.ts";
-import { Upkeep, type UpkeepState } from "./upkeep/Upkeep.ts";
+import { Upkeep, type UpkeepConfig, UpkeepOverrides, type UpkeepState } from "./upkeep/Upkeep.ts";
 import { routesLayer } from "./index.ts";
 import {
   CallerUnauthenticatedError,
@@ -97,6 +97,15 @@ const sessionNamed = (name: string | undefined): CallerSession | undefined => {
     paired: name !== "cli",
   };
 };
+
+/** Authenticates `Bearer <token>` as the named test session, and anything else as sockets do. */
+export const authenticateBearer =
+  (token: string, sessionName: string) => (request: HttpServerRequest.HttpServerRequest) => {
+    const session = sessionNamed(sessionName);
+    return request.headers.authorization === `Bearer ${token}` && session !== undefined
+      ? Effect.succeed(session)
+      : authenticateTestSocket(request);
+  };
 
 /** Authenticates a `wsTicket` query parameter, then the `t3_session` cookie, by session name. */
 export const authenticateTestSocket = (request: HttpServerRequest.HttpServerRequest) => {
@@ -505,12 +514,20 @@ export const testFleetMachine = (
   lastSeenAt: null,
   threads: null,
   detail: null,
+  previousRelease: null,
+  platform: null,
+  timeZone: null,
+  launcher: null,
+  backups: null,
+  activity: null,
+  lastResult: null,
   ...overrides,
 });
 
 /** An Upkeep with nothing to report and nothing it can do, for tests about something else. */
 export const idleUpkeep = (state: Partial<UpkeepState> = {}) =>
   Upkeep.of({
+    release: null,
     previousRelease: null,
     platform: "linux-x64",
     timeZone: "UTC",
@@ -527,6 +544,8 @@ export const idleUpkeep = (state: Partial<UpkeepState> = {}) =>
     restore: () => Effect.die("unused"),
     rollback: Effect.die("unused"),
     update: () => Effect.die("unused"),
+    packSelf: Effect.die("unused"),
+    receiveRelease: () => Effect.die("unused"),
   });
 
 /** A stand-in for Fleet whose machine rows the test supplies. */
@@ -537,6 +556,8 @@ export const testFleet = (machines: Effect.Effect<ReadonlyArray<FleetMachine>>) 
     eventHistory: () => Effect.die("unused"),
     reconnect: () => Effect.void,
     machines,
+    rows: machines,
+    setUpkeep: () => Effect.void,
   });
 
 /** `hub-machines.json` for a hub that carries these machines. */
@@ -556,6 +577,8 @@ export const startTestServer = (
     readonly ports?: Partial<ServerPorts["Service"]>;
     /** Files written into the server's base directory before it starts, such as `hub-machines.json`. */
     readonly files?: Readonly<Record<string, string>>;
+    /** Its upkeep's release root, launcher and the like, instead of this process's (goal 35). */
+    readonly upkeep?: Partial<UpkeepConfig>;
   } = {},
 ) =>
   Effect.gen(function* () {
@@ -593,7 +616,13 @@ export const startTestServer = (
         disableListenLog: true,
         disableLogger: true,
       }).pipe(
-        Layer.provide(Layer.mergeAll(Layer.succeed(ServerPorts, ports), FetchHttpClient.layer)),
+        Layer.provide(
+          Layer.mergeAll(
+            Layer.succeed(ServerPorts, ports),
+            Layer.succeed(UpkeepOverrides, options.upkeep ?? {}),
+            FetchHttpClient.layer,
+          ),
+        ),
         Layer.provide(NodeServices.layer),
         Layer.provideMerge(NodeHttpServer.layer(() => server, { port: 0, host: "127.0.0.1" })),
       ),

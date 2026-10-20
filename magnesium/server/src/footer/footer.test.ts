@@ -57,6 +57,13 @@ const machine = (name: string | null, overrides: Partial<FleetMachine> = {}): Fl
   lastSeenAt: null,
   threads: { total: 4, running: 1, waiting: 0, approvals: 0, questions: 0 },
   detail: null,
+  previousRelease: null,
+  platform: null,
+  timeZone: null,
+  launcher: null,
+  backups: null,
+  activity: null,
+  lastResult: null,
   ...overrides,
 });
 
@@ -154,6 +161,8 @@ const fakeFleet = Effect.gen(function* () {
     eventHistory: () => Effect.die("unused"),
     reconnect: () => Effect.void,
     machines: Effect.succeed([]),
+    rows: Effect.succeed([]),
+    setUpkeep: () => Effect.void,
   });
   return { table, service, watchers: () => watchers };
 });

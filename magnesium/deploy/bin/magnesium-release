@@ -336,6 +336,12 @@ pack() {
   local name="$1" out="$2"
   local release="$ROOT/releases/$name"
   is_built "$release" || die "release $name is missing or not built"
+  # An unpacked pack is in the packed shape already: send it on as it is.
+  if [ -f "$release/RELEASE" ]; then
+    tar -czf "$out" -C "$release" .
+    echo "Packed $name into $out."
+    return
+  fi
   local work
   work="$(mktemp -d)"
   # The published `t3` package's shape: dist plus its production dependencies.

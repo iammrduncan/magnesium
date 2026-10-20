@@ -6,6 +6,7 @@ import { HttpRouter } from "effect/http";
 import * as MagnesiumAgentTools from "./agents/MagnesiumAgentTools.ts";
 import * as MagnesiumDb from "./db/MagnesiumDb.ts";
 import * as Fleet from "./fleet/Fleet.ts";
+import * as FleetUpkeep from "./fleet/FleetUpkeep.ts";
 import { fleetHandlersLayer } from "./fleet/handlers.ts";
 import { footerHandlersLayer } from "./footer/handlers.ts";
 import { gatewayConfigFromEnv, gatewayRouteLayer } from "./gateway/gateway.ts";
@@ -33,6 +34,7 @@ import { sessionRenewRouteLayer } from "./session/renew.ts";
 import { currentRelease } from "./status/release.ts";
 import * as ServerStatus from "./status/ServerStatus.ts";
 import { upkeepHandlersLayer } from "./upkeep/handlers.ts";
+import { upkeepReleaseRoute } from "./upkeep/routes.ts";
 import * as Upkeep from "./upkeep/Upkeep.ts";
 
 export * from "./ports.ts";
@@ -59,18 +61,21 @@ const routeLayers = Layer.unwrap(
   Effect.gen(function* () {
     const machines = yield* HubMachines.HubMachines;
     const ports = yield* ServerPorts;
+    const upkeep = yield* Upkeep.Upkeep;
     // A gateway also passes the hub through to the spokes in its namespace (goal 25).
     const gateway = gatewayConfigFromEnv(process.env);
     return Layer.mergeAll(
       hubProxyRouteLayer,
       hubMachineRoutesLayer,
       sessionRenewRouteLayer,
+      upkeepReleaseRoute,
       gateway === null ? Layer.empty : gatewayRouteLayer(gateway),
     ).pipe(
       HttpRouter.provideRequest(
         Layer.mergeAll(
           Layer.succeed(HubMachines.HubMachines, machines),
           Layer.succeed(ServerPorts, ServerPorts.of(ports)),
+          Layer.succeed(Upkeep.Upkeep, upkeep),
         ),
       ),
     );
@@ -122,6 +127,8 @@ export const routesLayer = Layer.mergeAll(
   pairingCodeLayer,
 ).pipe(
   Layer.provide(Home.layer),
+  // Fleet's Update, Roll back and backups change pods through their gateways (goal 35).
+  Layer.provide(FleetUpkeep.layer),
   // Fleet tells the hub's spokes which machines are gateways, and its push
   // which machines are up and when each started.
   Layer.provide(HubSpokes.layer),
