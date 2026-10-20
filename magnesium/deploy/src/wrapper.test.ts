@@ -449,7 +449,8 @@ describe.each(MECHANISMS)("the %s fence", (mechanism) => {
           workspaces: [true, true, true],
           secret: "denied",
           secretsListed: false,
-          // Untested on Landlock alone: it may refuse to open the state home.
+          // Landlock alone may refuse it; OpenCode 2 runs there anyway, as Linux's
+          // realpath doesn't open the folders it resolves.
           stateHomeOpens: mechanism === "landlock" ? expect.any(Boolean) : true,
           attachmentRead: true,
           attachmentWritable: false,
