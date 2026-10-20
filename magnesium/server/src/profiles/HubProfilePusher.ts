@@ -49,6 +49,7 @@ const PUSH_EVERY = Duration.seconds(20);
 /** In case a machine's profiles went missing while its server kept running. */
 const RECHECK_EVERY = Duration.minutes(10);
 const CALL_TIMEOUT = Duration.seconds(20);
+const NOT_CONNECTED = "The hub isn't connected to this machine.";
 
 /** What a machine was last found to hold, under which start of its server, and when. */
 export interface HeldRevision {
@@ -179,17 +180,17 @@ export const make = Effect.gen(function* () {
         });
         continue;
       }
-      // Offline or still connecting: it is asked once its link is up.
+      const previous = (yield* Ref.get(statuses)).get(name);
+      // Offline or still connecting: its row says so, keeping what it last held, and it is
+      // asked once its link is up.
       if (machine.link !== "connected") {
-        if (!(yield* Ref.get(statuses)).has(name)) {
-          yield* setStatus({
-            machine: name,
-            revision: null,
-            checkedAt: null,
-            error: "The hub isn't connected to this machine.",
-            refused: [],
-          });
-        }
+        yield* setStatus({
+          machine: name,
+          revision: previous?.revision ?? null,
+          checkedAt: previous?.checkedAt ?? null,
+          error: NOT_CONNECTED,
+          refused: previous?.refused ?? [],
+        });
         continue;
       }
       const checkedAt = DateTime.toEpochMillis(nowAt);
@@ -197,6 +198,8 @@ export const make = Effect.gen(function* () {
         !askEvery &&
         !askDue(held.get(name), { revision, startedAt: machine.startedAt }, checkedAt)
       ) {
+        // Back on the same start of its server: it still holds what it held.
+        if (previous?.error === NOT_CONNECTED) yield* setStatus({ ...previous, error: null });
         continue;
       }
       const outcome = yield* pushTo(name, { revision, profiles }).pipe(Effect.result);
@@ -222,7 +225,6 @@ export const make = Effect.gen(function* () {
           removed: result.removed,
         });
       }
-      const previous = (yield* Ref.get(statuses)).get(name);
       yield* setStatus({
         machine: name,
         revision,

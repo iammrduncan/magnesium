@@ -244,12 +244,19 @@ describe("the hub's push", () => {
         const [edited] = yield* pusher.status;
         expect(edited?.revision).not.toBe(first?.revision);
 
-        // Offline, then back on the same start: still nothing to ask.
+        // Offline, then back on the same start: its row says so meanwhile, and there is
+        // still nothing to ask.
         row = { ...row, link: "offline" };
         yield* pusher.pushNow;
+        const [away] = yield* pusher.status;
+        expect(away?.error).toBe("The hub isn't connected to this machine.");
+        expect(away?.revision).toBe(edited?.revision);
         row = { ...row, link: "connected" };
         yield* pusher.pushNow;
         expect(machine.tickets()).toBe(2);
+        const [back] = yield* pusher.status;
+        expect(back?.error).toBeNull();
+        expect(back?.current).toBe(true);
 
         // Its server restarted, perhaps on an empty home: asked again.
         row = { ...row, startedAt: "2026-01-02T00:00:00.000Z" };
