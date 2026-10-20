@@ -74,10 +74,10 @@ describe("provider compatibility", () => {
     // Every installed build fetches main's manifest, and 0.0.45 and older run the
     // V1 orchestrator, which cannot drive OpenCode 2.
     const opencode = ProviderDriverKind.make("opencode");
-    // magnesium: this release runs Orchestrator V2 and drives OpenCode 2.0.28, the
-    // version its client is built for; profiles run on 2.x only (D69).
+    // magnesium: this release runs Orchestrator V2 and drives OpenCode 2.0.32 (2.0.28
+    // ignores a config's instructions); profiles run on 2.x only (D69).
     for (const [version, expected] of [
-      ["2.0.28", "supported"],
+      ["2.0.32", "supported"],
       ["1.14.19", "supported"],
       ["2.0.18", "broken"],
       ["1.14.18", "broken"],
@@ -89,7 +89,7 @@ describe("provider compatibility", () => {
         "0.0.45",
       );
       assert.strictEqual(advisory?.status, expected, `OpenCode ${version} on 0.0.45`);
-      assert.strictEqual(advisory?.recommendedVersion, "2.0.28");
+      assert.strictEqual(advisory?.recommendedVersion, "2.0.32");
     }
     // Pi has no driver before V2.
     assert.isUndefined(

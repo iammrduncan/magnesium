@@ -56,12 +56,12 @@ magnesium_settings: {}
 # OpenCode through an LLM gateway (LiteLLM or another OpenAI-compatible one),
 # for machines without Claude Code (D36). OpenCode 2.x only (D69), from its npm
 # package for each platform; the sums are the registry's published sha512.
-# 2.0.28 is the version this release's OpenCode client (@opencode/client) is built for.
+# 2.0.32, not older: 2.0.28 ignores a config's `instructions`, which hold a profile's rules.
 magnesium_opencode: false
-magnesium_opencode_version: "2.0.28"
+magnesium_opencode_version: "2.0.32"
 magnesium_opencode_sha512:
-  x64: 1dd810d9cf45ac447cf30dc0966fd419dcd4e79942734157c529be54d317533f98cafd37b8b73467e3f14a7101cac99834a705bdc9f1753eded3118fa32b6b36
-  arm64: 04e8d764cb6f62243dc68c1f1d726c780467ef01cdf114ef46f62f30c22c8c838424e62dbf868fbc1e25d019a69e1504859420ae9acf15a9a4503cb49438988b
+  x64: 439d287c143781dc230fa65086b551f1f5659bc0f6c4f32c872e1dca763a97a6fea8b74a801489f56a68683cab417d585a67f6b3b20de116d79a85d77498ad0c
+  arm64: 611e4ed378abbe6a2dfc6d1ff16e3d7a1be19f9baa085377bdff494ec0a1bdfe3b5ba95d8ca08dbec6824974b648fdba74f394310067ed6a9b2a7c87ceb351e7
 magnesium_opencode_base_url: "" # https://llm-gateway.example.com/v1
 magnesium_opencode_models: [] # ["<model>"]; the first is the default
 magnesium_opencode_api_key_env: LITELLM_API_KEY
