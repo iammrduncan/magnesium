@@ -469,20 +469,23 @@ function ProfileView({
         </Alert>
       ) : null}
       {/* The boards' layout: the sections, then Delivery and Used by in their own column. */}
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <Tabs className="min-w-0" value={tab} onValueChange={(value) => onTab(value as ProfileTab)}>
-          <TabsList aria-label="Profile sections">
-            {PROFILE_TABS.map((value) => (
-              <TabsTab key={value} value={value}>
-                {TAB_LABEL[value]}
-                {counts[value] !== undefined ? (
-                  <span className="text-xs text-muted-foreground tabular-nums">
-                    {counts[value]}
-                  </span>
-                ) : null}
-              </TabsTab>
-            ))}
-          </TabsList>
+          {/* The row scrolls where seven tabs don't fit, as on a phone. */}
+          <div className="overflow-x-auto">
+            <TabsList aria-label="Profile sections">
+              {PROFILE_TABS.map((value) => (
+                <TabsTab key={value} value={value}>
+                  {TAB_LABEL[value]}
+                  {counts[value] !== undefined ? (
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {counts[value]}
+                    </span>
+                  ) : null}
+                </TabsTab>
+              ))}
+            </TabsList>
+          </div>
           <TabsPanel value="instructions">
             <InstructionsSection {...section} />
           </TabsPanel>
@@ -658,9 +661,13 @@ export function ProfilesPage() {
   const { detail, error: detailError, refresh: refreshDetail } = useProfileDetail(selectedName);
   const fleet = useFleetView();
   const fleetMachines = useMemo(() => fleetRows(fleet.machines), [fleet.machines]);
+  // The hub is a machine a profile can run on too, under its own name in the profile list: its bots run there.
   const machines = useMemo(
-    () => fleetMachines.flatMap((machine) => (machine.name === null ? [] : [machine.name])),
-    [fleetMachines],
+    () => [
+      ...(list === null ? [] : [list.machine]),
+      ...fleetMachines.flatMap((machine) => (machine.name === null ? [] : [machine.name])),
+    ],
+    [fleetMachines, list],
   );
   const serverConfigs = useServerConfigs();
   const startProfileThread = useStartProfileThread();

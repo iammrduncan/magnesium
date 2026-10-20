@@ -910,7 +910,10 @@ export function RunsOnSection({
   const [args, setArgs] = useState(detail.launchArgs.join(" "));
   const [displayName, setDisplayName] = useState(detail.summary.displayName);
   const [accent, setAccent] = useState(detail.summary.accentColor);
-  const choices = [...new Set([...machines, ...named])].toSorted();
+  // The hub first, as the page lists it; then the rest by name.
+  const choices = [
+    ...new Set([...machines.slice(0, 1), ...[...machines.slice(1), ...named].toSorted()]),
+  ];
   const editable = detail.editable;
 
   const save = () =>

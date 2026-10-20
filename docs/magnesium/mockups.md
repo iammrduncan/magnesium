@@ -163,6 +163,8 @@ Not mocked yet: **Schedule** (goal 11 mocks it) and the **desktop pill** (goal 2
 
 **Built in:** goal 34 (D65). The Knowledge tab's access is edited here once the Brain exists (goal 29).
 
+**How it's read (D68):** the profiles listed under the sidebar's places are bots: clicking one opens your conversation with it on the hub, with New conversation beside it. The Profiles place opens the phone board's list at every width, and a profile opens as this board shows it, at full width.
+
 ### Fleet · desktop
 
 ![Fleet on the desktop](mockups/fleet-desktop.png)

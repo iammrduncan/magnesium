@@ -41,12 +41,15 @@ Sandboxes** shows which one each machine uses.
 ## Make a profile
 
 Profiles live on the hub, or on your one machine if you run Magnesium on a
-single box. Open **Profiles** in the sidebar and choose **+**, or **Create a
-profile** in the model picker while you have none. Give it a name (it can't
-change later, because its threads are tied to it) and a line about what it
-does. A new profile runs on every machine, on Claude Code, fenced.
+single box. **Profiles** in the sidebar lists them all: how many there are,
+which ones an agent asks you to change, and for each its version and whether
+every machine holds it. Choose **+**, or **Create a profile** in the model
+picker while you have none. Give it a name (it can't change later, because its
+threads are tied to it) and a line about what it does. A new profile runs on
+every machine, on Claude Code, fenced.
 
-Each tab changes one part of it, and every save is checked first:
+Open a profile to change it. Each tab changes one part of it, and every save
+is checked first:
 
 - **Instructions**: who the agent is and its rules, in `AGENTS.md`, with
   `CLAUDE.md` and any other Markdown file you add beside it.
@@ -58,12 +61,13 @@ Each tab changes one part of it, and every save is checked first:
   says so where that matters.
 - **Environment**: the variables it needs, by name, and which machines have
   each one. Values never leave the machine.
-- **Runs on**: every machine, or the ones you tick; its harness and sandbox
-  level.
+- **Runs on**: every machine, or the ones you tick; its harnesses (Claude
+  Code, Codex or OpenCode) and sandbox level. OpenCode runs fenced or native,
+  and uses the machine's own OpenCode setup for its models.
 - **History**: every version, by you or by an agent you approved, with what it
   changed. **Put back** restores an earlier one.
 
-The panel beside the tabs shows what each machine holds: the version and when
+**Delivery**, beside the tabs, shows what each machine holds: the version and when
 it was checked, whether it refused the profile and why, or that it isn't
 connected. **Send now** delivers at once; otherwise a change reaches its
 machines within a minute, with no restart.
@@ -72,8 +76,20 @@ machines within a minute, with no restart.
 move to another profile. A deleted profile can be restored, with its history,
 for 30 days.
 
-In a thread, the model picker's **Edit profile** opens the profile the thread
-runs.
+**Used by**, under it, lists the threads that run on the profile, and **New
+thread** starts one without a project, on the hub when the profile runs there,
+or else on a machine that holds it. In a thread, the model picker's **Edit
+profile** opens the profile the thread runs.
+
+## Talk to a profile
+
+Each profile that runs on the hub is also listed under the sidebar's places,
+like a bot. Click it to open your conversation with it: one long-running
+thread on the hub, which you come back to each time. **New conversation**
+(the pencil beside its name, or the command palette) archives that one and
+starts another; past conversations stay among your archived threads. A
+profile that doesn't run on the hub isn't listed there; tick the hub, or
+every machine, on its **Runs on** tab.
 
 ## Agents change profiles too
 
@@ -107,7 +123,7 @@ files. The main settings in its `profile.yaml`:
 
 ```yaml
 machines: ["*"] # machines it goes to; "*" for all; empty for this server only
-harness: claude # or codex; harnesses: [claude, codex] offers both
+harness: claude # or codex, or opencode; harnesses: [claude, codex] offers both
 sandbox:
   level: fenced # or container
 env: [KB_TOKEN] # names of environment variables it needs, never their values
