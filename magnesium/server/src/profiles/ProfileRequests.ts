@@ -1,12 +1,10 @@
 import {
-  parseProfileInstanceId,
   PROFILE_NAME_PATTERN,
   ProfileError,
   type ProfileIssue,
   type ProfileRequest,
   ProfileRequestInput,
 } from "@magnesium/contracts";
-import { ThreadId } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
@@ -17,6 +15,7 @@ import * as PubSub from "effect/PubSub";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 
+import { requesterOf } from "../agents/requester.ts";
 import { MagnesiumDb } from "../db/MagnesiumDb.ts";
 import { ServerPorts } from "../ports.ts";
 import { pathProblem, ProfileStore } from "./ProfileStore.ts";
@@ -144,18 +143,6 @@ export const make = Effect.gen(function* () {
       Effect.orDie,
     );
 
-  /** The asking agent's profile, from its thread's provider instance, or its harness. */
-  const requesterOf = (threadId: string | null) =>
-    Effect.gen(function* () {
-      if (threadId === null) return "An agent outside Magnesium";
-      const shell = yield* ports.threads
-        .byId(ThreadId.make(threadId))
-        .pipe(Effect.orElseSucceed(() => Option.none()));
-      if (Option.isNone(shell)) return "An agent";
-      const instance = shell.value.providerInstanceId;
-      return parseProfileInstanceId(instance)?.profile ?? `An agent on ${instance}`;
-    });
-
   /** What the check says here, when this server keeps the profiles. */
   const checkHere = (input: ProfileRequestInput) =>
     Effect.gen(function* () {
@@ -189,7 +176,7 @@ export const make = Effect.gen(function* () {
       }
       const id = yield* crypto.randomUUIDv4().pipe(Effect.orDie);
       const createdAt = DateTime.formatIso(yield* DateTime.now);
-      const requestedBy = yield* requesterOf(threadId);
+      const requestedBy = yield* requesterOf(ports, threadId);
       const text = yield* encodeInput(input).pipe(Effect.orDie);
       yield* sql`
         INSERT INTO profile_requests (id, thread_id, requested_by, input, created_at)

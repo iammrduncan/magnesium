@@ -74,9 +74,26 @@ const hubMachines = Effect.gen(function* () {
     )`;
 });
 
+/** Fleet (goal 35): changes agents asked for, waiting on the owner, and how each went. */
+const fleetRequests = Effect.gen(function* () {
+  const sql = yield* SqlClient.SqlClient;
+  yield* sql`
+    CREATE TABLE fleet_requests (
+      id TEXT PRIMARY KEY,
+      thread_id TEXT,
+      requested_by TEXT NOT NULL,
+      input TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      decision TEXT,
+      note TEXT,
+      decided_at TEXT
+    )`;
+});
+
 export const migrations = Migrator.fromRecord({
   "1_Fleet": fleet,
   "2_HomePins": homePins,
   "3_ProfileRequests": profileRequests,
   "4_HubMachines": hubMachines,
+  "5_FleetRequests": fleetRequests,
 });

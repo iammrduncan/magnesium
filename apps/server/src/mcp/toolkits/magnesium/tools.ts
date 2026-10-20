@@ -1,7 +1,17 @@
-// magnesium: Magnesium's profile tools on the per-thread MCP server (goal 34, D65)
+// magnesium: Magnesium's profile and Fleet tools on the per-thread MCP server (goals 34, 35; D65, D66)
 import {
+  AddMachineAsk,
+  BackupList,
   CreateProfileAsk,
   DeleteProfileAsk,
+  EditPodAsk,
+  FleetMachineList,
+  FleetRequest,
+  FleetRequestIdInput,
+  FleetServerAsk,
+  FleetServerInputForAgents,
+  ForgetMachineAsk,
+  RestoreBackupAsk,
   MagnesiumAgentTools,
   MAGNESIUM_AGENT_TOOLS,
   ProfileCheckResult,
@@ -105,6 +115,64 @@ const SendProfileNowTool = Tool.make("send_profile_now", {
   .annotate(Tool.Destructive, false)
   .annotate(Tool.Idempotent, true);
 
+// Fleet (goal 35): reading is free; every change is a request the owner approves.
+const ListMachinesTool = Tool.make("list_machines", {
+  ...reading,
+  description: MAGNESIUM_AGENT_TOOLS.list_machines.description,
+  success: FleetMachineList,
+})
+  .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false);
+
+const ListBackupsTool = Tool.make("list_backups", {
+  ...reading,
+  description: MAGNESIUM_AGENT_TOOLS.list_backups.description,
+  parameters: FleetServerInputForAgents,
+  success: BackupList,
+})
+  .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false);
+
+const FleetRequestStatusTool = Tool.make("fleet_request_status", {
+  ...reading,
+  description: MAGNESIUM_AGENT_TOOLS.fleet_request_status.description,
+  parameters: FleetRequestIdInput,
+  success: FleetRequest,
+})
+  .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false);
+
+const fleetAsk = <
+  const N extends
+    | "update_server"
+    | "rollback_server"
+    | "backup_now"
+    | "restore_backup"
+    | "add_machine"
+    | "forget_machine"
+    | "edit_pod",
+  S extends Schema.Top,
+>(
+  name: N,
+  parameters: S,
+) =>
+  Tool.make(name, {
+    ...writing,
+    description: MAGNESIUM_AGENT_TOOLS[name].description,
+    parameters,
+    success: FleetRequest,
+  })
+    .annotate(Tool.Readonly, false)
+    .annotate(Tool.Destructive, false);
+
+const UpdateServerTool = fleetAsk("update_server", FleetServerAsk);
+const RollbackServerTool = fleetAsk("rollback_server", FleetServerAsk);
+const BackupNowTool = fleetAsk("backup_now", FleetServerAsk);
+const RestoreBackupTool = fleetAsk("restore_backup", RestoreBackupAsk);
+const AddMachineTool = fleetAsk("add_machine", AddMachineAsk);
+const ForgetMachineTool = fleetAsk("forget_machine", ForgetMachineAsk);
+const EditPodTool = fleetAsk("edit_pod", EditPodAsk);
+
 export const MagnesiumToolkit = Toolkit.make(
   ListProfilesTool,
   GetProfileTool,
@@ -114,4 +182,14 @@ export const MagnesiumToolkit = Toolkit.make(
   DeleteProfileTool,
   ProfileRequestStatusTool,
   SendProfileNowTool,
+  ListMachinesTool,
+  ListBackupsTool,
+  UpdateServerTool,
+  RollbackServerTool,
+  BackupNowTool,
+  RestoreBackupTool,
+  AddMachineTool,
+  ForgetMachineTool,
+  EditPodTool,
+  FleetRequestStatusTool,
 );

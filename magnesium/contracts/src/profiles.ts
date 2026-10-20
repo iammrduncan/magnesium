@@ -491,6 +491,9 @@ export const PROFILE_TRASH_DAYS = 30;
 
 const ASKS_FIRST =
   "Nothing changes until the owner approves it on Home. Say in summary what it is for. Returns the request: follow it with profile_request_status.";
+const FLEET_ASKS_FIRST =
+  "Nothing changes until the owner approves it on Home. Say in summary what it is for. Returns the request: follow it with fleet_request_status.";
+const SERVER_PARAM = "server is its name in Fleet (list_machines); left out, the server you ask.";
 
 /**
  * Magnesium's own tools for agents (goal 34), the same in every thread's MCP
@@ -534,6 +537,49 @@ export const MAGNESIUM_AGENT_TOOLS = {
     about: "Deliver profiles to the machines now",
     description:
       "Have the hub deliver profiles to its machines now rather than at its next check, and say what each machine holds. Changes no profile; on a machine other than the hub there is nothing to deliver.",
+  },
+  // Fleet (goal 35).
+  list_machines: {
+    about: "Every server in Fleet",
+    description:
+      "Every server this one reaches, as Fleet shows it: each one's build and the build before it, time zone, newest backup and whether a newer one failed, how it runs, whether it is connected, and what it is doing now. On the hub, every machine; elsewhere, that server alone.",
+  },
+  list_backups: {
+    about: "A server's backups",
+    description: `A server's backups, newest first, with their times and sizes, and how many it keeps. ${SERVER_PARAM}`,
+  },
+  update_server: {
+    about: "Ask to put a server on the hub's build",
+    description: `Ask the owner to put a server on the hub's build. It restarts on it, and goes back to its own if the new one doesn't start. ${SERVER_PARAM} ${FLEET_ASKS_FIRST}`,
+  },
+  rollback_server: {
+    about: "Ask to roll a server back",
+    description: `Ask the owner to restart a server on the build it ran before; its threads stay. ${SERVER_PARAM} ${FLEET_ASKS_FIRST}`,
+  },
+  backup_now: {
+    about: "Ask for a backup now",
+    description: `Ask the owner to have a server back up its state now; every server also backs itself up daily. ${SERVER_PARAM} ${FLEET_ASKS_FIRST}`,
+  },
+  restore_backup: {
+    about: "Ask to restore a backup",
+    description: `Ask the owner to restore a server from one of its backups (list_backups): it stops, backs up the state it has, puts the backup back and starts again. ${SERVER_PARAM} ${FLEET_ASKS_FIRST}`,
+  },
+  add_machine: {
+    about: "Ask to add a machine",
+    description: `Ask the owner to add a machine already running Magnesium to Fleet, by its address and a pairing code from it. ${FLEET_ASKS_FIRST}`,
+  },
+  forget_machine: {
+    about: "Ask to forget a machine",
+    description: `Ask the owner to take a machine off the hub's list, which ends the hub's access to it. ${FLEET_ASKS_FIRST}`,
+  },
+  edit_pod: {
+    about: "Ask to change a Magnesium pod",
+    description: `Ask the owner to change a Magnesium pod's node, OpenCode gateway and models, or the model keys it gets; what you leave out stays. It restarts to take the change. ${FLEET_ASKS_FIRST}`,
+  },
+  fleet_request_status: {
+    about: "How a Fleet ask went",
+    description:
+      "How a Fleet request went: decision is null while it waits, approved once it was carried out, with a note saying how, or rejected, with a note saying why when there is one.",
   },
 } as const;
 export type MagnesiumAgentToolName = keyof typeof MAGNESIUM_AGENT_TOOLS;

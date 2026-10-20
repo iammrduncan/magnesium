@@ -6,6 +6,7 @@ import { HttpRouter } from "effect/http";
 import * as MagnesiumAgentTools from "./agents/MagnesiumAgentTools.ts";
 import * as MagnesiumDb from "./db/MagnesiumDb.ts";
 import * as Fleet from "./fleet/Fleet.ts";
+import * as FleetRequests from "./fleet/FleetRequests.ts";
 import * as FleetUpkeep from "./fleet/FleetUpkeep.ts";
 import { fleetHandlersLayer } from "./fleet/handlers.ts";
 import { footerHandlersLayer } from "./footer/handlers.ts";
@@ -43,9 +44,19 @@ export { agentsCommand } from "./agents/cli.ts";
 export { MagnesiumAgentTools } from "./agents/MagnesiumAgentTools.ts";
 // The schemas upstream's MCP server needs to serve the agent tools above.
 export {
+  AddMachineAsk,
+  BackupList,
   CreateProfileAsk,
   DeleteProfileAsk,
+  EditPodAsk,
+  FleetMachineList,
+  FleetRequest,
+  FleetRequestIdInput,
+  FleetServerAsk,
+  FleetServerInputForAgents,
+  ForgetMachineAsk,
   MAGNESIUM_AGENT_TOOLS,
+  RestoreBackupAsk,
   ProfileCheckResult,
   ProfileDetail,
   ProfileError,
@@ -129,13 +140,15 @@ export const routesLayer = Layer.mergeAll(
   pairingCodeLayer,
 ).pipe(
   Layer.provide(Home.layer),
+  // Home shows agents' profile and fleet requests, and a failed backup (goals 34, 35).
+  Layer.provide(LocalHome.layer),
+  // Agents' fleet requests are carried out by this server's Fleet (goal 35).
+  Layer.provide(FleetRequests.layer),
   // Fleet's Update, Roll back and backups change pods through their gateways (goal 35).
   Layer.provide(FleetUpkeep.layer),
   // Fleet tells the hub's spokes which machines are gateways, and its push
   // which machines are up and when each started.
   Layer.provide(HubSpokes.layer),
-  // Home shows agents' profile requests, which the profile services keep.
-  Layer.provide(LocalHome.layer),
   Layer.provide(profileServicesLayer),
   // Fleet carries each machine's Home items in the relay that Home reads.
   Layer.provide(Fleet.layer),

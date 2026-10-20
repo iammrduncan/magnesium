@@ -1,4 +1,4 @@
-// magnesium: Magnesium's profile tools on the per-thread MCP server (goal 34, D65)
+// magnesium: Magnesium's profile and Fleet tools on the per-thread MCP server (goals 34, 35; D65, D66)
 import { MagnesiumAgentTools } from "@magnesium/server";
 import { OrchestratorMcpFailure } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
@@ -17,6 +17,18 @@ const withTools = <A, E>(use: (tools: MagnesiumAgentTools["Service"]) => Effect.
   });
 
 type Ask = Parameters<MagnesiumAgentTools["Service"]["requestProfileChange"]>[0];
+type FleetAsk = Parameters<MagnesiumAgentTools["Service"]["requestFleetChange"]>[0];
+
+/** Asks the owner to change the fleet, on Home, naming the asking thread (goal 35). */
+const askFleet = (input: FleetAsk) =>
+  Effect.gen(function* () {
+    const scope = yield* McpInvocationContext.McpInvocationContext;
+    return yield* withTools((tools) =>
+      tools
+        .requestFleetChange(input, scope.thread?.threadId ?? null)
+        .pipe(Effect.mapError(refusal)),
+    );
+  });
 
 /** Asks the owner on Home, naming the asking thread so the card can say who asked. */
 const ask = (input: Ask) =>
@@ -49,4 +61,30 @@ export const layer = McpToolAccess.toLayer(MagnesiumToolkit, {
     withTools((tools) => tools.profileRequest(id).pipe(Effect.mapError(refusal))),
   ),
   send_profile_now: McpToolAccess.writesWithCapability(() => withTools((tools) => tools.sendNow)),
+  list_machines: McpToolAccess.reads(() => withTools((tools) => tools.listMachines)),
+  list_backups: McpToolAccess.reads(({ server }) =>
+    withTools((tools) => tools.listBackups(server ?? null).pipe(Effect.mapError(refusal))),
+  ),
+  update_server: McpToolAccess.writesWithCapability((input) =>
+    askFleet({ _tag: "update", ...input }),
+  ),
+  rollback_server: McpToolAccess.writesWithCapability((input) =>
+    askFleet({ _tag: "rollback", ...input }),
+  ),
+  backup_now: McpToolAccess.writesWithCapability((input) =>
+    askFleet({ _tag: "backup-now", ...input }),
+  ),
+  restore_backup: McpToolAccess.writesWithCapability((input) =>
+    askFleet({ _tag: "restore", ...input }),
+  ),
+  add_machine: McpToolAccess.writesWithCapability((input) =>
+    askFleet({ _tag: "add-machine", ...input }),
+  ),
+  forget_machine: McpToolAccess.writesWithCapability((input) =>
+    askFleet({ _tag: "forget-machine", ...input }),
+  ),
+  edit_pod: McpToolAccess.writesWithCapability((input) => askFleet({ _tag: "edit-pod", ...input })),
+  fleet_request_status: McpToolAccess.reads(({ id }) =>
+    withTools((tools) => tools.fleetRequest(id).pipe(Effect.mapError(refusal))),
+  ),
 });

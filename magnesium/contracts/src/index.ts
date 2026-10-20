@@ -1,5 +1,6 @@
 // Schemas and the RpcGroup for what Magnesium adds (doc 11).
 export * from "./fleet.ts";
+export * from "./fleetAsks.ts";
 export * from "./footer.ts";
 export * from "./home.ts";
 export * from "./hub.ts";

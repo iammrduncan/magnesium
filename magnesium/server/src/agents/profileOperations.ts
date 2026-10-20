@@ -4,7 +4,6 @@ import {
   MAGNESIUM_AGENT_TOOLS,
   type MagnesiumAgentToolName,
   ProfileDetail,
-  type ProfileError,
   ProfileNameInput,
   ProfileRequest,
   type ProfileRequestInput,
@@ -30,9 +29,11 @@ import { AgentInputError, type AgentOperation, badInput, EMPTY_OBJECT } from "./
  * comes from no thread, so Home says an agent outside Magnesium asked.
  */
 
-const refused = (error: ProfileError) => new AgentInputError({ message: error.detail });
+const refused = (error: { readonly detail: string }) =>
+  new AgentInputError({ message: error.detail });
 
-const operation = <I, IE, O, OE>(spec: {
+/** One of Magnesium's agent tools as an agents API operation, with its shared name and text. */
+export const operation = <I, IE, O, OE>(spec: {
   readonly name: MagnesiumAgentToolName;
   readonly path: string;
   readonly method?: "POST";
@@ -42,7 +43,7 @@ const operation = <I, IE, O, OE>(spec: {
   readonly inputSchema?: Record<string, unknown>;
   readonly output: Schema.Codec<O, OE>;
   readonly fromQuery?: (query: URLSearchParams) => unknown;
-  readonly run: (input: I) => Effect.Effect<O, ProfileError, MagnesiumAgentTools>;
+  readonly run: (input: I) => Effect.Effect<O, { readonly detail: string }, MagnesiumAgentTools>;
 }): AgentOperation<MagnesiumAgentTools> => {
   const decode = Schema.decodeUnknownEffect(spec.input);
   const encode = Schema.encodeEffect(spec.output);

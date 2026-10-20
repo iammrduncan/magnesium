@@ -1,4 +1,5 @@
 import {
+  describeFleetRequest,
   HomeAnswerError,
   type HomeDetail,
   type LiveTableItem,
@@ -26,13 +27,17 @@ import * as RcRef from "effect/RcRef";
 import * as Schedule from "effect/Schedule";
 import * as Stream from "effect/Stream";
 
+import { FleetRequests } from "../fleet/FleetRequests.ts";
 import { ServerPorts } from "../ports.ts";
 import { previewOf, ProfileRequests } from "../profiles/ProfileRequests.ts";
+import { Upkeep } from "../upkeep/Upkeep.ts";
 import * as LiveTable from "../stream/LiveTable.ts";
 import { viewOf } from "../threads.ts";
 import {
   answeredKey,
+  BACKUP_FAILURE_KEY,
   commandsForAnswer,
+  fleetRequestKey,
   homeItemsOf,
   needsThreadRequests,
   planMarkdownOf,
@@ -86,6 +91,11 @@ export const layer = Layer.effect(
     let requestKeys: ReadonlySet<string> = new Set();
     // Agents' requests to change a profile (goal 34), where profiles are served.
     const requests = yield* Effect.serviceOption(ProfileRequests);
+    // Agents' requests to change the fleet, and this server's backups (goal 35).
+    const fleetRequests = yield* Effect.serviceOption(FleetRequests);
+    const upkeep = yield* Effect.serviceOption(Upkeep);
+    let fleetRequestKeys: ReadonlySet<string> = new Set();
+    const descriptor = yield* ports.environment;
     let projectTitles = new Map<string, string>();
 
     const loadProjectTitles = ports.threads.projects.pipe(
@@ -185,6 +195,58 @@ export const layer = Layer.effect(
         ),
     });
 
+    /** Follows the fleet requests waiting on the owner: one item each (goal 35). */
+    const followFleetRequests = Option.match(fleetRequests, {
+      onNone: () => Effect.void,
+      onSome: (service) =>
+        service.pending.pipe(
+          Stream.runForEach((pending) =>
+            Effect.gen(function* () {
+              const items = pending.map((request): LocalHomeItem => ({
+                key: fleetRequestKey(request.id),
+                threadId: request.threadId === null ? null : ThreadId.make(request.threadId),
+                title: request.input.summary,
+                projectTitle: null,
+                since: request.createdAt,
+                body: {
+                  _tag: "fleet-request",
+                  requestId: request.id,
+                  describe: describeFleetRequest(request.input, descriptor.label),
+                  requestedBy: request.requestedBy,
+                  summary: request.input.summary,
+                },
+              }));
+              const next = new Set(items.map(localHomeItemKey));
+              for (const key of fleetRequestKeys) if (!next.has(key)) yield* table.remove(key);
+              for (const item of items) yield* table.set(item);
+              fleetRequestKeys = next;
+            }),
+          ),
+        ),
+    });
+
+    /** A failed backup is a card until a newer one works (goal 35). */
+    const followBackups = Option.match(upkeep, {
+      onNone: () => Effect.void,
+      onSome: (service) =>
+        Stream.concat(Stream.fromEffect(service.state), service.changes).pipe(
+          Stream.map((state) => state.backups.failure),
+          Stream.changes,
+          Stream.runForEach((failure) =>
+            failure === null
+              ? table.remove(BACKUP_FAILURE_KEY)
+              : table.set({
+                  key: BACKUP_FAILURE_KEY,
+                  threadId: null,
+                  title: "Backup failed",
+                  projectTitle: null,
+                  since: failure.at,
+                  body: { _tag: "backup-failure", reason: failure.reason },
+                }),
+          ),
+        ),
+    });
+
     /** Follows the scheduler: every task's next run, and a run that could not start. */
     const followSchedule = ports.schedule.tasks.pipe(
       Stream.runForEach((tasks) =>
@@ -235,6 +297,8 @@ export const layer = Layer.effect(
         // The scheduler's own stream sends the list now and after each change.
         yield* Effect.forkScoped(followSchedule);
         yield* Effect.forkScoped(followRequests);
+        yield* Effect.forkScoped(followFleetRequests);
+        yield* Effect.forkScoped(followBackups);
         yield* readAll.pipe(
           Effect.delay(RESYNC_EVERY),
           Effect.repeat(Schedule.forever),
@@ -274,6 +338,21 @@ export const layer = Layer.effect(
           return yield* requests.value
             .decide(given.requestId, given.approve ? "approved" : "rejected", null)
             .pipe(Effect.mapError((error) => answerError(error.detail)));
+        }
+        // Carried out here, by this server's Fleet, before it is marked approved (goal 35).
+        if (given._tag === "fleet-request") {
+          if (Option.isNone(fleetRequests))
+            return yield* answerError("This server takes no fleet requests.");
+          return yield* fleetRequests.value
+            .decide(given.requestId, given.approve)
+            .pipe(Effect.mapError((error) => answerError(error.detail)));
+        }
+        if (given._tag === "backup-now") {
+          if (Option.isNone(upkeep)) return yield* answerError("This server takes no backups.");
+          return yield* upkeep.value.backupNow.pipe(
+            Effect.asVoid,
+            Effect.mapError((error) => answerError(error.detail)),
+          );
         }
         if (given._tag === "retry" && threadId === null) {
           if (!scheduleKeys.has(scheduleFailureKey(given.taskId))) {

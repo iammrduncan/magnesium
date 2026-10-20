@@ -5,6 +5,7 @@ import type {
   HomeApproval,
   HomeItem,
   HomePlan,
+  HomeFleetRequest,
   HomeProfileRequest,
   HomeQuestion,
   Question,
@@ -41,6 +42,9 @@ const SHAPE: Record<HomeItem["body"]["_tag"], StatusShapeKind> = {
   running: "working",
   scheduled: "idle",
   "profile-request": "approval",
+  // magnesium: Fleet's asks and backups (goal 35)
+  "fleet-request": "approval",
+  "backup-failure": "failed",
 };
 
 /** The scheduled task an item is about, if any (goal 24). */
@@ -179,6 +183,15 @@ export function HomeCard({
         />
       ) : item.body._tag === "profile-request" ? (
         <ProfileAskBody body={item.body} locked={locked} onAnswer={answer} />
+      ) : item.body._tag === "fleet-request" ? (
+        <FleetAskBody body={item.body} locked={locked} onAnswer={answer} />
+      ) : item.body._tag === "backup-failure" ? (
+        <BackupFailureBody
+          server={item.machine.label}
+          reason={item.body.reason}
+          locked={locked}
+          onAnswer={answer}
+        />
       ) : null}
       {!item.reachable ? (
         <p className="text-sm text-muted-foreground">
@@ -340,6 +353,74 @@ export function ProfileAskBody({
         </Button>
         <Button size="sm" disabled={locked} onClick={() => respond(true)}>
           Approve
+        </Button>
+      </Actions>
+    </>
+  );
+}
+
+/** An agent asks to change the fleet; Approve carries it out on its server (goal 35). */
+function FleetAskBody({
+  body,
+  locked,
+  onAnswer,
+}: {
+  body: HomeFleetRequest;
+  locked: boolean;
+  onAnswer: (answer: HomeAnswer, label: string) => void;
+}) {
+  const respond = (approve: boolean) =>
+    onAnswer(
+      { _tag: "fleet-request", requestId: body.requestId, approve },
+      approve ? "Approving" : "Rejecting",
+    );
+  return (
+    <>
+      <p className="text-sm text-foreground">
+        {body.requestedBy} asks: {body.describe}
+      </p>
+      <Actions>
+        <Button size="sm" variant="ghost" render={<Link to="/fleet" />}>
+          Open Fleet
+        </Button>
+        <Button size="sm" variant="outline" disabled={locked} onClick={() => respond(false)}>
+          Reject
+        </Button>
+        <Button size="sm" disabled={locked} onClick={() => respond(true)}>
+          Approve
+        </Button>
+      </Actions>
+    </>
+  );
+}
+
+/** A server's newest backup failed; Back up now tries again (goal 35). */
+function BackupFailureBody({
+  server,
+  reason,
+  locked,
+  onAnswer,
+}: {
+  server: string;
+  reason: string;
+  locked: boolean;
+  onAnswer: (answer: HomeAnswer, label: string) => void;
+}) {
+  return (
+    <>
+      <p className="text-sm text-foreground">
+        {server}'s backup failed: {reason}
+      </p>
+      <Actions>
+        <Button size="sm" variant="ghost" render={<Link to="/fleet" />}>
+          Open Fleet
+        </Button>
+        <Button
+          size="sm"
+          disabled={locked}
+          onClick={() => onAnswer({ _tag: "backup-now" }, "Backing up")}
+        >
+          Back up now
         </Button>
       </Actions>
     </>

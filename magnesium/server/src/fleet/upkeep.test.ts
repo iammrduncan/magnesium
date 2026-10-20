@@ -1,9 +1,15 @@
-// @effect-diagnostics nodeBuiltinImport:off globalDate:off preferSchemaOverJson:off - the tests lay out release roots on disk and watch what lands there.
+// @effect-diagnostics nodeBuiltinImport:off globalDate:off preferSchemaOverJson:off globalFetchInEffect:off - the tests lay out release roots on disk, watch what lands there, and call the agents API as an outside agent would.
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
-import { MAGNESIUM_WS_METHODS } from "@magnesium/contracts";
+import {
+  AGENTS_API_PATH,
+  type FleetRequest,
+  type HomeItem,
+  homeItemKey,
+  MAGNESIUM_WS_METHODS,
+} from "@magnesium/contracts";
 import { EnvironmentId } from "@t3tools/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
@@ -20,6 +26,7 @@ import {
   testHubConfig,
   testHubSecrets,
   testTicketRoute,
+  watchTable,
 } from "../testing.ts";
 import type { UpkeepConfig } from "../upkeep/Upkeep.ts";
 
@@ -200,6 +207,71 @@ describe("Fleet's upkeep through the hub", () => {
       expect("detail" in notLaunched ? notLaunched.detail : "").toBe(
         "Nothing on cpu-host-1 restarts it on another build. Update it with its deploy.",
       );
+    }),
+  );
+
+  it.live("carries out an agent's ask only once the owner approves it on Home", () =>
+    Effect.gen(function* () {
+      const { machine, hub, browser } = yield* hubAndMachine({}, {});
+      const needs = yield* watchTable(browser[MAGNESIUM_WS_METHODS.homeNeeds]({}), homeItemKey);
+      /** An agent outside Magnesium asks, through the hub's agents API. */
+      const ask = (path: string, body: unknown) =>
+        Effect.promise(() =>
+          fetch(`${hub.origin}${AGENTS_API_PATH}${path}`, {
+            method: "POST",
+            headers: { cookie: "t3_session=operator", "content-type": "application/json" },
+            body: JSON.stringify(body),
+          }).then(async (response) => ({ status: response.status, body: await response.json() })),
+        );
+      const status = (id: string) =>
+        Effect.promise(() =>
+          fetch(`${hub.origin}${AGENTS_API_PATH}/fleet-requests?id=${id}`, {
+            headers: { cookie: "t3_session=operator" },
+          }).then((response) => response.json() as Promise<FleetRequest>),
+        );
+      const cardFor = (id: string) =>
+        [...needs.rows.values()].find(
+          (item: HomeItem) => item.body._tag === "fleet-request" && item.body.requestId === id,
+        );
+
+      expect((yield* ask("/fleet/backup", { server: "nowhere", summary: "x" })).status).toBe(400);
+
+      // Turned down: nothing happens.
+      const first = yield* ask("/fleet/backup", {
+        server: "cpu-host-1",
+        summary: "Before the upgrade",
+      });
+      expect(first.status).toBe(200);
+      const declined = (first.body as FleetRequest).id;
+      yield* needs.until(() => cardFor(declined) !== undefined);
+      expect(cardFor(declined)?.body).toMatchObject({
+        _tag: "fleet-request",
+        describe: "Back up cpu-host-1 now",
+        requestedBy: "An agent outside Magnesium",
+      });
+      yield* browser[MAGNESIUM_WS_METHODS.homeAnswer]({
+        key: cardFor(declined)!.key,
+        answer: { _tag: "fleet-request", requestId: declined, approve: false },
+      });
+      expect(yield* status(declined)).toMatchObject({ decision: "rejected" });
+      expect(NodeFS.existsSync(NodePath.join(machine.stateDir, "backups"))).toBe(false);
+
+      // Approved: the hub carries it out.
+      const second = yield* ask("/fleet/backup", {
+        server: "cpu-host-1",
+        summary: "Before the upgrade",
+      });
+      const approved = (second.body as FleetRequest).id;
+      yield* needs.until(() => cardFor(approved) !== undefined);
+      yield* browser[MAGNESIUM_WS_METHODS.homeAnswer]({
+        key: cardFor(approved)!.key,
+        answer: { _tag: "fleet-request", requestId: approved, approve: true },
+      });
+      const done = yield* status(approved);
+      expect(done.decision).toBe("approved");
+      expect(done.note).toMatch(/^Backed up as \d{8}T\d{6}Z/);
+      expect(NodeFS.readdirSync(NodePath.join(machine.stateDir, "backups"))).toHaveLength(1);
+      yield* needs.until(() => cardFor(approved) === undefined);
     }),
   );
 });

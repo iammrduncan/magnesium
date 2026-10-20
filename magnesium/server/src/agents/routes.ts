@@ -9,6 +9,7 @@ import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import { ServerPorts } from "../ports.ts";
 import { MagnesiumAgentTools } from "./MagnesiumAgentTools.ts";
 import { type AgentOperation, type AgentServices, operations } from "./operations.ts";
+import { fleetOperations } from "./fleetOperations.ts";
 import { profileOperations } from "./profileOperations.ts";
 
 /**
@@ -21,6 +22,7 @@ import { profileOperations } from "./profileOperations.ts";
 const served: ReadonlyArray<AgentOperation<AgentServices | MagnesiumAgentTools>> = [
   ...operations,
   ...profileOperations,
+  ...fleetOperations,
 ];
 const findOperation = (name: string) => served.find((operation) => operation.name === name);
 

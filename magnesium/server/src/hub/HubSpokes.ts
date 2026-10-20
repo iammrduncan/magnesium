@@ -7,6 +7,7 @@ import {
   type HubSpokeApplyInput,
   SpokeError,
   type SpokeRemoveInput,
+  type SpokeSpec,
   type SpokeStatus,
 } from "@magnesium/contracts";
 import * as Context from "effect/Context";
@@ -60,6 +61,15 @@ export class HubSpokes extends Context.Service<
     readonly kindOf: (name: string) => Effect.Effect<"pod" | "attached" | null>;
     /** The build a spoke ran before its build last changed. */
     readonly previousBuildOf: (name: string) => Effect.Effect<string | null>;
+    /** Changes a pod's node, OpenCode or keys, keeping the rest (an agent's edit_pod, goal 35). */
+    readonly edit: (
+      name: string,
+      change: {
+        readonly node?: string;
+        readonly opencode?: SpokeSpec["opencode"];
+        readonly keys?: ReadonlyArray<string>;
+      },
+    ) => Effect.Effect<HubSpoke, SpokeError>;
     /**
      * Sends a model key's value again to every spoke that gets it, as after it
      * is replaced (goal 35); each restarts to take it. Returns their names.
@@ -485,6 +495,29 @@ export const make = Effect.gen(function* () {
     );
   });
 
+  const edit = Effect.fn("HubSpokes.edit")(function* (
+    name: string,
+    change: {
+      readonly node?: string;
+      readonly opencode?: SpokeSpec["opencode"];
+      readonly keys?: ReadonlyArray<string>;
+    },
+  ) {
+    const record = (yield* records).find((other) => other.name === name);
+    if (record === undefined) {
+      return yield* new SpokeError({ detail: `The hub runs no pod named ${name}.` });
+    }
+    return yield* apply({
+      gateway: record.gateway,
+      spec: {
+        ...record.spec,
+        ...(change.node === undefined ? {} : { node: change.node }),
+        ...(change.opencode === undefined ? {} : { opencode: change.opencode }),
+      },
+      keys: change.keys ?? record.keys,
+    });
+  });
+
   const kindOf = (name: string) =>
     Effect.gen(function* () {
       if ((yield* records).some((record) => record.name === name)) return "pod" as const;
@@ -516,6 +549,7 @@ export const make = Effect.gen(function* () {
     apply: (input) => apply(input),
     sendKey,
     changeBuild,
+    edit,
     kindOf,
     previousBuildOf,
     remove,

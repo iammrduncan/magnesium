@@ -263,6 +263,10 @@ export function describeNeed(item: HomeItem): string {
       return "Scheduled";
     case "profile-request":
       return PROFILE_ASK_KIND[item.body.kind];
+    case "fleet-request":
+      return "Fleet change";
+    case "backup-failure":
+      return "Backup failed";
   }
 }
 

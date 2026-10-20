@@ -123,6 +123,26 @@ export const HomeProfileRequest = Schema.TaggedStruct("profile-request", {
 });
 export type HomeProfileRequest = typeof HomeProfileRequest.Type;
 
+/** An agent asks to change the fleet (goal 35): carried out by the asking server once approved. */
+export const HomeFleetRequest = Schema.TaggedStruct("fleet-request", {
+  requestId: Schema.String,
+  /** The change, as a card says it. */
+  describe: Schema.String,
+  /** The asking agent's profile, or its harness. */
+  requestedBy: Schema.String,
+  summary: Schema.String,
+});
+export type HomeFleetRequest = typeof HomeFleetRequest.Type;
+
+/**
+ * The server's newest backup failed (goal 35); the item's `since` is when.
+ * Back up now tries again; a backup that works takes the card away.
+ */
+export const HomeBackupFailure = Schema.TaggedStruct("backup-failure", {
+  reason: Schema.String,
+});
+export type HomeBackupFailure = typeof HomeBackupFailure.Type;
+
 /** Not a need: the thread is working right now ("Running now"). */
 export const HomeRunning = Schema.TaggedStruct("running", {});
 export type HomeRunning = typeof HomeRunning.Type;
@@ -138,6 +158,8 @@ export type HomeScheduled = typeof HomeScheduled.Type;
 export const HomeItemBody = Schema.Union([
   HomeApproval,
   HomeProfileRequest,
+  HomeFleetRequest,
+  HomeBackupFailure,
   HomeQuestion,
   HomePlan,
   HomeFailure,
@@ -242,6 +264,13 @@ export const HomeAnswer = Schema.Union([
     requestId: Schema.String,
     approve: Schema.Boolean,
   }),
+  /** Approve or turn down an agent's change to the fleet; approving carries it out (goal 35). */
+  Schema.TaggedStruct("fleet-request", {
+    requestId: Schema.String,
+    approve: Schema.Boolean,
+  }),
+  /** After a failed backup, try again now (goal 35). */
+  Schema.TaggedStruct("backup-now", {}),
 ]);
 export type HomeAnswer = typeof HomeAnswer.Type;
 
@@ -309,7 +338,11 @@ export const homeNeedKind = (body: HomeItemBody): HomeNeedKind | null => {
     case "scheduled":
       return null;
     case "scheduled-failure":
+    case "backup-failure":
       return "failure";
+    // An agent's change to the fleet waits on your approval too.
+    case "fleet-request":
+      return "approval";
     // An agent's change to a profile waits on your approval like a command does.
     case "profile-request":
       return "approval";

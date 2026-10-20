@@ -469,6 +469,16 @@ describe("profiles on OpenCode (D68)", () => {
             "t3-code*_delete_profile": "allow",
             "t3-code*_profile_request_status": "allow",
             "t3-code*_send_profile_now": "allow",
+            "t3-code*_list_machines": "allow",
+            "t3-code*_list_backups": "allow",
+            "t3-code*_update_server": "allow",
+            "t3-code*_rollback_server": "allow",
+            "t3-code*_backup_now": "allow",
+            "t3-code*_restore_backup": "allow",
+            "t3-code*_add_machine": "allow",
+            "t3-code*_forget_machine": "allow",
+            "t3-code*_edit_pod": "allow",
+            "t3-code*_fleet_request_status": "allow",
           },
         });
         expect(Object.keys(written.permission).slice(0, 3)).toEqual([

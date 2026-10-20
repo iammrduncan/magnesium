@@ -303,8 +303,11 @@ export const commandsForAnswer = (input: {
     // The scheduler runs the task again first (see `LocalHome`); the failed run is then done with.
     case "retry":
       return [{ type: "thread.settle", commandId: context.commandId(), threadId: view.id }];
-    // Profile requests are decided by `ProfileRequests`, not by the thread (goal 34).
+    // Profile and Fleet requests are decided by their services, not by the thread (goals 34, 35),
+    // and Back up now by the server's upkeep.
     case "profile-request":
+    case "fleet-request":
+    case "backup-now":
       return [];
   }
 };
@@ -324,11 +327,21 @@ export const answeredKey = (threadId: string, answer: HomeAnswer): string => {
       return `${threadId}:failure`;
     case "profile-request":
       return profileRequestKey(answer.requestId);
+    case "fleet-request":
+      return fleetRequestKey(answer.requestId);
+    case "backup-now":
+      return BACKUP_FAILURE_KEY;
   }
 };
 
 /** An agent's profile request on Home: its own key, whichever thread asked (goal 34). */
 export const profileRequestKey = (requestId: string) => `profile-request:${requestId}`;
+
+/** An agent's Fleet request on Home (goal 35). */
+export const fleetRequestKey = (requestId: string) => `fleet-request:${requestId}`;
+
+/** This server's failed backup on Home (goal 35): one at a time, the newest. */
+export const BACKUP_FAILURE_KEY = "backup-failure";
 
 /** A failure left by a scheduled task's run names the task, so its card can retry it. */
 export const withRetryTask = (
