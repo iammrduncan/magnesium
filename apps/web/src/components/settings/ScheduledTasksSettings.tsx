@@ -93,6 +93,8 @@ import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../
 import { Switch } from "../ui/switch";
 import { Textarea } from "../ui/textarea";
 import { stackedThreadToast, toastManager } from "../ui/toast";
+import { useServerTimeZone } from "../fleet/useServerTimeZone"; // magnesium: goal 35
+import { zoneName } from "@magnesium/web"; // magnesium: goal 35
 import {
   SettingsPageContainer,
   SettingsRow,
@@ -171,7 +173,8 @@ function splitModelKey(value: string): ModelSelection | null {
   };
 }
 
-export function scheduleLabel(schedule: ScheduledTaskSchedule): string {
+// magnesium: a clock time says whose clock it is, the server's (D64, goal 35)
+export function scheduleLabel(schedule: ScheduledTaskSchedule, timeZone?: string | null): string {
   if (schedule.type === "webhook") return "On webhook";
   if (schedule.type === "interval") {
     const minutes = schedule.everyMs / 60_000;
@@ -186,7 +189,7 @@ export function scheduleLabel(schedule: ScheduledTaskSchedule): string {
       : weekdays.length === 5 && weekdays.every((day) => day >= 1 && day <= 5)
         ? "Weekdays"
         : weekdays.map((day) => WEEKDAY_LABELS[day]).join(", ");
-  return `${days} at ${schedule.timeOfDay}`;
+  return `${days} at ${schedule.timeOfDay}${timeZone ? ` ${zoneName(timeZone)} time` : ""}`;
 }
 
 /**
@@ -408,6 +411,7 @@ function ScheduledTaskRow({
   readonly task: ScheduledTask;
   readonly onEdit: () => void;
 }) {
+  const timeZone = useServerTimeZone(environmentId); // magnesium: its server's clock (goal 35)
   const canOperate = useAtomValue(
     serverEnvironment.upsertScheduledTask.permissionAtom(environmentId),
   );
@@ -450,7 +454,7 @@ function ScheduledTaskRow({
       status={
         <div className="flex flex-wrap items-center gap-2">
           <span>
-            {scheduleLabel(task.schedule)} ·{" "}
+            {scheduleLabel(task.schedule, timeZone)} ·{" "}
             {!task.enabled
               ? "Paused"
               : isWebhook

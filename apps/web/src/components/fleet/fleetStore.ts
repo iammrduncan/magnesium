@@ -15,6 +15,8 @@ const listeners = new Set<() => void>();
 
 /** Opens the hub's Fleet stream on the first subscriber and closes it after the last. */
 function subscribe(listener: () => void): () => void {
+  // No page, no hub to watch: a test rendering a component that reads Fleet.
+  if (typeof window === "undefined") return () => {};
   listeners.add(listener);
   if (watch === null) {
     watch = watchFleet(magnesiumSocketUrl(window.location.href), (next) => {
