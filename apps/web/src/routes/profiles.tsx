@@ -13,7 +13,10 @@ export const Route = createFileRoute("/profiles")({
     ...(typeof search.name === "string" ? { name: search.name } : {}),
     ...(isTab(search.tab) ? { tab: search.tab } : {}),
     // Opens New profile, from the palette or the picker.
-    ...(search.new === true || search.new === "1" ? { new: true as const } : {}),
+    // The router reads `?new=1` as the number 1.
+    ...(search.new === true || search.new === 1 || search.new === "1"
+      ? { new: true as const }
+      : {}),
   }),
   component: ProfilesPage,
 });

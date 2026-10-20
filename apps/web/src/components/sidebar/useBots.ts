@@ -5,7 +5,7 @@ import { isScratchProject } from "@t3tools/client-runtime/state/projects";
 import { type EnvironmentId, type ProviderInstanceId, ThreadId } from "@t3tools/contracts";
 import { createModelSelection } from "@t3tools/shared/model";
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { useComposerDraftStore } from "../../composerDraftStore";
 import { useNewThreadHandler } from "../../hooks/useHandleNewThread";
@@ -54,14 +54,27 @@ export function useStartProfileThread() {
  */
 export function useBots() {
   const hubId = usePrimaryEnvironmentId();
-  const { list } = useProfileList();
+  const { list, refresh } = useProfileList();
   const bots = useMemo(() => (list === null ? [] : botsOf(list)), [list]);
   const threads = useThreadShells(bots.length > 0);
   const projects = useProjects();
+  const serverConfigs = useServerConfigs();
   const { scratchWorkspaceRootFor } = useScratchProject();
   const startProfileThread = useStartProfileThread();
   const { archiveThread } = useThreadActions();
   const navigate = useNavigate();
+
+  // Sync adds a bot's instance on the hub a moment after its profile is saved: read the list again then.
+  const hubInstances =
+    hubId === null
+      ? ""
+      : (serverConfigs
+          .get(hubId)
+          ?.providers.map((provider) => provider.instanceId)
+          .join(" ") ?? "");
+  useEffect(() => {
+    if (hubInstances !== "") void refresh();
+  }, [hubInstances, refresh]);
 
   const scratchRoot = scratchWorkspaceRootFor(hubId);
   const scratchProjectIds = useMemo(

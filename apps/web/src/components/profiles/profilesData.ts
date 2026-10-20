@@ -15,6 +15,13 @@ const pageUrl = () => window.location.href;
 const messageOf = (cause: unknown) =>
   cause instanceof Error ? cause.message : "The hub did not take that.";
 
+const listeners = new Set<() => void>();
+
+/** Tells every open profile list to read again: the page, the sidebar's bots, the palette. */
+export const profilesChanged = () => {
+  for (const listener of listeners) listener();
+};
+
 /** The profiles on the hub, and the deleted ones that can still come back. */
 export function useProfileList() {
   const [list, setList] = useState<ProfileList | null>(null);
@@ -35,6 +42,11 @@ export function useProfileList() {
   }, []);
   useEffect(() => {
     void refresh();
+    const listener = () => void refresh();
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
   }, [refresh]);
   return { list, deleted, error, refresh };
 }
@@ -79,6 +91,7 @@ export async function runChange(
       });
       return false;
     }
+    profilesChanged();
     toastManager.add({
       type: "success",
       title: result === undefined ? done : `${done} · v${result.version}`,

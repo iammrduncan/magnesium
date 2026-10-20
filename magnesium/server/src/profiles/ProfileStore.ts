@@ -791,9 +791,10 @@ export const make = Effect.gen(function* () {
           mcpServers,
           version: all.at(-1)?.version ?? 0,
           history,
+          // The hub runs what names it here, with nothing to deliver: only the others are listed.
           deliveries: yield* deliveriesOf(
             name,
-            resolved.machines.filter((machine) => machine !== "*"),
+            resolved.machines.filter((machine) => machine !== "*" && machine !== config.machine),
             everyMachine,
           ),
           editable: !pushManaged,
