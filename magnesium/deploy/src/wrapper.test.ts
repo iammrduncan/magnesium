@@ -143,6 +143,8 @@ console.log(JSON.stringify({
   secretsListed: (() => {
     try { return fs.readdirSync(path.dirname(path.dirname(secret))).includes("secrets"); } catch { return false; }
   })(),
+  // Bun's realpath (OpenCode 2) opens each folder above a thread's, the state home among them.
+  stateHomeOpens: tries(() => fs.opendirSync(path.dirname(path.dirname(path.dirname(secret)))).closeSync()),
   attachmentRead: tries(() => fs.readFileSync(attachment)),
   attachmentWritable: tries(() => fs.appendFileSync(attachment, "x")),
 }));
@@ -270,7 +272,7 @@ describe("magnesium-claude and magnesium-codex", () => {
     expect(profile.log()).toContain("level=native mode=session");
   });
 
-  it("run OpenCode's server with the profile's config folder, and refuse it a container", () => {
+  it("run OpenCode's server with the profile's config file, and refuse it a container", () => {
     const profile = makeProfile();
     const session = profile.harness("opencode", "native", ["serve", "--port", "0"]);
     expect(session.status).toBe(0);
@@ -447,6 +449,8 @@ describe.each(MECHANISMS)("the %s fence", (mechanism) => {
           workspaces: [true, true, true],
           secret: "denied",
           secretsListed: false,
+          // Untested on Landlock alone: it may refuse to open the state home.
+          stateHomeOpens: mechanism === "landlock" ? expect.any(Boolean) : true,
           attachmentRead: true,
           attachmentWritable: false,
         });

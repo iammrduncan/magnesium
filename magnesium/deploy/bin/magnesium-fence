@@ -179,6 +179,10 @@ case $mechanism in
     quote() { printf '"%s"' "$(printf '%s' "$1" | sed 's/[\\"]/\\&/g')"; }
     # Later rules win, so deny first, then let the grants back in.
     policy="(version 1)(allow default)(deny file-read* file-write* (subpath $(quote "$state")))"
+    # Bun's realpath (OpenCode 2) opens each folder above a thread's, the state
+    # home among them: it may be opened and its names listed, as the mount
+    # fences' empty folder can; nothing in it is read.
+    policy="$policy(allow file-read-metadata file-read-data (literal $(quote "$state")))"
     for grant in $grants; do
       path=$(quote "${grant#* }")
       # Resolving a path (realpath, getcwd) stats each folder on the way down to
