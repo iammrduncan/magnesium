@@ -102,7 +102,10 @@ unit_ctl() {
 # server's unit, which stopping the server would end halfway.
 outlive_unit() {
   [ "${MAGNESIUM_RESTART:-1}" != "0" ] && [ -z "${MAGNESIUM_OUTSIDE_UNIT:-}" ] || return 0
-  grep -qs "/$UNIT\$" "${MAGNESIUM_CGROUP_FILE:-/proc/self/cgroup}" || return 0
+  # In the unit itself, or in a scope the server started under its agents
+  # slice: a Fleet terminal, or an agent. Both end when the server stops.
+  grep -qsE "/$UNIT\$|/app-t3code-agents[^/]*\.slice/" "${MAGNESIUM_CGROUP_FILE:-/proc/self/cgroup}" ||
+    return 0
   local name self
   name="magnesium-$1-$(date -u +%Y%m%dT%H%M%SZ)"
   self="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
@@ -112,7 +115,7 @@ outlive_unit() {
     if [ -n "${!var:-}" ]; then env+=("--setenv=$var=${!var}"); fi
   done
   # Said first: once the server stops, this shell may be gone.
-  echo "This shell runs inside $UNIT, which $1 stops, so it goes on as $name."
+  echo "This shell ends when $UNIT stops, which $1 does, so it goes on as $name."
   echo "Follow it with: journalctl --user -u $name -f"
   systemd-run --user --collect --quiet --unit "$name" "${env[@]}" "$self" "$@" ||
     die "could not start $name; run this from a shell outside $UNIT"

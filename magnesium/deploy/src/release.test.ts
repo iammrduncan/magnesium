@@ -499,13 +499,13 @@ describe("magnesium-release", () => {
     });
   });
 
-  it("goes on as its own unit when started inside the server's, which a restore stops", () => {
+  it("goes on as its own unit when started from the server's, which a restore stops", () => {
     const release = makeRoot();
     NodeFS.mkdirSync(NodePath.join(release.home, "userdata"), { recursive: true });
     NodeFS.writeFileSync(NodePath.join(release.home, "userdata/settings.json"), "{}");
     expect(release.run("backup").status).toBe(0);
     const [name = ""] = NodeFS.readdirSync(NodePath.join(release.home, "backups"));
-    // A Fleet terminal's shell runs in the server's unit; systemd-run records how it was asked.
+    // Started in the server's unit; systemd-run records how it was asked.
     const bin = NodePath.join(release.root, "bin");
     NodeFS.mkdirSync(bin);
     const asked = NodePath.join(release.root, "systemd-run.args");
@@ -537,6 +537,18 @@ describe("magnesium-release", () => {
     expect(args.slice(-2)).toEqual(["restore", name]);
     // Nothing was restored here: only the new unit restores, with a backup of what it replaces.
     expect(NodeFS.readdirSync(NodePath.join(release.home, "backups"))).toHaveLength(1);
+
+    // A Fleet terminal runs in a scope under the server's agents slice, and ends with the server too.
+    NodeFS.writeFileSync(
+      cgroup,
+      "0::/user.slice/user@1000.service/app.slice/app-t3code-agents.slice/app-t3code-agents-0a1b2c3d.slice/t3code-terminal-c2a558f0.scope\n",
+    );
+    NodeFS.rmSync(asked);
+    expect(inUnit("restore", name).stdout).toContain("journalctl --user -u magnesium-restore-");
+    expect(NodeFS.readFileSync(asked, "utf8").trim().split("\n").slice(-2)).toEqual([
+      "restore",
+      name,
+    ]);
 
     // Outside the unit, it runs where it is.
     NodeFS.writeFileSync(cgroup, "0::/user.slice/user@1000.service/app.slice/other.scope\n");
