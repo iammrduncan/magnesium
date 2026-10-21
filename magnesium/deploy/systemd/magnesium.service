@@ -19,9 +19,8 @@ EnvironmentFile=-%h/.config/magnesium/magnesium.env
 Environment=T3CODE_HOME=%h/.magnesium
 Environment=T3CODE_TELEMETRY_ENABLED=false
 Environment=T3CODE_NO_BROWSER=true
-# Provider CLIs (claude, codex) usually live in ~/.local/bin; magnesium-release
-# in its own bin, for Fleet's terminal.
-Environment=PATH=%h/.local/bin:%h/.local/share/magnesium/bin:/usr/local/bin:/usr/bin:/bin
+# Provider CLIs (claude, codex) usually live in ~/.local/bin.
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 # The server's Update, Roll back and Restore (goal 35) leave their work for
 # here: it runs while the server is stopped, before each start.
 Environment=MAGNESIUM_LAUNCHER=systemd

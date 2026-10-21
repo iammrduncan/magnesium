@@ -126,14 +126,16 @@
   tags: [build]
 
 # The agent wrappers and the fence ship in each release; this only puts the
-# profiles CLI on the PATH, through `current`, so it follows every activate.
-- name: magnesium-agents on the PATH
+# profiles CLI and the release tool on the PATH (a shell's, and Fleet's
+# terminal's), through `current`, so they follow every activate and update.
+- name: magnesium-agents and magnesium-release on the PATH
   ansible.builtin.file:
-    src: "{{ magnesium_root }}/current/magnesium/deploy/bin/magnesium-agents"
-    dest: "{{ ansible_env.HOME }}/.local/bin/magnesium-agents"
+    src: "{{ magnesium_root }}/current/magnesium/deploy/bin/{{ item }}"
+    dest: "{{ ansible_env.HOME }}/.local/bin/{{ item }}"
     state: link
     force: true
     follow: false
+  loop: [magnesium-agents, magnesium-release]
   tags: [build]
 
 - name: The container sandbox's image, when this machine offers it
