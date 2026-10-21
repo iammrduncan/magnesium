@@ -3831,8 +3831,9 @@ export function ConnectionsSettings() {
 
   return (
     <SettingsPageContainer>
-      {/* magnesium: Kubernetes machines' kinds and actions for the Environments list (goal 25) */}
-      <HubMachineControlsProvider canManage={canManageLocalBackend}>
+      {/* magnesium: Kubernetes machines' kinds and actions for the Environments list (goal 25);
+          shown to a device that manages access, the scope the hub checks for them (goal 35) */}
+      <HubMachineControlsProvider canManage={canWriteAccess}>
         {primarySettings}
         <SettingsSection
           {...searchableSetting("remote-environments")}
@@ -3928,9 +3929,9 @@ export function ConnectionsSettings() {
           {savedEnvironments.length === 0 ? <EmptyRemoteEnvironments /> : null}
         </SettingsSection>
         {/* magnesium: machines the hub carries but cannot reach yet (doc 11) */}
-        <HubMachinesSection canManage={canManageLocalBackend} />
+        <HubMachinesSection canManage={canWriteAccess} />
         {/* magnesium: the model keys the hub holds for its machines (goal 25) */}
-        <ModelKeysSection canManage={canManageLocalBackend} />
+        <ModelKeysSection canManage={canWriteAccess} />
         {/* magnesium: the sandbox levels each machine runs (goal 03) */}
         <SandboxesSection />
         <LoadBalancingSettings environments={loadBalancingEnvironments} />
