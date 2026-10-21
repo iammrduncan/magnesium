@@ -21,6 +21,7 @@
 - [Devices](./user/devices.md)
 - [Usage and limits](./user/usage.md)
 - [Remote access](./user/remote-access.md)
+- [T3 Connect troubleshooting](./user/t3-connect-troubleshooting.md)
 - [Outside agents (MCP)](./user/outside-agents.md)
 - Provider guides: [Setup](./user/install.md#providers) · [Codex](./user/providers-codex.md) · [Claude](./user/providers-claude.md) · [OpenCode](./user/providers-opencode.md) · [Antigravity](./user/providers-antigravity.md) · [Pi](./user/providers-pi.md) · [Muse Code](./user/providers-muse.md) <!-- magnesium: Setup links T3 Code's provider setup -->
 

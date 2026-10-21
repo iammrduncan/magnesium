@@ -27,8 +27,9 @@ On a device that can add others, open **Settings → Connections → Authorized
 clients** and choose **Create link**. Scan the QR code with the new device, or
 open the link on it. It shows every machine straight away.
 
-Under **Permissions**, **Manage access** lets the new device add and remove
-other devices too. Leave it off for a device that only needs to work.
+Under **Permissions**, **Manage access** (on by default) lets the new device add
+and remove other devices, and change servers from Fleet. Turn it off for a
+device that only needs to work.
 
 To sign a device out, choose **Revoke** next to it in the same list.
 

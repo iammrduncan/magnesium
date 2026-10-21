@@ -1,7 +1,11 @@
 import { SESSION_END_PATH, SESSION_RENEW_PATH, SessionRenewResult } from "@magnesium/contracts";
 import {
+  AuthAccessReadScope,
   AuthAccessTokenType,
+  AuthAccessWriteScope,
   AuthEnvironmentBootstrapTokenType,
+  AuthRelayWriteScope,
+  AuthStandardClientScopes,
   AuthTokenExchangeGrantType,
   EnvironmentHttpApi,
 } from "@t3tools/contracts";
@@ -82,6 +86,19 @@ export const issueWebSocketTicket = (baseUrl: string, token: string) =>
     ),
   );
 
+/**
+ * What the hub asks for when it pairs with a machine: a standard session's
+ * scopes without managing access or the relay, which the hub never holds
+ * (goal 04). Since upstream v0.1.1 a pairing link grants those by default,
+ * and a machine issues only the requested scopes the link has.
+ */
+export const HUB_MACHINE_SCOPES = AuthStandardClientScopes.filter(
+  (scope) =>
+    scope !== AuthAccessReadScope &&
+    scope !== AuthAccessWriteScope &&
+    scope !== AuthRelayWriteScope,
+);
+
 /** Trade a pairing code minted on the machine for a bearer token the hub keeps. */
 export const exchangePairingCode = (baseUrl: string, code: string) =>
   request(
@@ -94,6 +111,7 @@ export const exchangePairingCode = (baseUrl: string, code: string) =>
           subject_token: code,
           subject_token_type: AuthEnvironmentBootstrapTokenType,
           requested_token_type: AuthAccessTokenType,
+          scope: HUB_MACHINE_SCOPES.join(" "),
           client_label: "Magnesium hub",
           client_device_type: "bot",
         },

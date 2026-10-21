@@ -11,8 +11,8 @@ import { useComposerDraftStore } from "../../composerDraftStore";
 import { useNewThreadHandler } from "../../hooks/useHandleNewThread";
 import { useScratchProject } from "../../hooks/useScratchProject";
 import { useThreadActions } from "../../hooks/useThreadActions";
-import { useProjects, useServerConfigs, useThreadShells } from "../../state/entities";
-import { usePrimaryEnvironmentId } from "../../state/environments";
+import { useProjects, useThreadShells } from "../../state/entities";
+import { useEnvironmentProviders, usePrimaryEnvironmentId } from "../../state/environments";
 import { buildThreadRouteParams } from "../../threadRoutes";
 import { useProfileList } from "../profiles/profilesData";
 
@@ -22,7 +22,7 @@ import { useProfileList } from "../profiles/profilesData";
  * conversation, or a profile's New thread.
  */
 export function useStartProfileThread() {
-  const serverConfigs = useServerConfigs();
+  const providersByEnvironment = useEnvironmentProviders();
   const { openScratchProject } = useScratchProject();
   const handleNewThread = useNewThreadHandler();
   return useCallback(
@@ -32,9 +32,9 @@ export function useStartProfileThread() {
       const draft = await handleNewThread(scopeProjectRef(project.environmentId, project.id));
       if (draft === null) return;
       const instance = instanceId as ProviderInstanceId;
-      const model = serverConfigs
+      const model = providersByEnvironment
         .get(environmentId)
-        ?.providers.find((provider) => provider.instanceId === instance)?.models[0]?.slug;
+        ?.find((provider) => provider.instanceId === instance)?.models[0]?.slug;
       if (model !== undefined) {
         useComposerDraftStore
           .getState()
@@ -43,7 +43,7 @@ export function useStartProfileThread() {
           });
       }
     },
-    [handleNewThread, openScratchProject, serverConfigs],
+    [handleNewThread, openScratchProject, providersByEnvironment],
   );
 }
 
@@ -58,7 +58,7 @@ export function useBots() {
   const bots = useMemo(() => (list === null ? [] : botsOf(list)), [list]);
   const threads = useThreadShells(bots.length > 0);
   const projects = useProjects();
-  const serverConfigs = useServerConfigs();
+  const providersByEnvironment = useEnvironmentProviders();
   const { scratchWorkspaceRootFor } = useScratchProject();
   const startProfileThread = useStartProfileThread();
   const { archiveThread } = useThreadActions();
@@ -68,9 +68,9 @@ export function useBots() {
   const hubInstances =
     hubId === null
       ? ""
-      : (serverConfigs
+      : (providersByEnvironment
           .get(hubId)
-          ?.providers.map((provider) => provider.instanceId)
+          ?.map((provider) => provider.instanceId)
           .join(" ") ?? "");
   useEffect(() => {
     if (hubInstances !== "") void refresh();

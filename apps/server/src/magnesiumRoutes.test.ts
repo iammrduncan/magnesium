@@ -3,7 +3,7 @@
 import * as NodeCrypto from "node:crypto";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { AuthAdministrativeScopes, AuthSessionId } from "@t3tools/contracts";
+import { AuthStandardClientScopes, AuthSessionId } from "@t3tools/contracts";
 import { expect, it } from "@effect/vitest";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
@@ -76,7 +76,7 @@ it.layer(NodeServices.layer)("Magnesium's callers", (it) => {
       // What `t3 auth session issue` does: every scope, no device.
       const cliIssued = yield* auth.issueSession();
       const cli = yield* callers.http(request({ bearer: cliIssued.token }));
-      expect(cli.scopes).toEqual(AuthAdministrativeScopes);
+      expect(cli.scopes).toEqual(AuthStandardClientScopes);
       expect(cli.paired).toBe(false);
       // Agents inherit T3CODE_DEV_AUTH_TOKEN in web dev mode.
       const dev = yield* callers.http(request({ bearer: DEV_TOKEN }));

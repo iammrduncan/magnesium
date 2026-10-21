@@ -77,19 +77,20 @@ function Field({
 function useAction(onDone: () => void) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const run = async (action: () => Promise<unknown>) => {
+  // A promise chain, not try/finally: the React Compiler can't compile a finally clause.
+  const run = (action: () => Promise<unknown>) => {
     setBusy(true);
     setError(null);
-    try {
-      await action();
-      onDone();
-      return true;
-    } catch (cause) {
-      setError(errorMessage(cause));
-      return false;
-    } finally {
-      setBusy(false);
-    }
+    return action()
+      .then(() => {
+        onDone();
+        return true;
+      })
+      .catch((cause: unknown) => {
+        setError(errorMessage(cause));
+        return false;
+      })
+      .finally(() => setBusy(false));
   };
   return { busy, error, setError, run };
 }

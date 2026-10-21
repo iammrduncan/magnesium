@@ -32,6 +32,7 @@ import * as PreviewManager from "../../../preview/Manager.ts";
 import * as SourceControlRepositoryService from "../../../sourceControl/SourceControlRepositoryService.ts";
 import * as GitVcsDriver from "../../../vcs/GitVcsDriver.ts";
 import { MagnesiumAgentTools, ProfileError } from "@magnesium/server";
+import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import * as McpHttpServer from "../../McpHttpServer.ts";
 import * as McpSessionRegistry from "../../McpSessionRegistry.ts";
 import * as PreviewAutomationBroker from "../../PreviewAutomationBroker.ts";
@@ -105,6 +106,7 @@ it.effect("the mcp server lists and serves Magnesium's profile tools", () =>
             getEnvironmentId: Effect.succeed("environment-scratch" as never),
           }),
         ),
+        Layer.provide(McpProviderSessions.layer),
         Layer.provide(PreviewAutomationBroker.layer),
         Layer.provide(PreviewBrowser.layer),
         Layer.provide(layerStubServices),

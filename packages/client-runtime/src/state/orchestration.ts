@@ -1,9 +1,12 @@
 import { ORCHESTRATION_V2_WS_METHODS, type ThreadId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
+import * as Stream from "effect/Stream";
 import * as SubscriptionRef from "effect/SubscriptionRef";
 import type { HttpClient } from "effect/http";
 import { Atom } from "effect/reactivity";
+
+import { applyCommandOutputFrame, EMPTY_COMMAND_OUTPUT } from "./commandOutput.ts";
 
 import {
   createEnvironmentRpcCommand,
@@ -24,25 +27,26 @@ export function createOrchestrationEnvironmentAtoms<R, E>(
   return {
     threadTranscript: createEnvironmentCommand(runtime, {
       label: "environment-data:orchestration:thread-transcript",
-      execute: (input: { readonly threadId: ThreadId }) =>
-        Effect.gen(function* () {
-          const supervisor = yield* EnvironmentSupervisor.EnvironmentSupervisor;
-          const prepared = yield* SubscriptionRef.get(supervisor.prepared);
-          if (Option.isNone(prepared)) {
-            return yield* new EnvironmentRpcUnavailableError({
-              environmentId: supervisor.target.environmentId,
-              message: "The source environment is not connected.",
-            });
-          }
-          return yield* fetchEnvironmentThreadTranscript({
-            prepared: prepared.value,
-            threadId: input.threadId,
-            signer: yield* Effect.serviceOption(ManagedRelayDpopSigner.ManagedRelayDpopSigner),
-            remoteAuthorization: yield* Effect.serviceOption(
-              RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization,
-            ),
+      execute: Effect.fn("orchestration.execute")(function* (input: {
+        readonly threadId: ThreadId;
+      }) {
+        const supervisor = yield* EnvironmentSupervisor.EnvironmentSupervisor;
+        const prepared = yield* SubscriptionRef.get(supervisor.prepared);
+        if (Option.isNone(prepared)) {
+          return yield* new EnvironmentRpcUnavailableError({
+            environmentId: supervisor.target.environmentId,
+            message: "The source environment is not connected.",
           });
-        }),
+        }
+        return yield* fetchEnvironmentThreadTranscript({
+          prepared: prepared.value,
+          threadId: input.threadId,
+          signer: yield* Effect.serviceOption(ManagedRelayDpopSigner.ManagedRelayDpopSigner),
+          remoteAuthorization: yield* Effect.serviceOption(
+            RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization,
+          ),
+        });
+      }),
     }),
     v2: {
       dispatchCommand: createEnvironmentRpcCommand(runtime, {
@@ -64,6 +68,19 @@ export function createOrchestrationEnvironmentAtoms<R, E>(
         tag: ORCHESTRATION_V2_WS_METHODS.subscribeThread,
         idleTtlMs: 0,
       }),
+      // One expanded command row's output. Mounted only while the row is open,
+      // and released as soon as it closes, so hidden rows receive nothing.
+      commandOutput: createEnvironmentRpcSubscriptionAtomFamily(runtime, {
+        label: "environment-data:orchestration-v2:command-output",
+        tag: ORCHESTRATION_V2_WS_METHODS.subscribeCommandOutput,
+        idleTtlMs: 0,
+        // `scan` emits its seed first; skipping it keeps the row "loading" until the first frame.
+        transform: (frames) =>
+          frames.pipe(
+            Stream.scan(() => EMPTY_COMMAND_OUTPUT, applyCommandOutputFrame),
+            Stream.filter((view) => view !== EMPTY_COMMAND_OUTPUT),
+          ),
+      }),
     },
     turnDiff: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:orchestration:turn-diff",
@@ -72,7 +89,6 @@ export function createOrchestrationEnvironmentAtoms<R, E>(
     workflowScript: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:orchestration:workflow-script",
       tag: ORCHESTRATION_V2_WS_METHODS.getWorkflowScript,
-      // Scripts are immutable per run: cache generously.
       staleTimeMs: 300_000,
       idleTtlMs: 300_000,
     }),
@@ -80,7 +96,6 @@ export function createOrchestrationEnvironmentAtoms<R, E>(
       label: "environment-data:orchestration:stop-workflow",
       tag: ORCHESTRATION_V2_WS_METHODS.stopWorkflow,
     }),
-    // Keyed by the item revision, so a live row refetches as its output grows.
     turnItem: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:orchestration:turn-item",
       tag: ORCHESTRATION_V2_WS_METHODS.getTurnItem,

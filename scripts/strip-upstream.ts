@@ -31,10 +31,13 @@ const STRIPPED_FILES = [
   "apps/server/test/ActivityPayloadProjection.test.ts",
   "scripts/build-desktop-artifact.ts",
   "scripts/build-desktop-artifact.test.ts",
+  "scripts/verify-windows-desktop-artifact.ts",
   "scripts/build-cli-archive.ts",
   "scripts/smoke-cli-archive.ts",
   "scripts/build-npm-platform-packages.ts",
   "scripts/build-npm-platform-packages.test.ts",
+  "scripts/build-npm-launcher.ts",
+  "scripts/build-npm-launcher.test.ts",
   "scripts/release-smoke.ts",
   "scripts/legend-list-initial-reveal.test.ts",
   // Upstream's release announcements, read from its deleted release workflow.
@@ -43,6 +46,10 @@ const STRIPPED_FILES = [
   // Upstream's security policy sends reports to T3 Tools, and GitHub reads `.github/` first;
   // Magnesium's own policy is SECURITY.md at the root.
   ".github/SECURITY.md",
+  // Links to the stripped mobile app's store pages; Settings leaves its row out.
+  "apps/web/src/components/settings/MobileAppSettingsRow.tsx",
+  // Tests T3 Connect's sign-in steps, which Magnesium's empty state leaves out (D13).
+  "apps/web/src/components/HostedEmptyState.browser.test.tsx",
 ];
 
 const WORKFLOWS_DIR = ".github/workflows";
@@ -51,7 +58,7 @@ export const KEPT_WORKFLOWS = ["magnesium-ci.yml", "merge-rehearsal.yml"];
 
 /** Patched packages only the deleted apps install. pnpm fails on unused patches. */
 const STRIPPED_PATCH_PACKAGE =
-  /^(alchemy|dbus-next|uniwind|expo-.*|@expo\/.*|@clerk\/expo|@react-native.*|@react-navigation\/.*|react-native.*)$/;
+  /^(alchemy|app-builder-lib|dbus-next|uniwind|expo-.*|@expo\/.*|@clerk\/expo(-.*)?|@react-native.*|@react-navigation\/.*|react-native.*)$/;
 
 /** The package a `patches/` file or a `patchedDependencies` key is for. */
 export function patchPackageName(entry: string): string {

@@ -1,9 +1,11 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
+import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Logger from "effect/Logger";
+import * as Metric from "effect/Metric";
 import * as Tracer from "effect/Tracer";
 import * as TestClock from "effect/testing/TestClock";
 
@@ -24,11 +26,13 @@ const stalled: EventLoopMonitor.EventLoopReadings = {
     involuntaryContextSwitches: 57,
   },
   rssBytes: 1536 * 1024 * 1024,
+  heapUsedBytes: 512 * 1024 * 1024,
+  elapsedMs: 30_000,
+  loadAverage: 219.43,
+  cpuCount: 18,
 };
-// Over the threshold as read, but not once the resolution is subtracted.
 const quiet: EventLoopMonitor.EventLoopReadings = { ...stalled, delayMaxNs: ms(2_950) };
 
-// The first sample covers startup, so the monitor discards it.
 const monitor = (
   samples: Array<EventLoopMonitor.EventLoopReadings>,
   stallLog: EventLoopMonitor.StallLogOptions = { filePath: "\0", maxBytes: 1 },
@@ -52,7 +56,6 @@ describe("EventLoopMonitor", () => {
         },
       });
       yield* Effect.gen(function* () {
-        // The default stall log path cannot open, and the span must still be recorded.
         yield* monitor([stalled, quiet, stalled]);
         yield* TestClock.adjust("60 seconds");
         assert.lengthOf(spans, 0);
@@ -81,12 +84,58 @@ describe("EventLoopMonitor", () => {
     }),
   );
 
+  it.effect("reports a long stall when a client connects, before the next timed sample", () =>
+    Effect.gen(function* () {
+      const long = { ...stalled, delayMaxNs: ms(13_000), activeMs: 13_000 };
+      const context = yield* monitor([quiet, stalled, long]);
+      const eventLoop = Context.get(context, EventLoopMonitor.EventLoopMonitor);
+      // The startup sample is skipped, so a connect before it reads nothing.
+      assert.isUndefined(yield* eventLoop.latestNoticeableStall);
+
+      yield* TestClock.adjust("30 seconds");
+      // Under 5 s: logged, but not worth telling a client about.
+      assert.isUndefined(yield* eventLoop.latestNoticeableStall);
+      assert.deepStrictEqual(yield* eventLoop.latestNoticeableStall, {
+        detectedAt: "1970-01-01T00:00:30.000Z",
+        durationMs: 12_000,
+        loadAverage: 219.4,
+        cpuCount: 18,
+      });
+
+      // Too old to explain a drop now.
+      yield* TestClock.adjust("301 seconds");
+      assert.isUndefined(yield* eventLoop.latestNoticeableStall);
+    }).pipe(Effect.scoped),
+  );
+
+  it.effect("exports the server's memory, CPU and event loop from each sample", () =>
+    Effect.gen(function* () {
+      yield* monitor([quiet, stalled]);
+      yield* TestClock.adjust("60 seconds");
+
+      const gauges = Object.fromEntries(
+        (yield* Metric.snapshot).flatMap((snapshot) =>
+          snapshot.id.startsWith("t3_server_") && snapshot.type === "Gauge"
+            ? [[snapshot.id, snapshot.state.value]]
+            : [],
+        ),
+      );
+      assert.deepStrictEqual(gauges, {
+        t3_server_resident_bytes: 1536 * 1024 * 1024,
+        t3_server_heap_used_bytes: 512 * 1024 * 1024,
+        t3_server_event_loop_utilization: 0.176,
+        t3_server_event_loop_delay_max: 4_950,
+        // 406 ms of CPU over 30 s of wall time.
+        t3_server_cpu_utilization: 406 / 30_000,
+      });
+    }).pipe(Effect.scoped),
+  );
+
   it.effect("keeps each stall as one line in a capped stall log", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const directory = yield* fs.makeTempDirectoryScoped({ prefix: "t3-event-loop-" });
       const filePath = `${directory}/event-loop-stalls.ndjson`;
-      // Room for one line, so each new stall rotates the last one into the backup.
       yield* monitor([stalled, stalled, stalled, { ...stalled, delayMaxNs: ms(7_000) }], {
         filePath,
         maxBytes: 300,
@@ -122,8 +171,6 @@ describe("EventLoopMonitor", () => {
     });
     return Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
-      // A directory at the log path opens, but every append to it fails. The cap
-      // is large so the sink never rotates the directory out of the way.
       const filePath = yield* fs.makeTempDirectoryScoped({ prefix: "t3-event-loop-" });
       yield* monitor([stalled, stalled], { filePath, maxBytes: 1024 * 1024 });
       yield* TestClock.adjust("60 seconds");

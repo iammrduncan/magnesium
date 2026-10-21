@@ -73,9 +73,8 @@ function GiveAccessDialog({
       onGiven();
     } catch (cause) {
       setError(errorMessage(cause));
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   return (

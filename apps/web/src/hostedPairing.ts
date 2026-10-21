@@ -11,7 +11,6 @@ export interface HostedPairingRequest {
 
 export type HostedAppChannel = "latest" | "nightly";
 
-/** The hosted app origin shared links point at. */
 export function configuredHostedAppUrl(): string {
   return import.meta.env.VITE_HOSTED_APP_URL?.trim() || DEFAULT_HOSTED_APP_URL;
 }
@@ -42,8 +41,6 @@ export function isHostedStaticApp(url?: URL): boolean {
     return true;
   }
 
-  // No window, or a window without a location (tests, static render), means
-  // no origin to be hosted at.
   if (url === undefined && (typeof window === "undefined" || window.location === undefined)) {
     return false;
   }

@@ -18,6 +18,7 @@ import * as Sink from "effect/Sink";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 import { HttpClient, HttpClientResponse } from "effect/http";
+import * as ChildProcess from "effect/process/ChildProcess";
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 
 import * as AntigravityInstallation from "./AntigravityInstallation.ts";
@@ -35,7 +36,6 @@ const previousReleaseId = "1".repeat(64);
 const previousVersion = "fixture-old";
 const encodeJsonString = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
 
-// Small ZIPs made with Python's zipfile module. The unsafe entries are intentional.
 const zipFixtures = {
   complete:
     "UEsDBBQAAAAIAAAAIl1zEy/oFAAAABQAAAASAAAAYWd5X2FjcF9zZXJ2ZXIucGFyS8wryUwvSizLLKlUKCoFcnJTuQBQSwMEFAAAAAgAAAAiXV9yAykQAAAADgAAABUAAABsb2NhbGhhcm5lc3NfZXh0ZXJuYWzLyU9OzFHISCzKSy0u5gIAUEsBAhQDFAAAAAgAAAAiXXMTL+gUAAAAFAAAABIAAAAAAAAAAAAAAO2BAAAAAGFneV9hY3Bfc2VydmVyLnBhclBLAQIUAxQAAAAIAAAAIl1fcgMpEAAAAA4AAAAVAAAAAAAAAAAAAADtgUQAAABsb2NhbGhhcm5lc3NfZXh0ZXJuYWxQSwUGAAAAAAIAAgCDAAAAhwAAAAAA",
@@ -404,7 +404,6 @@ it.layer(NodeServices.layer)("Antigravity installation", (it) => {
           profiles.add(profile);
           const helper = command.args[0] === "-e";
           if (!helper) childProcessesRunning = true;
-          // The runtime unpacks straight into the disposable profile.
           if (!helper) {
             if (platform === "win32") {
               expect(command.options.env?.TEMP).toBe(profile);
@@ -555,6 +554,53 @@ it.layer(NodeServices.layer)("Antigravity installation", (it) => {
     }),
   );
 
+  it.effect.each([
+    {
+      name: "IPv6 startup failure",
+      stderr:
+        "enforce_kernel_ipv6_support.cc:70] Check failed: AddressFamilySupported(AF_INET6, &loopback6_ok)",
+      message:
+        "Antigravity requires IPv6 socket support. Enable IPv6 in this environment. On WSL, remove ipv6.disable=1 from .wslconfig and run wsl --shutdown.",
+    },
+    {
+      name: "other startup failure",
+      stderr: "Private startup diagnostics: internal runtime failure",
+      message: "The downloaded Antigravity runtime could not start in this environment.",
+    },
+  ])(
+    "reports a fixed diagnostic for $name and preserves the previous release after SIGABRT",
+    (testCase) =>
+      Effect.gen(function* () {
+        const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+        const { installation, stagingReleased } = yield* makeHarness({
+          previous: true,
+          useDefaultValidation: true,
+        }).pipe(
+          Effect.provideService(
+            ChildProcessSpawner.ChildProcessSpawner,
+            ChildProcessSpawner.make((command) =>
+              spawner.spawn(
+                command._tag === "StandardCommand" && command.command.endsWith(executableName)
+                  ? ChildProcess.make(process.execPath, [
+                      "-e",
+                      `process.stderr.write(${encodeJsonString(testCase.stderr)}, () => process.kill(process.pid, 'SIGABRT'));`,
+                    ])
+                  : command,
+              ),
+            ),
+          ),
+        );
+        yield* installation.start;
+        expect(yield* terminalState(installation)).toMatchObject({
+          phase: "failed",
+          message: testCase.message,
+        });
+        yield* Deferred.await(stagingReleased);
+        yield* expectPreviousRelease(installation);
+      }),
+    { skip: hostPlatform === "win32" },
+  );
+
   it.effect("accepts an encoded Content-Length when the body is compressed", () =>
     Effect.gen(function* () {
       // dl.google.com gzips the archive and reports the encoded size. The decoded
@@ -586,7 +632,6 @@ it.layer(NodeServices.layer)("Antigravity installation", (it) => {
     { name: "oversized member", archive: Buffer.from(zipFixtures.oversizedMember, "base64") },
   ])("rejects $name before runtime validation", ({ completeAsset, ...options }) =>
     Effect.gen(function* () {
-      // Pin the asset to the complete archive so the download itself is what disagrees.
       const asset =
         completeAsset === undefined ? undefined : { ...(yield* releaseAsset()), ...completeAsset };
       const { installation, validations, stagingReleased, fs, path } = yield* makeHarness({

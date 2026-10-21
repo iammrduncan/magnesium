@@ -41,8 +41,6 @@ interface AcpSchemaIssueDiagnostics {
 const MAX_SUMMARY_ISSUES = 3;
 const MAX_SUMMARY_PATH_SEGMENTS = 8;
 
-// Record keys come from the payload, so a key that is not a plain identifier
-// is shown as `*` rather than copied.
 const summaryPathSegment = (segment: PropertyKey): string =>
   typeof segment === "number" || /^[A-Za-z_][A-Za-z0-9_]{0,63}$/.test(String(segment))
     ? String(segment)
@@ -71,11 +69,9 @@ const isCatchAllMember = (issue: SchemaIssue.Issue) =>
   "ast" in issue && SchemaAST.resolveTitle(issue.ast) === "other";
 
 /**
- * Names where a payload broke its schema, such as `update.used missing`,
- * without copying any value from it. ACP unions end in a member titled
- * "other" that admits custom and future variants; it fails only because the
- * discriminator names a known variant, so the known variant's issues are the
- * ones reported.
+ * ACP unions end in a member titled "other" that admits custom and future
+ * variants; it fails only because the discriminator names a known variant, so
+ * the known variant's issues are the ones reported.
  */
 const schemaIssueSummary = (root: SchemaIssue.Issue): string => {
   const entries = new Set<string>();
@@ -163,6 +159,7 @@ export class AcpProcessExitedError extends Schema.TaggedError<AcpProcessExitedEr
   "AcpProcessExitedError",
   {
     code: Schema.optional(Schema.Number),
+    signal: Schema.optionalKey(Schema.String),
     pid: Schema.optionalKey(Schema.Int),
     stderr: Schema.optionalKey(Schema.String),
     cause: Schema.optional(Schema.Defect()),
@@ -170,7 +167,11 @@ export class AcpProcessExitedError extends Schema.TaggedError<AcpProcessExitedEr
 ) {
   override get message() {
     const base =
-      this.code === undefined ? "ACP process exited" : `ACP process exited with code ${this.code}`;
+      this.signal !== undefined
+        ? `ACP process exited after signal ${this.signal}`
+        : this.code === undefined
+          ? "ACP process exited"
+          : `ACP process exited with code ${this.code}`;
     const excerpt = this.stderr?.trim();
     return excerpt && excerpt.length > 0 ? `${base}\n${excerpt}` : base;
   }
@@ -192,7 +193,6 @@ export class AcpProtocolParseError extends Schema.TaggedError<AcpProtocolParseEr
     issueCount: Schema.optionalKey(Schema.Number),
     issueKinds: Schema.optionalKey(Schema.Array(AcpSchemaIssueKind)),
     maximumPathDepth: Schema.optionalKey(Schema.Number),
-    /** Where the payload broke its schema, e.g. `update.used missing`; never payload values. */
     issueSummary: Schema.optionalKey(Schema.String),
     cause: Schema.Defect(),
   },

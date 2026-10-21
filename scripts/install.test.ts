@@ -8,7 +8,6 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 
-// util-linux's script gives the real installer a terminal without a browser or extra packages.
 describe.skipIf(HostProcess.Platform.defaultValue() !== "linux")("installer terminal", () => {
   it.each([false, true])(
     "preserves download and install behavior (HTTP failure: %s)",
@@ -103,6 +102,9 @@ describe.skipIf(HostProcess.Platform.defaultValue() !== "linux")("installer term
             }).trim(),
           ).toBe("t3 v1.2.3");
           expect(await NodeFSP.readdir(versions)).toEqual([version]);
+          expect(
+            await NodeFSP.readFile(NodePath.join(root, "home/runtime/launchers"), "utf8"),
+          ).toBe(`${NodePath.join(root, "bin/t3")}\n`);
         }
       } finally {
         if (child.exitCode === null) child.kill();

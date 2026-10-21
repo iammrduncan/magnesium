@@ -13,7 +13,6 @@ import {
 } from "@magnesium/contracts";
 import {
   AuthAccessTokenType,
-  AuthAdministrativeScopes,
   AuthOrchestrationReadScope,
   AuthStandardClientScopes,
   type AuthEnvironmentScope,
@@ -32,6 +31,7 @@ import {
   authenticateTestSocket,
   defaultSettingsPorts,
   noThreads,
+  OPERATOR_SCOPES,
   testDescriptor,
 } from "../testing.ts";
 import * as MagnesiumDb from "../db/MagnesiumDb.ts";
@@ -128,17 +128,28 @@ const makeHub = async (options: { readonly machineToken?: string } = {}) => {
           return json(
             sessionState(
               bearer === validToken || bearer === "admin-token",
-              bearer === "admin-token" ? AuthAdministrativeScopes : AuthStandardClientScopes,
+              bearer === "admin-token" ? AuthStandardClientScopes : OPERATOR_SCOPES,
             ),
           );
-        case "/oauth/token":
+        case "/oauth/token": {
+          // As a machine does: the requested scopes the pairing link has, or all of them.
+          const text =
+            request.body._tag === "Uint8Array" ? new TextDecoder().decode(request.body.body) : "";
+          const asked = text.startsWith("{")
+            ? (JSON.parse(text) as { scope?: string }).scope
+            : (new URLSearchParams(text).get("scope") ?? undefined);
+          const granted =
+            asked === undefined
+              ? AuthStandardClientScopes
+              : AuthStandardClientScopes.filter((scope) => asked.split(" ").includes(scope));
           return json({
             access_token: "paired-token",
             issued_token_type: AuthAccessTokenType,
             token_type: "Bearer",
             expires_in: 30 * 24 * 60 * 60,
-            scope: AuthStandardClientScopes.join(" "),
+            scope: granted.join(" "),
           });
+        }
         case "/api/magnesium/session":
           if (request.method === "DELETE" && bearer !== undefined) {
             ended.push(bearer);
@@ -164,11 +175,11 @@ const makeHub = async (options: { readonly machineToken?: string } = {}) => {
   );
 
   const scopesFor: Record<string, ReadonlyArray<AuthEnvironmentScope>> = {
-    admin: AuthAdministrativeScopes,
-    operator: AuthStandardClientScopes,
+    admin: AuthStandardClientScopes,
+    operator: OPERATOR_SCOPES,
     reader: [AuthOrchestrationReadScope],
     // Minted by the `t3` CLI (or an agent that can run it): every scope, but no paired device.
-    cli: AuthAdministrativeScopes,
+    cli: AuthStandardClientScopes,
   };
   const ports = ServerPorts.of({
     baseDir,

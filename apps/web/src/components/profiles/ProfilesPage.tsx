@@ -30,8 +30,8 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { isElectron } from "../../env";
 import { cn } from "../../lib/utils";
-import { useServerConfigs, useThreadShells } from "../../state/entities";
-import { useEnvironments } from "../../state/environments";
+import { useThreadShells } from "../../state/entities";
+import { useEnvironmentProviders, useEnvironments } from "../../state/environments";
 import { buildThreadRouteParams } from "../../threadRoutes";
 import { useFleetView } from "../fleet/fleetStore";
 import { HeldBanner } from "../home/HomeCard";
@@ -682,7 +682,7 @@ export function ProfilesPage() {
     ],
     [fleetMachines, list],
   );
-  const serverConfigs = useServerConfigs();
+  const providersByEnvironment = useEnvironmentProviders();
   const startProfileThread = useStartProfileThread();
   const [chosenDialog, setDialog] = useState<"new" | "copy" | "delete" | null>(null);
   const dialog = chosenDialog ?? (search.new === true ? "new" : null);
@@ -739,9 +739,9 @@ export function ProfilesPage() {
           detail,
           machines: fleetMachines,
           hasInstance: (environmentId, instanceId) =>
-            serverConfigs
+            providersByEnvironment
               .get(EnvironmentId.make(environmentId))
-              ?.providers.some((provider) => provider.instanceId === instanceId) ?? false,
+              ?.some((provider) => provider.instanceId === instanceId) ?? false,
         });
 
   return (

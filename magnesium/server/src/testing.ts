@@ -9,9 +9,11 @@ import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { type FleetMachine, type LiveTableItem, MAGNESIUM_WS_PATH } from "@magnesium/contracts";
 import {
-  AuthAdministrativeScopes,
   AuthOrchestrationReadScope,
   AuthStandardClientScopes,
+  AuthAccessReadScope,
+  AuthAccessWriteScope,
+  AuthRelayWriteScope,
   type AuthEnvironmentScope,
   DEFAULT_SERVER_SETTINGS,
   type ExecutionEnvironmentDescriptor,
@@ -74,14 +76,25 @@ export const testDescriptor = (
   ...overrides,
 });
 
+/**
+ * A device that can't manage access: the standard scopes without access and
+ * relay management, as pairing gave before upstream v0.1.1.
+ */
+export const OPERATOR_SCOPES: ReadonlyArray<AuthEnvironmentScope> = AuthStandardClientScopes.filter(
+  (scope) =>
+    scope !== AuthAccessReadScope &&
+    scope !== AuthAccessWriteScope &&
+    scope !== AuthRelayWriteScope,
+);
+
 /** Session names a test can present as a cookie (`t3_session`) or a `wsTicket`. */
 export const TEST_SESSION_SCOPES: Readonly<Record<string, ReadonlyArray<AuthEnvironmentScope>>> = {
-  admin: AuthAdministrativeScopes,
-  operator: AuthStandardClientScopes,
+  admin: AuthStandardClientScopes,
+  operator: OPERATOR_SCOPES,
   reader: [AuthOrchestrationReadScope],
   nobody: [],
   /** Minted by the `t3` CLI, or the reusable dev token: every scope, but not a paired device. */
-  cli: AuthAdministrativeScopes,
+  cli: AuthStandardClientScopes,
 };
 
 const sessionNamed = (name: string | undefined): CallerSession | undefined => {

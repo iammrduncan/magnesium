@@ -114,7 +114,6 @@ export const makeEnvironmentHttpApiGroupClient = <
     }),
   );
 
-/** Contract-derived request URLs for authentication proofs, tracing, and structured errors. */
 export const makeEnvironmentHttpApiUrlBuilder = (httpBaseUrl: string) =>
   HttpApiClient.urlBuilder(EnvironmentHttpApi, {
     baseUrl: remoteApiBaseUrl(httpBaseUrl),

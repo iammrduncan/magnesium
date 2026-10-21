@@ -186,6 +186,8 @@ import { assertToolCallWorkspaceNeverClaudeOutput } from "./tool_call_workspace_
 import { assertToolCallWorkspaceNeverOutput } from "./tool_call_workspace_never/codex_output.ts";
 import { toolCallWorkspaceNeverInput } from "./tool_call_workspace_never/input.ts";
 import { assertTurnInterruptClaudeOutput } from "./turn_interrupt/claude_output.ts";
+import { assertCommandOutputStreamingOutput } from "./command_output_streaming/output.ts";
+import { commandOutputStreamingInput } from "./command_output_streaming/input.ts";
 import { assertTurnInterruptOutput } from "./turn_interrupt/codex_output.ts";
 import { turnInterruptInput } from "./turn_interrupt/input.ts";
 import { assertTurnInterruptMidToolClaudeOutput } from "./turn_interrupt_mid_tool/claude_output.ts";
@@ -943,7 +945,6 @@ export const ORCHESTRATOR_REPLAY_FIXTURES: ReadonlyArray<OrchestratorReplayFixtu
       },
     ],
   },
-  // OpenCode 2 runtime of the same driver, recorded against 2.0.18 over HTTP and SSE.
   {
     name: "opencode2_simple",
     buildInput: openCode2SimpleInput,
@@ -1143,7 +1144,6 @@ export const ORCHESTRATOR_REPLAY_FIXTURES: ReadonlyArray<OrchestratorReplayFixtu
       },
     ],
   },
-  // Recorded live against 2.0.18 on OpenRouter with the workspace's own command and skill.
   ...(
     [
       ["opencode2_command", openCode2CommandInput, assertOpenCode2CommandOutput],
@@ -1568,6 +1568,31 @@ export const ORCHESTRATOR_REPLAY_FIXTURES: ReadonlyArray<OrchestratorReplayFixtu
     ],
   },
   {
+    name: "command_output_streaming",
+    buildInput: commandOutputStreamingInput,
+    providers: [
+      {
+        driver: ProviderDriverKind.make("codex"),
+        transcriptFile: new URL(
+          "./command_output_streaming/codex_transcript.ndjson",
+          import.meta.url,
+        ),
+        modelSelection: CODEX_MODEL_SELECTION,
+        runtimePolicyOverride: WORKSPACE_NEVER_POLICY,
+        assertOutput: assertCommandOutputStreamingOutput,
+      },
+      {
+        driver: ProviderDriverKind.make("claudeAgent"),
+        transcriptFile: new URL(
+          "./command_output_streaming/claude_transcript.ndjson",
+          import.meta.url,
+        ),
+        modelSelection: CLAUDE_MODEL_SELECTION,
+        assertOutput: assertCommandOutputStreamingOutput,
+      },
+    ],
+  },
+  {
     name: "turn_interrupt_mid_tool",
     buildInput: turnInterruptMidToolInput,
     providers: [
@@ -1727,13 +1752,3 @@ export const ORCHESTRATOR_REPLAY_FIXTURES: ReadonlyArray<OrchestratorReplayFixtu
     ],
   },
 ];
-
-// TODO(claude-v2/context-transfer): add provider-switch handoff and return fixtures when portable
-// context handoff is implemented. Cross-reference docs/orchestration-v2/provider-switching-and-context.md
-// and docs/orchestration-v2/thread-lineage-and-context-transfer.md. The return fixture should
-// prefer a delta handoff into an existing Claude provider thread.
-
-// TODO(claude-v2/context-transfer-fixtures): register provider-switch, merge-back, and cross-provider
-// fork fixtures after each path has a real provider transcript. Cross-reference
-// docs/orchestration-v2/provider-switching-and-context.md and
-// docs/orchestration-v2/thread-lineage-and-context-transfer.md.

@@ -249,17 +249,24 @@ describe("findProjectOnChangeRequestHost", () => {
   });
 
   it.each([
-    "ssh.dev.azure.com/v3/org-a/project/web",
-    "vs-ssh.visualstudio.com/v3/org-a/project/web",
-    "org-a.visualstudio.com/defaultcollection/project/_git/web",
-    "dev.azure.com/org-a/project/_git/web",
-  ])("matches Azure browser references against %s", (canonicalKey) => {
+    ["ssh.dev.azure.com/v3/org-a/project/web", "git@ssh.dev.azure.com:v3/org-a/project/web"],
+    [
+      "vs-ssh.visualstudio.com/v3/org-a/project/web",
+      "git@vs-ssh.visualstudio.com:v3/org-a/project/web",
+    ],
+    [
+      "org-a.visualstudio.com/defaultcollection/project/_git/web",
+      "https://org-a.visualstudio.com/DefaultCollection/Project/_git/Web",
+    ],
+    ["dev.azure.com/org-a/project/_git/web", "https://org-a@dev.azure.com/org-a/Project/_git/Web"],
+  ])("matches Azure browser references against %s", (canonicalKey, remoteUrl) => {
     const checkout = project("azure", {
-      canonicalKey,
-      provider: "azure-devops",
+      ...repositoryIdentity("azure-devops", canonicalKey, remoteUrl),
       displayName: canonicalKey.split("/").slice(1).join("/"),
     });
-    const reference = { host: "dev.azure.com", repository: "org-a/project/_git/web", number: 42 };
+    const reference = parseChangeRequestUrl(
+      "https://dev.azure.com/org-a/project/_git/web/pullrequest/42",
+    )!;
     expect(findProjectForChangeRequest([checkout], reference)).toBe(checkout);
     expect(findProjectOnChangeRequestHost([checkout], reference)).toBe(checkout);
     expect(
@@ -365,8 +372,6 @@ describe("findProjectForChangeRequest", () => {
     ({ id: "p1", repositoryIdentity: identity }) as never;
 
   it("matches a nested GitLab group by the whole path below the host", () => {
-    // The server identifies a repository by `displayName`, which keeps every group segment; the
-    // two-segment owner/name form would look for `t3tools/t3code` and find nothing.
     const projects = [
       project({
         canonicalKey: "gitlab.com/t3tools/platform/t3code",
@@ -407,9 +412,6 @@ describe("findProjectForChangeRequest", () => {
     // Azure alone addresses one repository under two names: `ssh.dev.azure.com` and `v3/...` over
     // SSH against `dev.azure.com` and `.../_git/...` everywhere a person sees it. The identity is
     // recorded in the spelling a link arrives in, so both halves of this comparison line up.
-    //
-    // Derived from the SSH remote the way the server derives it rather than written out, so the
-    // day that normalization stops reaching the web spelling this fails here too.
     const canonicalKey = normalizeGitRemoteUrl("git@ssh.dev.azure.com:v3/T3Tools/Platform/T3Code");
     const projects = [
       project({

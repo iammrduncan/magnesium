@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-10-20T13:10:00Z",
+  "updatedAt": "2026-10-19T07:21:38Z",
   "compatibility": [
     {
       "driver": "codex",
@@ -53,10 +53,9 @@
     {
       "driver": "opencode",
       "t3CodeRange": ">=0.0.42 <0.0.46",
-      "recommendedRange": "=2.0.32",
-      "recommendedVersion": "2.0.32",
+      "recommendedRange": ">=1.14.19 <2.0.0",
+      "recommendedVersion": "1.14.19",
       "ranges": [
-        { "range": "=2.0.32", "status": "supported" },
         { "range": ">=2.0.0", "status": "broken" },
         { "range": ">=1.14.19 <2.0.0", "status": "supported" },
         { "range": "<1.14.19", "status": "broken" }
@@ -654,7 +653,8 @@
               {
                 "id": "thinking",
                 "label": "Thinking",
-                "type": "boolean"
+                "type": "boolean",
+                "currentValue": true
               }
             ]
           },

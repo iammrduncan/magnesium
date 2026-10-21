@@ -16,7 +16,7 @@ import {
 
 import { ThreadDetailsSection } from "./ThreadDetailsSection";
 import { cn } from "../../lib/utils";
-import { relativeLabel, scheduleLabel } from "../settings/ScheduledTasksSettings";
+import { ScheduledRelativeLabel, scheduleLabel } from "../settings/ScheduledTasksSettings";
 import { useServerTimeZone } from "../fleet/useServerTimeZone"; // magnesium: goal 35
 import { useEnvironmentQuery } from "../../state/query";
 import { serverEnvironment } from "../../state/server";
@@ -38,12 +38,25 @@ const STATUS_DOT_CLASS: Record<ScheduledTask["lastRunStatus"], string> = {
   failed: "bg-destructive",
 };
 
-/**
- * Thread details panel section listing the automations (scheduled tasks) bound
- * to this thread. Fed by the live scheduled-task subscription, so run status
- * and next-run times update as the scheduler works — no manual refresh.
- * Renders nothing when the thread has no bound automations.
- */
+// magnesium: a clock time names its server's time zone (D64, goal 35)
+function taskScheduleLine(task: ScheduledTask, timeZone: string | null) {
+  return (
+    <>
+      {scheduleLabel(task.schedule, timeZone)}
+      {task.enabled && task.nextRunAt !== null ? (
+        <>
+          {" · next "}
+          <ScheduledRelativeLabel value={task.nextRunAt} />
+        </>
+      ) : task.enabled ? (
+        ""
+      ) : (
+        " · paused"
+      )}
+    </>
+  );
+}
+
 export function ThreadAutomationsPanel(props: {
   readonly environmentId: EnvironmentId;
   readonly threadId: ThreadId;
@@ -67,9 +80,7 @@ export function ThreadAutomationsPanel(props: {
   const boundTasks = (tasksQuery.data?.tasks ?? []).filter(
     (task) => task.threadId === props.threadId,
   );
-  // A load error must not look like "no automations" — this thread may have
-  // tasks whose controls would silently vanish. Only hide the section when we
-  // positively know there is nothing bound to it.
+
   if (tasksQuery.error === null && boundTasks.length === 0) return null;
 
   const reportFailure = (title: string, error: unknown) => {
@@ -172,19 +183,20 @@ export function ThreadAutomationsPanel(props: {
                 aria-hidden
               />
             </span>
-            <div className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium text-foreground/80">
-                {task.title}
-              </span>
-              <p className="truncate text-2xs text-muted-foreground">
-                {scheduleLabel(task.schedule)}
-                {task.enabled && task.nextRunAt !== null
-                  ? ` · next ${relativeLabel(task.nextRunAt)}`
-                  : task.enabled
-                    ? ""
-                    : " · paused"}
-              </p>
-            </div>
+            <Tooltip>
+              <TooltipTrigger render={<div className="min-w-0 flex-1" />}>
+                <span className="block truncate text-sm font-medium text-foreground/80">
+                  {task.title}
+                </span>
+                <p className="truncate text-2xs text-muted-foreground">
+                  {taskScheduleLine(task, timeZone)}
+                </p>
+              </TooltipTrigger>
+              <TooltipPopup side="left">
+                <p className="font-medium">{task.title}</p>
+                <p className="text-muted-foreground">{taskScheduleLine(task, timeZone)}</p>
+              </TooltipPopup>
+            </Tooltip>
             <Tooltip>
               <TooltipTrigger
                 render={

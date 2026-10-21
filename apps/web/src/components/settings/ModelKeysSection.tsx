@@ -45,9 +45,8 @@ function AddKeyDialog({ onAdded }: { readonly onAdded: () => void }) {
       onAdded();
     } catch (cause) {
       setError(errorMessage(cause));
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   return (
@@ -121,9 +120,8 @@ function ReplaceKeyDialog({ name }: { readonly name: string }) {
       });
     } catch (cause) {
       setError(errorMessage(cause));
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   return (

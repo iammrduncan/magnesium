@@ -2,7 +2,7 @@
   "name": "Magnesium",
   "short_name": "Magnesium",
   "id": "/",
-  "start_url": "/home",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#161616",
