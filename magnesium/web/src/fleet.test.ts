@@ -79,15 +79,13 @@ describe("Fleet in the browser", () => {
     ).toBe("cpu-host-1 went offline: It stopped answering.");
   });
 
-  it("shows each server's build, and calls out a machine on a different one", () => {
-    const hub = machine(null);
-    expect(describeVersion(hub, hub.release)).toBe("0.0.45 · 1a2b3c4d5e");
-    expect(describeVersion(machine("cpu-host-1"), hub.release)).toBe("0.0.45 · 1a2b3c4d5e");
-    expect(describeVersion(machine("cpu-host-2", { release: "2b3c4d5e6f" }), hub.release)).toBe(
-      "0.0.45 · 2b3c4d5e6f (not the hub's build)",
+  it("shows each server's version and build", () => {
+    expect(describeVersion(machine(null))).toBe("0.0.45 · 1a2b3c4d5e");
+    expect(describeVersion(machine("cpu-host-2", { release: "2b3c4d5e6f" }))).toBe(
+      "0.0.45 · 2b3c4d5e6f",
     );
     // A server that predates releases, or one in development, shows its version alone.
-    expect(describeVersion(machine("gpu-host-1", { release: null }), hub.release)).toBe("0.0.45");
+    expect(describeVersion(machine("gpu-host-1", { release: null }))).toBe("0.0.45");
   });
 
   it("says where and how each server runs, beside its name", () => {
@@ -105,8 +103,8 @@ describe("Fleet in the browser", () => {
       ),
     ).toBe("in notebook on node-b");
     // The version line keeps to the version and the build.
-    expect(
-      describeVersion(machine("cpu-host-2", { deployment: "pod", node: "node-b" }), "1a2b3c4d5e"),
-    ).toBe("0.0.45 · 1a2b3c4d5e");
+    expect(describeVersion(machine("cpu-host-2", { deployment: "pod", node: "node-b" }))).toBe(
+      "0.0.45 · 1a2b3c4d5e",
+    );
   });
 });

@@ -6,7 +6,6 @@ import {
   describeThreads,
   describePlace,
   describeVersion,
-  differsFromHub,
   KIND_HINT,
   fleetRows,
   upkeepNotes,
@@ -58,7 +57,6 @@ function MachineRow({
   readonly onReconnect: (name: string) => Promise<void>;
   readonly now: number;
 }) {
-  const hubRelease = hub?.release ?? null;
   const notes = upkeepNotes(machine, hub, now, formatTime);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -124,14 +122,9 @@ function MachineRow({
           </span>
         ))}
       </button>
-      <span
-        className={cn(
-          // The server's panel shows its build; the list keeps room for names until the screen is wide.
-          "truncate text-xs tabular-nums sm:hidden 2xl:block",
-          differsFromHub(machine, hubRelease) ? "text-warning-foreground" : "text-muted-foreground",
-        )}
-      >
-        {describeVersion(machine, hubRelease)}
+      {/* The server's panel shows its build; the list keeps room for names until the screen is wide. */}
+      <span className="truncate text-xs text-muted-foreground tabular-nums sm:hidden 2xl:block">
+        {describeVersion(machine)}
       </span>
       <div className="flex min-w-0 items-center gap-2">
         <span aria-hidden className={cn("size-2 shrink-0 rounded-full", LINK_DOT[machine.link])} />
@@ -403,7 +396,8 @@ export function FleetPage() {
           onOpenChange={(open) => (open ? undefined : setSelectedKey(null))}
         >
           <SheetPopup side="bottom">
-            <div className="max-h-[88dvh] overflow-y-auto p-4">
+            {/* Clear of the sheet's close button, which sits over the panel's corner. */}
+            <div className="max-h-[88dvh] overflow-y-auto p-4 pt-12">
               <SheetTitle className="sr-only">{shown?.label ?? "Server"}</SheetTitle>
               {shown !== undefined ? (
                 <ServerPanel

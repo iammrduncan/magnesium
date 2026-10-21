@@ -158,17 +158,11 @@ const DEPLOYMENT_LABEL: Record<NonNullable<FleetMachine["deployment"]>, string> 
 
 /**
  * The version and the build, which tells a mixed deploy apart: the package
- * version stays the same across commits. `hubRelease` is the build of the
- * server serving the list.
+ * version stays the same across commits. A build behind the hub's is a note of
+ * its own (`upkeepNotes`).
  */
-export const describeVersion = (machine: FleetMachine, hubRelease: string | null): string => {
-  const parts = [machine.serverVersion ?? "Version unknown"];
-  if (machine.release !== null) {
-    const note = differsFromHub(machine, hubRelease) ? " (not the hub's build)" : "";
-    parts.push(`${machine.release}${note}`);
-  }
-  return parts.join(" · ");
-};
+export const describeVersion = (machine: FleetMachine): string =>
+  [machine.serverVersion ?? "Version unknown", machine.release].filter(Boolean).join(" · ");
 
 /**
  * Where and how a server runs, beside its name: a pod's name says nothing
@@ -193,16 +187,6 @@ export const KIND_HINT: Record<FleetMachine["kind"], string> = {
   gateway:
     "The hub's door into a Kubernetes namespace, where it runs machines for the hub. It runs no agents.",
 };
-
-/** Whether a machine runs a different build than the hub. */
-export function differsFromHub(machine: FleetMachine, hubRelease: string | null): boolean {
-  return (
-    machine.name !== null &&
-    machine.release !== null &&
-    hubRelease !== null &&
-    machine.release !== hubRelease
-  );
-}
 
 export const describeThreads = (threads: ThreadCounts | null): string =>
   threads === null ? "Unknown" : `${threads.running} running · ${threads.waiting} waiting on you`;
