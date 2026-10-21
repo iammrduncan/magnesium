@@ -30,12 +30,24 @@ const run = (
   options?: { allowFailure?: boolean },
 ) => {
   console.log(`$ ${command} ${args.join(" ")}`);
-  const result = NodeChildProcess.spawnSync(command, args, {
-    cwd: repo,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-    maxBuffer: 256 * 1024 * 1024,
-  });
+  const spawn = () =>
+    NodeChildProcess.spawnSync(command, args, {
+      cwd: repo,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      maxBuffer: 256 * 1024 * 1024,
+    });
+  let result = spawn();
+  // An editor's or agent's own `git status` holds the index for a moment; wait it out.
+  for (
+    let tries = 0;
+    result.status !== 0 && /index\.lock': File exists/.test(result.stderr);
+    tries++
+  ) {
+    if (tries === 50) break;
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 200);
+    result = spawn();
+  }
   if (result.status !== 0 && options?.allowFailure !== true) {
     throw new Error(`${command} ${args.join(" ")} failed:\n${result.stderr || result.stdout}`);
   }
