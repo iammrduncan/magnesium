@@ -110,6 +110,10 @@ deploy, so Fleet shows when it's behind but offers no Update or Roll back
 there. A server with nothing to start it again, such as one run by hand, can't
 update or restore itself from Fleet; use `magnesium-release` on it.
 
+Changing a server (Update, Roll back, Back up now, Restore) needs a device
+that can manage access, as adding a machine does; any paired device can see
+Fleet and its backups.
+
 The command palette has the same actions: **Add a machine**, and **Update**,
 **Roll back** and **Back up now** for each server.
 

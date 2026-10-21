@@ -82,12 +82,13 @@ const hubAndMachine = (machineUpkeep: Partial<UpkeepConfig>, hubUpkeep: Partial<
       },
       upkeep: { script, ...hubUpkeep },
     });
-    const browser = yield* connect(hub.wsUrl("operator"));
+    // Changing a server is for a device that manages access.
+    const browser = yield* connect(hub.wsUrl("admin"));
     // The hub knows the machine once its link is up.
     yield* browser[MAGNESIUM_WS_METHODS.fleetBackups]({ machine: "cpu-host-1" }).pipe(
       Effect.retry({ schedule: Schedule.spaced("100 millis"), times: 100 }),
     );
-    return { machine, hub, browser };
+    return { machine, hub, browser, operator: yield* connect(hub.wsUrl("operator")) };
   });
 
 const waitFor = <A>(read: () => A | undefined) =>
@@ -185,7 +186,16 @@ describe("Fleet's upkeep through the hub", () => {
 
   it.live("says why it won't update the hub itself or a machine its workload owns", () =>
     Effect.gen(function* () {
-      const { browser } = yield* hubAndMachine({}, { release: "abcdef1234" });
+      const { browser, operator } = yield* hubAndMachine({}, { release: "abcdef1234" });
+      // A device that doesn't manage access reads backups but changes nothing.
+      yield* operator[MAGNESIUM_WS_METHODS.fleetBackups]({ machine: "cpu-host-1" });
+      const refused = yield* operator[MAGNESIUM_WS_METHODS.fleetBackupNow]({
+        machine: "cpu-host-1",
+      }).pipe(Effect.flip);
+      expect(refused).toMatchObject({
+        _tag: "EnvironmentAuthorizationError",
+        requiredScope: "access:write",
+      });
       const hub = yield* browser[MAGNESIUM_WS_METHODS.fleetUpdate]({ machine: null }).pipe(
         Effect.flip,
       );

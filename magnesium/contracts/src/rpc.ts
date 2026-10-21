@@ -491,6 +491,8 @@ const UpkeepUpdateRpc = Rpc.make(MAGNESIUM_WS_METHODS.upkeepUpdate, {
 
 // The same, for any server in Fleet, asked of the hub (goal 35). The hub runs
 // each on the machine, or through a pod's gateway, and shows its progress.
+// Changing a server is for a device that manages access, as adding machines
+// is; the machine checks the hub's own token against its upkeep's scope.
 const FleetBackupsRpc = Rpc.make(MAGNESIUM_WS_METHODS.fleetBackups, {
   payload: FleetServerInput,
   success: BackupList,
@@ -500,20 +502,20 @@ const FleetBackupNowRpc = Rpc.make(MAGNESIUM_WS_METHODS.fleetBackupNow, {
   payload: FleetServerInput,
   success: ServerBackup,
   error: UpkeepError,
-}).annotate(RequiredScope, AuthEnvironmentMaintainScope);
+}).annotate(RequiredScope, AuthAccessWriteScope);
 const FleetRestoreRpc = Rpc.make(MAGNESIUM_WS_METHODS.fleetRestore, {
   payload: FleetRestoreInput,
   error: UpkeepError,
-}).annotate(RequiredScope, AuthEnvironmentMaintainScope);
+}).annotate(RequiredScope, AuthAccessWriteScope);
 const FleetRollbackRpc = Rpc.make(MAGNESIUM_WS_METHODS.fleetRollback, {
   payload: FleetServerInput,
   error: UpkeepError,
-}).annotate(RequiredScope, AuthEnvironmentMaintainScope);
+}).annotate(RequiredScope, AuthAccessWriteScope);
 /** Puts a server on the hub's build; answers once it is under way. */
 const FleetUpdateRpc = Rpc.make(MAGNESIUM_WS_METHODS.fleetUpdate, {
   payload: FleetServerInput,
   error: UpkeepError,
-}).annotate(RequiredScope, AuthEnvironmentMaintainScope);
+}).annotate(RequiredScope, AuthAccessWriteScope);
 
 export const MagnesiumRpcGroup = RpcGroup.make(
   PingRpc,
