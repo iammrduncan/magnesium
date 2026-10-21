@@ -239,9 +239,8 @@ function BackupsView({
       ) : null}
       <p className="text-xs text-muted-foreground">
         {name} backs up its own state every day and before each change. It keeps one backup a day
-        for
-        {list?.keep ?? 7} days, and its three newest. Restoring one backs up the state it replaces
-        first.
+        for {list?.keep ?? 7} days, and its three newest. Restoring one backs up the state it
+        replaces first.
         {restore.reason ? ` ${restore.reason}` : ""}
       </p>
     </div>
