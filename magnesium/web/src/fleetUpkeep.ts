@@ -178,6 +178,19 @@ export const confirmUpkeep = (
   }
 };
 
+const BACKUP_IN_TEXT = /\b(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z(?:-\d+)?\b/g;
+
+/**
+ * A server's or the hub's sentence with each backup it names, such as
+ * `20261020T025509Z`, said as the time it was taken.
+ */
+export const nameBackups = (text: string, formatTime: (iso: string) => string): string =>
+  text.replace(
+    BACKUP_IN_TEXT,
+    (_name, year, month, day, hour, minute, second) =>
+      `the backup from ${formatTime(`${year}-${month}-${day}T${hour}:${minute}:${second}Z`)}`,
+  );
+
 /** Work under way on a server, or how the last update, rollback or restore went. */
 export const upkeepStatus = (
   machine: FleetMachine,

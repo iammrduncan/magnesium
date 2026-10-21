@@ -14,6 +14,7 @@ import {
   describeNeed,
   describeProfileAsk,
   type HeldAnswer,
+  nameBackups,
   waitedFor,
   whereItRuns,
 } from "@magnesium/web";
@@ -24,6 +25,7 @@ import { PinIcon, PinOffIcon } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 
 import { cn } from "../../lib/utils";
+import { formatDayInline } from "../fleet/fleetTime";
 import { buildThreadRouteParams } from "../../threadRoutes";
 import ChatMarkdown from "../ChatMarkdown";
 import { STATUS_SHAPE_TONE, StatusShape, type StatusShapeKind } from "../sidebar/StatusShape";
@@ -377,7 +379,7 @@ function FleetAskBody({
   return (
     <>
       <p className="text-sm text-foreground">
-        {body.requestedBy} asks: {body.describe}
+        {body.requestedBy} asks: {nameBackups(body.describe, formatDayInline)}
       </p>
       <Actions>
         <Button size="sm" variant="ghost" render={<Link to="/fleet" />}>

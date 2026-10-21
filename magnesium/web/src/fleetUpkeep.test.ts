@@ -5,6 +5,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   buildOffers,
   confirmUpkeep,
+  nameBackups,
   restoreOffer,
   upkeepNotes,
   upkeepStatus,
@@ -216,5 +217,18 @@ describe("a server's upkeep status", () => {
         server("gpu-a", { lastResult: { ...result, kind: "backup", ok: true, detail: "x" } }),
       ),
     ).toBeNull();
+  });
+});
+
+describe("backups named in a sentence", () => {
+  it("are said as the time they were taken", () => {
+    const at = (iso: string) => `[${iso}]`;
+    expect(nameBackups("Restored 20261020T025509Z; the state it replaced is kept.", at)).toBe(
+      "Restored the backup from [2026-10-20T02:55:09Z]; the state it replaced is kept.",
+    );
+    expect(nameBackups("Restore gpu-a from 20261019T020900Z-412", at)).toBe(
+      "Restore gpu-a from the backup from [2026-10-19T02:09:00Z]",
+    );
+    expect(nameBackups("Updated to 1a2b3c4d5e.", at)).toBe("Updated to 1a2b3c4d5e.");
   });
 });

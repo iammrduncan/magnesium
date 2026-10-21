@@ -9,6 +9,7 @@ import {
   fleetRestore,
   fleetRollback,
   fleetUpdate,
+  nameBackups,
   restoreOffer,
   type UpkeepAsk,
   upkeepNotes,
@@ -31,7 +32,7 @@ import {
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { toastManager } from "../ui/toast";
-import { formatDay, formatTime } from "./fleetTime";
+import { formatDay, formatDayInline, formatTime } from "./fleetTime";
 
 const pageUrl = () => window.location.href;
 const messageOf = (cause: unknown) =>
@@ -227,7 +228,7 @@ function BackupsView({
                 <Button
                   size="compact"
                   variant="outline"
-                  onClick={() => onRestore(backup.name, formatDay(backup.at).toLowerCase())}
+                  onClick={() => onRestore(backup.name, formatDayInline(backup.at))}
                 >
                   Restore…
                 </Button>
@@ -413,7 +414,7 @@ export function ServerPanel({
                 role="status"
                 className={cn("rounded-md bg-muted px-2.5 py-2 text-sm", TONE_TEXT[status.tone])}
               >
-                {status.text}
+                {nameBackups(status.text, formatDayInline)}
               </p>
             ) : null}
             {offers.rollback.reason !== null && offers.rollback.reason !== offers.update.reason ? (

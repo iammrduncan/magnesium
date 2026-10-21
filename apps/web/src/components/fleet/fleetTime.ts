@@ -26,3 +26,7 @@ export const formatDay = (iso: string) => {
   }
   return dateTimeFormat.format(date);
 };
+
+/** `formatDay` inside a sentence: "from yesterday 3:38 AM". */
+export const formatDayInline = (iso: string) =>
+  formatDay(iso).replace(/^(Today|Yesterday)/, (word) => word.toLowerCase());
