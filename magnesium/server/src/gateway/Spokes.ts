@@ -73,6 +73,29 @@ const APPS = "/apis/apps/v1";
 const LEGACY_POLL = Duration.seconds(3);
 const LEGACY_TRIES = 30;
 
+/** How long to wait for a StatefulSet's controller to see a new template: up to 15 seconds. */
+const OBSERVE_POLL = Duration.seconds(1);
+const OBSERVE_TRIES = 15;
+const REVISION_LABEL = "controller-revision-hash";
+
+/** The parts of a spoke's pod the gateway reads. */
+interface PodView {
+  readonly metadata?: { readonly name?: string; readonly labels?: Record<string, string> };
+  readonly status?: {
+    readonly conditions?: ReadonlyArray<{ readonly type?: string; readonly status?: string }>;
+  };
+}
+const isReady = (pod: PodView) =>
+  pod.status?.conditions?.some(
+    (condition) => condition.type === "Ready" && condition.status === "True",
+  ) ?? false;
+
+/** The parts of a StatefulSet that say which template its controller has seen. */
+interface RevisionView {
+  readonly metadata?: { readonly generation?: number };
+  readonly status?: { readonly observedGeneration?: number; readonly updateRevision?: string };
+}
+
 /** The parts of an event the gateway reads. */
 interface EventView {
   readonly type?: string;
@@ -127,6 +150,7 @@ export const make = (context: Omit<RenderContext, "namespace">) =>
         { group: APPS, resource: "statefulsets", name: names.workload },
         renderWorkload(spec, render, secretData === null ? null : secretFingerprint(secretData)),
       );
+      yield* replaceStuckPods(spec.name).pipe(Effect.ignore);
       return (
         spokeStatusOf(workload as WorkloadView) ?? {
           name: spec.name,
@@ -170,6 +194,42 @@ export const make = (context: Omit<RenderContext, "namespace">) =>
       yield* podsGone.pipe(
         Effect.retry({ schedule: Schedule.spaced(LEGACY_POLL), times: LEGACY_TRIES }),
       );
+    });
+
+    /**
+     * A StatefulSet replaces its pod only once that pod is Ready, so a pod
+     * stuck on a template that is gone (an image that never arrived, say)
+     * would outlast the change that undoes it. Deletes such a pod, once the
+     * controller has seen the new template, so it starts one from that.
+     * Best effort: without the right to delete pods, the pod waits for a person.
+     */
+    const replaceStuckPods = Effect.fn("Spokes.replaceStuckPods")(function* (name: string) {
+      const pods = (yield* kube.list(
+        { group: CORE, resource: "pods" },
+        { labelSelector: `magnesium.machine=${name}` },
+      )) as ReadonlyArray<PodView>;
+      const stuck = pods.filter((pod) => !isReady(pod));
+      if (stuck.length === 0) return;
+      const path = { group: APPS, resource: "statefulsets", name: spokeObjectNames(name).workload };
+      const revision = yield* kube.get(path).pipe(
+        Effect.flatMap((found) => {
+          const view = found._tag === "Some" ? (found.value as RevisionView) : {};
+          const seen =
+            view.metadata?.generation !== undefined &&
+            (view.status?.observedGeneration ?? 0) >= view.metadata.generation;
+          return seen && view.status?.updateRevision !== undefined
+            ? Effect.succeed(view.status.updateRevision)
+            : Effect.fail(new SpokeError({ detail: `${name}'s new template isn't seen yet.` }));
+        }),
+        Effect.retry({ schedule: Schedule.spaced(OBSERVE_POLL), times: OBSERVE_TRIES }),
+      );
+      for (const pod of stuck) {
+        const podName = pod.metadata?.name;
+        const podRevision = pod.metadata?.labels?.[REVISION_LABEL];
+        if (podName !== undefined && podRevision !== undefined && podRevision !== revision) {
+          yield* kube.remove({ group: CORE, resource: "pods", name: podName });
+        }
+      }
     });
 
     /** The cluster's latest warning about a spoke's workload or its pod, such as a refusal. */

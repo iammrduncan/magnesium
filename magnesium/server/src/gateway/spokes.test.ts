@@ -170,8 +170,15 @@ interface Call {
   readonly body: unknown;
 }
 
-/** A Kubernetes API that keeps what is applied, and refuses nodes outside `allowed`. */
-const fakeCluster = (allowed: ReadonlyArray<string>, options: { podsLinger?: boolean } = {}) => {
+/**
+ * A Kubernetes API that keeps what is applied, and refuses nodes outside
+ * `allowed`. With `revision`, a StatefulSet's controller has seen each one
+ * applied and calls its template that.
+ */
+const fakeCluster = (
+  allowed: ReadonlyArray<string>,
+  options: { podsLinger?: boolean; revision?: string } = {},
+) => {
   const calls: Call[] = [];
   const objects = new Map<string, unknown>();
   const client = HttpClient.make((request) =>
@@ -208,8 +215,16 @@ const fakeCluster = (allowed: ReadonlyArray<string>, options: { podsLinger?: boo
             message: `statefulsets.apps is forbidden: ValidatingAdmissionPolicy denied request: node ${node} is not allowed`,
           });
         }
-        objects.set(url.pathname, body);
-        return reply(200, body);
+        const stored =
+          options.revision !== undefined && url.pathname.includes("/statefulsets/")
+            ? {
+                ...(body as object),
+                metadata: { ...(body as { metadata?: object }).metadata, generation: 2 },
+                status: { observedGeneration: 2, updateRevision: options.revision },
+              }
+            : body;
+        objects.set(url.pathname, stored);
+        return reply(200, stored);
       }
       if (request.method === "DELETE") {
         objects.delete(url.pathname);
@@ -268,6 +283,35 @@ const fakeCluster = (allowed: ReadonlyArray<string>, options: { podsLinger?: boo
 };
 
 describe("a gateway's spokes", () => {
+  it.effect("replaces a pod stuck on a template that is gone, and leaves a ready one", () => {
+    const cluster = fakeCluster(["node-b"], { revision: "good" });
+    const pods = "/api/v1/namespaces/magnesium/pods";
+    const pod = (revision: string, ready: boolean) => ({
+      metadata: {
+        name: "magnesium-cpu-host-2-0",
+        labels: { "magnesium.machine": "cpu-host-2", "controller-revision-hash": revision },
+      },
+      status: { conditions: [{ type: "Ready", status: ready ? "True" : "False" }] },
+    });
+    return Effect.gen(function* () {
+      const spokes = yield* Spokes.Spokes;
+      // An update to an image that never arrives, undone: the StatefulSet would wait on it forever.
+      cluster.objects.set(`${pods}/magnesium-cpu-host-2-0`, pod("bad", false));
+      yield* spokes.apply({ spec, secrets: null });
+      expect(cluster.objects.has(`${pods}/magnesium-cpu-host-2-0`)).toBe(false);
+
+      // A pod that is up is the StatefulSet's to replace, and one starting on the template is left.
+      for (const [revision, ready] of [
+        ["bad", true],
+        ["good", false],
+      ] as const) {
+        cluster.objects.set(`${pods}/magnesium-cpu-host-2-0`, pod(revision, ready));
+        yield* spokes.apply({ spec, secrets: null });
+        expect(cluster.objects.has(`${pods}/magnesium-cpu-host-2-0`)).toBe(true);
+      }
+    }).pipe(Effect.provide(cluster.spokes));
+  });
+
   it.effect("applies a spoke as Magnesium's own objects, with server-side apply", () => {
     const cluster = fakeCluster(["node-b"]);
     return Effect.gen(function* () {
@@ -284,6 +328,8 @@ describe("a gateway's spokes", () => {
         // No Deployment from before StatefulSets to retire.
         "GET /apis/apps/v1/namespaces/magnesium/deployments/magnesium-cpu-host-2",
         "PATCH /apis/apps/v1/namespaces/magnesium/statefulsets/magnesium-cpu-host-2",
+        // No pod stuck on a template that is gone.
+        "GET /api/v1/namespaces/magnesium/pods",
       ]);
       for (const call of cluster.calls.filter((call) => call.method === "PATCH")) {
         expect(call.contentType).toBe("application/apply-patch+yaml");
