@@ -50,6 +50,24 @@ const POD_UP_WITHIN = Duration.minutes(10);
 const POD_CHECK_EVERY = Duration.seconds(5);
 const SEND_TIMEOUT = Duration.minutes(20);
 
+/**
+ * Why a pod's new build didn't come up, for Fleet: the time it was given, and
+ * the cluster's own reason when its gateway has one (an image that isn't on
+ * the node, say). `from` is the build it goes back to, when it has one.
+ */
+export const podDidNotComeUp = (
+  name: string,
+  build: string,
+  from: string | null,
+  why: string | null,
+) => {
+  const reason = why === null || why === "Starting." ? "" : `: ${why.replace(/\.$/, "")}`;
+  const within = Duration.format(POD_UP_WITHIN);
+  return from === null
+    ? `${build} didn't come up within ${within}${reason}.`
+    : `${build} didn't come up within ${within}${reason}. ${name} is going back to ${from}.`;
+};
+
 /** A machine's refusal, as its upkeep route answers it. */
 const UpkeepErrorBody = Schema.Struct({ error: Schema.String });
 
@@ -169,9 +187,12 @@ export const make = Effect.gen(function* () {
           detail: kind === "rollback" ? `Rolled back to ${build}.` : `Updated to ${build}.`,
         });
       }
-      if (from === null) {
-        return yield* fail(`${build} didn't come up within ${Duration.format(POD_UP_WITHIN)}.`);
-      }
+      // What the cluster says is in the way, read before the change is undone.
+      const why = yield* spokes.list.pipe(
+        Effect.map((all) => all.find((spoke) => spoke.name === name)?.status?.detail ?? null),
+        Effect.orElseSucceed(() => null),
+      );
+      if (from === null) return yield* fail(podDidNotComeUp(name, build, from, why));
       // The build that never came up is no build to go back to: keep the one from before.
       yield* spokes
         .changeBuild(name, from, build, before)
@@ -182,7 +203,7 @@ export const make = Effect.gen(function* () {
         from,
         to: build,
         ok: false,
-        detail: `${build} didn't come up within ${Duration.format(POD_UP_WITHIN)}, so ${name} is going back to ${from}.`,
+        detail: podDidNotComeUp(name, build, from, why),
       });
     });
 
