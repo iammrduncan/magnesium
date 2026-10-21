@@ -78,8 +78,13 @@ Upstream's T3 Code v0.1.1 (`fe27e8e3dc`, 2026-10-20) is its first stable release
   - **Stripped or left out:** T3 Connect's new reachability checks and hosted sign-in, the mobile app row, and upstream's npm-launcher and Windows desktop release scripts. The strip script now covers them, and patches for packages only the stripped apps install (D10, D13).
   - **Compiler:** three Settings components used `try … finally`, which the React Compiler can't compile; they now use promise chains.
   - **Merge script:** it now waits out a brief git index lock instead of stopping halfway.
+  - **Two lost edits:** the merge took upstream's version of two files where Magnesium's edits can't carry a marker (JSON): the model manifest's rule that this release supports OpenCode 2.0.32, and the installed app's Home start page. Servers on the first merged build called OpenCode 2.0.32 incompatible and suggested 1.x. Both edits are back. The merge now treats such files as a person's to merge, and `upstream-edits.ts --check` fails when one of those edits is gone.
+  - **Upstream's new tests and Magnesium:**
+    - `t3 update` now expects Magnesium's own releases.
+    - Desktop release-link tests run in CI against upstream's default repository.
+    - The command palette's focus test mocks what the palette's bot actions use.
 - **Test 1, the rehearsal on real data:** passed, in place on the hub. The merged build started on a scratch copy of the hub's newest backup and ran migrations 063 to 067. Projects, threads, messages and scheduled tasks kept every row. The webhook dedupe tables are new, and the V1 projections nothing reads under V2 were dropped, as migration 063 intends. `t3 doctor --dry-run` on the copy reported the space that frees. The copy never left the hub and was deleted.
-- **Checks:** the full typecheck passes. The full test suite passes locally except two upstream tests that fail only on macOS (its `/private/var` temp paths, and Ctrl+P meaning Cmd), and three browser tests that time out under the suite's load and pass alone.
+- **Checks:** the full typecheck and test suite pass in CI on e24e228164. Upstream's server suite outgrew one CI job, so the server now runs in four shards, as upstream's CI runs it. Locally, two upstream tests fail only on macOS (its `/private/var` temp paths, and Ctrl+P meaning Cmd), and a few browser tests time out under a full run's load but pass alone.
 
 ## Next steps
 
