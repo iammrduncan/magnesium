@@ -36,7 +36,7 @@ const status = (waiting: number): ServerStatus => ({
   platform: "linux-x64",
   timeZone: "UTC",
   launcher: "container",
-  backups: { newestAt: null, failure: null },
+  backups: { newestAt: null, newestBytes: null, count: 0, failure: null },
   activity: null,
   lastResult: null,
 });

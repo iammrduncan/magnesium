@@ -215,7 +215,7 @@ function MachineActions({
       <Button size="compact" variant="outline" onClick={() => setDialog("access")}>
         Give access again
       </Button>
-      <Button size="compact" variant="outline" onClick={() => setDialog("forget")}>
+      <Button size="compact" variant="destructive-outline" onClick={() => setDialog("forget")}>
         Forget {machine.name}
       </Button>
       <GiveAccessAgainDialog

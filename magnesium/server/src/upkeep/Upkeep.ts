@@ -256,6 +256,8 @@ export const make = (config: UpkeepConfig) =>
         const failure = yield* readFailure;
         return {
           newestAt,
+          newestBytes: backups[0]?.bytes ?? null,
+          count: backups.length,
           failure:
             failure !== null && (newestAt === null || failure.at > newestAt) ? failure : null,
         } satisfies BackupHealth;

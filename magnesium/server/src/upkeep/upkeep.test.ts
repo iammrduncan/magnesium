@@ -86,14 +86,24 @@ describe("a server's upkeep", () => {
     withUpkeep({}, (upkeep, place) =>
       Effect.gen(function* () {
         expect(upkeep.previousRelease).toBe("bbbbbbb");
-        expect((yield* upkeep.state).backups).toEqual({ newestAt: null, failure: null });
+        expect((yield* upkeep.state).backups).toEqual({
+          newestAt: null,
+          newestBytes: null,
+          count: 0,
+          failure: null,
+        });
 
         const made = yield* upkeep.backupNow;
         expect(made.name).toMatch(/^\d{8}T\d{6}Z/);
         expect(made.bytes).toBe(2);
         expect(NodeFS.existsSync(NodePath.join(place.home, "backups", made.name))).toBe(true);
         expect((yield* upkeep.backups).backups.map((backup) => backup.name)).toEqual([made.name]);
-        expect((yield* upkeep.state).backups).toEqual({ newestAt: made.at, failure: null });
+        expect((yield* upkeep.state).backups).toEqual({
+          newestAt: made.at,
+          newestBytes: 2,
+          count: 1,
+          failure: null,
+        });
       }),
     ),
   );

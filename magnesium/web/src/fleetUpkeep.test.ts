@@ -32,7 +32,7 @@ const server = (name: string | null, overrides: Partial<FleetMachine> = {}): Fle
   platform: "linux-x64",
   timeZone: "Europe/Berlin",
   launcher: "systemd",
-  backups: { newestAt: "2026-10-20T03:40:00.000Z", failure: null },
+  backups: { newestAt: "2026-10-20T03:40:00.000Z", newestBytes: 50331648, count: 4, failure: null },
   activity: null,
   lastResult: null,
   ...overrides,
@@ -52,6 +52,8 @@ describe("Fleet's upkeep notes", () => {
         timeZone: "America/New_York",
         backups: {
           newestAt: "2026-10-19T02:09:00.000Z",
+          newestBytes: 100663296,
+          count: 3,
           failure: { at: "2026-10-20T02:10:00.000Z", reason: "No space left" },
         },
       }),
@@ -60,23 +62,35 @@ describe("Fleet's upkeep notes", () => {
       at,
     );
     expect(notes).toEqual([
-      { kind: "behind", tone: "warning", text: "On 7b2f9e4bbb, not the hub's c4e81f2aaa" },
+      { kind: "behind", tone: "warning", text: "Behind the hub: on 7b2f9e4bbb" },
       { kind: "backup-failed", tone: "error", text: "Backup failed 10-20T02:10" },
-      { kind: "clock", tone: "warning", text: "Clock on New York time, not the hub's Berlin" },
+      { kind: "clock", tone: "warning", text: "Clock on New York time, not the hub's" },
     ]);
   });
 
   it("warns when the newest backup is more than two days old, or there is none", () => {
     expect(
       upkeepNotes(
-        server("nas", { backups: { newestAt: "2026-10-17T03:20:00.000Z", failure: null } }),
+        server("nas", {
+          backups: {
+            newestAt: "2026-10-17T03:20:00.000Z",
+            newestBytes: 1024,
+            count: 7,
+            failure: null,
+          },
+        }),
         hub,
         NOW,
         at,
       ),
     ).toEqual([{ kind: "backup-old", tone: "warning", text: "Newest backup is from 10-17T03:20" }]);
     expect(
-      upkeepNotes(server("new", { backups: { newestAt: null, failure: null } }), hub, NOW, at),
+      upkeepNotes(
+        server("new", { backups: { newestAt: null, newestBytes: null, count: 0, failure: null } }),
+        hub,
+        NOW,
+        at,
+      ),
     ).toEqual([{ kind: "no-backup", tone: "warning", text: "No backup yet" }]);
     // A server that predates its own backups says nothing about them.
     expect(upkeepNotes(server("old", { backups: null }), hub, NOW, at)).toEqual([]);

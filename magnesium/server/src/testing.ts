@@ -533,7 +533,7 @@ export const idleUpkeep = (state: Partial<UpkeepState> = {}) =>
     timeZone: "UTC",
     launcher: null,
     state: Effect.succeed({
-      backups: { newestAt: null, failure: null },
+      backups: { newestAt: null, newestBytes: null, count: 0, failure: null },
       activity: null,
       lastResult: null,
       ...state,

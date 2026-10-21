@@ -184,6 +184,8 @@ describe("Fleet's byte budget", () => {
     launcher: "systemd",
     backups: {
       newestAt: "2026-01-01T03:12:00.000Z",
+      newestBytes: 37748736,
+      count: 3,
       failure: { at: "2026-01-02T03:12:00.000Z", reason: "No space left on the backup volume." },
     },
     activity: null,

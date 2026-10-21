@@ -1,4 +1,5 @@
 import { IsoDateTime, NonNegativeInt } from "@t3tools/contracts";
+import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
 /**
@@ -41,6 +42,9 @@ export type BackupList = typeof BackupList.Type;
 export const BackupHealth = Schema.Struct({
   /** The newest backup's time; null when it has none. */
   newestAt: Schema.NullOr(IsoDateTime),
+  /** The newest backup's size, and how many it holds; null from a server that predates them. */
+  newestBytes: Schema.NullOr(NonNegativeInt).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  count: Schema.NullOr(NonNegativeInt).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
   /** The last backup that failed, when that is newer than the newest one. */
   failure: Schema.NullOr(Schema.Struct({ at: IsoDateTime, reason: Schema.String })),
 });

@@ -31,7 +31,7 @@ import {
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { toastManager } from "../ui/toast";
-import { formatTime } from "./fleetTime";
+import { formatDay, formatTime } from "./fleetTime";
 
 const pageUrl = () => window.location.href;
 const messageOf = (cause: unknown) =>
@@ -220,14 +220,14 @@ function BackupsView({
               className="flex items-center gap-2 border-t border-border px-2.5 py-2 first:border-t-0"
             >
               <span className="flex min-w-0 flex-1 flex-col">
-                <span className="text-sm text-foreground">{formatTime(backup.at)}</span>
+                <span className="text-sm text-foreground">{formatDay(backup.at)}</span>
                 <span className="text-xs text-muted-foreground">{formatBytes(backup.bytes)}</span>
               </span>
               {restore.offered ? (
                 <Button
                   size="compact"
                   variant="outline"
-                  onClick={() => onRestore(backup.name, formatTime(backup.at))}
+                  onClick={() => onRestore(backup.name, formatDay(backup.at).toLowerCase())}
                 >
                   Restore…
                 </Button>
@@ -385,14 +385,16 @@ export function ServerPanel({
                       ? `Failed ${formatTime(backups.failure.at)}`
                       : backups.newestAt === null
                         ? "None yet"
-                        : formatTime(backups.newestAt)
+                        : formatDay(backups.newestAt)
                 }
                 hint={
                   backups?.failure != null
                     ? backups.failure.reason
                     : stale
                       ? "More than two days old"
-                      : null
+                      : backups?.newestBytes != null && backups.count !== null
+                        ? `${formatBytes(backups.newestBytes)} · ${backups.count} kept`
+                        : null
                 }
                 hintTone={backups?.failure != null ? "error" : stale ? "warning" : null}
                 action={

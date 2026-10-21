@@ -37,7 +37,7 @@ export const upkeepNotes = (
     notes.push({
       kind: "behind",
       tone: "warning",
-      text: `On ${machine.release}, not the hub's ${hub.release}`,
+      text: `Behind the hub: on ${machine.release}`,
     });
   }
   const backups = machine.backups;
@@ -65,7 +65,7 @@ export const upkeepNotes = (
     notes.push({
       kind: "clock",
       tone: "warning",
-      text: `Clock on ${zoneName(machine.timeZone)} time, not the hub's ${zoneName(hub.timeZone)}`,
+      text: `Clock on ${zoneName(machine.timeZone)} time, not the hub's`,
     });
   }
   return notes;
