@@ -22,6 +22,18 @@ export const REGENERATED_FILES = ["pnpm-lock.yaml", "apps/web/src/routeTree.gen.
 // Upstream files Magnesium replaced outright; a conflict keeps ours.
 export const KEEP_OURS_FILES = ["README.md"];
 
+/** Hand edits in files that cannot hold a comment, with what each one does. */
+export const UNMARKABLE_EDITS: Readonly<Record<string, string>> = {
+  LICENSE: "adds the copyright line for Magnesium's own work",
+  "package.json": "adds check:public (scripts/check-public.ts)",
+  "apps/server/package.json": "adds @magnesium/server (doc 11)",
+  "apps/server/src/provider/model-manifest.json":
+    "marks OpenCode 2.0.32 supported for this release, which runs Orchestrator V2 (D69)",
+  "apps/web/package.json":
+    "drops @clerk/electron and @clerk/react (D13); adds @magnesium/web and @magnesium/contracts (doc 11)",
+  "apps/web/public/manifest.webmanifest": "starts the installed app on Home (/home, goal 06)",
+};
+
 const TRACK_ZONE = ["apps/server/", "packages/"];
 const OWN_ZONE = ["apps/web/"];
 
@@ -69,6 +81,8 @@ export function classifyConflict(file: string, hasMarker: boolean): ConflictKind
   if (isStripped(file)) return "stripped";
   if (REGENERATED_FILES.includes(file)) return "regenerated";
   if (KEEP_OURS_FILES.includes(file)) return "ours";
+  // A hand edit no comment can mark is a person's to merge, like a marked one.
+  if (UNMARKABLE_EDITS[file] !== undefined) return "real";
   if (!hasMarker && (isRenameOwned(file) || STRIP_PATCHED_FILES.includes(file))) {
     return "scripted";
   }

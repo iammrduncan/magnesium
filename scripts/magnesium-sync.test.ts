@@ -160,5 +160,7 @@ describe("merge", () => {
     expect(classifyConflict("apps/server/src/bin.ts", false)).toBe("scripted");
     expect(classifyConflict("apps/server/src/bin.ts", true)).toBe("real");
     expect(classifyConflict("apps/server/src/mcp/McpHttpServer.ts", false)).toBe("real");
+    // A hand edit in a file no comment can mark is merged by a person, not taken from upstream.
+    expect(classifyConflict("apps/server/src/provider/model-manifest.json", false)).toBe("real");
   });
 });

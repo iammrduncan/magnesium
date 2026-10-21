@@ -14,22 +14,11 @@ import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
-import { REGENERATED_FILES } from "./merge-rehearsal.ts";
+import { REGENERATED_FILES, UNMARKABLE_EDITS } from "./merge-rehearsal.ts";
 import { isRenameOwned } from "./rename-upstream.ts";
 import { isStripped, STRIP_PATCHED_FILES } from "./strip-upstream.ts";
 
 const MARKER = "magnesium:";
-
-/** Hand edits in files that cannot hold a comment, with what each one does. */
-export const UNMARKABLE_EDITS: Readonly<Record<string, string>> = {
-  LICENSE: "adds the copyright line for Magnesium's own work",
-  "package.json": "adds check:public (scripts/check-public.ts)",
-  "apps/server/package.json": "adds @magnesium/server (doc 11)",
-  "apps/server/src/provider/model-manifest.json":
-    "marks OpenCode 2.0.32 supported for this release, which runs Orchestrator V2 (D69)",
-  "apps/web/package.json":
-    "drops @clerk/electron and @clerk/react (D13); adds @magnesium/web and @magnesium/contracts (doc 11)",
-};
 
 export interface MarkedEdit {
   readonly file: string;
@@ -44,6 +33,8 @@ export interface UpstreamEditsReport {
   readonly regenerated: ReadonlyArray<string>;
   readonly unmarkable: ReadonlyArray<string>;
   readonly unmarked: ReadonlyArray<string>;
+  /** Files listed in UNMARKABLE_EDITS that no longer differ from upstream. */
+  readonly lostUnmarkable: ReadonlyArray<string>;
 }
 
 const git = (cwd: string, args: ReadonlyArray<string>): string =>
@@ -90,7 +81,9 @@ export function collectUpstreamEdits(cwd: string, base: string): UpstreamEditsRe
       !unmarkable.includes(file) &&
       !isStripped(file),
   );
-  return { base, marked, scriptOwned, regenerated, unmarkable, unmarked };
+  // A listed hand edit that no longer differs from upstream was lost, as a merge can lose one.
+  const lostUnmarkable = Object.keys(UNMARKABLE_EDITS).filter((file) => !changed.includes(file));
+  return { base, marked, scriptOwned, regenerated, unmarkable, unmarked, lostUnmarkable };
 }
 
 export function formatUpstreamEdits(report: UpstreamEditsReport, check: boolean): string {
@@ -112,6 +105,8 @@ export function formatUpstreamEdits(report: UpstreamEditsReport, check: boolean)
   if (check) {
     out.push("", `Changed upstream files without a marker (${report.unmarked.length}):`);
     for (const file of report.unmarked) out.push(`  ${file}`);
+    out.push("", `Hand edits without a marker that are gone (${report.lostUnmarkable.length}):`);
+    for (const file of report.lostUnmarkable) out.push(`  ${file}: ${UNMARKABLE_EDITS[file]}`);
   }
   return out.join("\n");
 }
@@ -136,5 +131,7 @@ if (import.meta.main) {
   } else {
     NodeFS.writeFileSync(outFile, `${output}\n`);
   }
-  if (check && report.unmarked.length > 0) process.exitCode = 1;
+  if (check && (report.unmarked.length > 0 || report.lostUnmarkable.length > 0)) {
+    process.exitCode = 1;
+  }
 }
