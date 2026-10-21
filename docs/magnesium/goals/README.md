@@ -50,7 +50,7 @@ The build order and each goal's status are in [TRACKER.md](../../../TRACKER.md).
 | 34  | [Profiles in the app](_completed/34-profiles-in-the-app.goal)                | Create, edit and delete profiles in the app, with their tools and knowledge access; see which machines hold each; approve agents' changes              | 03, 06         | Profiles (drawn in this goal), Session · desktop (picker)               |
 | 35  | [Run the fleet from the app](_completed/35-run-the-fleet-from-the-app.goal)  | Update, roll back and back up any server from Fleet, the hub included; add, forget and edit machines and pods; see each server's backups and time zone | 04, 06, 25     | Fleet · desktop, Fleet · phone                                          |
 | 36  | [Brain sources](36-brain-sources.goal)                                       | Add, sync, pause, fix and remove what feeds the Brain; the old collectors move in; each new item says why it matters                                   | 29             | Brain · desktop (sources)                                               |
-| 37  | [Upstream v0.1.1](37-upstream-v0-1-1.goal)                                   | Upstream's v0.1.1 on every server, rolled out from Fleet; its highlights work in Magnesium                                                             |
+| 37  | [Upstream v0.1.1](_completed/37-upstream-v0-1-1.goal)                        | Upstream's v0.1.1 on every server, rolled out from Fleet; its highlights work in Magnesium                                                             |
 
 Goals in the same stage of [the tracker's graph](../../../TRACKER.md#what-runs-in-parallel) can run at the same time; see [Running goals in parallel](#running-goals-in-parallel) for how.
 

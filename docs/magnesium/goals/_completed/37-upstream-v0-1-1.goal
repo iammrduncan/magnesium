@@ -63,7 +63,7 @@ Upstream's T3 Code v0.1.1 (`fe27e8e3dc`, 2026-10-20) is its first stable release
 
 ## Goal summary
 
-**2026-10-21, In progress: merged, rolled out to every server, and tests 1 to 6 pass; a device paired again on the merged build is the last check.**
+**2026-10-21, Verified: v0.1.1 is merged and runs on every server, and tests 1 to 6 pass on the hub and its machines (the PR diff test skipped at the owner's word).**
 
 - **Gate 1:** the owner chose to hide EAS Simulator hosts in Settings, and to leave idle Claude compaction off.
 - **Merge:** all 1,486 commits of v0.1.1 are merged (`scripts/merge-upstream.ts`). The 36 conflicting files are resolved with every Magnesium edit kept; `scripts/upstream-edits.ts --check` finds no upstream file changed without a marker (315 markers in 94 files).
@@ -98,18 +98,18 @@ Upstream's T3 Code v0.1.1 (`fe27e8e3dc`, 2026-10-20) is its first stable release
   - **Home:** a supervised OpenCode thread asked to write a file; the approval showed on Home, saying it runs on the hub in the fenced sandbox, was approved there, and the file was written. A question from another thread was answered on Home, and the agent replied with the answer. A Codex thread in plan mode on another machine put its plan on Home, which was dismissed there. Plan mode is upstream's legacy setting, off by default; it was turned on for the test and back off.
   - **Profiles:** the profile page shows its skills and which machines hold the current version, and **New thread** starts on the profile's machine.
   - **New threads** start fenced and Supervised (test 2).
-  - **Pairing:** _to check after the owner pairs a browser again on the merged build._
+  - **Pairing:** the owner paired a browser again with a link made in Settings → Connections; the new session reaches all nine servers through the hub. It kept the old pairing's permissions, because a link can't grant more than the device that makes it; a device with the old permissions needs a link from `magnesium-release pair --admin` run on the hub (the first-device step in the hub guide) to get the full set.
 - **Test 6, no slower:** passed. A thread of two long replies (80 sections, each with a heading, a list and a highlighted TypeScript block) opened from Home in 0.2 to 0.4 s with every section drawn. Scrolling it top to bottom on a 120 Hz display, at 60 and at 200 px a frame, took 8.3 ms a frame at the median, 9.4 ms at worst, with no long tasks. At phone width (386 px), the app loaded straight into the thread in 0.55 s, and the same scroll had one frame of 16.5 ms in 714 and no long tasks.
 - **Found while testing, not caused by the merge** (upstream behaves the same before and after v0.1.1; left for follow-ups in next steps):
   - **Hidden pages drop their connections.** An installed app or tab left in the background loses its connection to every machine about once a minute, and reconnects about two minutes later. A hidden page's timers run only about once a minute, and the client's liveness check counts that wait as silence, so it decides a quiet connection stopped responding. While a page is hidden like this, its forwarded traces fill most of the server's trace log, which then holds only a few minutes of history.
-  - **Old pairings keep old permissions.** A device paired before upstream split permissions into finer scopes keeps only the old ones, because a server never widens a stored grant. On such a device Settings → Providers is read-only ("Limited permissions"), and copying ignored files from the hub's own checkout is refused. Upstream says so once in a notice that is easy to dismiss; pairing the device again fixes it.
+  - **Old pairings keep old permissions.** A device paired before upstream split permissions into finer scopes keeps only the old ones, because a server never widens a stored grant. On such a device Settings → Providers is read-only ("Limited permissions"), and copying ignored files from the hub's own checkout is refused. Upstream says so once in a notice that is easy to dismiss. Pairing again from the same device doesn't help, since its links carry only its own permissions; a link from `magnesium-release pair --admin` on the hub does.
   - **"Unknown" reasoning level.** For an OpenCode model with no default variant, the composer's reasoning picker reads "Unknown" until the first turn, then "Default".
 - **Checks:** the full typecheck and test suite pass in CI on e24e228164. Upstream's server suite outgrew one CI job, so the server now runs in four shards, as upstream's CI runs it. Locally, two upstream tests fail only on macOS (its `/private/var` temp paths, and Ctrl+P meaning Cmd), and a few browser tests time out under a full run's load but pass alone.
 
 ## Next steps
 
 1. Keep a hidden page's connections alive: count only pings that go unanswered (or have the server send frames often enough to prove it's there), and stop a hidden page that can't connect from flooding the server's trace log. Test it with the app in the background for an hour.
-2. Show a device paired with old permissions what it lacks, with a way to pair again, where it matters (Settings → Connections, and the controls those permissions disable), not only in a one-time notice.
+2. Show a device paired with old permissions what it lacks, where it matters (Settings → Connections, and the controls those permissions disable), not only in a one-time notice. Say there that its own links can't grant more, and how to get a full code from the hub.
 3. The reasoning picker reads "Default", not "Unknown", before the first turn.
 4. Upstream's new lint rules (`no-manual-memo`, `prefer-effect-fn`) flag 144 places in Magnesium's code; CI doesn't run lint yet. Fix them and add lint to CI.
 5. At phone width the composer's controls run past its edge (the access mode's label is cut off).

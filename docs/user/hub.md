@@ -29,7 +29,9 @@ open the link on it. It shows every machine straight away.
 
 Under **Permissions**, **Manage access** (on by default) lets the new device add
 and remove other devices, and change servers from Fleet. Turn it off for a
-device that only needs to work.
+device that only needs to work. A link gives at most what the device making it
+has: if that device says **Limited permissions** anywhere, sign the new one in
+with the first-device step instead.
 
 To sign a device out, choose **Revoke** next to it in the same list.
 
