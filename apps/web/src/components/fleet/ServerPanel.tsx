@@ -72,7 +72,13 @@ function Fact({
     <div className="flex items-center gap-2 border-t border-border px-2.5 py-2 first:border-t-0">
       <span className="w-16 shrink-0 text-xs text-muted-foreground">{label}</span>
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className={cn("truncate text-sm text-foreground", mono && "font-mono text-xs")}>
+        {/* A build stays on one line; a time or zone wraps in the narrow panel. */}
+        <span
+          className={cn(
+            "text-sm text-foreground",
+            mono ? "truncate font-mono text-xs" : "break-words",
+          )}
+        >
           {value}
         </span>
         {hint ? (
