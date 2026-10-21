@@ -50,6 +50,8 @@ spec:
       containers:
         - name: magnesium
           image: magnesium:0000000000
+          # Loaded onto the node, never pulled; drop this for an image from a registry.
+          imagePullPolicy: Never
           env:
             - name: HOME
               value: /home/magnesium

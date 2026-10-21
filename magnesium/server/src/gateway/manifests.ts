@@ -132,6 +132,7 @@ export const renderWorkload = (
       { name: "MAGNESIUM_OPENCODE_MODELS", value: spec.opencode.models.join(",") },
     );
   }
+  const image = context.image(spec.build ?? context.defaultBuild);
   return {
     apiVersion: "apps/v1",
     kind: "StatefulSet",
@@ -164,7 +165,8 @@ export const renderWorkload = (
           containers: [
             {
               name: "magnesium",
-              image: context.image(spec.build ?? context.defaultBuild),
+              image,
+              ...(isLocalImage(image) ? { imagePullPolicy: "Never" } : {}),
               env,
               envFrom: [{ secretRef: { name: names.secret, optional: true } }],
               ports: [{ name: "http", containerPort: 3773 }],
@@ -192,6 +194,14 @@ export const renderWorkload = (
     },
   };
 };
+
+/**
+ * An image named without a registry, or under `localhost/`, was loaded onto the
+ * node: it is never pulled, so a missing one fails at once instead of being
+ * fetched from Docker Hub or whatever answers on the node's own port 443.
+ */
+export const isLocalImage = (image: string) =>
+  image.startsWith("localhost/") || !image.includes("/");
 
 export const renderService = (spec: SpokeSpec, context: RenderContext) => ({
   apiVersion: "v1",

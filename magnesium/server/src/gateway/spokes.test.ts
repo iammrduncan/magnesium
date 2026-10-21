@@ -9,6 +9,7 @@ import * as TestClock from "effect/testing/TestClock";
 
 import { KubeApi, make as makeKube } from "./kube.ts";
 import {
+  isLocalImage,
   type RenderContext,
   renderWorkload,
   renderSecret,
@@ -58,6 +59,14 @@ describe("a spoke's objects", () => {
     });
     const container = pod.containers[0]!;
     expect(container.image).toBe("localhost/magnesium:4d5e6f7081");
+    // An image loaded onto the node is never pulled; one from a registry is.
+    expect(container.imagePullPolicy).toBe("Never");
+    expect(
+      renderWorkload(spec, { ...context, image: (build) => `ghcr.io/owner/magnesium:${build}` })
+        .spec.template.spec.containers[0]!.imagePullPolicy,
+    ).toBeUndefined();
+    expect(isLocalImage("magnesium:4d5e6f7081")).toBe(true);
+    expect(isLocalImage("localhost:5000/magnesium:4d5e6f7081")).toBe(false);
     expect(container.securityContext).toEqual({
       allowPrivilegeEscalation: false,
       readOnlyRootFilesystem: true,

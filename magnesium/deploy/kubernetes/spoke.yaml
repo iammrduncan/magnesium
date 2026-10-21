@@ -57,6 +57,8 @@ spec:
       containers:
         - name: magnesium
           image: magnesium:0000000000
+          # Loaded onto the node, never pulled; drop this for an image from a registry.
+          imagePullPolicy: Never
           env:
             # The same path as the machine user's home before the move.
             - name: HOME
