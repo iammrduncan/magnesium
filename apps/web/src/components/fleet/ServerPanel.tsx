@@ -16,7 +16,7 @@ import {
   upkeepStatus,
   zoneName,
 } from "@magnesium/web";
-import { ChevronLeftIcon } from "lucide-react";
+import { ChevronLeftIcon, XIcon } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 
 import { cn } from "../../lib/utils";
@@ -258,6 +258,7 @@ export function ServerPanel({
   extraActions,
   now,
   initialAsk = null,
+  onClose,
 }: {
   readonly machine: FleetMachine;
   readonly hub: FleetMachine | undefined;
@@ -267,6 +268,8 @@ export function ServerPanel({
   readonly initialAsk?: "update" | "rollback" | null;
   /** The server's other actions, such as Forget, below its facts. */
   readonly extraActions?: ReactNode;
+  /** Closes the panel beside the list; a sheet has its own. */
+  readonly onClose?: () => void;
 }) {
   const [view, setView] = useState<"main" | "backups">("main");
   const [ask, setAsk] = useState<UpkeepAsk | null>(() =>
@@ -317,6 +320,16 @@ export function ServerPanel({
                     ? "Connecting"
                     : "Offline"}
             </Badge>
+            {onClose ? (
+              <Button
+                size="icon-xs"
+                variant="ghost"
+                aria-label={`Close ${machine.label}`}
+                onClick={onClose}
+              >
+                <XIcon />
+              </Button>
+            ) : null}
           </div>
 
           <section aria-label="Server" className="flex flex-col gap-1.5">

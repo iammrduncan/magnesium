@@ -297,7 +297,8 @@ export function FleetPage() {
     void navigate({ to: "/fleet", search: {}, replace: true });
   }, [search.server, search.ask, search.add, navigate]);
   const picked = rows.find((row) => fleetMachineKey(row) === selectedKey);
-  const shown = picked ?? (wide ? hub : undefined);
+  // Nothing is open until a server is picked, so the list has the width.
+  const shown = picked;
   // Backups age by the minute; nothing on the page needs a finer clock.
   const now = Date.parse(useNowMinute());
   const reconnect = (name: string) =>
@@ -346,7 +347,12 @@ export function FleetPage() {
                         selected={
                           shown !== undefined && fleetMachineKey(shown) === fleetMachineKey(machine)
                         }
-                        onSelect={() => setSelectedKey(fleetMachineKey(machine))}
+                        // Picking the open server again closes its panel.
+                        onSelect={() =>
+                          setSelectedKey((key) =>
+                            key === fleetMachineKey(machine) ? null : fleetMachineKey(machine),
+                          )
+                        }
                         onReconnect={reconnect}
                         now={now}
                       />
@@ -374,7 +380,7 @@ export function FleetPage() {
           {wide && shown !== undefined ? (
             <aside
               aria-label="Server"
-              className="w-[380px] shrink-0 overflow-y-auto border-l border-border bg-card p-4"
+              className="w-80 shrink-0 overflow-y-auto border-l border-border bg-card p-4"
             >
               <ServerPanel
                 key={fleetMachineKey(shown)}
@@ -382,6 +388,7 @@ export function FleetPage() {
                 machine={shown}
                 hub={hub}
                 now={now}
+                onClose={() => setSelectedKey(null)}
                 extraActions={
                   <MachineActions machine={shown} onForgotten={() => setSelectedKey(null)} />
                 }
