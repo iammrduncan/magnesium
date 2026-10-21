@@ -31,7 +31,7 @@ export const ServerBackup = Schema.Struct({
 });
 export type ServerBackup = typeof ServerBackup.Type;
 
-/** A server's backups, newest first, and how many it keeps. */
+/** A server's backups, newest first, and for how many days it keeps one a day. */
 export const BackupList = Schema.Struct({
   backups: Schema.Array(ServerBackup),
   keep: NonNegativeInt,

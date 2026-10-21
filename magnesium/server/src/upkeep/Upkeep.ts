@@ -102,7 +102,7 @@ export class Upkeep extends Context.Service<
   }
 >()("@magnesium/server/upkeep/Upkeep") {}
 
-/** How many backups `magnesium-release` keeps (`MAGNESIUM_BACKUP_KEEP`). */
+/** For how many days `magnesium-release` keeps a backup a day (`MAGNESIUM_BACKUP_KEEP`). */
 export const keepOf = (value: string | undefined) => {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : 7;

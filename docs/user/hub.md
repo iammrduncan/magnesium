@@ -96,7 +96,7 @@ another time zone.
   doesn't start, it goes back to the one it had and Fleet says why.
 - **Roll back** restarts a server on the build it ran before. Rolling the hub
   back reloads this page when the hub is back.
-- **Backups:** every server backs itself up daily and keeps the last seven.
+- **Backups:** every server backs itself up daily and before each update, rollback or restore. It keeps one backup a day for its last seven days, and its three newest.
   **Backups** lists them, with **Back up now** and **Restore…**. A restore
   stops the server, keeps the state it replaces as a backup of its own, and
   starts it again; closing the page doesn't stop it. A failed backup is a card

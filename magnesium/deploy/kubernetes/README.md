@@ -125,7 +125,7 @@ Provider logins work from inside the pod: Settings → Providers → **Sign in**
 | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Upgrade   | Build the new commit's image; then **Update** in Fleet puts the spoke on the hub's build. The old pod stops before the new one starts; a new release may migrate the database on start. |
 | Roll back | **Roll back** in Fleet runs the previous image. Restore a backup first if the newer release migrated the database.                                                                      |
-| Back up   | Nothing to set up: the server backs itself up daily into `$HOME/.magnesium/backups` and keeps the newest seven. `magnesium-release backup` takes one now.                               |
+| Back up   | Nothing to set up: the server backs itself up daily into `$HOME/.magnesium/backups`, keeping one a day for a week and its three newest. `magnesium-release backup` takes one now.       |
 | Restore   | **Restore…** in Fleet: the server stops, the pod's entrypoint puts the backup back while it is stopped, and it starts again.                                                            |
 | Pair      | `magnesium-release pair` in the pod.                                                                                                                                                    |
 

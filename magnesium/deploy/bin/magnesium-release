@@ -35,8 +35,9 @@
 # (MAGNESIUM_RESTART=0 skips). MAGNESIUM_PNPM and MAGNESIUM_VP replace the
 # install and build commands.
 #
-# Backups live in $MAGNESIUM_HOME/backups; the newest $MAGNESIUM_BACKUP_KEEP
-# (default 7) are kept. A restore first backs up the state it replaces.
+# Backups live in $MAGNESIUM_HOME/backups. The newest of each of the last
+# $MAGNESIUM_BACKUP_KEEP days (default 7) that have one is kept, and the three
+# newest whatever their day. A restore first backs up the state it replaces.
 #
 # activate, rollback and restore stop or restart the unit, which ends every
 # process in it, a Fleet terminal's shell included. Started there, they go on
@@ -187,9 +188,12 @@ backup() {
   fi
 }
 
-# Keeps the newest $MAGNESIUM_BACKUP_KEEP backups. Names sort by time.
+# Keeps the newest backup of each of the last $MAGNESIUM_BACKUP_KEEP days that
+# have one, and the three newest whatever their day. Every change backs up
+# first, so a busy day must not push out the days before it. Names sort by
+# time, and start with their UTC day.
 prune_backups() {
-  local keep="${MAGNESIUM_BACKUP_KEEP:-7}"
+  local keep="${MAGNESIUM_BACKUP_KEEP:-7}" recent=3
   local all=() dir name
   for dir in "$STATE_HOME"/backups/*/; do
     name="$(basename "$dir")"
@@ -197,10 +201,18 @@ prune_backups() {
       all+=("$name")
     fi
   done
-  local i=0
-  while [ $((${#all[@]} - i)) -gt "$keep" ]; do
-    rm -rf "${STATE_HOME:?}/backups/${all[$i]}"
-    i=$((i + 1))
+  local i newest day last_day="" days=0
+  for ((i = ${#all[@]} - 1; i >= 0; i--)); do
+    name="${all[$i]}"
+    newest=$((${#all[@]} - 1 - i))
+    day="${name:0:8}"
+    if [ "$day" != "$last_day" ]; then
+      last_day="$day"
+      days=$((days + 1))
+      [ "$days" -le "$keep" ] && continue
+    fi
+    [ "$newest" -lt "$recent" ] && continue
+    rm -rf "${STATE_HOME:?}/backups/${name}"
   done
 }
 

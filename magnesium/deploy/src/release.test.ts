@@ -289,7 +289,7 @@ describe("magnesium-release", () => {
     expect(result.stderr).toContain("not a packed release");
   });
 
-  it("backs up a live database with its unflushed writes, and keeps only the newest copies", () => {
+  it("backs up a live database with its unflushed writes", () => {
     const release = makeRoot();
     const userdata = NodePath.join(release.root, "state", "userdata");
     NodeFS.mkdirSync(NodePath.join(userdata, "logs"), { recursive: true });
@@ -326,10 +326,42 @@ describe("magnesium-release", () => {
     const restored = new NodeSqlite.DatabaseSync(NodePath.join(copy, "state.sqlite"));
     expect(restored.prepare("SELECT x FROM t").all()).toEqual([{ x: "kept" }]);
     restored.close();
+  });
 
-    runKeep("2");
-    runKeep("2");
-    expect(NodeFS.readdirSync(backups)).toHaveLength(2);
+  it("keeps a backup a day for the last days, and the newest three, so a busy day leaves the days before it", () => {
+    const release = makeRoot();
+    const state = NodePath.join(release.root, "state");
+    NodeFS.mkdirSync(NodePath.join(state, "userdata"), { recursive: true });
+    NodeFS.writeFileSync(NodePath.join(state, "userdata", "settings.json"), "{}");
+    const backups = NodePath.join(state, "backups");
+    const earlier = [
+      "20260101T030000Z",
+      "20260102T030000Z",
+      "20260102T150000Z",
+      // A busy day: an update, a rollback and another update, each backed up first.
+      "20260103T010000Z",
+      "20260103T020000Z",
+      "20260103T030000Z",
+      "20260103T040000Z",
+    ];
+    for (const name of earlier) NodeFS.mkdirSync(NodePath.join(backups, name), { recursive: true });
+
+    const result = NodeChildProcess.spawnSync("bash", [script, "backup"], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        MAGNESIUM_ROOT: release.root,
+        MAGNESIUM_HOME: state,
+        MAGNESIUM_BACKUP_KEEP: "3",
+      },
+    });
+    expect(result.stderr).toBe("");
+    expect(result.status).toBe(0);
+    const today = NodeFS.readdirSync(backups).find((name) => !earlier.includes(name)) ?? "";
+    // The newest of each of the last three days, today's included, and the newest three.
+    expect(NodeFS.readdirSync(backups).toSorted()).toEqual(
+      ["20260102T150000Z", "20260103T030000Z", "20260103T040000Z", today].toSorted(),
+    );
   });
 
   it("restores a backup, and backs up the state it replaces first", () => {
