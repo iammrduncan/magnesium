@@ -1,0 +1,70 @@
+---
+id: mg-upstream-v011
+kind: maintenance
+depends_on: [mg-upstream-v2, mg-fleet-ops]
+phase: 2
+boards: []
+decisions: [D10, D11, D13, D70]
+---
+# Take upstream's v0.1.1
+
+Upstream's T3 Code v0.1.1 (`fe27e8e3dc`, 2026-10-20) is its first stable release since v0.1.0, which Magnesium took in goal 24. It is 1,486 commits: 905 fixes, 335 performance changes and 44 features, most of them in the web app (667 commits) and the server (314). Upstream now treats its nightly builds as more experimental, so Magnesium keeps tracking stable tags only (MAGNESIUM.md). Goal 35 lets Fleet roll the merged build out: the hub first, then Update on every machine and pod.
+
+## What's in it for Magnesium
+
+| Upstream's highlight | Upstream commits | For Magnesium |
+| --- | --- | --- |
+| Performance on desktop and mobile | 335 `perf` commits | Comes with the merge; the web and server ones apply. |
+| Add a project to another machine from the Run on menu, `.env` files included | #22180, #22254 | Kept. Goal 15 (projects across machines) builds on it instead of making its own. |
+| EAS Simulator remote hosts for iOS development | #21841, #21843, #21844, #21846 | Server code is tracked. Its Settings page is gate 1. The Expo token stays in the server's secret store, not settings. |
+| A PR diff shows code against tests, mocks and generated files | #22189 | Kept. |
+| Idle Claude threads compact before the prompt cache expires (beta) | #21682 | Kept, off by default (`compactIdleThreads`). Turning it on is gate 1. |
+| Mobile's native pass | many `mobile` commits | Stripped: Magnesium is one web UI (D10). |
+| `t3 doctor` reclaims database space, and can delete the database from before v0.1.0 | #19436, #19437, #20948 | Kept. Each server's backups (D70) hold its state first. |
+| `t3 connect` checks that other devices can reach the machine | #22172 | Skipped: T3 Connect is removed (D13); the strip script drops it. |
+| Webhook tasks get filters and dedupe | #22194, #22234 | Kept; adds database migration 067. |
+| Skill discovery is more reliable | e.g. #15662, #18309, #19485 | Kept; profiles' skills (goal 34) depend on it. |
+| Windows, terminal and scroll fixes | many `fix(web)` commits | Kept; the terminal fixes reach Fleet's terminal. |
+| LaTeX renders in messages | #18735 | Kept. |
+
+## What changes on each server
+
+- **Database migrations 063 to 067** run at the first start: unused V1 projections are dropped (063), threads' PR links are made canonical (064), Codex usage gains an index (065), settlement times are repaired (066), and webhook deliveries are deduplicated (067).
+- **OpenCode 2:** upstream fixed retries, quotas, killed tools and images in the same files where Magnesium moved to OpenCode 2.x only; both survive the merge.
+- **Older clients:** a host on another build is no longer switched off for good (#15052). The hub and machines can still differ during a rollout, as Fleet shows.
+
+## Owner gates
+
+1. **Optional features.** Whether Magnesium shows upstream's EAS Simulator hosts in Settings, and whether early Claude compaction is turned on for the fleet. Ask before the merge's web conflicts are resolved.
+
+## Build
+
+1. **Merge v0.1.1** with `scripts/merge-upstream.ts`, in a branch. A rehearsal on 2026-10-21 found 36 files with real conflicts (70 hunks). Another 1,010 are in paths the strip script removes, 54 are in files only our scripts edit, and one is the lockfile. The heaviest: the sidebar (10 hunks), Settings → Connections (9), the welcome wizard (5), the Codex provider (3), telemetry (3), scheduled tasks settings (3), and OpenCode's driver, runtime and V2 adapter.
+2. **Keep every Magnesium decision:** telemetry off, supervised and fenced defaults, OpenCode 2.x only, Fleet's upkeep and the hub's scopes. `scripts/upstream-edits.ts --check` lists every `magnesium:` edit before and after; none is lost.
+3. **Strip and rename again,** and fix the scripts where upstream moved things.
+4. **Gate 1's answers,** applied.
+5. **Record it:** one row in `upstream-changelog.md` for `81493efb71..fe27e8e3dc`, and the watermark moves to v0.1.1.
+6. **User docs** where a highlight changes how something is used, such as starting a project on another machine and webhook filters.
+
+## Test it
+
+1. **Rehearsal on real data.** A copy of each server's `statev2.sqlite` migrates under the merged build, with its threads, projects and scheduled tasks intact.
+2. **Security kept.** New threads start supervised and fenced, telemetry is off, and nothing reaches T3 Connect.
+3. **Roll out with Fleet.** The hub first; then Update every machine and pod from Fleet, each showing Connected on the new build. Attached machines move with their workloads' deploys.
+4. **The highlights.** Add a project to another machine from Run on, `.env` included. A PR's diff shows code against tests. A LaTeX formula renders in a message. A webhook task with a filter ignores a delivery that doesn't match, and a replayed delivery runs once. `t3 doctor` reports reclaimable space on a copy. A profile's skills are found on Claude, Codex and OpenCode.
+5. **Everything since goal 01 still works** on the hub: pairing once, Fleet, Home with an approval, a question and a plan, profiles, and Fleet's terminal.
+6. **No slower.** A long thread opens and scrolls without dropped frames, on desktop and at phone width.
+
+## Not in this goal
+
+- Upstream's nightly and preview builds.
+- Mobile and desktop changes (stripped, D10).
+- Goal 15's project page, which builds on Run on.
+
+## Goal summary
+
+Planned, 2026-10-21.
+
+## Next steps
+
+1. Start after goal 35 is verified.
