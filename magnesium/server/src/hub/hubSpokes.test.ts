@@ -331,6 +331,11 @@ describe("the hub's spokes", () => {
         keys: [],
       });
       expect(yield* hub.spokes.previousBuildOf("cpu-host-2")).toBe("aaaaaaa");
+      // A build that never came up, undone: the build before stays what it was.
+      yield* hub.spokes.changeBuild("cpu-host-2", "ccccccc", "bbbbbbb");
+      yield* hub.spokes.changeBuild("cpu-host-2", "bbbbbbb", "ccccccc", "aaaaaaa");
+      expect(yield* hub.spokes.previousBuildOf("cpu-host-2")).toBe("aaaaaaa");
+      expect(hub.applied.at(-1)?.input.spec.build).toBe("bbbbbbb");
       expect(yield* hub.spokes.kindOf("cpu-host-2")).toBe("pod");
       expect(yield* hub.spokes.kindOf("nowhere")).toBeNull();
     }).pipe(Effect.scoped),

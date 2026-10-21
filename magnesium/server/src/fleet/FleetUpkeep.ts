@@ -145,6 +145,7 @@ export const make = Effect.gen(function* () {
     Effect.gen(function* () {
       const name = row.name ?? "";
       const from = row.release;
+      const before = yield* spokes.previousBuildOf(name);
       yield* setActivity(name, kind, `Changing ${name}'s pod to ${build}: restarting…`);
       yield* spokes
         .changeBuild(name, build, from)
@@ -171,10 +172,11 @@ export const make = Effect.gen(function* () {
       if (from === null) {
         return yield* fail(`${build} didn't come up within ${Duration.format(POD_UP_WITHIN)}.`);
       }
+      // The build that never came up is no build to go back to: keep the one from before.
       yield* spokes
-        .changeBuild(name, from, build)
+        .changeBuild(name, from, build, before)
         .pipe(Effect.mapError((error) => fail(error.detail)));
-      yield* fleet.setUpkeep(name, { previousRelease: build });
+      yield* fleet.setUpkeep(name, { previousRelease: before });
       yield* finish(name, {
         kind,
         from,

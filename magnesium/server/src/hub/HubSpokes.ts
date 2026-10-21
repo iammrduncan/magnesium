@@ -50,12 +50,14 @@ export class HubSpokes extends Context.Service<
     readonly apply: (input: HubSpokeApplyInput) => Effect.Effect<HubSpoke, SpokeError>;
     /**
      * Runs a spoke on another build through its gateway (goal 35). `running` is
-     * the build it runs now, kept as the one to go back to.
+     * the build it runs now, kept as the one to go back to; `before`, when
+     * given, is kept instead, as when undoing a build that never started.
      */
     readonly changeBuild: (
       name: string,
       build: string,
       running: string | null,
+      before?: string | null,
     ) => Effect.Effect<HubSpoke, SpokeError>;
     /** How the hub runs a machine: its own pod, attached to a workload, or neither. */
     readonly kindOf: (name: string) => Effect.Effect<"pod" | "attached" | null>;
@@ -198,15 +200,18 @@ export const make = Effect.gen(function* () {
   const apply = Effect.fn("HubSpokes.apply")(function* (
     input: HubSpokeApplyInput,
     running?: string | null,
+    before?: string | null,
   ) {
     const { gateway, spec } = input;
     const known = yield* records;
     const old = known.find((other) => other.name === spec.name);
     // A new build keeps the one it replaces, for Roll back; any other change keeps what it had.
     const previousBuild =
-      old !== undefined && old.spec.build !== spec.build
-        ? (running ?? old.spec.build ?? old.previousBuild)
-        : (old?.previousBuild ?? null);
+      before !== undefined
+        ? before
+        : old !== undefined && old.spec.build !== spec.build
+          ? (running ?? old.spec.build ?? old.previousBuild)
+          : (old?.previousBuild ?? null);
     if ((yield* attachedRecords).some((record) => record.name === spec.name)) {
       return yield* new SpokeError({
         detail: `${spec.name} is attached to a workload; detach it first.`,
@@ -484,6 +489,7 @@ export const make = Effect.gen(function* () {
     name: string,
     build: string,
     running: string | null,
+    before?: string | null,
   ) {
     const record = (yield* records).find((other) => other.name === name);
     if (record === undefined) {
@@ -492,6 +498,7 @@ export const make = Effect.gen(function* () {
     return yield* apply(
       { gateway: record.gateway, spec: { ...record.spec, build }, keys: record.keys },
       running,
+      before,
     );
   });
 

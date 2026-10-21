@@ -443,10 +443,17 @@ current_name() {
   echo "${link#releases/}"
 }
 
+previous_name() {
+  local link
+  link="$(readlink "$ROOT/previous" 2> /dev/null || true)"
+  echo "${link#releases/}"
+}
+
 # activate <sha> <update|rollback>: switch while the server is stopped, on trial.
 pending_activate() {
-  local name="$1" kind="$2" old
+  local name="$1" kind="$2" old before
   old="$(current_name)"
+  before="$(previous_name)"
   # Said first, so a switch that dies halfway still leaves an answer.
   write_result "$kind" "$old" "$name" false "$name couldn't be switched to."
   if ! is_built "$ROOT/releases/$name"; then
@@ -454,7 +461,8 @@ pending_activate() {
     return
   fi
   MAGNESIUM_RESTART=0 switch_to "$name"
-  printf '%s %s %s 0\n' "$kind" "$old" "$name" > "$STATE_HOME/upkeep/trial"
+  # The build before the switch, "-" for none: the one to keep as previous if it goes back.
+  printf '%s %s %s 0 %s\n' "$kind" "$old" "$name" "${before:--}" > "$STATE_HOME/upkeep/trial"
   write_result "$kind" "$old" "$name" true "Starting on $name."
 }
 
@@ -472,19 +480,25 @@ pending_restore() {
 
 # Counts a start of a release on trial; the last one allowed switches back.
 check_trial() {
-  local trial="$STATE_HOME/upkeep/trial" kind from to starts
-  read -r kind from to starts < "$trial" || { rm -f "$trial"; return; }
+  local trial="$STATE_HOME/upkeep/trial" kind from to starts before
+  read -r kind from to starts before < "$trial" || { rm -f "$trial"; return; }
   if [ "$(current_name)" != "$to" ]; then
     rm -f "$trial"
     return
   fi
   starts=$((starts + 1))
   if [ "$starts" -lt "$TRIAL_STARTS" ] || [ -z "$from" ]; then
-    printf '%s %s %s %s\n' "$kind" "$from" "$to" "$starts" > "$trial"
+    printf '%s %s %s %s %s\n' "$kind" "$from" "$to" "$starts" "$before" > "$trial"
     return
   fi
   rm -f "$trial"
   MAGNESIUM_RESTART=0 switch_to "$from"
+  # A build that never started is no build to go back to: previous is what it was before.
+  case "$before" in
+    "") ;; # A trial written before this was recorded.
+    -) rm -f "$ROOT/previous" ;;
+    *) ln -sfn "releases/$before" "$ROOT/previous" ;;
+  esac
   write_result "$kind" "$from" "$to" false "$to stopped $TRIAL_STARTS times while starting, so this server is back on $from."
 }
 

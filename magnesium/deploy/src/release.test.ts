@@ -437,6 +437,8 @@ describe("magnesium-release", () => {
       }
       expect(release.run("apply-pending").status).toBe(0);
       expect(release.link("current")).toBe("releases/a");
+      // b never started, so it isn't the build to go back to: a had none before it.
+      expect(release.link("previous")).toBeUndefined();
       expect(onTrial(release.home)).toBe(false);
       expect(result(release.home)).toMatchObject({
         kind: "update",
