@@ -76,13 +76,47 @@ jobs:
       - name: Install Chromium for server browser tests
         run: node apps/server/node_modules/playwright-core/cli.js install --with-deps --only-shell chromium
 
+      # The server's suite runs in its own shards below. The root package is left out
+      # too: its own `test` runs every package's.
       - name: Test
-        run: vp run -r test
+        run: vp run --filter '!t3' --filter '!@t3tools/monorepo' test
         env:
           # The web build reads GITHUB_REPOSITORY for desktop release links, which in this
           # fork's CI is the fork; upstream's tests expect its default. Magnesium has no
           # desktop releases (D10).
           T3CODE_DESKTOP_UPDATE_REPOSITORY: pingdotgg/t3code
+
+  # Since upstream v0.1.1 the server's suite alone outgrows one job's time, so it
+  # runs in shards, as upstream's CI does.
+  test_server:
+    name: Test server ${{ matrix.shard }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: true
+
+      - name: Install Chromium for server browser tests
+        run: node apps/server/node_modules/playwright-core/cli.js install --with-deps --only-shell chromium
+
+      - name: Test
+        run: vp run --filter t3 test --shard ${{ matrix.shard }}/${{ strategy.job-total }}
 
   build:
     name: Build
