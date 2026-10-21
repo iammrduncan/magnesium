@@ -183,6 +183,34 @@ describe("a server's upkeep", () => {
     }),
   );
 
+  it.live("packs its own build once for updates sent to several machines at once", () =>
+    withUpkeep({}, (_, place) =>
+      Effect.gen(function* () {
+        const runs = NodePath.join(place.root, "pack-runs");
+        const script = NodePath.join(place.root, "pack-release");
+        NodeFS.writeFileSync(
+          script,
+          `echo run >> ${JSON.stringify(runs)}\nsleep 0.3\nprintf packed > "$3"\n`,
+        );
+        const packing = yield* make({
+          home: place.home,
+          root: place.root,
+          release: "aaaaaaa",
+          script,
+          launcher: "systemd",
+          source: null,
+          stop: Effect.void,
+        });
+        const [first, second] = yield* Effect.all([packing.packSelf, packing.packSelf], {
+          concurrency: 2,
+        });
+        expect(first).toBe(second);
+        expect(NodeFS.readFileSync(first, "utf8")).toBe("packed");
+        expect(NodeFS.readFileSync(runs, "utf8").trim().split("\n")).toHaveLength(1);
+      }),
+    ),
+  );
+
   it.live("builds a release from its own source first, and says when that fails", () =>
     withUpkeep({}, (_, place) =>
       Effect.gen(function* () {

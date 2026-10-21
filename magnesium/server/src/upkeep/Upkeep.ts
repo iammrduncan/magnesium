@@ -20,6 +20,7 @@ import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
+import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 import * as SubscriptionRef from "effect/SubscriptionRef";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
@@ -478,6 +479,8 @@ export const make = (config: UpkeepConfig) =>
       }).pipe(Effect.forever),
     );
 
+    // One pack at a time: updates sent to several machines at once share it.
+    const packing = yield* Semaphore.make(1);
     const packSelf = Effect.gen(function* () {
       if (config.root === null || config.release === null) {
         return yield* new UpkeepError({ detail: "This server doesn't run from a release." });
@@ -503,7 +506,7 @@ export const make = (config: UpkeepConfig) =>
         .rename(partial, file)
         .pipe(Effect.mapError((cause) => new UpkeepError({ detail: `Couldn't pack: ${cause}` })));
       return file;
-    }).pipe(Effect.withSpan("Upkeep.packSelf"));
+    }).pipe(packing.withPermits(1), Effect.withSpan("Upkeep.packSelf"));
 
     const receiveRelease = (name: string, body: Stream.Stream<Uint8Array, unknown>) =>
       Effect.gen(function* () {
