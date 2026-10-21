@@ -68,6 +68,13 @@ Machines the hub carries appear under **Environments** as "Through the hub".
   again with a new pairing code. **Give access again** takes a new code for a
   machine the hub still lists; the token it replaces stops working.
 
+To work on a project on another machine, open a new thread in it and pick the
+machine under **Run on** below the composer. A machine that doesn't have the
+project yet is under **Add to another machine**: it clones the project's
+repository there and copies the files git ignores that you tick, such as
+`.env`. Folders git ignores whole, like `node_modules`, are left out. The
+project needs a git remote.
+
 If a browser had a machine added directly, it hands that access to the hub the
 first time it is signed in with **Manage access**, then forgets its own copy.
 
