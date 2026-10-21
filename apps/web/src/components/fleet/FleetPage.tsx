@@ -114,7 +114,7 @@ function MachineRow({
           <span
             key={note.kind}
             className={cn(
-              "truncate text-xs",
+              "text-xs break-words",
               note.tone === "error" ? "text-destructive-foreground" : "text-warning-foreground",
             )}
           >
