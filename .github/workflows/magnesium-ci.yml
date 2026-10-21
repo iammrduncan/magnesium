@@ -78,6 +78,11 @@ jobs:
 
       - name: Test
         run: vp run -r test
+        env:
+          # The web build reads GITHUB_REPOSITORY for desktop release links, which in this
+          # fork's CI is the fork; upstream's tests expect its default. Magnesium has no
+          # desktop releases (D10).
+          T3CODE_DESKTOP_UPDATE_REPOSITORY: pingdotgg/t3code
 
   build:
     name: Build

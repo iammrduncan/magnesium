@@ -63,8 +63,25 @@ Upstream's T3 Code v0.1.1 (`fe27e8e3dc`, 2026-10-20) is its first stable release
 
 ## Goal summary
 
-Planned, 2026-10-21.
+**2026-10-21, In progress: merged on main; the rehearsal on real data and the rollout come next.**
+
+- **Gate 1:** the owner chose to hide EAS Simulator hosts in Settings, and to leave idle Claude compaction off.
+- **Merge:** all 1,486 commits of v0.1.1 are merged (`scripts/merge-upstream.ts`). The 36 conflicting files are resolved with every Magnesium edit kept; `scripts/upstream-edits.ts --check` finds no upstream file changed without a marker (315 markers in 94 files).
+- **Kept from Magnesium:**
+  - Telemetry stays off, and with it off, start-up no longer reads the provider account files, which upstream's new code did.
+  - The fence and supervised defaults, and OpenCode 2.x only, where upstream now ships its own "database is locked" retry.
+  - The hub's machines, pods and keys in Settings, gated on managing access.
+  - Fleet's upkeep, profiles and bots.
+  - The sidebar's project folders, carried into upstream's React Compiler rewrite.
+- **Found in the merge, fixed:**
+  - **Pairing:** upstream's pairing now grants access management by default, so every machine paired with a new code would have been refused by the hub. The hub now asks a machine for only the scopes it keeps.
+  - **Stripped or left out:** T3 Connect's new reachability checks and hosted sign-in, the mobile app row, and upstream's npm-launcher and Windows desktop release scripts. The strip script now covers them, and patches for packages only the stripped apps install (D10, D13).
+  - **Compiler:** three Settings components used `try … finally`, which the React Compiler can't compile; they now use promise chains.
+  - **Merge script:** it now waits out a brief git index lock instead of stopping halfway.
+- **Test 1, the rehearsal on real data:** passed, in place on the hub. The merged build started on a scratch copy of the hub's newest backup and ran migrations 063 to 067. Projects, threads, messages and scheduled tasks kept every row. The webhook dedupe tables are new, and the V1 projections nothing reads under V2 were dropped, as migration 063 intends. `t3 doctor --dry-run` on the copy reported the space that frees. The copy never left the hub and was deleted.
+- **Checks:** the full typecheck passes. The full test suite passes locally except two upstream tests that fail only on macOS (its `/private/var` temp paths, and Ctrl+P meaning Cmd), and three browser tests that time out under the suite's load and pass alone.
 
 ## Next steps
 
-1. Start after goal 35 is verified.
+1. Rehearse the migrations on a copy of real data in place on the hub, then roll: the hub, then every machine and pod from Fleet.
+2. Test the highlights on the hub, and write the summary.
