@@ -1,4 +1,4 @@
-import { FleetEvent } from "@magnesium/contracts";
+import { FleetEvent, ServerDeployment } from "@magnesium/contracts";
 import { EnvironmentId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
@@ -18,6 +18,12 @@ const SeenMachine = Schema.Struct({
   environmentId: Schema.NullOr(EnvironmentId),
   serverVersion: Schema.NullOr(Schema.String),
   lastSeenAt: Schema.NullOr(Schema.String),
+  // What it is and runs, as it last said; null for one seen before the hub kept them.
+  kind: Schema.NullOr(Schema.Literals(["machine", "gateway"])),
+  release: Schema.NullOr(Schema.String),
+  deployment: Schema.NullOr(ServerDeployment),
+  node: Schema.NullOr(Schema.String),
+  workload: Schema.NullOr(Schema.String),
 });
 export type SeenMachine = typeof SeenMachine.Type;
 
@@ -31,19 +37,26 @@ export const makeFleetStore = Effect.gen(function* () {
 
   const loadSeen = sql`
     SELECT name, label, environment_id AS "environmentId", server_version AS "serverVersion",
-      last_seen_at AS "lastSeenAt"
+      last_seen_at AS "lastSeenAt", kind, release, deployment, node, workload
     FROM fleet_machines`.pipe(Effect.flatMap(decodeSeen), Effect.orDie);
 
   const saveSeen = (machine: SeenMachine) =>
     sql`
-      INSERT INTO fleet_machines (name, label, environment_id, server_version, last_seen_at)
+      INSERT INTO fleet_machines (name, label, environment_id, server_version, last_seen_at,
+        kind, release, deployment, node, workload)
       VALUES (${machine.name}, ${machine.label}, ${machine.environmentId},
-        ${machine.serverVersion}, ${machine.lastSeenAt})
+        ${machine.serverVersion}, ${machine.lastSeenAt}, ${machine.kind}, ${machine.release},
+        ${machine.deployment}, ${machine.node}, ${machine.workload})
       ON CONFLICT (name) DO UPDATE SET
         label = excluded.label,
         environment_id = excluded.environment_id,
         server_version = excluded.server_version,
-        last_seen_at = excluded.last_seen_at`.pipe(Effect.asVoid, Effect.orDie);
+        last_seen_at = excluded.last_seen_at,
+        kind = excluded.kind,
+        release = excluded.release,
+        deployment = excluded.deployment,
+        node = excluded.node,
+        workload = excluded.workload`.pipe(Effect.asVoid, Effect.orDie);
 
   const selectEvents = <E>(rows: Effect.Effect<ReadonlyArray<unknown>, E>) =>
     rows.pipe(Effect.flatMap(decodeEvents), Effect.orDie);

@@ -110,6 +110,20 @@ export const withOverlay = (row: FleetMachine, overlay: UpkeepOverlay | undefine
           overlay.previousRelease === undefined ? row.previousRelease : overlay.previousRelease,
       };
 
+/** What the hub keeps of a machine's row across its own restarts. */
+const seenOf = (name: string, row: FleetMachine): SeenMachine => ({
+  name,
+  label: row.label,
+  environmentId: row.environmentId,
+  serverVersion: row.serverVersion,
+  lastSeenAt: row.lastSeenAt,
+  kind: row.kind === "gateway" ? "gateway" : "machine",
+  release: row.release,
+  deployment: row.deployment,
+  node: row.node,
+  workload: row.workload,
+});
+
 const statusRowOf = (item: LiveTableItem<ServerStatusRow>) =>
   item._tag === "snapshot" ? item.rows[0] : item.upserts[0];
 
@@ -216,13 +230,7 @@ export const make = (
           yield* setRow(next);
           if (previous.link === "connected") return;
           yield* appendEvent(name, "connected", null);
-          yield* remember({
-            name,
-            label: next.label,
-            environmentId: next.environmentId,
-            serverVersion: next.serverVersion,
-            lastSeenAt: next.lastSeenAt,
-          });
+          yield* remember(seenOf(name, next));
         }),
       onDown: (down: {
         readonly link: "offline" | "no-access";
@@ -244,13 +252,7 @@ export const make = (
           });
           if (previous.link !== down.link) yield* appendEvent(name, down.link, down.detail);
           if (lastSeenAt !== previous.lastSeenAt) {
-            yield* remember({
-              name,
-              label: previous.label,
-              environmentId: previous.environmentId,
-              serverVersion: previous.serverVersion,
-              lastSeenAt,
-            });
+            yield* remember(seenOf(name, { ...previous, lastSeenAt }));
           }
         }),
     });
@@ -341,14 +343,15 @@ export const make = (
         yield* setRow({
           name,
           label: known?.label ?? name,
-          kind: "machine",
+          // As it last said, until it says again.
+          kind: known?.kind ?? "machine",
           link: "connecting",
           environmentId: known?.environmentId ?? null,
           serverVersion: known?.serverVersion ?? null,
-          release: null,
-          deployment: null,
-          node: null,
-          workload: null,
+          release: known?.release ?? null,
+          deployment: known?.deployment ?? null,
+          node: known?.node ?? null,
+          workload: known?.workload ?? null,
           startedAt: null,
           lastSeenAt: known?.lastSeenAt ?? null,
           threads: null,

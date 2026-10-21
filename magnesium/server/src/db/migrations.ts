@@ -90,10 +90,22 @@ const fleetRequests = Effect.gen(function* () {
     )`;
 });
 
+/**
+ * Fleet (goal 35): what a machine is and runs, so after a hub restart one that
+ * doesn't answer still shows as the pod or gateway it was, on its last build.
+ */
+const fleetMachinePlace = Effect.gen(function* () {
+  const sql = yield* SqlClient.SqlClient;
+  for (const column of ["kind", "release", "deployment", "node", "workload"]) {
+    yield* sql.unsafe(`ALTER TABLE fleet_machines ADD COLUMN ${column} TEXT`);
+  }
+});
+
 export const migrations = Migrator.fromRecord({
   "1_Fleet": fleet,
   "2_HomePins": homePins,
   "3_ProfileRequests": profileRequests,
   "4_HubMachines": hubMachines,
   "5_FleetRequests": fleetRequests,
+  "6_FleetMachinePlace": fleetMachinePlace,
 });
