@@ -89,7 +89,7 @@ The unit drops the server's stdout, so a startup pairing token never reaches the
 
 ## Hosts that don't build
 
-A host that cannot build, such as a hub with no way out to the internet (D35), names a `magnesium_build_host` in its vars:
+A host that shouldn't spend the time or space on builds, such as a small hub, names a `magnesium_build_host` in its vars. Its own agents still need their way out to npm, GitHub and the web, so keep that open.
 
 1. The role builds the pinned commit on that host.
 2. It packs the server and its runtime dependencies there, about 300 MB.

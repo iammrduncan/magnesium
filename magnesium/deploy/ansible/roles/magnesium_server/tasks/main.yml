@@ -195,10 +195,11 @@
   when: magnesium_prune is changed
   tags: [build]
 
+# A new Node replaces the binary under the running server, so it restarts too.
 - name: Run the server
   ansible.builtin.systemd_service:
     name: magnesium.service
     scope: user
     enabled: true
-    state: "{{ 'restarted' if (magnesium_env.changed or magnesium_unit.changed or magnesium_dropin.changed or (magnesium_activate.changed | default(false))) else 'started' }}"
+    state: "{{ 'restarted' if (magnesium_env.changed or magnesium_unit.changed or magnesium_dropin.changed or (magnesium_activate.changed | default(false)) or (magnesium_node_unpacked.changed | default(false))) else 'started' }}"
   when: not ansible_check_mode

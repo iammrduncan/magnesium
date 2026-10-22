@@ -13,10 +13,10 @@ magnesium_build_host: ""
 magnesium_pack_cache: "{{ playbook_dir }}/.packs"
 
 # Node 24, installed per user. Checksums from nodejs.org's SHASUMS256.txt.
-magnesium_node_version: "24.21.0"
+magnesium_node_version: "24.22.1"
 magnesium_node_sha256:
-  x64: fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6
-  arm64: 6ad1325edbdb5649c379b75a237147a666c95d4f9ae8d340fef2d1575d289ad2
+  x64: 6c172a9ab6718f7b801fb5a7bd486af2ee5e32758086a04b84fcce2aa77095e6
+  arm64: dbabf7a1cbf947e6059ffad2c27b80041db97dea1e553b62afdee7f13fca336e
 
 # Bind address and port. On a machine, the address the hub reaches its server
 # on: a LAN address, a tailnet address, or 0.0.0.0 behind a firewall that admits
