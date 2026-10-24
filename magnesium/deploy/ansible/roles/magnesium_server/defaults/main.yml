@@ -56,12 +56,13 @@ magnesium_settings: {}
 # OpenCode through an LLM gateway (LiteLLM or another OpenAI-compatible one),
 # for machines without Claude Code (D36). OpenCode 2.x only (D69), from its npm
 # package for each platform; the sums are the registry's published sha512.
-# 2.0.32, not older: 2.0.28 ignores a config's `instructions`, which hold a profile's rules.
+# 2.1.4, not older: 2.0.x bundles a Bun whose Brotli decoder has CVE-2026-111497, and
+# 2.0.28 ignores a config's `instructions`, which hold a profile's rules.
 magnesium_opencode: false
-magnesium_opencode_version: "2.0.32"
+magnesium_opencode_version: "2.1.4"
 magnesium_opencode_sha512:
-  x64: 439d287c143781dc230fa65086b551f1f5659bc0f6c4f32c872e1dca763a97a6fea8b74a801489f56a68683cab417d585a67f6b3b20de116d79a85d77498ad0c
-  arm64: 611e4ed378abbe6a2dfc6d1ff16e3d7a1be19f9baa085377bdff494ec0a1bdfe3b5ba95d8ca08dbec6824974b648fdba74f394310067ed6a9b2a7c87ceb351e7
+  x64: a3c109d19b13e1dcc328dfb49a91b610a6cd1b3272a7e175fbe02fdbc51179155f884bfe377e1e6449cdfee9e488ca1eaca1da77a5ba222ee4e2e9139cf36635
+  arm64: 76bc342d6306d2789a13de1e3d79b587baa314165945c4990f781a72dde1c773983d77aca7bc6b3add1b9f7b2271835437a7e88c446b0ca47a8d8ad79995feac
 magnesium_opencode_base_url: "" # https://llm-gateway.example.com/v1
 magnesium_opencode_models: [] # ["<model>"]; the first is the default
 magnesium_opencode_api_key_env: LITELLM_API_KEY
